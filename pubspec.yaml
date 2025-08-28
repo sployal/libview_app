@@ -1,0 +1,50 @@
+name: uni_study_app
+description: A university study app with Google Drive integration
+publish_to: 'none' # Remove this line if you wish to publish to pub.dev
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # UI & Icons
+  cupertino_icons: ^1.0.2
+
+  # HTTP requests for Google Drive API
+  http: ^1.1.0
+
+  # URL launching for opening files
+  url_launcher: ^6.2.1
+
+  # State management (optional - for future enhancements)
+  provider: ^6.1.1
+
+  # Local storage (for caching and offline support)
+  shared_preferences: ^2.2.2
+
+  # File handling
+  path_provider: ^2.1.1
+
+  # Permissions (for file downloads)
+  permission_handler: ^11.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+
+  # Add custom fonts if needed
+  # fonts:
+  #   - family: SF Pro Display
+  #     fonts:
+  #       - asset: fonts/SFProDisplay-Regular.otf
+  #       - asset: fonts/SFProDisplay-Bold.otf
+  #         weight: 700
