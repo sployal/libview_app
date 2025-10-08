@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/google_drive_service.dart';
+import 'pdf_reader.dart';
 
 class Semester4BrowserScreen extends StatefulWidget {
   const Semester4BrowserScreen({super.key});
@@ -46,16 +47,37 @@ class _Semester4BrowserScreenState extends State<Semester4BrowserScreen> {
     if (item.isFolder) {
       await _load(item.id, label: item.name);
     } else {
-      // Open via webViewLink if available
-      final url = item.webViewLink;
-      if (url == null || url.isEmpty) return;
-      // Defer to SubjectDetailScreen's opener style: external launch
-      // Keeping it minimal here to avoid extra deps
-      // ignore: use_build_context_synchronously
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Opening file in browser...')),
+      // Get the direct download URL for the PDF
+      final directUrl = _getDirectDownloadUrl(item.id);
+      
+      if (directUrl.isEmpty) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Unable to open file'),
+            backgroundColor: Color(0xFFEF4444),
+          ),
+        );
+        return;
+      }
+
+      // Navigate to PDF reader screen
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PDFReaderScreen(
+            pdfUrl: directUrl,
+            fileName: item.name,
+          ),
+        ),
       );
     }
+  }
+
+  // Convert Drive file ID to direct download URL
+  String _getDirectDownloadUrl(String fileId) {
+    return 'https://drive.google.com/uc?export=download&id=$fileId';
   }
 
   bool _canPop() => navStack.length > 1;
@@ -93,53 +115,76 @@ class _Semester4BrowserScreenState extends State<Semester4BrowserScreen> {
                 valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
               ),
             )
-          : RefreshIndicator(
-              onRefresh: () => _load(navStack.isEmpty ? GoogleDriveService.folderId : navStack.last.folderId),
-              child: items.isEmpty
-                  ? const Center(
-                      child: Text(
-                        'No items found',
-                        style: TextStyle(color: Color(0xFF6B7280)),
+          : errorMessage != null
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.error_outline_rounded,
+                        size: 64,
+                        color: Color(0xFFEF4444),
                       ),
-                    )
-                  : ListView.separated(
-                      padding: const EdgeInsets.all(20),
-                      itemBuilder: (context, index) {
-                        final item = items[index];
-                        final isFolder = item.isFolder;
-                        return ListTile(
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          tileColor: Colors.white,
-                          leading: Container(
-                            width: 48,
-                            height: 48,
-                            decoration: BoxDecoration(
-                              color: (isFolder ? const Color(0xFF10B981) : const Color(0xFF6366F1)).withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Icon(
-                              isFolder ? Icons.folder_rounded : Icons.insert_drive_file_rounded,
-                              color: isFolder ? const Color(0xFF10B981) : const Color(0xFF6366F1),
-                            ),
+                      const SizedBox(height: 16),
+                      Text(
+                        errorMessage!,
+                        style: const TextStyle(color: Color(0xFF6B7280)),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () => _load(navStack.isEmpty ? GoogleDriveService.folderId : navStack.last.folderId),
+                        child: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                )
+              : RefreshIndicator(
+                  onRefresh: () => _load(navStack.isEmpty ? GoogleDriveService.folderId : navStack.last.folderId),
+                  child: items.isEmpty
+                      ? const Center(
+                          child: Text(
+                            'No items found',
+                            style: TextStyle(color: Color(0xFF6B7280)),
                           ),
-                          title: Text(
-                            item.name,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                          subtitle: Text(
-                            isFolder ? 'Folder' : (item.size ?? ''),
-                            style: const TextStyle(color: Color(0xFF6B7280)),
-                          ),
-                          trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Color(0xFF9CA3AF)),
-                          onTap: () => _open(item),
-                        );
-                      },
-                      separatorBuilder: (_, __) => const SizedBox(height: 12),
-                      itemCount: items.length,
-                    ),
-            ),
+                        )
+                      : ListView.separated(
+                          padding: const EdgeInsets.all(20),
+                          itemBuilder: (context, index) {
+                            final item = items[index];
+                            final isFolder = item.isFolder;
+                            return ListTile(
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              tileColor: Colors.white,
+                              leading: Container(
+                                width: 48,
+                                height: 48,
+                                decoration: BoxDecoration(
+                                  color: (isFolder ? const Color(0xFF10B981) : const Color(0xFF6366F1)).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Icon(
+                                  isFolder ? Icons.folder_rounded : Icons.insert_drive_file_rounded,
+                                  color: isFolder ? const Color(0xFF10B981) : const Color(0xFF6366F1),
+                                ),
+                              ),
+                              title: Text(
+                                item.name,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(fontWeight: FontWeight.w600),
+                              ),
+                              subtitle: Text(
+                                isFolder ? 'Folder' : (item.size ?? ''),
+                                style: const TextStyle(color: Color(0xFF6B7280)),
+                              ),
+                              trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Color(0xFF9CA3AF)),
+                              onTap: () => _open(item),
+                            );
+                          },
+                          separatorBuilder: (_, __) => const SizedBox(height: 12),
+                          itemCount: items.length,
+                        ),
+                ),
     );
   }
 }
@@ -149,5 +194,3 @@ class _NavEntry {
   final String? label;
   _NavEntry({required this.folderId, required this.label});
 }
-
-

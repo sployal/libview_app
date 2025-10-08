@@ -31,6 +31,8 @@ dependencies:
 
   # Permissions (for file downloads)
   permission_handler: ^11.1.0
+  flutter_pdfview: ^1.4.3
+  syncfusion_flutter_pdfviewer: ^31.1.23
 
 dev_dependencies:
   flutter_test:
