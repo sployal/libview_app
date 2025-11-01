@@ -45,7 +45,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           position: _slideAnimation,
           child: CustomScrollView(
             slivers: [
-              SliverAppBar(
+              const SliverAppBar(
                 expandedHeight: 120,
                 floating: true,
                 backgroundColor: Colors.transparent,
@@ -54,7 +54,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text(
+                      Text(
                         'Welcome back! 👋',
                         style: TextStyle(
                           fontSize: 24,
@@ -62,8 +62,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                           color: Color(0xFF1F2937),
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      const Text(
+                      SizedBox(height: 4),
+                      Text(
                         'Continue your learning journey',
                         style: TextStyle(
                           fontSize: 14,
@@ -73,7 +73,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       ),
                     ],
                   ),
-                  titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
+                  titlePadding: EdgeInsets.only(left: 20, bottom: 16),
                 ),
               ),
               SliverToBoxAdapter(

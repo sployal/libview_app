@@ -7,144 +7,251 @@ class SemestersScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final semesters = [
-      {'name': 'Semester 1', 'year': '2024', 'subjects': 6, 'progress': 0.8},
-      {'name': 'Semester 2', 'year': '2024', 'subjects': 5, 'progress': 0.6},
-      {'name': 'Semester 3', 'year': '2023', 'subjects': 7, 'progress': 1.0},
-      {'name': 'Semester 4', 'year': '2023', 'subjects': 6, 'progress': 0.9},
+    final years = [
+      {
+        'year': 'Year 1',
+        'semesters': [
+          {'name': 'Semester 1', 'subjects': 6, 'progress': 0.8},
+          {'name': 'Semester 2', 'subjects': 5, 'progress': 0.6},
+        ]
+      },
+      {
+        'year': 'Year 2',
+        'semesters': [
+          {'name': 'Semester 1', 'subjects': 7, 'progress': 1.0},
+          {'name': 'Semester 2', 'subjects': 6, 'progress': 0.9},
+        ]
+      },
+      {
+        'year': 'Year 3',
+        'semesters': [
+          {'name': 'Semester 1', 'subjects': 6, 'progress': 0.75},
+          {'name': 'Semester 2', 'subjects': 7, 'progress': 0.85},
+        ]
+      },
+      {
+        'year': 'Year 4',
+        'semesters': [
+          {'name': 'Semester 1', 'subjects': 5, 'progress': 0.95},
+          {'name': 'Semester 2', 'subjects': 6, 'progress': 0.88},
+        ]
+      },
+      {
+        'year': 'Year 5',
+        'semesters': [
+          {'name': 'Semester 1', 'subjects': 6, 'progress': 1.0},
+          {'name': 'Semester 2', 'subjects': 5, 'progress': 0.92},
+        ]
+      },
     ];
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: const Color(0xFF0F172A),
       appBar: AppBar(
         title: const Text(
-          'Semesters',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          'Academic Years',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
         ),
+        backgroundColor: const Color(0xFF0F172A),
+        elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.search_rounded),
+            icon: const Icon(Icons.search_rounded, color: Colors.white),
             onPressed: () {},
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(20),
-        child: ListView.builder(
-          itemCount: semesters.length,
-          itemBuilder: (context, index) {
-            final semester = semesters[index];
-            return Container(
-              margin: const EdgeInsets.only(bottom: 16),
-              child: GestureDetector(
-                onTap: () {
-                  final name = semester['name'] as String;
-                  if (name.contains('4')) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const Semester4BrowserScreen(),
-                      ),
-                    );
-                  } else {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => SemesterDetailScreen(
-                          semesterName: name,
-                        ),
-                      ),
-                    );
-                  }
-                },
-                child: Container(
-                  padding: const EdgeInsets.all(20),
+      body: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: years.length,
+        itemBuilder: (context, yearIndex) {
+          final year = years[yearIndex];
+          final semesters = year['semesters'] as List;
+          
+          return Container(
+            margin: const EdgeInsets.only(bottom: 20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Compact Year Header
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 15,
-                        offset: const Offset(0, 5),
-                      ),
-                    ],
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                    ),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            '${semester['name']} ${semester['year']}',
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF1F2937),
+                  child: Text(
+                    '${year['year']}',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ),
+                
+                const SizedBox(height: 12),
+                
+                // Compact Semester Cards
+                ...List.generate(semesters.length, (semIndex) {
+                  final semester = semesters[semIndex];
+                  final yearNum = yearIndex + 1;
+                  final semNum = semIndex + 1;
+                  final progress = semester['progress'] as double;
+                  
+                  // Determine card color based on semester
+                  final colors = semNum == 1
+                      ? [const Color(0xFF1E293B), const Color(0xFF334155)]
+                      : [const Color(0xFF334155), const Color(0xFF475569)];
+                  
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    child: GestureDetector(
+                      onTap: () {
+                        final yearName = year['year'] as String;
+                        
+                        if (yearNum == 2 && semNum == 2) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const Semester4BrowserScreen(),
                             ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF10B981).withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              '${semester['subjects']} Subjects',
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF10B981),
+                          );
+                        } else {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => SemesterDetailScreen(
+                                semesterName: '$yearName - Semester $semNum',
                               ),
                             ),
+                          );
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: colors,
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.1),
+                            width: 1,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.2),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            // Semester Icon
+                            Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(
+                                semNum == 1 
+                                    ? Icons.wb_sunny_rounded 
+                                    : Icons.nights_stay_rounded,
+                                color: semNum == 1 
+                                    ? const Color(0xFFFBBF24)
+                                    : const Color(0xFF60A5FA),
+                                size: 24,
+                              ),
+                            ),
+                            
+                            const SizedBox(width: 12),
+                            
+                            // Semester Info
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '${semester['name']}',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '${semester['subjects']} Subjects',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.white.withOpacity(0.7),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            
+                            // Progress Circle
+                            Stack(
+                              alignment: Alignment.center,
                               children: [
-                                Text(
-                                  'Progress',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: Colors.grey[600],
+                                SizedBox(
+                                  width: 48,
+                                  height: 48,
+                                  child: CircularProgressIndicator(
+                                    value: progress,
+                                    strokeWidth: 4,
+                                    backgroundColor: Colors.white.withOpacity(0.1),
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      progress >= 0.9
+                                          ? const Color(0xFF10B981)
+                                          : progress >= 0.7
+                                              ? const Color(0xFF3B82F6)
+                                              : const Color(0xFFF59E0B),
+                                    ),
                                   ),
                                 ),
-                                const SizedBox(height: 8),
-                                LinearProgressIndicator(
-                                  value: semester['progress'] as double,
-                                  backgroundColor: Colors.grey[200],
-                                  valueColor: const AlwaysStoppedAnimation<Color>(
-                                    Color(0xFF6366F1),
+                                Text(
+                                  '${(progress * 100).toInt()}%',
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
                                   ),
-                                  minHeight: 6,
                                 ),
                               ],
                             ),
-                          ),
-                          const SizedBox(width: 16),
-                          Text(
-                            '${((semester['progress'] as double) * 100).toInt()}%',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xFF6366F1),
+                            
+                            const SizedBox(width: 8),
+                            
+                            // Arrow
+                            Icon(
+                              Icons.arrow_forward_ios_rounded,
+                              color: Colors.white.withOpacity(0.5),
+                              size: 16,
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        ),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
