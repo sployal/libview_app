@@ -1,28 +1,18 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
 
 class GoogleDriveService {
   static const String baseUrl = 'https://www.googleapis.com/drive/v3';
-  static const String folderId = '1ltEhma0cQ62d3aw2sQVucKdkIUg5JBik'; // Your Semester 4 folder
+  static const String uploadUrl = 'https://www.googleapis.com/upload/drive/v3';
+  static const String folderId = '1ltEhma0cQ62d3aw2sQVucKdkIUg5JBik';
   
-  // You'll need to get this from Google Cloud Console
   static const String apiKey = 'AIzaSyBlCLsPvArqlkJecaq_wmBdjb5bIdd23go';
   
-  // Optional OAuth 2.0 access token (Bearer). If set, this takes precedence over apiKey.
-  // Paste your token here if you prefer setting it in code (optional)
-  static const String? defaultAccessToken = null; // e.g., 'ya29.a0Af...'
-  static String? accessToken = defaultAccessToken;
-  
-  // Call this once after obtaining a fresh token
-  static void setAccessToken(String token) {
-    accessToken = token.trim().isEmpty ? null : token.trim();
-  }
-  
-  // Model classes for API responses
+  // Get folder contents
   static Future<List<DriveItem>> getFolderContents(String folderId) async {
     try {
-      // Build Drive files.list request with proper query and shared drives flags
       final queryParameters = <String, String>{
         'q': '\u0027$folderId\u0027 in parents and trashed = false',
         'fields': 'files(id,name,mimeType,size,modifiedTime,webViewLink,thumbnailLink)',
@@ -31,33 +21,145 @@ class GoogleDriveService {
         'includeItemsFromAllDrives': 'true',
         'pageSize': '1000',
         'orderBy': 'name',
+        'key': apiKey,
       };
-      // Use API key only when no OAuth token is provided
-      if (accessToken == null || accessToken!.isEmpty) {
-        queryParameters['key'] = apiKey;
-      }
+      
       final uri = Uri.parse('$baseUrl/files').replace(queryParameters: queryParameters);
       
       final headers = <String, String>{
         'Accept': 'application/json',
       };
-      if (accessToken != null && accessToken!.isNotEmpty) {
-        headers['Authorization'] = 'Bearer ${accessToken!}';
-      }
       
       final response = await http.get(uri, headers: headers);
       
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         final List<dynamic> files = data['files'] ?? [];
-        
         return files.map((file) => DriveItem.fromJson(file)).toList();
       } else {
-        throw Exception('Failed to load folder contents: ${response.statusCode} ${response.body}');
+        throw Exception('Failed to load folder contents: ${response.statusCode}');
       }
     } catch (e) {
       print('Error fetching folder contents: $e');
       return [];
+    }
+  }
+  
+  // Create a new folder
+  static Future<void> createFolder(String folderName, String parentFolderId) async {
+    try {
+      final queryParameters = <String, String>{
+        'key': apiKey,
+        'supportsAllDrives': 'true',
+      };
+      
+      final uri = Uri.parse('$baseUrl/files').replace(queryParameters: queryParameters);
+      
+      final metadata = {
+        'name': folderName,
+        'mimeType': 'application/vnd.google-apps.folder',
+        'parents': [parentFolderId],
+      };
+      
+      final response = await http.post(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: json.encode(metadata),
+      );
+      
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw Exception('Failed to create folder: ${response.statusCode} ${response.body}');
+      }
+    } catch (e) {
+      print('Error creating folder: $e');
+      throw e;
+    }
+  }
+  
+  // Upload a file
+  static Future<void> uploadFile({
+    required String fileName,
+    required Uint8List fileBytes,
+    required String mimeType,
+    required String folderId,
+  }) async {
+    try {
+      final boundary = 'boundary${DateTime.now().millisecondsSinceEpoch}';
+      final queryParameters = <String, String>{
+        'uploadType': 'multipart',
+        'key': apiKey,
+        'supportsAllDrives': 'true',
+      };
+      
+      final uri = Uri.parse('$uploadUrl/files').replace(queryParameters: queryParameters);
+      
+      // Create metadata part
+      final metadata = {
+        'name': fileName,
+        'parents': [folderId],
+      };
+      
+      // Build multipart body
+      final bodyParts = <String>[];
+      
+      // Part 1: Metadata
+      bodyParts.add('--$boundary');
+      bodyParts.add('Content-Type: application/json; charset=UTF-8');
+      bodyParts.add('');
+      bodyParts.add(json.encode(metadata));
+      
+      // Part 2: File data
+      bodyParts.add('--$boundary');
+      bodyParts.add('Content-Type: $mimeType');
+      bodyParts.add('');
+      
+      final bodyStart = utf8.encode(bodyParts.join('\r\n') + '\r\n');
+      final bodyEnd = utf8.encode('\r\n--$boundary--');
+      
+      // Combine all parts
+      final body = <int>[];
+      body.addAll(bodyStart);
+      body.addAll(fileBytes);
+      body.addAll(bodyEnd);
+      
+      final response = await http.post(
+        uri,
+        headers: {
+          'Content-Type': 'multipart/related; boundary=$boundary',
+          'Content-Length': body.length.toString(),
+        },
+        body: body,
+      );
+      
+      if (response.statusCode != 200 && response.statusCode != 201) {
+        throw Exception('Failed to upload file: ${response.statusCode} ${response.body}');
+      }
+    } catch (e) {
+      print('Error uploading file: $e');
+      throw e;
+    }
+  }
+  
+  // Delete a file or folder
+  static Future<void> deleteFile(String fileId) async {
+    try {
+      final queryParameters = <String, String>{
+        'key': apiKey,
+        'supportsAllDrives': 'true',
+      };
+      
+      final uri = Uri.parse('$baseUrl/files/$fileId').replace(queryParameters: queryParameters);
+      
+      final response = await http.delete(uri);
+      
+      if (response.statusCode != 204 && response.statusCode != 200) {
+        throw Exception('Failed to delete file: ${response.statusCode} ${response.body}');
+      }
+    } catch (e) {
+      print('Error deleting file: $e');
+      throw e;
     }
   }
   
@@ -66,7 +168,6 @@ class GoogleDriveService {
     try {
       final items = await getFolderContents(folderId);
       
-      // Filter only folders (subjects)
       final subjects = items
           .where((item) => item.isFolder)
           .map((item) => Subject(
@@ -78,7 +179,6 @@ class GoogleDriveService {
               ))
           .toList();
       
-      // Get file counts for each subject
       for (var subject in subjects) {
         final files = await getFolderContents(subject.folderId);
         subject.fileCount = files.where((f) => !f.isFolder).length;
@@ -87,7 +187,6 @@ class GoogleDriveService {
       return subjects;
     } catch (e) {
       print('Error fetching subjects: $e');
-      // For live Semester 4, do NOT return sample data; show empty so the UI reflects the issue
       return [];
     }
   }
@@ -117,13 +216,11 @@ class GoogleDriveService {
   
   // Helper methods
   static String _extractSubjectCode(String folderName) {
-    // Extract code from folder name (e.g., "EENG Engineering Project I" -> "EENG")
     final parts = folderName.split(' ');
     return parts.isNotEmpty ? parts[0] : 'N/A';
   }
   
   static Color _getSubjectColor(String subjectName) {
-    // Assign colors based on subject name
     final colors = [
       const Color(0xFF6366F1),
       const Color(0xFF10B981),
