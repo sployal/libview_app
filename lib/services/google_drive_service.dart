@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 class GoogleDriveService {
   static const String baseUrl = 'https://www.googleapis.com/drive/v3';
   static const String uploadUrl = 'https://www.googleapis.com/upload/drive/v3';
+  
+  // Default folder ID (kept for backward compatibility)
   static const String folderId = '1ltEhma0cQ62d3aw2sQVucKdkIUg5JBik';
   
   static const String apiKey = 'AIzaSyBlCLsPvArqlkJecaq_wmBdjb5bIdd23go';
@@ -163,32 +165,64 @@ class GoogleDriveService {
     }
   }
   
-  // Get semester 4 subjects (folders)
-  static Future<List<Subject>> getSemester4Subjects() async {
+  // ============================================================================
+  // NEW METHOD: Load subjects from any Google Drive folder
+  // ============================================================================
+  static Future<List<Subject>> getSubjectsFromFolder(String folderId) async {
     try {
       final items = await getFolderContents(folderId);
       
-      final subjects = items
-          .where((item) => item.isFolder)
-          .map((item) => Subject(
-                id: item.id,
-                name: item.name,
-                code: _extractSubjectCode(item.name),
-                folderId: item.id,
-                color: _getSubjectColor(item.name),
-              ))
-          .toList();
+      // Convert folders to subjects
+      final List<Subject> subjects = [];
+      final colors = [
+        const Color(0xFF6366F1),
+        const Color(0xFF10B981),
+        const Color(0xFFEF4444),
+        const Color(0xFFF59E0B),
+        const Color(0xFF8B5CF6),
+        const Color(0xFF06B6D4),
+        const Color(0xFFEC4899),
+        const Color(0xFF84CC16),
+      ];
       
-      for (var subject in subjects) {
-        final files = await getFolderContents(subject.folderId);
-        subject.fileCount = files.where((f) => !f.isFolder).length;
+      int colorIndex = 0;
+      
+      for (var item in items) {
+        if (item.isFolder) {
+          // Count files in this subject folder
+          int fileCount = 0;
+          try {
+            final subFolderItems = await getFolderContents(item.id);
+            fileCount = subFolderItems.where((i) => !i.isFolder).length;
+          } catch (e) {
+            fileCount = 0;
+          }
+          
+          subjects.add(Subject(
+            id: item.id,
+            name: item.name,
+            code: _extractSubjectCode(item.name),
+            folderId: item.id,
+            color: colors[colorIndex % colors.length],
+            fileCount: fileCount,
+          ));
+          
+          colorIndex++;
+        }
       }
       
       return subjects;
     } catch (e) {
-      print('Error fetching subjects: $e');
-      return [];
+      print('Error loading subjects from folder: $e');
+      throw Exception('Failed to load subjects from folder: $e');
     }
+  }
+  
+  // ============================================================================
+  // BACKWARD COMPATIBILITY: Keep old method for existing Semester 4 code
+  // ============================================================================
+  static Future<List<Subject>> getSemester4Subjects() async {
+    return getSubjectsFromFolder(folderId);
   }
   
   // Get files for a specific subject
@@ -214,26 +248,26 @@ class GoogleDriveService {
     }
   }
   
+  // ============================================================================
   // Helper methods
-  static String _extractSubjectCode(String folderName) {
-    final parts = folderName.split(' ');
-    return parts.isNotEmpty ? parts[0] : 'N/A';
-  }
+  // ============================================================================
   
-  static Color _getSubjectColor(String subjectName) {
-    final colors = [
-      const Color(0xFF6366F1),
-      const Color(0xFF10B981),
-      const Color(0xFFEF4444),
-      const Color(0xFF8B5CF6),
-      const Color(0xFFF59E0B),
-      const Color(0xFF06B6D4),
-      const Color(0xFFEC4899),
-      const Color(0xFF84CC16),
-    ];
+  // Extract subject code from folder name (e.g., "CS101 Data Structures" -> "CS101")
+  static String _extractSubjectCode(String folderName) {
+    // Try to extract code like "CS101" or "EENG 483" from the folder name
+    final regExp = RegExp(r'[A-Z]{2,4}\s?\d{3}');
+    final match = regExp.firstMatch(folderName);
+    if (match != null) {
+      return match.group(0)!.replaceAll(' ', '');
+    }
     
-    final hash = subjectName.hashCode;
-    return colors[hash.abs() % colors.length];
+    // If no code found, use first word
+    final words = folderName.split(' ');
+    if (words.isNotEmpty) {
+      return words[0].toUpperCase();
+    }
+    
+    return 'SUB';
   }
   
   static String _getFileType(String fileName) {
@@ -250,6 +284,10 @@ class GoogleDriveService {
       case 'xls':
       case 'xlsx':
         return 'XLS';
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+        return 'IMG';
       default:
         return 'FILE';
     }
@@ -291,73 +329,28 @@ class GoogleDriveService {
     return [
       Subject(
         id: '1',
-        name: 'EENG Engineering Project I',
-        code: 'EENG',
+        name: 'Sample Subject 1',
+        code: 'SUB101',
         folderId: '',
         color: const Color(0xFF6366F1),
-        fileCount: 15,
+        fileCount: 0,
       ),
       Subject(
         id: '2',
-        name: 'EENG Electrical Machine design',
-        code: 'EENG',
+        name: 'Sample Subject 2',
+        code: 'SUB102',
         folderId: '',
         color: const Color(0xFF10B981),
-        fileCount: 12,
-      ),
-      Subject(
-        id: '3',
-        name: 'EENG 483 Communication Systems',
-        code: 'EENG 483',
-        folderId: '',
-        color: const Color(0xFFEF4444),
-        fileCount: 18,
-      ),
-      Subject(
-        id: '4',
-        name: 'EENG 482 Signals and Systems',
-        code: 'EENG 482',
-        folderId: '',
-        color: const Color(0xFF8B5CF6),
-        fileCount: 10,
-      ),
-      Subject(
-        id: '5',
-        name: 'EENG 476 Microprocessor II',
-        code: 'EENG 476',
-        folderId: '',
-        color: const Color(0xFFF59E0B),
-        fileCount: 14,
-      ),
-      Subject(
-        id: '6',
-        name: 'EENG 475 Control Engineering I',
-        code: 'EENG 475',
-        folderId: '',
-        color: const Color(0xFF06B6D4),
-        fileCount: 9,
-      ),
-      Subject(
-        id: '7',
-        name: 'EENG 465 Power Systems II',
-        code: 'EENG 465',
-        folderId: '',
-        color: const Color(0xFFEC4899),
-        fileCount: 16,
-      ),
-      Subject(
-        id: '8',
-        name: 'EENG 455 Electrical Network Analysis',
-        code: 'EENG 455',
-        folderId: '',
-        color: const Color(0xFF84CC16),
-        fileCount: 11,
+        fileCount: 0,
       ),
     ];
   }
 }
 
+// ============================================================================
 // Model classes
+// ============================================================================
+
 class DriveItem {
   final String id;
   final String name;

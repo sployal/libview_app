@@ -4,10 +4,12 @@ import 'subject_detail_screen.dart';
 
 class SemesterDetailScreen extends StatefulWidget {
   final String semesterName;
+  final String? folderId; // Google Drive folder ID for this semester
 
   const SemesterDetailScreen({
     super.key,
-    this.semesterName = 'Semester 4',
+    this.semesterName = 'Semester',
+    this.folderId, // Pass the folder ID from the semesters screen
   });
 
   @override
@@ -32,15 +34,16 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     });
 
     try {
-      // Only load from Google Drive if this is Semester 4
-      if (widget.semesterName.contains('4')) {
-        final loadedSubjects = await GoogleDriveService.getSemester4Subjects();
+      // Check if we have a Google Drive folder ID
+      if (widget.folderId != null && widget.folderId!.isNotEmpty) {
+        // Load subjects from the specified Google Drive folder
+        final loadedSubjects = await GoogleDriveService.getSubjectsFromFolder(widget.folderId!);
         setState(() {
           subjects = loadedSubjects;
           isLoading = false;
         });
       } else {
-        // Use sample data for other semesters
+        // Use sample data if no folder ID provided
         setState(() {
           subjects = _getSampleSubjects();
           isLoading = false;
@@ -59,30 +62,24 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     return [
       Subject(
         id: '1',
-        name: 'Data Structures & Algorithms',
-        code: 'CS202',
+        name: 'Sample Subject 1',
+        code: 'SUB101',
         folderId: '',
         color: const Color(0xFF6366F1),
-        fileCount: 15,
+        fileCount: 0,
       ),
       Subject(
         id: '2',
-        name: 'Calculus II',
-        code: 'MATH201',
+        name: 'Sample Subject 2',
+        code: 'SUB102',
         folderId: '',
         color: const Color(0xFF10B981),
-        fileCount: 12,
-      ),
-      Subject(
-        id: '3',
-        name: 'Physics for Engineers',
-        code: 'PHY201',
-        folderId: '',
-        color: const Color(0xFFEF4444),
-        fileCount: 18,
+        fileCount: 0,
       ),
     ];
   }
+
+  bool get _isLiveFolder => widget.folderId != null && widget.folderId!.isNotEmpty;
 
   @override
   Widget build(BuildContext context) {
@@ -96,7 +93,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
               widget.semesterName,
               style: const TextStyle(fontWeight: FontWeight.bold),
             ),
-            if (widget.semesterName.contains('4'))
+            if (_isLiveFolder)
               const Text(
                 'Live from Google Drive',
                 style: TextStyle(
@@ -121,7 +118,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
       body: Column(
         children: [
           // Status Banner
-          if (widget.semesterName.contains('4'))
+          if (_isLiveFolder)
             Container(
               margin: const EdgeInsets.all(20),
               padding: const EdgeInsets.all(16),
@@ -154,7 +151,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                           ),
                         ),
                         Text(
-                          'Real-time sync with your Class Assets folder',
+                          'Real-time sync with your ${widget.semesterName} folder',
                           style: TextStyle(
                             color: Colors.white.withOpacity(0.9),
                             fontSize: 12,
@@ -271,7 +268,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                                             subjectCode: subject.code,
                                             subjectId: subject.id,
                                             folderId: subject.folderId,
-                                            isLiveFolder: widget.semesterName.contains('4'),
+                                            isLiveFolder: _isLiveFolder,
                                           ),
                                         ),
                                       );
@@ -307,7 +304,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                                                     size: 30,
                                                   ),
                                                 ),
-                                                if (widget.semesterName.contains('4'))
+                                                if (_isLiveFolder)
                                                   Positioned(
                                                     top: 4,
                                                     right: 4,
@@ -365,7 +362,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                                                         ),
                                                       ),
                                                     ),
-                                                    if (widget.semesterName.contains('4')) ...[
+                                                    if (_isLiveFolder) ...[
                                                       const SizedBox(width: 8),
                                                       Container(
                                                         padding: const EdgeInsets.symmetric(

@@ -1,9 +1,59 @@
 import 'package:flutter/material.dart';
 import 'semester_detail_screen.dart';
-import 'semester4_browser_screen.dart';
 
 class SemestersScreen extends StatelessWidget {
   const SemestersScreen({super.key});
+
+  // ============================================================================
+  // 📁 PASTE YOUR GOOGLE DRIVE FOLDER IDs HERE
+  // ============================================================================
+  // To get the folder ID from a Google Drive link:
+  // Example: https://drive.google.com/drive/folders/1ABC123XYZ456
+  // The folder ID is: 1ABC123XYZ456
+  // ============================================================================
+  
+  static const Map<String, Map<String, String>> semesterFolderIds = {
+    'year1_sem1': {
+      'folderId': '1q5b_1KP6n_q9KWitzQyfN0Tgjmri0jYn',
+      'name': 'Year 1 - Semester 1',
+    },
+    'year1_sem2': {
+      'folderId': '12btgs0JTwnTw_QXiK6Z4pC1QbZYLf82-',
+      'name': 'Year 1 - Semester 2',
+    },
+    'year2_sem1': {
+      'folderId': '1xANMxiJV9nMY2NLoH0gQWpn7wPdkqWUo',
+      'name': 'Year 2 - Semester 1',
+    },
+    'year2_sem2': {
+      'folderId': '1WIQks-VqcrqyJGx4y61PVvmHaBC09aPM',
+      'name': 'Year 2 - Semester 2',
+    },
+    'year3_sem1': {
+      'folderId': '1PpsJpwvFZBBkISEDXxweXHOtsQePcFEn',
+      'name': 'Year 3 - Semester 1',
+    },
+    'year3_sem2': {
+      'folderId': '15lmcOBEuIfqMcHE5Vh-qlXLwONw2A4A8',
+      'name': 'Year 3 - Semester 2',
+    },
+    'year4_sem1': {
+      'folderId': '1cj5eTlCl5srYKQrFxeelaMs8WRF44ED4',
+      'name': 'Year 4 - Semester 1',
+    },
+    'year4_sem2': {
+      'folderId': '1IUDJVwZH_h5BYsu5q0O3uts31ZIpb7OG',
+      'name': 'Year 4 - Semester 2',
+    },
+    'year5_sem1': {
+      'folderId': '1AxVJT5LwBxrxZ7CsW9iM1YH4dfmyELpt',
+      'name': 'Year 5 - Semester 1',
+    },
+    'year5_sem2': {
+      'folderId': '19noJ56kc-VtngAG1GyOY_FSFq_Z4PUOi',
+      'name': 'Year 5 - Semester 2',
+    },
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -11,36 +61,36 @@ class SemestersScreen extends StatelessWidget {
       {
         'year': 'Year 1',
         'semesters': [
-          {'name': 'Semester 1', 'subjects': 6, 'progress': 0.8},
-          {'name': 'Semester 2', 'subjects': 5, 'progress': 0.6},
+          {'name': 'Semester 1', 'subjects': 6, 'progress': 0.8, 'key': 'year1_sem1'},
+          {'name': 'Semester 2', 'subjects': 5, 'progress': 0.6, 'key': 'year1_sem2'},
         ]
       },
       {
         'year': 'Year 2',
         'semesters': [
-          {'name': 'Semester 1', 'subjects': 7, 'progress': 1.0},
-          {'name': 'Semester 2', 'subjects': 6, 'progress': 0.9},
+          {'name': 'Semester 1', 'subjects': 7, 'progress': 1.0, 'key': 'year2_sem1'},
+          {'name': 'Semester 2', 'subjects': 6, 'progress': 0.9, 'key': 'year2_sem2'},
         ]
       },
       {
         'year': 'Year 3',
         'semesters': [
-          {'name': 'Semester 1', 'subjects': 6, 'progress': 0.75},
-          {'name': 'Semester 2', 'subjects': 7, 'progress': 0.85},
+          {'name': 'Semester 1', 'subjects': 6, 'progress': 0.75, 'key': 'year3_sem1'},
+          {'name': 'Semester 2', 'subjects': 7, 'progress': 0.85, 'key': 'year3_sem2'},
         ]
       },
       {
         'year': 'Year 4',
         'semesters': [
-          {'name': 'Semester 1', 'subjects': 5, 'progress': 0.95},
-          {'name': 'Semester 2', 'subjects': 6, 'progress': 0.88},
+          {'name': 'Semester 1', 'subjects': 5, 'progress': 0.95, 'key': 'year4_sem1'},
+          {'name': 'Semester 2', 'subjects': 6, 'progress': 0.88, 'key': 'year4_sem2'},
         ]
       },
       {
         'year': 'Year 5',
         'semesters': [
-          {'name': 'Semester 1', 'subjects': 6, 'progress': 1.0},
-          {'name': 'Semester 2', 'subjects': 5, 'progress': 0.92},
+          {'name': 'Semester 1', 'subjects': 6, 'progress': 1.0, 'key': 'year5_sem1'},
+          {'name': 'Semester 2', 'subjects': 5, 'progress': 0.92, 'key': 'year5_sem2'},
         ]
       },
     ];
@@ -101,7 +151,8 @@ class SemestersScreen extends StatelessWidget {
                 // Compact Semester Cards
                 ...List.generate(semesters.length, (semIndex) {
                   final semester = semesters[semIndex];
-                  final yearNum = yearIndex + 1;
+                  final semesterKey = semester['key'] as String;
+                  final semesterConfig = semesterFolderIds[semesterKey];
                   final semNum = semIndex + 1;
                   final progress = semester['progress'] as double;
                   
@@ -114,22 +165,27 @@ class SemestersScreen extends StatelessWidget {
                     margin: const EdgeInsets.only(bottom: 10),
                     child: GestureDetector(
                       onTap: () {
-                        final yearName = year['year'] as String;
-                        
-                        if (yearNum == 2 && semNum == 2) {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const Semester4BrowserScreen(),
-                            ),
-                          );
-                        } else {
+                        if (semesterConfig != null && semesterConfig['folderId']!.isNotEmpty && 
+                            !semesterConfig['folderId']!.contains('PASTE_')) {
+                          // Navigate to SemesterDetailScreen with Google Drive folder ID
                           Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) => SemesterDetailScreen(
-                                semesterName: '$yearName - Semester $semNum',
+                                semesterName: semesterConfig['name']!,
+                                folderId: semesterConfig['folderId']!,
                               ),
+                            ),
+                          );
+                        } else {
+                          // Show error if folder ID is not configured
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Please configure Google Drive folder ID for ${semesterConfig?['name'] ?? 'this semester'}',
+                              ),
+                              backgroundColor: const Color(0xFFEF4444),
+                              behavior: SnackBarBehavior.floating,
                             ),
                           );
                         }
@@ -165,14 +221,36 @@ class SemestersScreen extends StatelessWidget {
                                 color: Colors.white.withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(10),
                               ),
-                              child: Icon(
-                                semNum == 1 
-                                    ? Icons.wb_sunny_rounded 
-                                    : Icons.nights_stay_rounded,
-                                color: semNum == 1 
-                                    ? const Color(0xFFFBBF24)
-                                    : const Color(0xFF60A5FA),
-                                size: 24,
+                              child: Stack(
+                                children: [
+                                  Center(
+                                    child: Icon(
+                                      semNum == 1 
+                                          ? Icons.wb_sunny_rounded 
+                                          : Icons.nights_stay_rounded,
+                                      color: semNum == 1 
+                                          ? const Color(0xFFFBBF24)
+                                          : const Color(0xFF60A5FA),
+                                      size: 24,
+                                    ),
+                                  ),
+                                  // Live indicator if folder is configured
+                                  if (semesterConfig != null && 
+                                      semesterConfig['folderId']!.isNotEmpty && 
+                                      !semesterConfig['folderId']!.contains('PASTE_'))
+                                    Positioned(
+                                      top: 2,
+                                      right: 2,
+                                      child: Container(
+                                        width: 8,
+                                        height: 8,
+                                        decoration: const BoxDecoration(
+                                          color: Color(0xFF10B981),
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                    ),
+                                ],
                               ),
                             ),
                             
@@ -183,13 +261,40 @@ class SemestersScreen extends StatelessWidget {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(
-                                    '${semester['name']}',
-                                    style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.white,
-                                    ),
+                                  Row(
+                                    children: [
+                                      Text(
+                                        '${semester['name']}',
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                      if (semesterConfig != null && 
+                                          semesterConfig['folderId']!.isNotEmpty && 
+                                          !semesterConfig['folderId']!.contains('PASTE_')) ...[
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 6,
+                                            vertical: 2,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: const Color(0xFF10B981).withOpacity(0.2),
+                                            borderRadius: BorderRadius.circular(4),
+                                          ),
+                                          child: const Text(
+                                            'LIVE',
+                                            style: TextStyle(
+                                              fontSize: 9,
+                                              color: Color(0xFF10B981),
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ],
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
