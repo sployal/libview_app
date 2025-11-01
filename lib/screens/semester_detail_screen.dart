@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/google_drive_service.dart';
-import 'subject_detail_screen.dart';
+import 'web_view_screen.dart';
 
 class SemesterDetailScreen extends StatefulWidget {
   final String semesterName;
@@ -9,7 +9,7 @@ class SemesterDetailScreen extends StatefulWidget {
   const SemesterDetailScreen({
     super.key,
     this.semesterName = 'Semester',
-    this.folderId, // Pass the folder ID from the semesters screen
+    this.folderId,
   });
 
   @override
@@ -34,16 +34,13 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     });
 
     try {
-      // Check if we have a Google Drive folder ID
       if (widget.folderId != null && widget.folderId!.isNotEmpty) {
-        // Load subjects from the specified Google Drive folder
         final loadedSubjects = await GoogleDriveService.getSubjectsFromFolder(widget.folderId!);
         setState(() {
           subjects = loadedSubjects;
           isLoading = false;
         });
       } else {
-        // Use sample data if no folder ID provided
         setState(() {
           subjects = _getSampleSubjects();
           isLoading = false;
@@ -81,38 +78,64 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
 
   bool get _isLiveFolder => widget.folderId != null && widget.folderId!.isNotEmpty;
 
+  void _openSubjectInWebView(Subject subject) {
+    if (!_isLiveFolder || subject.folderId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This subject is not connected to Google Drive'),
+          backgroundColor: Color(0xFFEF4444),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    // Open the subject folder in WebView
+    final folderUrl = 'https://drive.google.com/drive/folders/${subject.folderId}';
+    
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => WebViewScreen(
+          url: folderUrl,
+          title: subject.name,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              widget.semesterName,
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-            if (_isLiveFolder)
-              const Text(
-                'Live from Google Drive',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Color(0xFF10B981),
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-          ],
+        title: Text(
+          widget.semesterName,
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
             onPressed: _loadSubjects,
+            tooltip: 'Refresh',
           ),
-          IconButton(
-            icon: const Icon(Icons.search_rounded),
-            onPressed: () {},
-          ),
+          if (_isLiveFolder)
+            IconButton(
+              icon: const Icon(Icons.open_in_browser_rounded),
+              onPressed: () {
+                final folderUrl = 'https://drive.google.com/drive/folders/${widget.folderId}';
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => WebViewScreen(
+                      url: folderUrl,
+                      title: '${widget.semesterName} Folder',
+                    ),
+                  ),
+                );
+              },
+              tooltip: 'Open Full Folder',
+            ),
         ],
       ),
       body: Column(
@@ -133,31 +156,19 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
               child: Row(
                 children: [
                   const Icon(
-                    Icons.cloud_sync_rounded,
+                    Icons.cloud_done_rounded,
                     color: Colors.white,
-                    size: 24,
+                    size: 20,
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Connected to Google Drive',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        Text(
-                          'Real-time sync with your ${widget.semesterName} folder',
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.9),
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
+                    child: Text(
+                      'Tap any unit to view all files in-app',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.95),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                 ],
@@ -209,7 +220,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                         ),
                         SizedBox(height: 16),
                         Text(
-                          'Loading subjects from Google Drive...',
+                          'Loading subjects ...',
                           style: TextStyle(
                             color: Color(0xFF6B7280),
                             fontSize: 16,
@@ -259,20 +270,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                                 return Container(
                                   margin: const EdgeInsets.only(bottom: 16),
                                   child: GestureDetector(
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => SubjectDetailScreen(
-                                            subjectName: subject.name,
-                                            subjectCode: subject.code,
-                                            subjectId: subject.id,
-                                            folderId: subject.folderId,
-                                            isLiveFolder: _isLiveFolder,
-                                          ),
-                                        ),
-                                      );
-                                    },
+                                    onTap: () => _openSubjectInWebView(subject),
                                     child: Container(
                                       padding: const EdgeInsets.all(20),
                                       decoration: BoxDecoration(
@@ -299,7 +297,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                                               children: [
                                                 Center(
                                                   child: Icon(
-                                                    Icons.book_rounded,
+                                                    Icons.folder_rounded,
                                                     color: subject.color,
                                                     size: 30,
                                                   ),
@@ -353,13 +351,24 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                                                         color: subject.color.withOpacity(0.1),
                                                         borderRadius: BorderRadius.circular(12),
                                                       ),
-                                                      child: Text(
-                                                        '${subject.fileCount} files',
-                                                        style: TextStyle(
-                                                          fontSize: 12,
-                                                          color: subject.color,
-                                                          fontWeight: FontWeight.w600,
-                                                        ),
+                                                      child: Row(
+                                                        mainAxisSize: MainAxisSize.min,
+                                                        children: [
+                                                          Icon(
+                                                            Icons.insert_drive_file_rounded,
+                                                            size: 14,
+                                                            color: subject.color,
+                                                          ),
+                                                          const SizedBox(width: 4),
+                                                          Text(
+                                                            '${subject.fileCount} files',
+                                                            style: TextStyle(
+                                                              fontSize: 12,
+                                                              color: subject.color,
+                                                              fontWeight: FontWeight.w600,
+                                                            ),
+                                                          ),
+                                                        ],
                                                       ),
                                                     ),
                                                     if (_isLiveFolder) ...[
@@ -373,13 +382,24 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                                                           color: const Color(0xFF10B981).withOpacity(0.1),
                                                           borderRadius: BorderRadius.circular(8),
                                                         ),
-                                                        child: const Text(
-                                                          'LIVE',
-                                                          style: TextStyle(
-                                                            fontSize: 10,
-                                                            color: Color(0xFF10B981),
-                                                            fontWeight: FontWeight.w700,
-                                                          ),
+                                                        child: const Row(
+                                                          mainAxisSize: MainAxisSize.min,
+                                                          children: [
+                                                            Icon(
+                                                              Icons.visibility_rounded,
+                                                              size: 10,
+                                                              color: Color(0xFF10B981),
+                                                            ),
+                                                            SizedBox(width: 3),
+                                                            Text(
+                                                              'VIEW',
+                                                              style: TextStyle(
+                                                                fontSize: 10,
+                                                                color: Color(0xFF10B981),
+                                                                fontWeight: FontWeight.w700,
+                                                              ),
+                                                            ),
+                                                          ],
                                                         ),
                                                       ),
                                                     ],

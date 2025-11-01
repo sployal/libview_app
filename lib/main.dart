@@ -1,11 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'screens/home_screen.dart';
 import 'screens/semesters_screen.dart';
 import 'screens/downloads_screen.dart';
 import 'screens/profile_screen.dart';
+import 'login/auth_screen.dart';
 
-void main() {
+// TODO: Replace with your Supabase URL and anon key
+// Get these from: https://app.supabase.com/project/YOUR_PROJECT/settings/api
+const supabaseUrl = 'https://xsxxhdfemraipzpknkxv.supabase.co';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhzeHhoZGZlbXJhaXB6cGtua3h2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIwMDc1MTAsImV4cCI6MjA3NzU4MzUxMH0.RjZTvCQFNdYl7L6OyJ_vseh3pqjau3MfW_nvMEquMF4';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize Supabase
+  await Supabase.initialize(
+    url: supabaseUrl,
+    anonKey: supabaseAnonKey,
+  );
+  
   runApp(const StudyApp());
 }
 
@@ -32,7 +47,39 @@ class StudyApp extends StatelessWidget {
           foregroundColor: Color(0xFF1F2937),
         ),
       ),
-      home: const MainScreen(),
+      home: const AuthGate(),
+    );
+  }
+}
+
+// Auth Gate - decides whether to show login or main screen
+class AuthGate extends StatelessWidget {
+  const AuthGate({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<AuthState>(
+      stream: Supabase.instance.client.auth.onAuthStateChange,
+      builder: (context, snapshot) {
+        // Show loading while checking auth state
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+
+        final session = snapshot.hasData ? snapshot.data!.session : null;
+
+        // If user is logged in, show main screen
+        if (session != null) {
+          return const MainScreen();
+        }
+
+        // Otherwise show auth screen
+        return const AuthScreen();
+      },
     );
   }
 }
