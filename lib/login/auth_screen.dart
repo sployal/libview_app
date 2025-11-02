@@ -230,6 +230,9 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
                           ),
+                          labelPadding: const EdgeInsets.symmetric(horizontal: 24),
+                          indicatorSize: TabBarIndicatorSize.tab,
+                          dividerColor: Colors.transparent,
                           tabs: const [
                             Tab(text: 'Login'),
                             Tab(text: 'Sign Up'),
