@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:webview_flutter/webview_flutter.dart';
-
+import '../services/download_service.dart';
 
 class WebViewScreen extends StatefulWidget {
   final String url;
   final String title;
+  final String? subject;
 
   const WebViewScreen({
     super.key,
     required this.url,
     required this.title,
+    this.subject,
   });
 
   @override
@@ -20,6 +22,8 @@ class _WebViewScreenState extends State<WebViewScreen> {
   late final WebViewController _controller;
   bool isLoading = true;
   String? errorMessage;
+  bool isDownloading = false;
+  double downloadProgress = 0.0;
 
   @override
   void initState() {
@@ -54,7 +58,6 @@ class _WebViewScreenState extends State<WebViewScreen> {
             });
           },
           onNavigationRequest: (NavigationRequest request) {
-            // Allow all navigation within Google Drive
             if (request.url.contains('drive.google.com') ||
                 request.url.contains('docs.google.com') ||
                 request.url.contains('googleusercontent.com')) {
@@ -65,6 +68,114 @@ class _WebViewScreenState extends State<WebViewScreen> {
         ),
       )
       ..loadRequest(Uri.parse(widget.url));
+  }
+
+  // NEW: Extract file ID from Google Drive URL
+  String? _extractFileId(String url) {
+    try {
+      // Pattern 1: /d/FILE_ID/
+      RegExp pattern1 = RegExp(r'/d/([a-zA-Z0-9_-]+)');
+      Match? match = pattern1.firstMatch(url);
+      if (match != null) {
+        return match.group(1);
+      }
+      
+      // Pattern 2: ?id=FILE_ID or &id=FILE_ID
+      RegExp pattern2 = RegExp(r'[?&]id=([a-zA-Z0-9_-]+)');
+      match = pattern2.firstMatch(url);
+      if (match != null) {
+        return match.group(1);
+      }
+      
+      // Pattern 3: /file/d/FILE_ID/
+      RegExp pattern3 = RegExp(r'/file/d/([a-zA-Z0-9_-]+)');
+      match = pattern3.firstMatch(url);
+      if (match != null) {
+        return match.group(1);
+      }
+      
+      print('Could not extract file ID from URL: $url');
+      return null;
+    } catch (e) {
+      print('Error extracting file ID: $e');
+      return null;
+    }
+  }
+
+  // UPDATED: Download file with proper metadata extraction
+  Future<void> _downloadFile() async {
+    // Step 1: Extract file ID from URL
+    final fileId = _extractFileId(widget.url);
+    
+    if (fileId == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.error, color: Colors.white),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text('Could not identify file from URL'),
+                ),
+              ],
+            ),
+            backgroundColor: Color(0xFFEF4444),
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+      return;
+    }
+
+    setState(() {
+      isDownloading = true;
+      downloadProgress = 0.0;
+    });
+
+    // Step 2: Download file using the file ID
+    final result = await DownloadService.downloadFile(
+      fileId: fileId,
+      subject: widget.subject ?? 'Unknown',
+      onProgress: (progress) {
+        setState(() {
+          downloadProgress = progress;
+        });
+      },
+    );
+
+    setState(() {
+      isDownloading = false;
+    });
+
+    // Step 3: Show result to user
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(
+                result.success ? Icons.check_circle : Icons.error,
+                color: Colors.white,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(result.message),
+              ),
+            ],
+          ),
+          backgroundColor: result.success 
+              ? const Color(0xFF10B981) 
+              : const Color(0xFFEF4444),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          duration: Duration(seconds: result.success ? 3 : 5),
+        ),
+      );
+    }
   }
 
   @override
@@ -82,6 +193,11 @@ class _WebViewScreenState extends State<WebViewScreen> {
             onPressed: () {
               _controller.reload();
             },
+          ),
+          IconButton(
+            icon: const Icon(Icons.download_rounded),
+            onPressed: isDownloading ? null : _downloadFile,
+            tooltip: 'Download',
           ),
         ],
       ),
@@ -147,6 +263,67 @@ class _WebViewScreenState extends State<WebViewScreen> {
                       ),
                     ),
                   ],
+                ),
+              ),
+            ),
+          if (isDownloading)
+            Container(
+              color: Colors.black54,
+              child: Center(
+                child: Container(
+                  padding: const EdgeInsets.all(24),
+                  margin: const EdgeInsets.symmetric(horizontal: 32),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.downloading_rounded,
+                        size: 48,
+                        color: Color(0xFF6366F1),
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Downloading...',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1F2937),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Getting file information',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF6B7280),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: 200,
+                        child: LinearProgressIndicator(
+                          value: downloadProgress,
+                          backgroundColor: const Color(0xFFE5E7EB),
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                            Color(0xFF6366F1),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '${(downloadProgress * 100).toInt()}%',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF6B7280),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

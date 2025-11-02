@@ -4,7 +4,7 @@ import 'web_view_screen.dart';
 
 class SemesterDetailScreen extends StatefulWidget {
   final String semesterName;
-  final String? folderId; // Google Drive folder ID for this semester
+  final String? folderId;
 
   const SemesterDetailScreen({
     super.key,
@@ -20,6 +20,11 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
   List<Subject> subjects = [];
   bool isLoading = true;
   String? errorMessage;
+  
+  // NEW: Track selected subject and its files
+  Subject? selectedSubject;
+  List<StudyMaterial> currentFiles = [];
+  bool isLoadingFiles = false;
 
   @override
   void initState() {
@@ -78,7 +83,8 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
 
   bool get _isLiveFolder => widget.folderId != null && widget.folderId!.isNotEmpty;
 
-  void _openSubjectInWebView(Subject subject) {
+  // NEW: Load files for a specific subject
+  Future<void> _loadSubjectFiles(Subject subject) async {
     if (!_isLiveFolder || subject.folderId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -90,22 +96,289 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
       return;
     }
 
-    // Open the subject folder in WebView
-    final folderUrl = 'https://drive.google.com/drive/folders/${subject.folderId}';
-    
+    setState(() {
+      selectedSubject = subject;
+      isLoadingFiles = true;
+      currentFiles = [];
+    });
+
+    try {
+      final files = await GoogleDriveService.getSubjectFiles(subject.folderId);
+      setState(() {
+        currentFiles = files;
+        isLoadingFiles = false;
+      });
+    } catch (e) {
+      setState(() {
+        isLoadingFiles = false;
+      });
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load files: $e'),
+            backgroundColor: const Color(0xFFEF4444),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  // NEW: Open individual file in WebView
+  void _openFileInWebView(StudyMaterial material) {
+    if (material.downloadUrl == null || material.downloadUrl!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('File URL not available'),
+          backgroundColor: Color(0xFFEF4444),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => WebViewScreen(
-          url: folderUrl,
-          title: subject.name,
+          url: material.downloadUrl!,
+          title: material.name,
+          subject: selectedSubject?.name ?? 'Unknown',
         ),
       ),
     );
   }
 
+  // NEW: Go back to subjects view
+  void _backToSubjects() {
+    setState(() {
+      selectedSubject = null;
+      currentFiles = [];
+    });
+  }
+
+  // NEW: Get file icon based on type
+  IconData _getFileIcon(String type) {
+    switch (type) {
+      case 'PDF':
+        return Icons.picture_as_pdf_rounded;
+      case 'DOC':
+        return Icons.description_rounded;
+      case 'PPT':
+        return Icons.slideshow_rounded;
+      case 'XLS':
+        return Icons.table_chart_rounded;
+      case 'IMG':
+        return Icons.image_rounded;
+      default:
+        return Icons.insert_drive_file_rounded;
+    }
+  }
+
+  // NEW: Get file color based on type
+  Color _getFileColor(String type) {
+    switch (type) {
+      case 'PDF':
+        return const Color(0xFFEF4444);
+      case 'DOC':
+        return const Color(0xFF3B82F6);
+      case 'PPT':
+        return const Color(0xFFF59E0B);
+      case 'XLS':
+        return const Color(0xFF10B981);
+      case 'IMG':
+        return const Color(0xFF8B5CF6);
+      default:
+        return const Color(0xFF6B7280);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    // If a subject is selected, show files view
+    if (selectedSubject != null) {
+      return _buildFilesView();
+    }
+    
+    // Otherwise, show subjects list view
+    return _buildSubjectsView();
+  }
+
+  // NEW: Build files view when subject is selected
+  Widget _buildFilesView() {
+    return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: _backToSubjects,
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              selectedSubject!.name,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+            ),
+            Text(
+              selectedSubject!.code,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded),
+            onPressed: () => _loadSubjectFiles(selectedSubject!),
+          ),
+        ],
+      ),
+      body: isLoadingFiles
+          ? const Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'Loading files...',
+                    style: TextStyle(
+                      color: Color(0xFF6B7280),
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
+            )
+          : currentFiles.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.folder_open_rounded,
+                        size: 64,
+                        color: Colors.grey[400],
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'No files found',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'This subject folder is empty',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[500],
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : RefreshIndicator(
+                  onRefresh: () => _loadSubjectFiles(selectedSubject!),
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(20),
+                    itemCount: currentFiles.length,
+                    itemBuilder: (context, index) {
+                      final file = currentFiles[index];
+                      final fileColor = _getFileColor(file.type);
+                      final fileIcon = _getFileIcon(file.type);
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () => _openFileInWebView(file),
+                            borderRadius: BorderRadius.circular(16),
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 48,
+                                    height: 48,
+                                    decoration: BoxDecoration(
+                                      color: fileColor.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Icon(
+                                      fileIcon,
+                                      color: fileColor,
+                                      size: 24,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          file.name,
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w600,
+                                            color: Color(0xFF1F2937),
+                                          ),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          '${file.type} • ${file.size} • ${file.date}',
+                                          style: const TextStyle(
+                                            fontSize: 13,
+                                            color: Color(0xFF6B7280),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const Icon(
+                                    Icons.arrow_forward_ios_rounded,
+                                    size: 16,
+                                    color: Color(0xFF9CA3AF),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+    );
+  }
+
+  // Original subjects list view
+  Widget _buildSubjectsView() {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
@@ -119,28 +392,10 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
             onPressed: _loadSubjects,
             tooltip: 'Refresh',
           ),
-          if (_isLiveFolder)
-            IconButton(
-              icon: const Icon(Icons.open_in_browser_rounded),
-              onPressed: () {
-                final folderUrl = 'https://drive.google.com/drive/folders/${widget.folderId}';
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => WebViewScreen(
-                      url: folderUrl,
-                      title: '${widget.semesterName} Folder',
-                    ),
-                  ),
-                );
-              },
-              tooltip: 'Open Full Folder',
-            ),
         ],
       ),
       body: Column(
         children: [
-          // Status Banner
           if (_isLiveFolder)
             Container(
               margin: const EdgeInsets.all(20),
@@ -163,7 +418,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'Tap any unit to view all files in-app',
+                      'Tap any subject to view files',
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.95),
                         fontSize: 14,
@@ -174,8 +429,6 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                 ],
               ),
             ),
-
-          // Error Message
           if (errorMessage != null)
             Container(
               margin: const EdgeInsets.symmetric(horizontal: 20),
@@ -205,8 +458,6 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                 ],
               ),
             ),
-
-          // Loading or Content
           Expanded(
             child: isLoading
                 ? const Center(
@@ -220,7 +471,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                         ),
                         SizedBox(height: 16),
                         Text(
-                          'Loading subjects ...',
+                          'Loading subjects...',
                           style: TextStyle(
                             color: Color(0xFF6B7280),
                             fontSize: 16,
@@ -270,7 +521,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                                 return Container(
                                   margin: const EdgeInsets.only(bottom: 16),
                                   child: GestureDetector(
-                                    onTap: () => _openSubjectInWebView(subject),
+                                    onTap: () => _loadSubjectFiles(subject),
                                     child: Container(
                                       padding: const EdgeInsets.all(20),
                                       decoration: BoxDecoration(
@@ -340,70 +591,34 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                                                   ),
                                                 ),
                                                 const SizedBox(height: 8),
-                                                Row(
-                                                  children: [
-                                                    Container(
-                                                      padding: const EdgeInsets.symmetric(
-                                                        horizontal: 8,
-                                                        vertical: 4,
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(
+                                                    horizontal: 8,
+                                                    vertical: 4,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    color: subject.color.withOpacity(0.1),
+                                                    borderRadius: BorderRadius.circular(12),
+                                                  ),
+                                                  child: Row(
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: [
+                                                      Icon(
+                                                        Icons.insert_drive_file_rounded,
+                                                        size: 14,
+                                                        color: subject.color,
                                                       ),
-                                                      decoration: BoxDecoration(
-                                                        color: subject.color.withOpacity(0.1),
-                                                        borderRadius: BorderRadius.circular(12),
-                                                      ),
-                                                      child: Row(
-                                                        mainAxisSize: MainAxisSize.min,
-                                                        children: [
-                                                          Icon(
-                                                            Icons.insert_drive_file_rounded,
-                                                            size: 14,
-                                                            color: subject.color,
-                                                          ),
-                                                          const SizedBox(width: 4),
-                                                          Text(
-                                                            '${subject.fileCount} files',
-                                                            style: TextStyle(
-                                                              fontSize: 12,
-                                                              color: subject.color,
-                                                              fontWeight: FontWeight.w600,
-                                                            ),
-                                                          ),
-                                                        ],
-                                                      ),
-                                                    ),
-                                                    if (_isLiveFolder) ...[
-                                                      const SizedBox(width: 8),
-                                                      Container(
-                                                        padding: const EdgeInsets.symmetric(
-                                                          horizontal: 6,
-                                                          vertical: 2,
-                                                        ),
-                                                        decoration: BoxDecoration(
-                                                          color: const Color(0xFF10B981).withOpacity(0.1),
-                                                          borderRadius: BorderRadius.circular(8),
-                                                        ),
-                                                        child: const Row(
-                                                          mainAxisSize: MainAxisSize.min,
-                                                          children: [
-                                                            Icon(
-                                                              Icons.visibility_rounded,
-                                                              size: 10,
-                                                              color: Color(0xFF10B981),
-                                                            ),
-                                                            SizedBox(width: 3),
-                                                            Text(
-                                                              'VIEW',
-                                                              style: TextStyle(
-                                                                fontSize: 10,
-                                                                color: Color(0xFF10B981),
-                                                                fontWeight: FontWeight.w700,
-                                                              ),
-                                                            ),
-                                                          ],
+                                                      const SizedBox(width: 4),
+                                                      Text(
+                                                        '${subject.fileCount} files',
+                                                        style: TextStyle(
+                                                          fontSize: 12,
+                                                          color: subject.color,
+                                                          fontWeight: FontWeight.w600,
                                                         ),
                                                       ),
                                                     ],
-                                                  ],
+                                                  ),
                                                 ),
                                               ],
                                             ),
