@@ -402,6 +402,11 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                 if (value == null || value.isEmpty) {
                   return 'Please enter your full name';
                 }
+                final trimmedValue = value.trim();
+                final nameParts = trimmedValue.split(' ').where((part) => part.isNotEmpty).toList();
+                if (nameParts.length < 2) {
+                  return 'Please enter both first and last name';
+                }
                 return null;
               },
             ),
