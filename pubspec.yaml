@@ -70,11 +70,11 @@ flutter_native_splash:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: "assets/app_icon2.png"
+  image_path: "assets/app_icon.png"
   
   # Optional: Adaptive icon for Android
   adaptive_icon_background: "#FFFFFF"
-  adaptive_icon_foreground: "assets/app_icon2.png"
+  adaptive_icon_foreground: "assets/app_icon.png"
   
   # Optional: Remove alpha channel for iOS
   remove_alpha_ios: true

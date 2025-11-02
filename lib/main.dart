@@ -47,6 +47,23 @@ class StudyApp extends StatelessWidget {
           foregroundColor: Color(0xFF1F2937),
         ),
       ),
+      darkTheme: ThemeData(
+        primarySwatch: Colors.blue,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF6366F1),
+          brightness: Brightness.dark,
+        ),
+        fontFamily: 'SF Pro Display',
+        useMaterial3: true,
+        scaffoldBackgroundColor: const Color(0xFF111827),
+        appBarTheme: const AppBarTheme(
+          elevation: 0,
+          centerTitle: true,
+          backgroundColor: Colors.transparent,
+          foregroundColor: Color(0xFFF9FAFB),
+        ),
+      ),
+      themeMode: ThemeMode.system,
       home: const AuthGate(),
     );
   }
@@ -124,6 +141,8 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    
     return Scaffold(
       body: FadeTransition(
         opacity: _fadeAnimation,
@@ -131,9 +150,12 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1F2937) : Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: isDark 
+                ? Colors.black.withOpacity(0.3)
+                : Colors.black.withOpacity(0.1),
               blurRadius: 20,
               offset: const Offset(0, -5),
             ),
@@ -148,9 +170,9 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
             HapticFeedback.lightImpact();
           },
           type: BottomNavigationBarType.fixed,
-          backgroundColor: Colors.white,
-          selectedItemColor: const Color(0xFF6366F1),
-          unselectedItemColor: const Color(0xFF9CA3AF),
+          backgroundColor: Colors.transparent,
+          selectedItemColor: isDark ? const Color(0xFF818CF8) : const Color(0xFF6366F1),
+          unselectedItemColor: isDark ? const Color(0xFF6B7280) : const Color(0xFF9CA3AF),
           elevation: 0,
           items: const [
             BottomNavigationBarItem(
