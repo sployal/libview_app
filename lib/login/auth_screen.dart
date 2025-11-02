@@ -10,7 +10,8 @@ class AuthScreen extends StatefulWidget {
 
 class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  final _formKey = GlobalKey<FormState>();
+  final _loginFormKey = GlobalKey<FormState>();
+  final _signUpFormKey = GlobalKey<FormState>();
   
   // Controllers
   final _emailController = TextEditingController();
@@ -41,7 +42,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
   }
 
   Future<void> _signUp() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_signUpFormKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
@@ -96,7 +97,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
   }
 
   Future<void> _signIn() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_loginFormKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
@@ -265,7 +266,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Form(
-        key: _formKey,
+        key: _loginFormKey,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -370,7 +371,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Form(
-        key: _formKey,
+        key: _signUpFormKey,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
