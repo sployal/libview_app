@@ -48,6 +48,7 @@ class StudyApp extends StatelessWidget {
           foregroundColor: Color(0xFF1F2937),
           surfaceTintColor: Colors.transparent,
         ),
+        splashFactory: NoSplash.splashFactory,
       ),
       darkTheme: ThemeData(
         primarySwatch: Colors.blue,
@@ -65,6 +66,7 @@ class StudyApp extends StatelessWidget {
           foregroundColor: Color(0xFFF9FAFB),
           surfaceTintColor: Colors.transparent,
         ),
+        splashFactory: NoSplash.splashFactory,
       ),
       themeMode: ThemeMode.system,
       home: const AuthGate(),
