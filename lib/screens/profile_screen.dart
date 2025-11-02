@@ -584,7 +584,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Version 1.0.0',
+              'Version 3.54',
               style: TextStyle(
                 fontSize: 14,
                 color: Color(0xFF6B7280),
@@ -601,7 +601,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Edupal helps you organize and access your study materials seamlessly.',
+              'Edupal helps you organize and access your study materials seamlessly. Created and maintained by David Muigai',
               style: TextStyle(
                 fontSize: 14,
                 color: Colors.grey[600],
