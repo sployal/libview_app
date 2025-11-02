@@ -42,7 +42,39 @@ dev_dependencies:
     sdk: flutter
 
   flutter_lints: ^3.0.0
-  rename: ^3.0.2
+  flutter_native_splash: ^2.4.0
+  flutter_launcher_icons: ^0.13.1
 
 flutter:
   uses-material-design: true
+  
+  assets:
+    - assets/splash_logo.png
+    - assets/app_icon.png
+
+# Splash screen configuration
+flutter_native_splash:
+  color: "#FFFFFF"
+  image: assets/splash_logo.png
+  android: true
+  ios: true
+  
+  color_dark: "#23324B"
+  image_dark: assets/splash_logo.png
+  
+  android_12:
+    image: assets/splash_logo.png
+    color: "#FFFFFF"
+
+# App Icon configuration
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/app_icon2.png"
+  
+  # Optional: Adaptive icon for Android
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/app_icon2.png"
+  
+  # Optional: Remove alpha channel for iOS
+  remove_alpha_ios: true
