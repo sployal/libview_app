@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'semester_detail_screen.dart';
+import '../services/download_service.dart';
+import 'downloads_screen.dart';
+import 'package:open_file/open_file.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -12,6 +13,10 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   late AnimationController _slideController;
   late Animation<Offset> _slideAnimation;
+  
+  List<DownloadItem> recentDownloads = [];
+  int totalDownloads = 0;
+  bool isLoading = true;
 
   @override
   void initState() {
@@ -28,12 +33,118 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       curve: Curves.easeOutCubic,
     ));
     _slideController.forward();
+    _loadRecentActivity();
   }
 
   @override
   void dispose() {
     _slideController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadRecentActivity() async {
+    setState(() {
+      isLoading = true;
+    });
+
+    final downloads = await DownloadService.getDownloads();
+    
+    setState(() {
+      totalDownloads = downloads.length;
+      // Get the 3 most recent downloads
+      recentDownloads = downloads.take(3).toList();
+      isLoading = false;
+    });
+  }
+
+  Future<void> _openFile(DownloadItem download) async {
+    try {
+      final result = await OpenFile.open(download.filePath);
+      
+      if (result.type != ResultType.done) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Cannot open file: ${result.message}'),
+              backgroundColor: const Color(0xFFEF4444),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error opening file: $e'),
+            backgroundColor: const Color(0xFFEF4444),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  Color _getFileColor(String type) {
+    switch (type) {
+      case 'PDF':
+        return const Color(0xFFEF4444);
+      case 'DOC':
+        return const Color(0xFF3B82F6);
+      case 'PPT':
+        return const Color(0xFFF59E0B);
+      case 'XLS':
+        return const Color(0xFF10B981);
+      case 'IMG':
+        return const Color(0xFF8B5CF6);
+      default:
+        return const Color(0xFF6B7280);
+    }
+  }
+
+  IconData _getFileIcon(String type) {
+    switch (type) {
+      case 'PDF':
+        return Icons.picture_as_pdf_rounded;
+      case 'DOC':
+        return Icons.description_rounded;
+      case 'PPT':
+        return Icons.slideshow_rounded;
+      case 'XLS':
+        return Icons.table_chart_rounded;
+      case 'IMG':
+        return Icons.image_rounded;
+      default:
+        return Icons.insert_drive_file_rounded;
+    }
+  }
+
+  String _getTimeAgo(DownloadItem download) {
+    try {
+      // Try to parse the date string from the download item
+      final date = DateTime.parse(download.date);
+      final now = DateTime.now();
+      final difference = now.difference(date);
+
+      if (difference.inDays > 0) {
+        return '${difference.inDays} ${difference.inDays == 1 ? 'day' : 'days'} ago';
+      } else if (difference.inHours > 0) {
+        return '${difference.inHours} ${difference.inHours == 1 ? 'hour' : 'hours'} ago';
+      } else if (difference.inMinutes > 0) {
+        return '${difference.inMinutes} ${difference.inMinutes == 1 ? 'minute' : 'minutes'} ago';
+      } else {
+        return 'Just now';
+      }
+    } catch (e) {
+      // If parsing fails, return the original date string
+      return download.date;
+    }
   }
 
   @override
@@ -77,19 +188,30 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 ),
               ),
               SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildQuickStats(),
-                      const SizedBox(height: 30),
-                      _buildRecentActivity(),
-                      const SizedBox(height: 30),
-                      _buildQuickActions(),
-                    ],
-                  ),
-                ),
+                child: isLoading
+                    ? const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(40),
+                          child: CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Color(0xFF6366F1),
+                            ),
+                          ),
+                        ),
+                      )
+                    : Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildQuickStats(),
+                            const SizedBox(height: 30),
+                            _buildRecentActivity(),
+                            const SizedBox(height: 30),
+                            _buildQuickActions(),
+                          ],
+                        ),
+                      ),
               ),
             ],
           ),
@@ -131,7 +253,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           Row(
             children: [
               Expanded(
-                child: _buildStatItem('Downloaded', '24', Icons.download_rounded),
+                child: _buildStatItem(
+                  'Downloaded',
+                  totalDownloads.toString(),
+                  Icons.download_rounded,
+                ),
               ),
               Container(
                 height: 40,
@@ -139,7 +265,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 color: Colors.white.withOpacity(0.3),
               ),
               Expanded(
-                child: _buildStatItem('Completed', '12', Icons.check_circle_rounded),
+                child: _buildStatItem(
+                  'Recent',
+                  recentDownloads.length.toString(),
+                  Icons.history_rounded,
+                ),
               ),
               Container(
                 height: 40,
@@ -147,7 +277,11 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 color: Colors.white.withOpacity(0.3),
               ),
               Expanded(
-                child: _buildStatItem('Bookmarks', '8', Icons.bookmark_rounded),
+                child: _buildStatItem(
+                  'Available',
+                  totalDownloads.toString(),
+                  Icons.folder_rounded,
+                ),
               ),
             ],
           ),
@@ -181,33 +315,96 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   }
 
   Widget _buildRecentActivity() {
-    final recentItems = [
-      {'title': 'Data Structures - Lecture 5', 'subject': 'CS202', 'type': 'PDF', 'time': '2 hours ago'},
-      {'title': 'Calculus Assignment 3', 'subject': 'MATH101', 'type': 'PDF', 'time': '1 day ago'},
-      {'title': 'Physics Lab Report', 'subject': 'PHY201', 'type': 'PDF', 'time': '2 days ago'},
-    ];
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Recent Activity',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF1F2937),
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Recent Activity',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1F2937),
+              ),
+            ),
+            if (recentDownloads.isNotEmpty)
+              TextButton(
+                onPressed: () {
+                  // Open the Downloads screen
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (ctx) => const DownloadsScreen(),
+                    ),
+                  );
+                },
+                child: const Text(
+                  'View All',
+                  style: TextStyle(
+                    color: Color(0xFF6366F1),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+          ],
         ),
         const SizedBox(height: 16),
-        ...recentItems.map((item) => _buildActivityItem(item)),
+        if (recentDownloads.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(40),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Center(
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.download_rounded,
+                    size: 48,
+                    color: Colors.grey[400],
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'No recent activity',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Downloaded files will appear here',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[500],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          )
+        else
+          ...recentDownloads.map((download) => _buildActivityItem(download)),
       ],
     );
   }
 
-  Widget _buildActivityItem(Map<String, String> item) {
+  Widget _buildActivityItem(DownloadItem download) {
+    final fileColor = _getFileColor(download.type);
+    final fileIcon = _getFileIcon(download.type);
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -219,61 +416,76 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           ),
         ],
       ),
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF3F4F6),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(
-              Icons.picture_as_pdf_rounded,
-              color: Color(0xFFEF4444),
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _openFile(download),
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
               children: [
-                Text(
-                  item['title']!,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF1F2937),
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: fileColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    fileIcon,
+                    color: fileColor,
+                    size: 24,
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  '${item['subject']} • ${item['time']}',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Color(0xFF6B7280),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        download.name,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Color(0xFF1F2937),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${download.subject} • ${_getTimeAgo(download)}',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF6B7280),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: fileColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    download.type,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: fileColor,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: const Color(0xFFF3F4F6),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              item['type']!,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: Color(0xFF6B7280),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -295,22 +507,29 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           children: [
             Expanded(
               child: _buildActionCard(
-                'Browse Semesters',
-                Icons.school_rounded,
+                'View Downloads',
+                Icons.download_rounded,
                 const Color(0xFF10B981),
-                () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const SemesterDetailScreen()),
-                ),
+                () {
+                  // Open the Downloads screen
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (ctx) => const DownloadsScreen(),
+                    ),
+                  );
+                },
               ),
             ),
             const SizedBox(width: 16),
             Expanded(
               child: _buildActionCard(
-                'Search Files',
-                Icons.search_rounded,
+                'Browse Files',
+                Icons.folder_rounded,
                 const Color(0xFF6366F1),
-                () {},
+                () {
+                  // Navigate to semesters tab
+                  DefaultTabController.of(context).animateTo(1);
+                },
               ),
             ),
           ],
@@ -319,7 +538,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildActionCard(String title, IconData icon, Color color, VoidCallback onTap) {
+  Widget _buildActionCard(
+    String title,
+    IconData icon,
+    Color color,
+    VoidCallback onTap,
+  ) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
