@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/download_service.dart';
 import 'package:open_file/open_file.dart';
+import 'package:share_plus/share_plus.dart';
 
 class DownloadsScreen extends StatefulWidget {
   const DownloadsScreen({super.key});
@@ -55,6 +56,29 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error opening file: $e'),
+            backgroundColor: const Color(0xFFEF4444),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  // NEW: Share file function
+  Future<void> _shareFile(DownloadItem download) async {
+    try {
+      await Share.shareXFiles(
+        [XFile(download.filePath)],
+        text: 'Sharing ${download.name}',
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error sharing file: $e'),
             backgroundColor: const Color(0xFFEF4444),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
@@ -324,6 +348,9 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                                         case 'open':
                                           _openFile(download);
                                           break;
+                                        case 'share':
+                                          _shareFile(download);
+                                          break;
                                         case 'delete':
                                           _deleteDownload(download);
                                           break;
@@ -338,6 +365,19 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                                                 size: 18),
                                             SizedBox(width: 12),
                                             Text('Open'),
+                                          ],
+                                        ),
+                                      ),
+                                      const PopupMenuItem(
+                                        value: 'share',
+                                        child: Row(
+                                          children: [
+                                            Icon(Icons.share_rounded,
+                                                size: 18, color: Color(0xFF6366F1)),
+                                            SizedBox(width: 12),
+                                            Text('Share',
+                                                style: TextStyle(
+                                                    color: Color(0xFF6366F1))),
                                           ],
                                         ),
                                       ),
