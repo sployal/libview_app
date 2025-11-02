@@ -40,11 +40,13 @@ class StudyApp extends StatelessWidget {
         ),
         fontFamily: 'SF Pro Display',
         useMaterial3: true,
+        scaffoldBackgroundColor: const Color(0xFFF8FAFC),
         appBarTheme: const AppBarTheme(
           elevation: 0,
           centerTitle: true,
-          backgroundColor: Colors.transparent,
+          backgroundColor: Color(0xFFF8FAFC),
           foregroundColor: Color(0xFF1F2937),
+          surfaceTintColor: Colors.transparent,
         ),
       ),
       darkTheme: ThemeData(
@@ -59,8 +61,9 @@ class StudyApp extends StatelessWidget {
         appBarTheme: const AppBarTheme(
           elevation: 0,
           centerTitle: true,
-          backgroundColor: Colors.transparent,
+          backgroundColor: Color(0xFF111827),
           foregroundColor: Color(0xFFF9FAFB),
+          surfaceTintColor: Colors.transparent,
         ),
       ),
       themeMode: ThemeMode.system,
