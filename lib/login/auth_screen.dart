@@ -559,6 +559,10 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
           obscureText: obscureText,
           keyboardType: keyboardType,
           validator: validator,
+          style: const TextStyle(
+            color: Colors.black,
+            fontSize: 16,
+          ),
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: TextStyle(color: Colors.grey[400]),
