@@ -221,7 +221,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   String _getTimeAgo(DownloadItem download) {
     try {
-      // Try to parse the date string from the download item
       final date = DateTime.parse(download.date);
       final now = DateTime.now();
       final difference = now.difference(date);
@@ -236,7 +235,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         return 'Just now';
       }
     } catch (e) {
-      // If parsing fails, return the original date string
       return download.date;
     }
   }
@@ -248,21 +246,20 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       body: SafeArea(
         child: SlideTransition(
           position: _slideAnimation,
-          child: CustomScrollView(
-            slivers: [
-              const SliverAppBar(
-                expandedHeight: 120,
-                floating: true,
-                backgroundColor: Colors.transparent,
-                flexibleSpace: FlexibleSpaceBar(
-                  title: Column(
-                    mainAxisSize: MainAxisSize.min,
+          child: SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header - now with fixed size
+                  const Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         'Welcome back! 👋',
                         style: TextStyle(
-                          fontSize: 24,
+                          fontSize: 28,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF1F2937),
                         ),
@@ -271,45 +268,42 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       Text(
                         'Continue your learning journey',
                         style: TextStyle(
-                          fontSize: 14,
+                          fontSize: 16,
                           color: Color(0xFF6B7280),
-                          fontWeight: FontWeight.normal,
                         ),
                       ),
                     ],
                   ),
-                  titlePadding: EdgeInsets.only(left: 20, bottom: 16),
-                ),
-              ),
-              SliverToBoxAdapter(
-                child: isLoading
-                    ? const Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(40),
-                          child: CircularProgressIndicator(
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Color(0xFF6366F1),
-                            ),
+                  const SizedBox(height: 24),
+                  
+                  // Content
+                  if (isLoading)
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(40),
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Color(0xFF6366F1),
                           ),
                         ),
-                      )
-                    : Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildStreakTracker(),
-                            const SizedBox(height: 20),
-                            _buildQuickStats(),
-                            const SizedBox(height: 30),
-                            _buildRecentActivity(),
-                            const SizedBox(height: 30),
-                            _buildQuickActions(),
-                          ],
-                        ),
                       ),
+                    )
+                  else
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildStreakTracker(),
+                        const SizedBox(height: 20),
+                        _buildQuickStats(),
+                        const SizedBox(height: 30),
+                        _buildRecentActivity(),
+                        const SizedBox(height: 30),
+                        _buildQuickActions(),
+                      ],
+                    ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -341,7 +335,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       ),
       child: Row(
         children: [
-          // Left side - Fire emoji and streak count
           Container(
             width: 80,
             height: 80,
@@ -369,7 +362,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ),
           ),
           const SizedBox(width: 20),
-          // Right side - Streak info
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -529,7 +521,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             if (recentDownloads.isNotEmpty)
               TextButton(
                 onPressed: () {
-                  // Open the Downloads screen
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (ctx) => const DownloadsScreen(),
@@ -708,7 +699,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 Icons.download_rounded,
                 const Color(0xFF10B981),
                 () {
-                  // Open the Downloads screen
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (ctx) => const DownloadsScreen(),
@@ -724,7 +714,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                 Icons.folder_rounded,
                 const Color(0xFF6366F1),
                 () {
-                  // Navigate to semesters tab
                   DefaultTabController.of(context).animateTo(1);
                 },
               ),
