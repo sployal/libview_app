@@ -17,6 +17,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   List<DownloadItem> recentDownloads = [];
   int totalDownloads = 0;
   bool isLoading = true;
+  int currentStreak = 0;
+  int longestStreak = 0;
 
   @override
   void initState() {
@@ -49,12 +51,104 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
     final downloads = await DownloadService.getDownloads();
     
+    // Calculate streak
+    final streakData = _calculateStreak(downloads);
+    
     setState(() {
       totalDownloads = downloads.length;
       // Get the 3 most recent downloads
       recentDownloads = downloads.take(3).toList();
+      currentStreak = streakData['current']!;
+      longestStreak = streakData['longest']!;
       isLoading = false;
     });
+  }
+
+  Map<String, int> _calculateStreak(List<DownloadItem> downloads) {
+    if (downloads.isEmpty) {
+      return {'current': 0, 'longest': 0};
+    }
+
+    // Group downloads by date (ignoring time)
+    Map<String, bool> activeDays = {};
+    
+    for (var download in downloads) {
+      try {
+        final date = DateTime.parse(download.date);
+        final dateKey = '${date.year}-${date.month}-${date.day}';
+        activeDays[dateKey] = true;
+      } catch (e) {
+        // Skip if date parsing fails
+        continue;
+      }
+    }
+
+    if (activeDays.isEmpty) {
+      return {'current': 0, 'longest': 0};
+    }
+
+    // Calculate current streak
+    int currentStreak = 0;
+    DateTime checkDate = DateTime.now();
+    
+    while (true) {
+      final dateKey = '${checkDate.year}-${checkDate.month}-${checkDate.day}';
+      if (activeDays.containsKey(dateKey)) {
+        currentStreak++;
+        checkDate = checkDate.subtract(const Duration(days: 1));
+      } else {
+        // Check if we're on the first day (today might not have activity yet)
+        if (currentStreak == 0 && checkDate.day == DateTime.now().day) {
+          checkDate = checkDate.subtract(const Duration(days: 1));
+          continue;
+        }
+        break;
+      }
+      
+      // Safety limit
+      if (currentStreak > 365) break;
+    }
+
+    // Calculate longest streak
+    List<DateTime> sortedDates = activeDays.keys.map((key) {
+      final parts = key.split('-');
+      return DateTime(int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
+    }).toList()..sort();
+
+    int longestStreak = 0;
+    int tempStreak = 1;
+
+    for (int i = 1; i < sortedDates.length; i++) {
+      final diff = sortedDates[i].difference(sortedDates[i - 1]).inDays;
+      if (diff == 1) {
+        tempStreak++;
+        longestStreak = tempStreak > longestStreak ? tempStreak : longestStreak;
+      } else {
+        longestStreak = tempStreak > longestStreak ? tempStreak : longestStreak;
+        tempStreak = 1;
+      }
+    }
+    longestStreak = tempStreak > longestStreak ? tempStreak : longestStreak;
+
+    return {'current': currentStreak, 'longest': longestStreak};
+  }
+
+  String _getStreakEmoji(int streak) {
+    if (streak == 0) return '📚';
+    if (streak < 3) return '🔥';
+    if (streak < 7) return '🔥🔥';
+    if (streak < 14) return '🔥🔥🔥';
+    if (streak < 30) return '🔥🔥🔥🔥';
+    return '🔥🔥🔥🔥🔥';
+  }
+
+  String _getStreakMessage(int streak) {
+    if (streak == 0) return 'Start your streak today!';
+    if (streak == 1) return 'Great start! Keep it up!';
+    if (streak < 7) return 'You\'re on fire!';
+    if (streak < 14) return 'Amazing dedication!';
+    if (streak < 30) return 'Unstoppable!';
+    return 'Legendary streak!';
   }
 
   Future<void> _openFile(DownloadItem download) async {
@@ -204,6 +298,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            _buildStreakTracker(),
+                            const SizedBox(height: 20),
                             _buildQuickStats(),
                             const SizedBox(height: 30),
                             _buildRecentActivity(),
@@ -216,6 +312,107 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildStreakTracker() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: currentStreak > 0
+              ? [const Color(0xFFFF6B6B), const Color(0xFFFF8E53)]
+              : [const Color(0xFF94A3B8), const Color(0xFF64748B)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: (currentStreak > 0
+                    ? const Color(0xFFFF6B6B)
+                    : const Color(0xFF94A3B8))
+                .withOpacity(0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          // Left side - Fire emoji and streak count
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  _getStreakEmoji(currentStreak),
+                  style: const TextStyle(fontSize: 32),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '$currentStreak',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 20),
+          // Right side - Streak info
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Study Streak',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _getStreakMessage(currentStreak),
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.9),
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.emoji_events_rounded,
+                      color: Colors.white.withOpacity(0.8),
+                      size: 16,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Best: $longestStreak ${longestStreak == 1 ? 'day' : 'days'}',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.8),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
