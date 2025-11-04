@@ -28,6 +28,15 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    
+    // Listen for auth state changes (including email confirmation)
+    Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+      final event = data.event;
+      if (event == AuthChangeEvent.signedIn) {
+        // User is signed in, navigation will be handled by main.dart
+        debugPrint('User signed in successfully');
+      }
+    });
   }
 
   @override
@@ -54,6 +63,8 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
           'full_name': _fullNameController.text.trim(),
           'registration_number': _registrationNumberController.text.trim(),
         },
+        // Add email redirect for deep linking
+        emailRedirectTo: 'io.supabase.edupal://login-callback/',
       );
 
       if (mounted) {
@@ -76,10 +87,16 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               margin: const EdgeInsets.all(16),
+              duration: const Duration(seconds: 5),
             ),
           );
           // Switch to login tab
           _tabController.animateTo(0);
+          
+          // Clear sign up form
+          _fullNameController.clear();
+          _registrationNumberController.clear();
+          _confirmPasswordController.clear();
         }
       }
     } on AuthException catch (error) {
