@@ -107,13 +107,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return;
       }
 
-      // Fetch notifications separately
-      final notificationsResponse = await Supabase.instance.client
+      // Fetch notifications with sender info using foreign key relationship
+      final response = await Supabase.instance.client
           .from('notifications')
-          .select('id, title, message, type, sender_id, created_at')
+          .select('id, title, message, type, sender_id, created_at, profiles!sender_id(full_name, role)')
           .order('created_at', ascending: false);
 
-      debugPrint('Notifications response: $notificationsResponse');
+      debugPrint('Notifications response: $response');
 
       // Fetch read status for current user
       final readResponse = await Supabase.instance.client
@@ -127,43 +127,26 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           .map((item) => item['notification_id'] as String)
           .toSet();
 
-      // Get unique sender IDs
-      final senderIds = (notificationsResponse as List)
-          .map((item) => item['sender_id'] as String)
-          .toSet()
-          .toList();
-
-      // Fetch sender profiles
-      final profilesResponse = await Supabase.instance.client
-          .from('profiles')
-          .select('id, full_name, role')
-          .inFilter('id', senderIds);
-
-      debugPrint('Profiles response: $profilesResponse');
-
-      // Create a map of sender profiles for quick lookup
-      final senderProfiles = <String, Map<String, dynamic>>{};
-      for (var profile in profilesResponse as List) {
-        senderProfiles[profile['id']] = {
-          'full_name': profile['full_name'] ?? 'Unknown',
-          'role': profile['role'] ?? 'student',
-        };
-      }
-
-      // Build notification list with sender info
-      final notificationsList = (notificationsResponse).map((item) {
+      final notificationsList = (response as List).map((item) {
         final isRead = readNotificationIds.contains(item['id']);
-        final senderId = item['sender_id'] as String;
-        final senderProfile = senderProfiles[senderId];
+        
+        // Extract sender info from profiles foreign key
+        String senderName = 'Unknown';
+        String senderRole = 'student';
+        
+        if (item['profiles'] != null && item['profiles'] is Map) {
+          senderName = item['profiles']['full_name'] ?? 'Unknown';
+          senderRole = item['profiles']['role'] ?? 'student';
+        }
         
         return NotificationItem(
           id: item['id'],
           title: item['title'],
           message: item['message'],
           type: item['type'],
-          senderId: senderId,
-          senderName: senderProfile?['full_name'] ?? 'Unknown',
-          senderRole: senderProfile?['role'] ?? 'student',
+          senderId: item['sender_id'],
+          senderName: senderName,
+          senderRole: senderRole,
           createdAt: DateTime.parse(item['created_at']),
           isRead: isRead,
         );
@@ -528,9 +511,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         color: Colors.transparent,
         child: InkWell(
           onTap: () {
-            if (!notification.isRead) {
-              _markAsRead(notification.id);
-            }
             _showNotificationDetails(notification);
           },
           borderRadius: BorderRadius.circular(16),
