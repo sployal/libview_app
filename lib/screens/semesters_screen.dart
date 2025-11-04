@@ -61,36 +61,36 @@ class SemestersScreen extends StatelessWidget {
       {
         'year': 'Year 1',
         'semesters': [
-          {'name': 'Semester 1', 'subjects': 6, 'progress': 0.8, 'key': 'year1_sem1'},
-          {'name': 'Semester 2', 'subjects': 5, 'progress': 0.6, 'key': 'year1_sem2'},
+          {'name': 'Semester 1', 'Units': 6, 'progress': 0.8, 'key': 'year1_sem1'},
+          {'name': 'Semester 2', 'Units': 5, 'progress': 0.6, 'key': 'year1_sem2'},
         ]
       },
       {
         'year': 'Year 2',
         'semesters': [
-          {'name': 'Semester 1', 'subjects': 7, 'progress': 1.0, 'key': 'year2_sem1'},
-          {'name': 'Semester 2', 'subjects': 6, 'progress': 0.9, 'key': 'year2_sem2'},
+          {'name': 'Semester 1', 'Units': 7, 'progress': 1.0, 'key': 'year2_sem1'},
+          {'name': 'Semester 2', 'Units': 6, 'progress': 0.9, 'key': 'year2_sem2'},
         ]
       },
       {
         'year': 'Year 3',
         'semesters': [
-          {'name': 'Semester 1', 'subjects': 6, 'progress': 0.75, 'key': 'year3_sem1'},
-          {'name': 'Semester 2', 'subjects': 7, 'progress': 0.85, 'key': 'year3_sem2'},
+          {'name': 'Semester 1', 'Units': 6, 'progress': 0.75, 'key': 'year3_sem1'},
+          {'name': 'Semester 2', 'Units': 7, 'progress': 0.85, 'key': 'year3_sem2'},
         ]
       },
       {
         'year': 'Year 4',
         'semesters': [
-          {'name': 'Semester 1', 'subjects': 5, 'progress': 0.95, 'key': 'year4_sem1'},
-          {'name': 'Semester 2', 'subjects': 6, 'progress': 0.88, 'key': 'year4_sem2'},
+          {'name': 'Semester 1', 'Units': 5, 'progress': 0.95, 'key': 'year4_sem1'},
+          {'name': 'Semester 2', 'Units': 6, 'progress': 0.88, 'key': 'year4_sem2'},
         ]
       },
       {
         'year': 'Year 5',
         'semesters': [
-          {'name': 'Semester 1', 'subjects': 6, 'progress': 1.0, 'key': 'year5_sem1'},
-          {'name': 'Semester 2', 'subjects': 5, 'progress': 0.92, 'key': 'year5_sem2'},
+          {'name': 'Semester 1', 'Units': 6, 'progress': 1.0, 'key': 'year5_sem1'},
+          {'name': 'Semester 2', 'Units': 5, 'progress': 0.92, 'key': 'year5_sem2'},
         ]
       },
     ];
@@ -182,7 +182,7 @@ class SemestersScreen extends StatelessWidget {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(
-                                'Please configure Google Drive folder ID for ${semesterConfig?['name'] ?? 'this semester'}',
+                                'Please configure  ID for ${semesterConfig?['name'] ?? 'this semester'}',
                               ),
                               backgroundColor: const Color(0xFFEF4444),
                               behavior: SnackBarBehavior.floating,
@@ -298,7 +298,7 @@ class SemestersScreen extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    '${semester['subjects']} Subjects',
+                                    '${semester['Units']} Units',
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: Colors.white.withOpacity(0.7),
