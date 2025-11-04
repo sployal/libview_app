@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'visibility_controller.dart';
 import 'users_dashboard.dart';
 import 'edit_profile.dart';
+import 'notifications_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -552,10 +553,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             Icons.notifications_rounded,
                             const Color(0xFF6366F1),
                             () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Notifications coming soon!'),
-                                  behavior: SnackBarBehavior.floating,
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const NotificationsScreen(),
                                 ),
                               );
                             },
