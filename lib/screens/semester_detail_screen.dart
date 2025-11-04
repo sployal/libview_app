@@ -53,7 +53,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
       }
     } catch (e) {
       setState(() {
-        errorMessage = 'Failed to load subjects. Please check your internet connection.';
+        errorMessage = 'Failed to load units. Please check your internet connection.';
         subjects = GoogleDriveService.getFallbackSubjects();
         isLoading = false;
       });
@@ -64,7 +64,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     return [
       Subject(
         id: '1',
-        name: 'Sample Subject 1',
+        name: 'Sample unit 1',
         code: 'SUB101',
         folderId: '',
         color: const Color(0xFF6366F1),
@@ -72,7 +72,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
       ),
       Subject(
         id: '2',
-        name: 'Sample Subject 2',
+        name: 'Sample unit 2',
         code: 'SUB102',
         folderId: '',
         color: const Color(0xFF10B981),
@@ -88,7 +88,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     if (!_isLiveFolder || subject.folderId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('This subject is not connected to Google Drive'),
+          content: Text('This unit is not connected to database'),
           backgroundColor: Color(0xFFEF4444),
           behavior: SnackBarBehavior.floating,
         ),
@@ -280,7 +280,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'This subject folder is empty',
+                        'This units folder is empty',
                         style: TextStyle(
                           fontSize: 14,
                           color: Colors.grey[500],
@@ -418,7 +418,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'Tap any subject to view files',
+                      'Tap any unit to view files',
                       style: TextStyle(
                         color: Colors.white.withOpacity(0.95),
                         fontSize: 14,
@@ -471,7 +471,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                         ),
                         SizedBox(height: 16),
                         Text(
-                          'Loading subjects...',
+                          'Loading units...',
                           style: TextStyle(
                             color: Color(0xFF6B7280),
                             fontSize: 16,
@@ -494,7 +494,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                                 ),
                                 SizedBox(height: 16),
                                 Text(
-                                  'No subjects found',
+                                  'No Units found',
                                   style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.w600,
@@ -503,7 +503,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                                 ),
                                 SizedBox(height: 8),
                                 Text(
-                                  'Check your Google Drive folder',
+                                  'units will appear here when available',
                                   style: TextStyle(
                                     fontSize: 14,
                                     color: Color(0xFF9CA3AF),
