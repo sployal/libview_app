@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../services/download_service.dart';
 import 'downloads_screen.dart';
+import 'notifications_screen.dart';
 import 'package:open_file/open_file.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -19,6 +21,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   bool isLoading = true;
   int currentStreak = 0;
   int longestStreak = 0;
+  int unreadNotificationCount = 0;
 
   @override
   void initState() {
@@ -36,12 +39,55 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     ));
     _slideController.forward();
     _loadRecentActivity();
+    _loadUnreadNotificationCount();
+    _setupNotificationSubscription();
   }
 
   @override
   void dispose() {
     _slideController.dispose();
     super.dispose();
+  }
+
+  void _setupNotificationSubscription() {
+    // Listen for new notifications
+    Supabase.instance.client
+        .channel('notifications_updates')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'notifications',
+          callback: (payload) {
+            _loadUnreadNotificationCount();
+          },
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'notification_reads',
+          callback: (payload) {
+            _loadUnreadNotificationCount();
+          },
+        )
+        .subscribe();
+  }
+
+  Future<void> _loadUnreadNotificationCount() async {
+    try {
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId == null) return;
+
+      final response = await Supabase.instance.client
+          .rpc('get_unread_count', params: {'user_uuid': userId});
+
+      if (mounted) {
+        setState(() {
+          unreadNotificationCount = response as int;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading unread count: $e');
+    }
   }
 
   Future<void> _loadRecentActivity() async {
@@ -252,25 +298,94 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Header - now with fixed size
-                  const Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  // Header with notification icon
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        'Welcome back! 👋',
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF1F2937),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Welcome back! 👋',
+                              style: TextStyle(
+                                fontSize: 28,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF1F2937),
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              'Continue your learning journey',
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Color(0xFF6B7280),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                      SizedBox(height: 4),
-                      Text(
-                        'Continue your learning journey',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Color(0xFF6B7280),
-                        ),
+                      // Notification Icon with Badge
+                      Stack(
+                        children: [
+                          Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.05),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: IconButton(
+                              icon: const Icon(
+                                Icons.notifications_rounded,
+                                color: Color(0xFF6366F1),
+                                size: 28,
+                              ),
+                              onPressed: () async {
+                                await Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (ctx) => const NotificationsScreen(),
+                                  ),
+                                );
+                                // Reload unread count when returning
+                                _loadUnreadNotificationCount();
+                              },
+                            ),
+                          ),
+                          if (unreadNotificationCount > 0)
+                            Positioned(
+                              right: 8,
+                              top: 8,
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFFEF4444),
+                                  shape: BoxShape.circle,
+                                ),
+                                constraints: const BoxConstraints(
+                                  minWidth: 18,
+                                  minHeight: 18,
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    unreadNotificationCount > 99
+                                        ? '99+'
+                                        : unreadNotificationCount.toString(),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ],
                   ),
