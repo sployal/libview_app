@@ -3,6 +3,7 @@ import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 
@@ -11,43 +12,104 @@ class DownloadService {
   static const String apiKey = 'AIzaSyBlCLsPvArqlkJecaq_wmBdjb5bIdd23go';
   static const String baseUrl = 'https://www.googleapis.com/drive/v3';
   
-  // Request storage permission
-  static Future<bool> requestStoragePermission() async {
+  // Get Android SDK version
+  static Future<int> getAndroidSdkVersion() async {
     if (Platform.isAndroid) {
+      final deviceInfo = DeviceInfoPlugin();
+      final androidInfo = await deviceInfo.androidInfo;
+      return androidInfo.version.sdkInt;
+    }
+    return 0;
+  }
+  
+  // Request storage permission (only for Android 12 and below)
+  static Future<bool> requestStoragePermission() async {
+    if (!Platform.isAndroid) {
+      return true; // No permission needed for non-Android platforms
+    }
+    
+    try {
+      final sdkInt = await getAndroidSdkVersion();
+      
+      // Android 13+ (API 33+): No storage permission needed for app-specific directories
+      if (sdkInt >= 33) {
+        return true;
+      }
+      
+      // Android 12 and below (API 32 and below): Request storage permission
       if (await Permission.storage.isGranted) {
         return true;
       }
       
       final status = await Permission.storage.request();
       return status.isGranted;
+    } catch (e) {
+      print('Error requesting permission: $e');
+      // If we can't determine version, assume Android 13+ behavior
+      return true;
     }
-    return true;
   }
   
-  // Get Edupal folder path
+  // Get Edupal folder path with proper Android 13+ handling
   static Future<String> getEdupalFolderPath() async {
-    Directory directory;
-    
-    if (Platform.isAndroid) {
-      directory = (await getExternalStorageDirectory())!;
-      final path = '/storage/emulated/0/Edupal';
-      final edupalDir = Directory(path);
+    try {
+      final sdkInt = Platform.isAndroid ? await getAndroidSdkVersion() : 0;
       
-      if (!await edupalDir.exists()) {
-        directory = await getApplicationDocumentsDirectory();
-        final appEdupalDir = Directory('${directory.path}/Edupal');
-        if (!await appEdupalDir.exists()) {
-          await appEdupalDir.create(recursive: true);
+      if (Platform.isAndroid && sdkInt >= 33) {
+        // Android 13+: Use app-specific external storage (no permissions needed)
+        final directory = await getExternalStorageDirectory();
+        if (directory == null) {
+          throw Exception('Could not access external storage');
         }
-        return appEdupalDir.path;
+        
+        final edupalDir = Directory('${directory.path}/Edupal');
+        if (!await edupalDir.exists()) {
+          await edupalDir.create(recursive: true);
+        }
+        return edupalDir.path;
+      } else if (Platform.isAndroid) {
+        // Android 12 and below: Try public storage first, fallback to app-specific
+        try {
+          final publicPath = '/storage/emulated/0/Edupal';
+          final publicDir = Directory(publicPath);
+          
+          if (!await publicDir.exists()) {
+            await publicDir.create(recursive: true);
+          }
+          
+          // Test if we can write to this directory
+          final testFile = File('$publicPath/.test');
+          await testFile.writeAsString('test');
+          await testFile.delete();
+          
+          return publicPath;
+        } catch (e) {
+          // If public storage fails, use app-specific directory
+          print('Public storage not accessible, using app-specific: $e');
+          final directory = await getExternalStorageDirectory();
+          if (directory == null) {
+            throw Exception('Could not access external storage');
+          }
+          
+          final edupalDir = Directory('${directory.path}/Edupal');
+          if (!await edupalDir.exists()) {
+            await edupalDir.create(recursive: true);
+          }
+          return edupalDir.path;
+        }
+      } else {
+        // iOS or other platforms
+        final directory = await getApplicationDocumentsDirectory();
+        final edupalDir = Directory('${directory.path}/Edupal');
+        if (!await edupalDir.exists()) {
+          await edupalDir.create(recursive: true);
+        }
+        return edupalDir.path;
       }
-      
-      if (!await edupalDir.exists()) {
-        await edupalDir.create(recursive: true);
-      }
-      return edupalDir.path;
-    } else {
-      directory = await getApplicationDocumentsDirectory();
+    } catch (e) {
+      print('Error getting Edupal folder path: $e');
+      // Final fallback
+      final directory = await getApplicationDocumentsDirectory();
       final edupalDir = Directory('${directory.path}/Edupal');
       if (!await edupalDir.exists()) {
         await edupalDir.create(recursive: true);
@@ -56,7 +118,7 @@ class DownloadService {
     }
   }
   
-  // NEW: Fetch file metadata from Google Drive API
+  // Fetch file metadata from Google Drive API
   static Future<DriveFileMetadata?> getFileMetadata(String fileId) async {
     try {
       final queryParameters = <String, String>{
@@ -82,7 +144,7 @@ class DownloadService {
     }
   }
   
-  // NEW: Get proper download URL based on file type
+  // Get proper download URL based on file type
   static String? getDownloadUrl(DriveFileMetadata metadata) {
     // Check if it's a Google Workspace file (Docs, Sheets, Slides)
     if (metadata.mimeType.contains('google-apps')) {
@@ -111,7 +173,7 @@ class DownloadService {
     return 'https://www.googleapis.com/drive/v3/files/${metadata.id}?alt=media&key=$apiKey';
   }
   
-  // NEW: Get proper filename with extension
+  // Get proper filename with extension
   static String getProperFilename(DriveFileMetadata metadata) {
     String filename = metadata.name;
     
@@ -134,14 +196,14 @@ class DownloadService {
     return filename;
   }
   
-  // UPDATED: Download file with proper metadata
+  // Download file with proper Android 13+ handling
   static Future<DownloadResult> downloadFile({
     required String fileId,
     required String subject,
     Function(double)? onProgress,
   }) async {
     try {
-      // Request permission
+      // Request permission (only for Android 12 and below)
       final hasPermission = await requestStoragePermission();
       if (!hasPermission) {
         return DownloadResult(
@@ -187,9 +249,13 @@ class DownloadService {
         },
         options: Options(
           headers: {
-            'Authorization': 'key=$apiKey',
+            'Authorization': 'Bearer $apiKey',
           },
           responseType: ResponseType.bytes,
+          followRedirects: true,
+          validateStatus: (status) {
+            return status! < 500;
+          },
         ),
       );
       
@@ -204,14 +270,14 @@ class DownloadService {
       
       final fileSize = await file.length();
       
-      // Check if downloaded file is not an HTML error page
-      if (fileSize < 1000) {
+      // Check if file is too small (might be an error response)
+      if (fileSize < 100) {
         final content = await file.readAsString();
-        if (content.contains('<html') || content.contains('<!DOCTYPE')) {
+        if (content.contains('<html') || content.contains('<!DOCTYPE') || content.contains('error')) {
           await file.delete();
           return DownloadResult(
             success: false,
-            message: 'Download failed: Received HTML instead of file',
+            message: 'Download failed: Invalid file received',
           );
         }
       }
@@ -250,6 +316,9 @@ class DownloadService {
     final downloadsJson = prefs.getString('downloads') ?? '[]';
     final List<dynamic> downloads = json.decode(downloadsJson);
     
+    // Check if file already exists in downloads
+    downloads.removeWhere((item) => item['filePath'] == filePath);
+    
     downloads.insert(0, {
       'name': fileName,
       'subject': subject,
@@ -269,7 +338,25 @@ class DownloadService {
       final downloadsJson = prefs.getString('downloads') ?? '[]';
       final List<dynamic> downloads = json.decode(downloadsJson);
       
-      return downloads.map((json) => DownloadItem.fromJson(json)).toList();
+      // Filter out files that no longer exist
+      final validDownloads = <DownloadItem>[];
+      for (var json in downloads) {
+        final item = DownloadItem.fromJson(json);
+        final file = File(item.filePath);
+        if (await file.exists()) {
+          validDownloads.add(item);
+        }
+      }
+      
+      // Update the list if files were removed
+      if (validDownloads.length != downloads.length) {
+        await prefs.setString(
+          'downloads',
+          json.encode(validDownloads.map((e) => e.toJson()).toList()),
+        );
+      }
+      
+      return validDownloads;
     } catch (e) {
       print('Error loading downloads: $e');
       return [];
@@ -300,14 +387,18 @@ class DownloadService {
   
   // Clear all downloads
   static Future<void> clearAllDownloads() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('downloads');
-    
-    final folderPath = await getEdupalFolderPath();
-    final folder = Directory(folderPath);
-    if (await folder.exists()) {
-      await folder.delete(recursive: true);
-      await folder.create();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('downloads');
+      
+      final folderPath = await getEdupalFolderPath();
+      final folder = Directory(folderPath);
+      if (await folder.exists()) {
+        await folder.delete(recursive: true);
+        await folder.create();
+      }
+    } catch (e) {
+      print('Error clearing downloads: $e');
     }
   }
   
@@ -329,6 +420,8 @@ class DownloadService {
       case 'jpg':
       case 'jpeg':
       case 'png':
+      case 'gif':
+      case 'bmp':
         return 'IMG';
       default:
         return 'FILE';
@@ -366,7 +459,7 @@ class DownloadService {
   }
 }
 
-// NEW: Drive file metadata model
+// Drive file metadata model
 class DriveFileMetadata {
   final String id;
   final String name;
