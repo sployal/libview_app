@@ -49,11 +49,18 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   void _setupRealtimeSubscription() {
-    // Listen for new notifications
     Supabase.instance.client
         .channel('notifications_screen')
         .onPostgresChanges(
           event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'notifications',
+          callback: (payload) {
+            _loadNotifications();
+          },
+        )
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
           schema: 'public',
           table: 'notifications',
           callback: (payload) {
@@ -107,7 +114,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return;
       }
 
-      // Fetch notifications with sender info using foreign key relationship
       final response = await Supabase.instance.client
           .from('notifications')
           .select('id, title, message, type, sender_id, created_at, profiles!sender_id(full_name, role)')
@@ -115,7 +121,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
       debugPrint('Notifications response: $response');
 
-      // Fetch read status for current user
       final readResponse = await Supabase.instance.client
           .from('notification_reads')
           .select('notification_id')
@@ -130,7 +135,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       final notificationsList = (response as List).map((item) {
         final isRead = readNotificationIds.contains(item['id']);
         
-        // Extract sender info from profiles foreign key
         String senderName = 'Unknown';
         String senderRole = 'student';
         
@@ -189,7 +193,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         },
       );
 
-      // Update local state
       setState(() {
         final index = notifications.indexWhere((n) => n.id == notificationId);
         if (index != -1) {
@@ -242,6 +245,243 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     } catch (e) {
       debugPrint('Error marking all as read: $e');
     }
+  }
+
+  Future<void> _editNotification(NotificationItem notification) async {
+    final titleController = TextEditingController(text: notification.title);
+    final messageController = TextEditingController(text: notification.message);
+    String selectedType = notification.type;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => Container(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+            left: 24,
+            right: 24,
+            top: 24,
+          ),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF6366F1).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.edit_rounded,
+                        color: Color(0xFF6366F1),
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    const Text(
+                      'Edit Notification',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1F2937),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                TextField(
+                  controller: titleController,
+                  decoration: InputDecoration(
+                    labelText: 'Title',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                        color: Color(0xFF6366F1),
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: messageController,
+                  maxLines: 4,
+                  decoration: InputDecoration(
+                    labelText: 'Message',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                        color: Color(0xFF6366F1),
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                DropdownButtonFormField<String>(
+                  value: selectedType,
+                  decoration: InputDecoration(
+                    labelText: 'Type',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                        color: Color(0xFF6366F1),
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'general', child: Text('General')),
+                    DropdownMenuItem(value: 'announcement', child: Text('Announcement')),
+                    DropdownMenuItem(value: 'assignment', child: Text('Assignment')),
+                    DropdownMenuItem(value: 'exam', child: Text('Exam')),
+                    DropdownMenuItem(value: 'event', child: Text('Event')),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) {
+                      setModalState(() {
+                        selectedType = value;
+                      });
+                    }
+                  },
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          side: const BorderSide(color: Color(0xFF6366F1)),
+                        ),
+                        child: const Text(
+                          'Cancel',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          if (titleController.text.trim().isEmpty ||
+                              messageController.text.trim().isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: const Text('Please fill all fields'),
+                                backgroundColor: const Color(0xFFEF4444),
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                            );
+                            return;
+                          }
+
+                          try {
+                            await Supabase.instance.client
+                                .from('notifications')
+                                .update({
+                              'title': titleController.text.trim(),
+                              'message': messageController.text.trim(),
+                              'type': selectedType,
+                            }).eq('id', notification.id);
+
+                            Navigator.of(context).pop();
+                            _loadNotifications();
+
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: const Row(
+                                    children: [
+                                      Icon(Icons.check_circle, color: Colors.white),
+                                      SizedBox(width: 12),
+                                      Text('Notification updated successfully'),
+                                    ],
+                                  ),
+                                  backgroundColor: const Color(0xFF10B981),
+                                  behavior: SnackBarBehavior.floating,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Row(
+                                    children: [
+                                      const Icon(Icons.error_outline, color: Colors.white),
+                                      const SizedBox(width: 12),
+                                      Text('Error updating: $e'),
+                                    ],
+                                  ),
+                                  backgroundColor: const Color(0xFFEF4444),
+                                  behavior: SnackBarBehavior.floating,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              );
+                            }
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF6366F1),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: const Text(
+                          'Update',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _deleteNotification(String notificationId) async {
@@ -299,6 +539,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return const Color(0xFF8B5CF6);
       case 'announcement':
         return const Color(0xFFF59E0B);
+      case 'general':
+        return const Color(0xFF6B7280);
       default:
         return const Color(0xFF6B7280);
     }
@@ -314,6 +556,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return Icons.event_rounded;
       case 'announcement':
         return Icons.campaign_rounded;
+      case 'general':
+        return Icons.notifications_rounded;
       default:
         return Icons.notifications_rounded;
     }
@@ -491,6 +735,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final currentUserId = Supabase.instance.client.auth.currentUser?.id;
     final isOwnNotification = notification.senderId == currentUserId;
     final canDelete = isOwnNotification || currentUserRole == 'admin';
+    final canEdit = isOwnNotification;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -520,7 +765,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Icon
+                // Colored Bell Icon
                 Container(
                   width: 48,
                   height: 48,
@@ -529,7 +774,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
-                    typeIcon,
+                    Icons.notifications_rounded,
                     color: typeColor,
                     size: 24,
                   ),
@@ -569,6 +814,25 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         ],
                       ),
                       const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(
+                            typeIcon,
+                            size: 14,
+                            color: typeColor,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            notification.type.toUpperCase(),
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: typeColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
                       Text(
                         notification.message,
                         style: const TextStyle(
@@ -622,52 +886,69 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     ],
                   ),
                 ),
-                // Delete button for own notifications or admin
-                if (canDelete)
-                  IconButton(
-                    icon: const Icon(Icons.delete_outline_rounded),
-                    color: const Color(0xFFEF4444),
-                    iconSize: 20,
-                    onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder: (ctx) => AlertDialog(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          title: const Text(
-                            'Delete Notification',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          content: Text(
-                            isOwnNotification
-                                ? 'Are you sure you want to delete this notification?'
-                                : 'As an admin, you are about to delete ${notification.senderName}\'s notification. Continue?',
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.of(ctx).pop(),
-                              child: const Text('Cancel'),
-                            ),
-                            ElevatedButton(
-                              onPressed: () {
-                                Navigator.of(ctx).pop();
-                                _deleteNotification(notification.id);
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFEF4444),
-                                foregroundColor: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
+                // Edit and Delete buttons
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (canEdit)
+                      IconButton(
+                        icon: const Icon(Icons.edit_outlined),
+                        color: const Color(0xFF6366F1),
+                        iconSize: 20,
+                        padding: const EdgeInsets.all(4),
+                        constraints: const BoxConstraints(),
+                        onPressed: () => _editNotification(notification),
+                      ),
+                    if (canEdit) const SizedBox(width: 4),
+                    if (canDelete)
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline_rounded),
+                        color: const Color(0xFFEF4444),
+                        iconSize: 20,
+                        padding: const EdgeInsets.all(4),
+                        constraints: const BoxConstraints(),
+                        onPressed: () {
+                          showDialog(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
                               ),
-                              child: const Text('Delete'),
+                              title: const Text(
+                                'Delete Notification',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                              content: Text(
+                                isOwnNotification
+                                    ? 'Are you sure you want to delete this notification?'
+                                    : 'As an admin, you are about to delete ${notification.senderName}\'s notification. Continue?',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.of(ctx).pop(),
+                                  child: const Text('Cancel'),
+                                ),
+                                ElevatedButton(
+                                  onPressed: () {
+                                    Navigator.of(ctx).pop();
+                                    _deleteNotification(notification.id);
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFFEF4444),
+                                    foregroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                  child: const Text('Delete'),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
+                          );
+                        },
+                      ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -677,7 +958,6 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   void _showNotificationDetails(NotificationItem notification) {
-    // Mark as read when opening the notification
     if (!notification.isRead) {
       _markAsRead(notification.id);
     }
@@ -706,7 +986,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Icon(
-                    _getTypeIcon(notification.type),
+                    Icons.notifications_rounded,
                     color: _getTypeColor(notification.type),
                     size: 28,
                   ),
@@ -725,13 +1005,23 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                        notification.type.toUpperCase(),
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: _getTypeColor(notification.type),
-                        ),
+                      Row(
+                        children: [
+                          Icon(
+                            _getTypeIcon(notification.type),
+                            size: 14,
+                            color: _getTypeColor(notification.type),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            notification.type.toUpperCase(),
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: _getTypeColor(notification.type),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
