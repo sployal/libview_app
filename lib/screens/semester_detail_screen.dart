@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/google_drive_service.dart';
+import '../services/download_service.dart';
 import 'web_view_screen.dart';
 
 class SemesterDetailScreen extends StatefulWidget {
@@ -21,10 +22,13 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
   bool isLoading = true;
   String? errorMessage;
   
-  // NEW: Track selected subject and its files
   Subject? selectedSubject;
   List<StudyMaterial> currentFiles = [];
   bool isLoadingFiles = false;
+  
+  // NEW: Track downloading state for each file
+  Map<String, bool> downloadingFiles = {};
+  Map<String, double> downloadProgress = {};
 
   @override
   void initState() {
@@ -83,7 +87,6 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
 
   bool get _isLiveFolder => widget.folderId != null && widget.folderId!.isNotEmpty;
 
-  // NEW: Load files for a specific subject
   Future<void> _loadSubjectFiles(Subject subject) async {
     if (!_isLiveFolder || subject.folderId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -100,6 +103,8 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
       selectedSubject = subject;
       isLoadingFiles = true;
       currentFiles = [];
+      downloadingFiles.clear();
+      downloadProgress.clear();
     });
 
     try {
@@ -125,7 +130,6 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     }
   }
 
-  // NEW: Open individual file in WebView
   void _openFileInWebView(StudyMaterial material) {
     if (material.downloadUrl == null || material.downloadUrl!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -150,15 +154,142 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     );
   }
 
-  // NEW: Go back to subjects view
+  // NEW: Extract file ID from Google Drive URL
+  String? _extractFileId(String url) {
+    try {
+      // Pattern 1: /d/FILE_ID/
+      RegExp pattern1 = RegExp(r'/d/([a-zA-Z0-9_-]+)');
+      Match? match = pattern1.firstMatch(url);
+      if (match != null) {
+        return match.group(1);
+      }
+      
+      // Pattern 2: ?id=FILE_ID or &id=FILE_ID
+      RegExp pattern2 = RegExp(r'[?&]id=([a-zA-Z0-9_-]+)');
+      match = pattern2.firstMatch(url);
+      if (match != null) {
+        return match.group(1);
+      }
+      
+      // Pattern 3: /file/d/FILE_ID/
+      RegExp pattern3 = RegExp(r'/file/d/([a-zA-Z0-9_-]+)');
+      match = pattern3.firstMatch(url);
+      if (match != null) {
+        return match.group(1);
+      }
+      
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // NEW: Download individual file
+  Future<void> _downloadFile(StudyMaterial material) async {
+    if (material.downloadUrl == null || material.downloadUrl!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              Icon(Icons.error, color: Colors.white),
+              SizedBox(width: 12),
+              Expanded(
+                child: Text('File URL not available'),
+              ),
+            ],
+          ),
+          backgroundColor: Color(0xFFEF4444),
+          behavior: SnackBarBehavior.floating,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+
+    // Extract file ID from URL
+    final fileId = _extractFileId(material.downloadUrl!);
+    
+    if (fileId == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.error, color: Colors.white),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text('Could not identify file from URL'),
+                ),
+              ],
+            ),
+            backgroundColor: Color(0xFFEF4444),
+            behavior: SnackBarBehavior.floating,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+      return;
+    }
+
+    setState(() {
+      downloadingFiles[material.id] = true;
+      downloadProgress[material.id] = 0.0;
+    });
+
+    // Download file using the file ID
+    final result = await DownloadService.downloadFile(
+      fileId: fileId,
+      subject: selectedSubject?.name ?? 'Unknown',
+      onProgress: (progress) {
+        setState(() {
+          downloadProgress[material.id] = progress;
+        });
+      },
+    );
+
+    setState(() {
+      downloadingFiles[material.id] = false;
+      downloadProgress.remove(material.id);
+    });
+
+    // Show result to user
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              Icon(
+                result.success ? Icons.check_circle : Icons.error,
+                color: Colors.white,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(result.message),
+              ),
+            ],
+          ),
+          backgroundColor: result.success 
+              ? const Color(0xFF10B981) 
+              : const Color(0xFFEF4444),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          duration: Duration(seconds: result.success ? 3 : 5),
+        ),
+      );
+    }
+  }
+
   void _backToSubjects() {
     setState(() {
       selectedSubject = null;
       currentFiles = [];
+      downloadingFiles.clear();
+      downloadProgress.clear();
     });
   }
 
-  // NEW: Get file icon based on type
   IconData _getFileIcon(String type) {
     switch (type) {
       case 'PDF':
@@ -176,7 +307,6 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     }
   }
 
-  // NEW: Get file color based on type
   Color _getFileColor(String type) {
     switch (type) {
       case 'PDF':
@@ -196,16 +326,13 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // If a subject is selected, show files view
     if (selectedSubject != null) {
       return _buildFilesView();
     }
     
-    // Otherwise, show subjects list view
     return _buildSubjectsView();
   }
 
-  // NEW: Build files view when subject is selected
   Widget _buildFilesView() {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -298,6 +425,8 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                       final file = currentFiles[index];
                       final fileColor = _getFileColor(file.type);
                       final fileIcon = _getFileIcon(file.type);
+                      final isDownloading = downloadingFiles[file.id] ?? false;
+                      final progress = downloadProgress[file.id] ?? 0.0;
 
                       return Container(
                         margin: const EdgeInsets.only(bottom: 12),
@@ -315,7 +444,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                         child: Material(
                           color: Colors.transparent,
                           child: InkWell(
-                            onTap: () => _openFileInWebView(file),
+                            onTap: isDownloading ? null : () => _openFileInWebView(file),
                             borderRadius: BorderRadius.circular(16),
                             child: Padding(
                               padding: const EdgeInsets.all(16),
@@ -350,15 +479,57 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                         const SizedBox(height: 4),
-                                        Text(
-                                          '${file.type} • ${file.size} • ${file.date}',
-                                          style: const TextStyle(
-                                            fontSize: 13,
-                                            color: Color(0xFF6B7280),
+                                        if (isDownloading)
+                                          Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              const SizedBox(height: 4),
+                                              LinearProgressIndicator(
+                                                value: progress,
+                                                backgroundColor: const Color(0xFFE5E7EB),
+                                                valueColor: AlwaysStoppedAnimation<Color>(fileColor),
+                                                minHeight: 3,
+                                              ),
+                                              const SizedBox(height: 2),
+                                              Text(
+                                                'Downloading ${(progress * 100).toInt()}%',
+                                                style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: fileColor,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                            ],
+                                          )
+                                        else
+                                          Text(
+                                            '${file.type} • ${file.size} • ${file.date}',
+                                            style: const TextStyle(
+                                              fontSize: 13,
+                                              color: Color(0xFF6B7280),
+                                            ),
                                           ),
-                                        ),
                                       ],
                                     ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  // NEW: Download button
+                                  IconButton(
+                                    icon: isDownloading
+                                        ? SizedBox(
+                                            width: 20,
+                                            height: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              valueColor: AlwaysStoppedAnimation<Color>(fileColor),
+                                            ),
+                                          )
+                                        : Icon(
+                                            Icons.download_rounded,
+                                            color: fileColor,
+                                          ),
+                                    onPressed: isDownloading ? null : () => _downloadFile(file),
+                                    tooltip: 'Download',
                                   ),
                                   const Icon(
                                     Icons.arrow_forward_ios_rounded,
@@ -377,7 +548,6 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     );
   }
 
-  // Original subjects list view
   Widget _buildSubjectsView() {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
