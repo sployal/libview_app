@@ -26,6 +26,24 @@ class _UsersDashboardState extends State<UsersDashboard> {
     'student': const Color(0xFF10B981),
   };
 
+  // Statistics
+  int get _totalUsers => _users.length;
+  int get _totalStudents => _users.where((u) => u['role'] == 'student').length;
+  int get _totalClassReps => _users.where((u) => u['role'] == 'class_rep').length;
+  int get _totalLecturers => _users.where((u) => u['role'] == 'lecturer').length;
+  int get _totalAdmins => _users.where((u) => u['role'] == 'admin').length;
+  int get _newUsersThisWeek {
+    final weekAgo = DateTime.now().subtract(const Duration(days: 7));
+    return _users.where((u) {
+      try {
+        final created = DateTime.parse(u['created_at']);
+        return created.isAfter(weekAgo);
+      } catch (e) {
+        return false;
+      }
+    }).length;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -33,12 +51,10 @@ class _UsersDashboardState extends State<UsersDashboard> {
   }
 
   Future<void> _initializeUser() async {
-    // Get current user ID and role
     final user = _supabase.auth.currentUser;
     if (user != null) {
       _currentUserId = user.id;
       
-      // Fetch current user's role
       try {
         final response = await _supabase
             .from('profiles')
@@ -66,7 +82,6 @@ class _UsersDashboardState extends State<UsersDashboard> {
 
       if (mounted) {
         setState(() {
-          // Filter out the current user
           _users = List<Map<String, dynamic>>.from(response)
               .where((user) => user['id'] != _currentUserId)
               .toList();
@@ -112,7 +127,6 @@ class _UsersDashboardState extends State<UsersDashboard> {
   }
 
   Future<void> _updateUserRole(String userId, String newRole) async {
-    // Check if current user is admin
     if (_currentUserRole != 'admin') {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -167,7 +181,6 @@ class _UsersDashboardState extends State<UsersDashboard> {
   }
 
   void _showRoleChangeDialog(Map<String, dynamic> user) {
-    // Check if current user is admin
     if (_currentUserRole != 'admin') {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -313,7 +326,6 @@ class _UsersDashboardState extends State<UsersDashboard> {
         ),
         child: Column(
           children: [
-            // Handle
             Container(
               margin: const EdgeInsets.only(top: 12),
               width: 40,
@@ -324,14 +336,12 @@ class _UsersDashboardState extends State<UsersDashboard> {
               ),
             ),
             
-            // User Info
             Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.all(24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Avatar and Name
                     Center(
                       child: Column(
                         children: [
@@ -387,7 +397,6 @@ class _UsersDashboardState extends State<UsersDashboard> {
                     ),
                     const SizedBox(height: 32),
 
-                    // User Details
                     _buildDetailRow(
                       'Registration Number',
                       user['registration_number'],
@@ -408,7 +417,6 @@ class _UsersDashboardState extends State<UsersDashboard> {
                     ),
                     const SizedBox(height: 32),
 
-                    // Action Button (only show if admin)
                     if (_currentUserRole == 'admin')
                       SizedBox(
                         width: double.infinity,
@@ -536,6 +544,251 @@ class _UsersDashboardState extends State<UsersDashboard> {
     }
   }
 
+  Widget _buildStatisticsSection() {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF6366F1).withOpacity(0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.analytics_rounded,
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Text(
+                'User Statistics',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          
+          // Total Users Card
+          _buildMainStatCard(
+            'Total Users',
+            _totalUsers.toString(),
+            Icons.people_rounded,
+            _newUsersThisWeek > 0 ? '+$_newUsersThisWeek this week' : null,
+          ),
+          
+          const SizedBox(height: 16),
+          
+          // Role Distribution
+          Row(
+            children: [
+              Expanded(
+                child: _buildRoleStatCard(
+                  'Students',
+                  _totalStudents.toString(),
+                  _roleColors['student']!,
+                  Icons.person_rounded,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildRoleStatCard(
+                  'Class Reps',
+                  _totalClassReps.toString(),
+                  _roleColors['class_rep']!,
+                  Icons.people_rounded,
+                ),
+              ),
+            ],
+          ),
+          
+          const SizedBox(height: 12),
+          
+          Row(
+            children: [
+              Expanded(
+                child: _buildRoleStatCard(
+                  'Lecturers',
+                  _totalLecturers.toString(),
+                  _roleColors['lecturer']!,
+                  Icons.school_rounded,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildRoleStatCard(
+                  'Admins',
+                  _totalAdmins.toString(),
+                  _roleColors['admin']!,
+                  Icons.admin_panel_settings_rounded,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMainStatCard(String label, String value, IconData icon, String? subtitle) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF6366F1).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              icon,
+              color: const Color(0xFF6366F1),
+              size: 32,
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.black54,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.trending_up_rounded,
+                        size: 16,
+                        color: Color(0xFF10B981),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        subtitle,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF10B981),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRoleStatCard(String label, String value, Color color, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  icon,
+                  color: color,
+                  size: 20,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 12,
+              color: Colors.black54,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -554,13 +807,15 @@ class _UsersDashboardState extends State<UsersDashboard> {
       ),
       body: Column(
         children: [
+          // Statistics Section
+          if (!_isLoading) _buildStatisticsSection(),
+
           // Search and Filter
           Container(
             padding: const EdgeInsets.all(16),
             color: Colors.white,
             child: Column(
               children: [
-                // Search Bar
                 TextField(
                   onChanged: (value) {
                     setState(() => _searchQuery = value);
@@ -579,7 +834,6 @@ class _UsersDashboardState extends State<UsersDashboard> {
                 ),
                 const SizedBox(height: 12),
                 
-                // Role Filter
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
