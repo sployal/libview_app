@@ -89,7 +89,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           'full_name': _fullNameController.text.trim(),
           'username': _usernameController.text.trim(),
           'registration_number': _registrationNumberController.text.trim(),
-          'avatar_url': _avatarUrlController.text.trim(),
+          'avatar_url': _avatarUrlController.text.trim().isEmpty 
+              ? null 
+              : _avatarUrlController.text.trim(),
           'updated_at': DateTime.now().toIso8601String(),
         }).eq('id', user.id);
 
@@ -250,12 +252,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                     ),
                                   ),
                             const SizedBox(height: 12),
-                            Text(
+                            const Text(
                               'Profile Picture',
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
-                                color: Colors.grey[800],
+                                color: Color(0xFF1F2937),
                               ),
                             ),
                             const SizedBox(height: 4),
@@ -421,9 +423,20 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       ),
       child: TextFormField(
         controller: controller,
+        style: const TextStyle(
+          color: Color(0xFF1F2937),
+          fontWeight: FontWeight.w500,
+        ),
         decoration: InputDecoration(
           labelText: label,
+          labelStyle: const TextStyle(
+            color: Color(0xFF1F2937),
+            fontWeight: FontWeight.w600,
+          ),
           hintText: hint,
+          hintStyle: TextStyle(
+            color: Colors.grey[400],
+          ),
           prefixIcon: Icon(icon, color: const Color(0xFF6366F1)),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(16),
