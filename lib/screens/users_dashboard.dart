@@ -204,13 +204,14 @@ class _UsersDashboardState extends State<UsersDashboard> {
               style: const TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
+                color: Colors.black,
               ),
             ),
             Text(
               '@${user['username']}',
               style: const TextStyle(
                 fontSize: 14,
-                color: Color(0xFF6B7280),
+                color: Colors.black87,
               ),
             ),
             const SizedBox(height: 20),
@@ -371,13 +372,14 @@ class _UsersDashboardState extends State<UsersDashboard> {
                             style: const TextStyle(
                               fontSize: 24,
                               fontWeight: FontWeight.bold,
+                              color: Colors.black,
                             ),
                           ),
                           Text(
                             '@${user['username']}',
                             style: const TextStyle(
                               fontSize: 16,
-                              color: Color(0xFF6B7280),
+                              color: Colors.black87,
                             ),
                           ),
                         ],
@@ -464,7 +466,7 @@ class _UsersDashboardState extends State<UsersDashboard> {
                   label,
                   style: const TextStyle(
                     fontSize: 12,
-                    color: Color(0xFF6B7280),
+                    color: Colors.black54,
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -473,7 +475,7 @@ class _UsersDashboardState extends State<UsersDashboard> {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: valueColor ?? const Color(0xFF1F2937),
+                    color: valueColor ?? Colors.black,
                   ),
                 ),
               ],
@@ -720,13 +722,17 @@ class _UsersDashboardState extends State<UsersDashboard> {
           style: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 16,
+            color: Colors.black,
           ),
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 4),
-            Text('@${user['username']}'),
+            Text(
+              '@${user['username']}',
+              style: const TextStyle(color: Colors.black87),
+            ),
             const SizedBox(height: 6),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
