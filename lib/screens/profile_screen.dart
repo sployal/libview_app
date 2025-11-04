@@ -12,7 +12,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _supabase = Supabase.instance.client;
   String? _fullName;
   String? _email;
+  String? _username;
   String? _registrationNumber;
+  String? _avatarUrl;
+  String? _role;
   bool _isLoading = true;
 
   @override
@@ -25,10 +28,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
     try {
       final user = _supabase.auth.currentUser;
       if (user != null) {
+        // Fetch profile data from profiles table
+        final profileData = await _supabase
+            .from('profiles')
+            .select('full_name, username, registration_number, role, avatar_url')
+            .eq('id', user.id)
+            .single();
+
         setState(() {
           _email = user.email;
-          _fullName = user.userMetadata?['full_name'] as String?;
-          _registrationNumber = user.userMetadata?['registration_number'] as String?;
+          _fullName = profileData['full_name'] as String?;
+          _username = profileData['username'] as String?;
+          _registrationNumber = profileData['registration_number'] as String?;
+          _role = profileData['role'] as String?;
+          _avatarUrl = profileData['avatar_url'] as String?;
           _isLoading = false;
         });
       }
@@ -205,257 +218,322 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
               ),
             )
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                children: [
-                  // Profile Header
-                  Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 15,
-                          offset: const Offset(0, 5),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(40),
+          : RefreshIndicator(
+              color: const Color(0xFF6366F1),
+              onRefresh: _loadUserData,
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  children: [
+                    // Profile Header
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 15,
+                            offset: const Offset(0, 5),
                           ),
-                          child: Center(
-                            child: Text(
-                              _getInitials(_fullName ?? 'User'),
-                              style: const TextStyle(
-                                fontSize: 32,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          _fullName ?? 'User Name',
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF1F2937),
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          _email ?? 'email@example.com',
-                          style: const TextStyle(
-                            fontSize: 14,
-                            color: Color(0xFF6B7280),
-                          ),
-                        ),
-                        if (_registrationNumber != null) ...[
-                          const SizedBox(height: 12),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF6366F1).withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                color: const Color(0xFF6366F1).withOpacity(0.3),
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.badge_rounded,
-                                  size: 16,
-                                  color: Color(0xFF6366F1),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          // Avatar
+                          _avatarUrl != null && _avatarUrl!.isNotEmpty
+                              ? CircleAvatar(
+                                  radius: 40,
+                                  backgroundImage: NetworkImage(_avatarUrl!),
+                                  backgroundColor: Colors.grey[200],
+                                )
+                              : Container(
+                                  width: 80,
+                                  height: 80,
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                                    borderRadius: BorderRadius.circular(40),
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      _getInitials(_fullName ?? 'User'),
+                                      style: const TextStyle(
+                                        fontSize: 32,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
                                 ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  _registrationNumber!,
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: Color(0xFF6366F1),
+                          const SizedBox(height: 16),
+                          Text(
+                            _fullName ?? 'User Name',
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF1F2937),
+                            ),
+                          ),
+                          if (_username != null) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              '@$_username',
+                              style: const TextStyle(
+                                fontSize: 14,
+                                color: Color(0xFF6B7280),
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 4),
+                          Text(
+                            _email ?? 'email@example.com',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Color(0xFF6B7280),
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              // Registration Number Badge
+                              if (_registrationNumber != null) ...[
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF6366F1).withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: const Color(0xFF6366F1).withOpacity(0.3),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        Icons.badge_rounded,
+                                        size: 16,
+                                        color: Color(0xFF6366F1),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        _registrationNumber!,
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: Color(0xFF6366F1),
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],
-                            ),
+                              // Role Badge
+                              if (_role != null) ...[
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 8,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: _getRoleColor(_role!).withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: _getRoleColor(_role!).withOpacity(0.3),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        _getRoleIcon(_role!),
+                                        size: 16,
+                                        color: _getRoleColor(_role!),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        _formatRole(_role!),
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: _getRoleColor(_role!),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                         ],
-                      ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 24),
+                    const SizedBox(height: 24),
 
-                  // Statistics
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 15,
-                          offset: const Offset(0, 5),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Statistics',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Color(0xFF1F2937),
+                    // Statistics
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 15,
+                            offset: const Offset(0, 5),
                           ),
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildStatCard(
-                                'Downloads',
-                                '24',
-                                Icons.download_rounded,
-                                const Color(0xFF6366F1),
-                              ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Statistics',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF1F2937),
                             ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: _buildStatCard(
-                                'Subjects',
-                                '12',
-                                Icons.book_rounded,
-                                const Color(0xFF10B981),
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildStatCard(
+                                  'Downloads',
+                                  '24',
+                                  Icons.download_rounded,
+                                  const Color(0xFF6366F1),
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildStatCard(
-                                'Study Hours',
-                                '156',
-                                Icons.schedule_rounded,
-                                const Color(0xFFEF4444),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: _buildStatCard(
+                                  'Subjects',
+                                  '12',
+                                  Icons.book_rounded,
+                                  const Color(0xFF10B981),
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: _buildStatCard(
-                                'Achievements',
-                                '8',
-                                Icons.emoji_events_rounded,
-                                const Color(0xFFF59E0B),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _buildStatCard(
+                                  'Study Hours',
+                                  '156',
+                                  Icons.schedule_rounded,
+                                  const Color(0xFFEF4444),
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                      ],
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: _buildStatCard(
+                                  'Achievements',
+                                  '8',
+                                  Icons.emoji_events_rounded,
+                                  const Color(0xFFF59E0B),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 24),
+                    const SizedBox(height: 24),
 
-                  // Menu Items
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.05),
-                          blurRadius: 15,
-                          offset: const Offset(0, 5),
-                        ),
-                      ],
+                    // Menu Items
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 15,
+                            offset: const Offset(0, 5),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          _buildMenuItem(
+                            'Notifications',
+                            Icons.notifications_rounded,
+                            const Color(0xFF6366F1),
+                            () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Notifications coming soon!'),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            },
+                          ),
+                          _buildDivider(),
+                          _buildMenuItem(
+                            'Storage Usage',
+                            Icons.storage_rounded,
+                            const Color(0xFF10B981),
+                            () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Storage usage coming soon!'),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            },
+                          ),
+                          _buildDivider(),
+                          _buildMenuItem(
+                            'Help & Support',
+                            Icons.help_outline_rounded,
+                            const Color(0xFFF59E0B),
+                            () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Help & Support coming soon!'),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            },
+                          ),
+                          _buildDivider(),
+                          _buildMenuItem(
+                            'About',
+                            Icons.info_outline_rounded,
+                            const Color(0xFF8B5CF6),
+                            () {
+                              _showAboutDialog();
+                            },
+                          ),
+                          _buildDivider(),
+                          _buildMenuItem(
+                            'Sign Out',
+                            Icons.logout_rounded,
+                            const Color(0xFFEF4444),
+                            _signOut,
+                            isDestructive: true,
+                          ),
+                        ],
+                      ),
                     ),
-                    child: Column(
-                      children: [
-                        _buildMenuItem(
-                          'Notifications',
-                          Icons.notifications_rounded,
-                          const Color(0xFF6366F1),
-                          () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Notifications coming soon!'),
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
-                          },
-                        ),
-                        _buildDivider(),
-                        _buildMenuItem(
-                          'Storage Usage',
-                          Icons.storage_rounded,
-                          const Color(0xFF10B981),
-                          () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Storage usage coming soon!'),
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
-                          },
-                        ),
-                        _buildDivider(),
-                        _buildMenuItem(
-                          'Help & Support',
-                          Icons.help_outline_rounded,
-                          const Color(0xFFF59E0B),
-                          () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Help & Support coming soon!'),
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
-                          },
-                        ),
-                        _buildDivider(),
-                        _buildMenuItem(
-                          'About',
-                          Icons.info_outline_rounded,
-                          const Color(0xFF8B5CF6),
-                          () {
-                            _showAboutDialog();
-                          },
-                        ),
-                        _buildDivider(),
-                        _buildMenuItem(
-                          'Sign Out',
-                          Icons.logout_rounded,
-                          const Color(0xFFEF4444),
-                          _signOut,
-                          isDestructive: true,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 40),
-                ],
+                    const SizedBox(height: 40),
+                  ],
+                ),
               ),
             ),
     );
@@ -466,6 +544,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (parts.isEmpty) return 'U';
     if (parts.length == 1) return parts[0][0].toUpperCase();
     return '${parts[0][0]}${parts[parts.length - 1][0]}'.toUpperCase();
+  }
+
+  Color _getRoleColor(String role) {
+    switch (role.toLowerCase()) {
+      case 'admin':
+        return const Color(0xFFEF4444);
+      case 'lecturer':
+        return const Color(0xFF8B5CF6);
+      case 'class_rep':
+        return const Color(0xFFF59E0B);
+      case 'student':
+      default:
+        return const Color(0xFF10B981);
+    }
+  }
+
+  IconData _getRoleIcon(String role) {
+    switch (role.toLowerCase()) {
+      case 'admin':
+        return Icons.admin_panel_settings_rounded;
+      case 'lecturer':
+        return Icons.school_rounded;
+      case 'class_rep':
+        return Icons.people_rounded;
+      case 'student':
+      default:
+        return Icons.person_rounded;
+    }
+  }
+
+  String _formatRole(String role) {
+    switch (role.toLowerCase()) {
+      case 'class_rep':
+        return 'Class Rep';
+      default:
+        return role[0].toUpperCase() + role.substring(1);
+    }
   }
 
   Widget _buildStatCard(

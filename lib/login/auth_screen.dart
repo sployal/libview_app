@@ -29,11 +29,10 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     
-    // Listen for auth state changes (including email confirmation)
+    // Listen for auth state changes
     Supabase.instance.client.auth.onAuthStateChange.listen((data) {
       final event = data.event;
       if (event == AuthChangeEvent.signedIn) {
-        // User is signed in, navigation will be handled by main.dart
         debugPrint('User signed in successfully');
       }
     });
@@ -56,6 +55,41 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     setState(() => _isLoading = true);
 
     try {
+      // Check if registration number already exists
+      final existingProfile = await Supabase.instance.client
+          .from('profiles')
+          .select('registration_number')
+          .eq('registration_number', _registrationNumberController.text.trim())
+          .maybeSingle();
+
+      if (existingProfile != null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Row(
+                children: [
+                  Icon(Icons.error_outline, color: Colors.white),
+                  SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Registration number already exists',
+                      style: TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: const Color(0xFFEF4444),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              margin: const EdgeInsets.all(16),
+            ),
+          );
+        }
+        setState(() => _isLoading = false);
+        return;
+      }
+
+      // Sign up user
       final response = await Supabase.instance.client.auth.signUp(
         email: _emailController.text.trim(),
         password: _passwordController.text,
@@ -63,7 +97,6 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
           'full_name': _fullNameController.text.trim(),
           'registration_number': _registrationNumberController.text.trim(),
         },
-        // Add email redirect for deep linking
         emailRedirectTo: 'io.supabase.edupal://login-callback/',
       );
 
@@ -77,7 +110,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                   SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'Account created successfully! Please check your email to verify.',
+                      'Account created! Please check your email to verify.',
                       style: TextStyle(fontWeight: FontWeight.w500),
                     ),
                   ),
@@ -90,13 +123,14 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
               duration: const Duration(seconds: 5),
             ),
           );
-          // Switch to login tab
-          _tabController.animateTo(0);
           
-          // Clear sign up form
+          // Switch to login tab and clear form
+          _tabController.animateTo(0);
           _fullNameController.clear();
           _registrationNumberController.clear();
           _confirmPasswordController.clear();
+          _emailController.clear();
+          _passwordController.clear();
         }
       }
     } on AuthException catch (error) {
@@ -162,8 +196,6 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
-      
-      // Navigation is handled by the auth state listener in main.dart
     } on AuthException catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
