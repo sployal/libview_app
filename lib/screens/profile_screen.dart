@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'visibility_controller.dart';
 import 'users_dashboard.dart';
+import 'edit_profile.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -224,13 +225,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               onTap: () {
                 Navigator.pop(context);
-                // TODO: Navigate to edit profile screen
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Edit profile coming soon!'),
-                    behavior: SnackBarBehavior.floating,
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const EditProfileScreen(),
                   ),
-                );
+                ).then((result) {
+                  // Reload profile data if changes were saved
+                  if (result == true) {
+                    _loadUserData();
+                  }
+                });
               },
             ),
             const SizedBox(height: 8),

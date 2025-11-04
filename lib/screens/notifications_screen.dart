@@ -302,8 +302,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 const SizedBox(height: 24),
                 TextField(
                   controller: titleController,
+                  style: const TextStyle(
+                    color: Color(0xFF1F2937),
+                    fontSize: 16,
+                  ),
                   decoration: InputDecoration(
                     labelText: 'Title',
+                    labelStyle: const TextStyle(
+                      color: Color(0xFF6B7280),
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -320,8 +327,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 TextField(
                   controller: messageController,
                   maxLines: 4,
+                  style: const TextStyle(
+                    color: Color(0xFF1F2937),
+                    fontSize: 16,
+                  ),
                   decoration: InputDecoration(
                     labelText: 'Message',
+                    labelStyle: const TextStyle(
+                      color: Color(0xFF6B7280),
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -337,8 +351,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 const SizedBox(height: 16),
                 DropdownButtonFormField<String>(
                   value: selectedType,
+                  style: const TextStyle(
+                    color: Color(0xFF1F2937),
+                    fontSize: 16,
+                  ),
                   decoration: InputDecoration(
                     labelText: 'Type',
+                    labelStyle: const TextStyle(
+                      color: Color(0xFF6B7280),
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -886,69 +907,106 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     ],
                   ),
                 ),
-                // Edit and Delete buttons
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (canEdit)
-                      IconButton(
-                        icon: const Icon(Icons.edit_outlined),
-                        color: const Color(0xFF6366F1),
-                        iconSize: 20,
-                        padding: const EdgeInsets.all(4),
-                        constraints: const BoxConstraints(),
-                        onPressed: () => _editNotification(notification),
-                      ),
-                    if (canEdit) const SizedBox(width: 4),
-                    if (canDelete)
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline_rounded),
-                        color: const Color(0xFFEF4444),
-                        iconSize: 20,
-                        padding: const EdgeInsets.all(4),
-                        constraints: const BoxConstraints(),
-                        onPressed: () {
-                          showDialog(
-                            context: context,
-                            builder: (ctx) => AlertDialog(
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
+                // More options dropdown
+                if (canEdit || canDelete)
+                  PopupMenuButton<String>(
+                    icon: const Icon(
+                      Icons.more_vert_rounded,
+                      color: Color(0xFF6B7280),
+                      size: 20,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    offset: const Offset(0, 40),
+                    itemBuilder: (context) => [
+                      if (canEdit)
+                        PopupMenuItem(
+                          value: 'edit',
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.edit_outlined,
+                                size: 20,
+                                color: const Color(0xFF6366F1),
                               ),
-                              title: const Text(
-                                'Delete Notification',
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                              content: Text(
-                                isOwnNotification
-                                    ? 'Are you sure you want to delete this notification?'
-                                    : 'As an admin, you are about to delete ${notification.senderName}\'s notification. Continue?',
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.of(ctx).pop(),
-                                  child: const Text('Cancel'),
+                              const SizedBox(width: 12),
+                              Text(
+                                'Edit',
+                                style: TextStyle(
+                                  color: const Color(0xFF1F2937),
+                                  fontWeight: FontWeight.w500,
                                 ),
-                                ElevatedButton(
-                                  onPressed: () {
-                                    Navigator.of(ctx).pop();
-                                    _deleteNotification(notification.id);
-                                  },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFFEF4444),
-                                    foregroundColor: Colors.white,
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                  ),
-                                  child: const Text('Delete'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      if (canDelete)
+                        PopupMenuItem(
+                          value: 'delete',
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.delete_outline_rounded,
+                                size: 20,
+                                color: const Color(0xFFEF4444),
+                              ),
+                              const SizedBox(width: 12),
+                              Text(
+                                'Delete',
+                                style: TextStyle(
+                                  color: const Color(0xFFEF4444),
+                                  fontWeight: FontWeight.w500,
                                 ),
-                              ],
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                    onSelected: (value) {
+                      if (value == 'edit') {
+                        _editNotification(notification);
+                      } else if (value == 'delete') {
+                        showDialog(
+                          context: context,
+                          builder: (ctx) => AlertDialog(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
                             ),
-                          );
-                        },
-                      ),
-                  ],
-                ),
+                            title: const Text(
+                              'Delete Notification',
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                            content: Text(
+                              isOwnNotification
+                                  ? 'Are you sure you want to delete this notification?'
+                                  : 'As an admin, you are about to delete ${notification.senderName}\'s notification. Continue?',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.of(ctx).pop(),
+                                child: const Text('Cancel'),
+                              ),
+                              ElevatedButton(
+                                onPressed: () {
+                                  Navigator.of(ctx).pop();
+                                  _deleteNotification(notification.id);
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFFEF4444),
+                                  foregroundColor: Colors.white,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                child: const Text('Delete'),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+                    },
+                  ),
               ],
             ),
           ),
