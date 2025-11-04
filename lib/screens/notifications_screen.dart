@@ -490,6 +490,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final typeIcon = _getTypeIcon(notification.type);
     final currentUserId = Supabase.instance.client.auth.currentUser?.id;
     final isOwnNotification = notification.senderId == currentUserId;
+    final canDelete = isOwnNotification || currentUserRole == 'admin';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -621,8 +622,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     ],
                   ),
                 ),
-                // Delete button for own notifications
-                if (isOwnNotification)
+                // Delete button for own notifications or admin
+                if (canDelete)
                   IconButton(
                     icon: const Icon(Icons.delete_outline_rounded),
                     color: const Color(0xFFEF4444),
@@ -631,23 +632,36 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       showDialog(
                         context: context,
                         builder: (ctx) => AlertDialog(
-                          title: const Text('Delete Notification'),
-                          content: const Text(
-                              'Are you sure you want to delete this notification?'),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          title: const Text(
+                            'Delete Notification',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          content: Text(
+                            isOwnNotification
+                                ? 'Are you sure you want to delete this notification?'
+                                : 'As an admin, you are about to delete ${notification.senderName}\'s notification. Continue?',
+                          ),
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.of(ctx).pop(),
                               child: const Text('Cancel'),
                             ),
-                            TextButton(
+                            ElevatedButton(
                               onPressed: () {
                                 Navigator.of(ctx).pop();
                                 _deleteNotification(notification.id);
                               },
-                              child: const Text(
-                                'Delete',
-                                style: TextStyle(color: Color(0xFFEF4444)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFEF4444),
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
                               ),
+                              child: const Text('Delete'),
                             ),
                           ],
                         ),
