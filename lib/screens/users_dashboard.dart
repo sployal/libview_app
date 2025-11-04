@@ -839,97 +839,100 @@ class _UsersDashboardState extends State<UsersDashboard> {
           ),
         ],
       ),
-      body: Column(
-        children: [
-          // Statistics Section
-          if (!_isLoading) _buildStatisticsSection(),
-
-          // Search and Filter
-          Container(
-            padding: const EdgeInsets.all(16),
-            color: Colors.white,
-            child: Column(
-              children: [
-                TextField(
-                  onChanged: (value) {
-                    setState(() => _searchQuery = value);
-                    _filterUsers();
-                  },
-                  decoration: InputDecoration(
-                    hintText: 'Search users...',
-                    prefixIcon: const Icon(Icons.search_rounded),
-                    filled: true,
-                    fillColor: const Color(0xFFF8FAFC),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
+              ),
+            )
+          : CustomScrollView(
+              slivers: [
+                // Statistics Section
+                SliverToBoxAdapter(
+                  child: _buildStatisticsSection(),
                 ),
-                const SizedBox(height: 12),
-                
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      _buildFilterChip('All', 'all'),
-                      ..._roles.map((role) => _buildFilterChip(
-                            _formatRole(role),
-                            role,
-                          )),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
 
-          // Users List
-          Expanded(
-            child: _isLoading
-                ? const Center(
-                    child: CircularProgressIndicator(
-                      valueColor:
-                          AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
-                    ),
-                  )
-                : _filteredUsers.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.people_outline_rounded,
-                              size: 80,
-                              color: Colors.grey[300],
+                // Search and Filter Section
+                SliverToBoxAdapter(
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    color: Colors.white,
+                    child: Column(
+                      children: [
+                        TextField(
+                          onChanged: (value) {
+                            setState(() => _searchQuery = value);
+                            _filterUsers();
+                          },
+                          decoration: InputDecoration(
+                            hintText: 'Search users...',
+                            prefixIcon: const Icon(Icons.search_rounded),
+                            filled: true,
+                            fillColor: const Color(0xFFF8FAFC),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
                             ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'No users found',
-                              style: TextStyle(
-                                fontSize: 18,
-                                color: Colors.grey[600],
-                                fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              _buildFilterChip('All', 'all'),
+                              ..._roles.map((role) => _buildFilterChip(
+                                    _formatRole(role),
+                                    role,
+                                  )),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // Users List
+                _filteredUsers.isEmpty
+                    ? SliverFillRemaining(
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.people_outline_rounded,
+                                size: 80,
+                                color: Colors.grey[300],
                               ),
-                            ),
-                          ],
+                              const SizedBox(height: 16),
+                              Text(
+                                'No users found',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  color: Colors.grey[600],
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       )
-                    : RefreshIndicator(
-                        color: const Color(0xFF6366F1),
-                        onRefresh: _loadUsers,
-                        child: ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: _filteredUsers.length,
-                          itemBuilder: (context, index) {
-                            final user = _filteredUsers[index];
-                            return _buildUserCard(user);
-                          },
+                    : SliverPadding(
+                        padding: const EdgeInsets.all(16),
+                        sliver: SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) {
+                              final user = _filteredUsers[index];
+                              return _buildUserCard(user);
+                            },
+                            childCount: _filteredUsers.length,
+                          ),
                         ),
                       ),
-          ),
-        ],
-      ),
+              ],
+            ),
     );
   }
 
