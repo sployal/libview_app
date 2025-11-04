@@ -683,6 +683,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   void _showNotificationDetails(NotificationItem notification) {
+    // Mark as read when opening the notification
+    if (!notification.isRead) {
+      _markAsRead(notification.id);
+    }
+    
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
