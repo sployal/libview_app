@@ -17,6 +17,7 @@ class _UsersDashboardState extends State<UsersDashboard> {
   String _selectedRoleFilter = 'all';
   String? _currentUserId;
   String? _currentUserRole;
+  bool _isStatsExpanded = true;
 
   final List<String> _roles = ['student', 'class_rep', 'lecturer', 'admin'];
   final Map<String, Color> _roleColors = {
@@ -26,12 +27,12 @@ class _UsersDashboardState extends State<UsersDashboard> {
     'student': const Color(0xFF10B981),
   };
 
-  // Statistics
-  int get _totalUsers => _users.length;
-  int get _totalStudents => _users.where((u) => u['role'] == 'student').length;
-  int get _totalClassReps => _users.where((u) => u['role'] == 'class_rep').length;
-  int get _totalLecturers => _users.where((u) => u['role'] == 'lecturer').length;
-  int get _totalAdmins => _users.where((u) => u['role'] == 'admin').length;
+  // Statistics (including current user)
+  int get _totalUsers => _users.length + 1; // +1 for current user
+  int get _totalStudents => _users.where((u) => u['role'] == 'student').length + (_currentUserRole == 'student' ? 1 : 0);
+  int get _totalClassReps => _users.where((u) => u['role'] == 'class_rep').length + (_currentUserRole == 'class_rep' ? 1 : 0);
+  int get _totalLecturers => _users.where((u) => u['role'] == 'lecturer').length + (_currentUserRole == 'lecturer' ? 1 : 0);
+  int get _totalAdmins => _users.where((u) => u['role'] == 'admin').length + (_currentUserRole == 'admin' ? 1 : 0);
   int get _newUsersThisWeek {
     final weekAgo = DateTime.now().subtract(const Duration(days: 7));
     return _users.where((u) {
@@ -545,7 +546,9 @@ class _UsersDashboardState extends State<UsersDashboard> {
   }
 
   Widget _buildStatisticsSection() {
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -589,65 +592,96 @@ class _UsersDashboardState extends State<UsersDashboard> {
                   color: Colors.white,
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          
-          // Total Users Card
-          _buildMainStatCard(
-            'Total Users',
-            _totalUsers.toString(),
-            Icons.people_rounded,
-            _newUsersThisWeek > 0 ? '+$_newUsersThisWeek this week' : null,
-          ),
-          
-          const SizedBox(height: 16),
-          
-          // Role Distribution
-          Row(
-            children: [
-              Expanded(
-                child: _buildRoleStatCard(
-                  'Students',
-                  _totalStudents.toString(),
-                  _roleColors['student']!,
-                  Icons.person_rounded,
+              const Spacer(),
+              IconButton(
+                onPressed: () {
+                  setState(() {
+                    _isStatsExpanded = !_isStatsExpanded;
+                  });
+                },
+                icon: AnimatedRotation(
+                  turns: _isStatsExpanded ? 0 : 0.5,
+                  duration: const Duration(milliseconds: 300),
+                  child: const Icon(
+                    Icons.keyboard_arrow_up_rounded,
+                    color: Colors.white,
+                    size: 28,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildRoleStatCard(
-                  'Class Reps',
-                  _totalClassReps.toString(),
-                  _roleColors['class_rep']!,
-                  Icons.people_rounded,
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.white.withOpacity(0.2),
                 ),
               ),
             ],
           ),
           
-          const SizedBox(height: 12),
-          
-          Row(
-            children: [
-              Expanded(
-                child: _buildRoleStatCard(
-                  'Lecturers',
-                  _totalLecturers.toString(),
-                  _roleColors['lecturer']!,
-                  Icons.school_rounded,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildRoleStatCard(
-                  'Admins',
-                  _totalAdmins.toString(),
-                  _roleColors['admin']!,
-                  Icons.admin_panel_settings_rounded,
-                ),
-              ),
-            ],
+          AnimatedSize(
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+            child: _isStatsExpanded
+                ? Column(
+                    children: [
+                      const SizedBox(height: 20),
+                      
+                      // Total Users Card
+                      _buildMainStatCard(
+                        'Total Users',
+                        _totalUsers.toString(),
+                        Icons.people_rounded,
+                        _newUsersThisWeek > 0 ? '+$_newUsersThisWeek this week' : null,
+                      ),
+                      
+                      const SizedBox(height: 16),
+                      
+                      // Role Distribution
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildRoleStatCard(
+                              'Students',
+                              _totalStudents.toString(),
+                              _roleColors['student']!,
+                              Icons.person_rounded,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildRoleStatCard(
+                              'Class Reps',
+                              _totalClassReps.toString(),
+                              _roleColors['class_rep']!,
+                              Icons.people_rounded,
+                            ),
+                          ),
+                        ],
+                      ),
+                      
+                      const SizedBox(height: 12),
+                      
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildRoleStatCard(
+                              'Lecturers',
+                              _totalLecturers.toString(),
+                              _roleColors['lecturer']!,
+                              Icons.school_rounded,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildRoleStatCard(
+                              'Admins',
+                              _totalAdmins.toString(),
+                              _roleColors['admin']!,
+                              Icons.admin_panel_settings_rounded,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  )
+                : const SizedBox.shrink(),
           ),
         ],
       ),
