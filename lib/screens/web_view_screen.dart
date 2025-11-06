@@ -31,10 +31,33 @@ class _WebViewScreenState extends State<WebViewScreen> {
     _initializeWebView();
   }
 
+  // Convert Google Drive URL to preview URL
+  String _convertToPreviewUrl(String url) {
+    try {
+      final fileId = _extractFileId(url);
+      
+      if (fileId != null) {
+        // Return the preview URL format which has minimal UI and no comments
+        return 'https://drive.google.com/file/d/$fileId/preview';
+      }
+      
+      // If we can't extract file ID, return original URL
+      return url;
+    } catch (e) {
+      print('Error converting to preview URL: $e');
+      return url;
+    }
+  }
+
   void _initializeWebView() {
+    // Convert the URL to preview format before loading
+    final previewUrl = _convertToPreviewUrl(widget.url);
+    
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(const Color(0x00000000))
+      // ⭐ ENABLE ZOOM SUPPORT - This is the key addition
+      ..enableZoom(true)
       ..setNavigationDelegate(
         NavigationDelegate(
           onProgress: (int progress) {
@@ -50,6 +73,45 @@ class _WebViewScreenState extends State<WebViewScreen> {
             setState(() {
               isLoading = false;
             });
+            
+            // ⭐ Inject JavaScript to enhance PDF zoom and hide only the "Open with" button
+            _controller.runJavaScript('''
+              // Enable viewport zooming for better PDF viewing
+              var meta = document.createElement('meta');
+              meta.name = 'viewport';
+              meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=10.0, user-scalable=yes';
+              document.getElementsByTagName('head')[0].appendChild(meta);
+              
+              // Function to hide only the "Open with Google Drive" button
+              function hideOpenButton() {
+                // Target the specific floating button (usually in top-right corner)
+                var buttons = document.querySelectorAll('button, a');
+                buttons.forEach(function(btn) {
+                  var ariaLabel = btn.getAttribute('aria-label') || '';
+                  var title = btn.getAttribute('title') || '';
+                  var text = btn.textContent || '';
+                  
+                  // Only hide if it's the "Open with" button
+                  if (ariaLabel.toLowerCase().includes('open with') ||
+                      title.toLowerCase().includes('open with') ||
+                      text.toLowerCase().includes('open with')) {
+                    btn.style.display = 'none';
+                  }
+                });
+                
+                // Also target the specific Google Drive classes for the open button
+                var openButtons = document.querySelectorAll('.ndfHFb-c4YZDc-Wrql6b');
+                openButtons.forEach(function(btn) {
+                  btn.style.display = 'none';
+                });
+              }
+              
+              // Run immediately and after delays to catch dynamic content
+              hideOpenButton();
+              setTimeout(hideOpenButton, 500);
+              setTimeout(hideOpenButton, 1500);
+              setTimeout(hideOpenButton, 3000);
+            ''');
           },
           onWebResourceError: (WebResourceError error) {
             setState(() {
@@ -58,6 +120,13 @@ class _WebViewScreenState extends State<WebViewScreen> {
             });
           },
           onNavigationRequest: (NavigationRequest request) {
+            // Block navigation to comment-related URLs
+            if (request.url.contains('/comments') ||
+                request.url.contains('/getcomments') ||
+                request.url.contains('/comment')) {
+              return NavigationDecision.prevent;
+            }
+            
             if (request.url.contains('drive.google.com') ||
                 request.url.contains('docs.google.com') ||
                 request.url.contains('googleusercontent.com')) {
@@ -67,10 +136,10 @@ class _WebViewScreenState extends State<WebViewScreen> {
           },
         ),
       )
-      ..loadRequest(Uri.parse(widget.url));
+      ..loadRequest(Uri.parse(previewUrl));
   }
 
-  // NEW: Extract file ID from Google Drive URL
+  // Extract file ID from Google Drive URL
   String? _extractFileId(String url) {
     try {
       // Pattern 1: /d/FILE_ID/
@@ -102,7 +171,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
     }
   }
 
-  // UPDATED: Download file with proper metadata extraction
+  // Download file with proper metadata extraction
   Future<void> _downloadFile() async {
     // Step 1: Extract file ID from URL
     final fileId = _extractFileId(widget.url);
