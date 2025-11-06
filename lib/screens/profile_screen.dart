@@ -777,7 +777,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Version 4.25',
+              'Version 4.36',
               style: TextStyle(
                 fontSize: 14,
                 color: Color(0xFF6B7280),

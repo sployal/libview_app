@@ -49,17 +49,31 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     super.dispose();
   }
 
+  // Validate registration number format
+  bool _isValidRegistrationNumber(String regNumber) {
+    final trimmed = regNumber.trim();
+    
+    // Format: 2 letters, 2 digits, /, 5 digits, /, 2 digits
+    // Example: Eb24/46271/20 or EB24/46271/20
+    final regExp = RegExp(r'^[a-zA-Z]{2}\d{2}/\d{5}/\d{2}$');
+    
+    return regExp.hasMatch(trimmed);
+  }
+
   Future<void> _signUp() async {
     if (!_signUpFormKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
+      // Normalize registration number (convert to uppercase for consistency)
+      final normalizedRegNumber = _registrationNumberController.text.trim().toUpperCase();
+
       // Check if registration number already exists
       final existingProfile = await Supabase.instance.client
           .from('profiles')
           .select('registration_number')
-          .eq('registration_number', _registrationNumberController.text.trim())
+          .eq('registration_number', normalizedRegNumber)
           .maybeSingle();
 
       if (existingProfile != null) {
@@ -95,7 +109,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
         password: _passwordController.text,
         data: {
           'full_name': _fullNameController.text.trim(),
-          'registration_number': _registrationNumberController.text.trim(),
+          'registration_number': normalizedRegNumber,
         },
         emailRedirectTo: 'io.supabase.edupal://login-callback/',
       );
@@ -589,6 +603,12 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                   return 'Please enter your full name';
                 }
                 final trimmedValue = value.trim();
+                
+                // Check if name contains only letters and spaces
+                if (!RegExp(r'^[a-zA-Z\s]+$').hasMatch(trimmedValue)) {
+                  return 'Name should only contain letters and spaces';
+                }
+                
                 final nameParts = trimmedValue.split(' ').where((part) => part.isNotEmpty).toList();
                 if (nameParts.length < 2) {
                   return 'Please enter both first and last name';
@@ -602,11 +622,14 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
             _buildTextField(
               controller: _registrationNumberController,
               label: 'Registration Number',
-              hint: 'REG/2024/001',
+              hint: 'eg, Eb24/46271/20',
               icon: Icons.badge_rounded,
               validator: (value) {
                 if (value == null || value.isEmpty) {
                   return 'Please enter your registration number';
+                }
+                if (!_isValidRegistrationNumber(value)) {
+                  return 'Enter your correct registration number (e.g., Eb24/46271/20)';
                 }
                 return null;
               },
