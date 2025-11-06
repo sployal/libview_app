@@ -31,28 +31,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
     _initializeWebView();
   }
 
-  // NEW: Convert Google Drive URL to preview URL
-  String _convertToPreviewUrl(String url) {
-    try {
-      final fileId = _extractFileId(url);
-      
-      if (fileId != null) {
-        // Return the preview URL format which has minimal UI and no comments
-        return 'https://drive.google.com/file/d/$fileId/preview';
-      }
-      
-      // If we can't extract file ID, return original URL
-      return url;
-    } catch (e) {
-      print('Error converting to preview URL: $e');
-      return url;
-    }
-  }
-
   void _initializeWebView() {
-    // Convert the URL to preview format before loading
-    final previewUrl = _convertToPreviewUrl(widget.url);
-    
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setBackgroundColor(const Color(0x00000000))
@@ -79,13 +58,6 @@ class _WebViewScreenState extends State<WebViewScreen> {
             });
           },
           onNavigationRequest: (NavigationRequest request) {
-            // Block navigation to comment-related URLs
-            if (request.url.contains('/comments') ||
-                request.url.contains('/getcomments') ||
-                request.url.contains('/comment')) {
-              return NavigationDecision.prevent;
-            }
-            
             if (request.url.contains('drive.google.com') ||
                 request.url.contains('docs.google.com') ||
                 request.url.contains('googleusercontent.com')) {
@@ -95,10 +67,10 @@ class _WebViewScreenState extends State<WebViewScreen> {
           },
         ),
       )
-      ..loadRequest(Uri.parse(previewUrl));
+      ..loadRequest(Uri.parse(widget.url));
   }
 
-  // Extract file ID from Google Drive URL
+  // NEW: Extract file ID from Google Drive URL
   String? _extractFileId(String url) {
     try {
       // Pattern 1: /d/FILE_ID/
@@ -130,7 +102,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
     }
   }
 
-  // Download file with proper metadata extraction
+  // UPDATED: Download file with proper metadata extraction
   Future<void> _downloadFile() async {
     // Step 1: Extract file ID from URL
     final fileId = _extractFileId(widget.url);
