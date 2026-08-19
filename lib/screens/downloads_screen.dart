@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../services/download_service.dart';
-import 'package:open_file/open_file.dart';
 import 'package:share_plus/share_plus.dart';
 
 class DownloadsScreen extends StatefulWidget {
@@ -35,27 +34,12 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
 
   Future<void> _openFile(DownloadItem download) async {
     try {
-      final result = await OpenFile.open(download.filePath);
-      
-      if (result.type != ResultType.done) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Cannot open file: ${result.message}'),
-              backgroundColor: const Color(0xFFEF4444),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-          );
-        }
-      }
+      await DownloadService.openDownloadedFile(download);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error opening file: $e'),
+            content: Text(e.toString().replaceFirst('Exception: ', '')),
             backgroundColor: const Color(0xFFEF4444),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
@@ -70,8 +54,9 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
   // NEW: Share file function
   Future<void> _shareFile(DownloadItem download) async {
     try {
+      await DownloadService.requestStoragePermission(forOpening: true);
       await Share.shareXFiles(
-        [XFile(download.filePath)],
+        [XFile(download.contentUri ?? download.filePath)],
         text: 'Sharing ${download.name}',
       );
     } catch (e) {
@@ -113,7 +98,10 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
     );
 
     if (confirmed == true) {
-      final success = await DownloadService.deleteDownload(download.filePath);
+      final success = await DownloadService.deleteDownload(
+        download.filePath,
+        contentUri: download.contentUri,
+      );
       
       if (success) {
         _loadDownloads();

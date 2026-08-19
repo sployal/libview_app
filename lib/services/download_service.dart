@@ -1,16 +1,20 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:open_file/open_file.dart';
 
 class DownloadService {
   static final Dio _dio = Dio();
   static const String apiKey = 'AIzaSyBlCLsPvArqlkJecaq_wmBdjb5bIdd23go';
   static const String baseUrl = 'https://www.googleapis.com/drive/v3';
+  static const MethodChannel _downloadsChannel =
+      MethodChannel('com.example.libview/downloads');
   
   // Get Android SDK version
   static Future<int> getAndroidSdkVersion() async {
@@ -22,99 +26,69 @@ class DownloadService {
     return 0;
   }
   
-  // Request storage permission (only for Android 12 and below)
-  static Future<bool> requestStoragePermission() async {
+  // Android 13+ has no storage prompt for PDFs/docs; those are opened via URI.
+  // Android 12 and below still need the Files/Media permission to open Downloads.
+  static Future<bool> requestStoragePermission({bool forOpening = false}) async {
     if (!Platform.isAndroid) {
-      return true; // No permission needed for non-Android platforms
+      return true;
     }
-    
+
     try {
       final sdkInt = await getAndroidSdkVersion();
-      
-      // Android 13+ (API 33+): No storage permission needed for app-specific directories
+
       if (sdkInt >= 33) {
         return true;
       }
-      
-      // Android 12 and below (API 32 and below): Request storage permission
+
+      // MediaStore can save without this; opening still needs it on Android 10–12.
+      if (!forOpening && sdkInt >= 29) {
+        return true;
+      }
+
       if (await Permission.storage.isGranted) {
         return true;
       }
-      
+
       final status = await Permission.storage.request();
-      return status.isGranted;
+      if (status.isGranted) {
+        return true;
+      }
+
+      if (status.isPermanentlyDenied && forOpening) {
+        await openAppSettings();
+      }
+      return false;
     } catch (e) {
       print('Error requesting permission: $e');
-      // If we can't determine version, assume Android 13+ behavior
       return true;
     }
   }
-  
-  // Get Edupal folder path with proper Android 13+ handling
-  static Future<String> getEdupalFolderPath() async {
+
+  // Phone's default Downloads folder (or closest equivalent on iOS/desktop)
+  static Future<String> getDownloadsFolderPath() async {
     try {
-      final sdkInt = Platform.isAndroid ? await getAndroidSdkVersion() : 0;
-      
-      if (Platform.isAndroid && sdkInt >= 33) {
-        // Android 13+: Use app-specific external storage (no permissions needed)
-        final directory = await getExternalStorageDirectory();
-        if (directory == null) {
-          throw Exception('Could not access external storage');
-        }
-        
-        final edupalDir = Directory('${directory.path}/Edupal');
-        if (!await edupalDir.exists()) {
-          await edupalDir.create(recursive: true);
-        }
-        return edupalDir.path;
-      } else if (Platform.isAndroid) {
-        // Android 12 and below: Try public storage first, fallback to app-specific
+      if (Platform.isAndroid) {
         try {
-          final publicPath = '/storage/emulated/0/Edupal';
-          final publicDir = Directory(publicPath);
-          
-          if (!await publicDir.exists()) {
-            await publicDir.create(recursive: true);
+          final downloads = await getDownloadsDirectory();
+          if (downloads != null) {
+            return downloads.path;
           }
-          
-          // Test if we can write to this directory
-          final testFile = File('$publicPath/.test');
-          await testFile.writeAsString('test');
-          await testFile.delete();
-          
-          return publicPath;
-        } catch (e) {
-          // If public storage fails, use app-specific directory
-          print('Public storage not accessible, using app-specific: $e');
-          final directory = await getExternalStorageDirectory();
-          if (directory == null) {
-            throw Exception('Could not access external storage');
-          }
-          
-          final edupalDir = Directory('${directory.path}/Edupal');
-          if (!await edupalDir.exists()) {
-            await edupalDir.create(recursive: true);
-          }
-          return edupalDir.path;
-        }
-      } else {
-        // iOS or other platforms
-        final directory = await getApplicationDocumentsDirectory();
-        final edupalDir = Directory('${directory.path}/Edupal');
-        if (!await edupalDir.exists()) {
-          await edupalDir.create(recursive: true);
-        }
-        return edupalDir.path;
+        } catch (_) {}
+        return '/storage/emulated/0/Download';
       }
+
+      final downloads = await getDownloadsDirectory();
+      if (downloads != null) {
+        if (!await downloads.exists()) {
+          await downloads.create(recursive: true);
+        }
+        return downloads.path;
+      }
+
+      return (await getApplicationDocumentsDirectory()).path;
     } catch (e) {
-      print('Error getting Edupal folder path: $e');
-      // Final fallback
-      final directory = await getApplicationDocumentsDirectory();
-      final edupalDir = Directory('${directory.path}/Edupal');
-      if (!await edupalDir.exists()) {
-        await edupalDir.create(recursive: true);
-      }
-      return edupalDir.path;
+      print('Error getting Downloads folder path: $e');
+      return (await getApplicationDocumentsDirectory()).path;
     }
   }
   
@@ -233,14 +207,13 @@ class DownloadService {
         );
       }
       
-      // Step 4: Get download path
-      final folderPath = await getEdupalFolderPath();
-      final filePath = '$folderPath/$fileName';
+      // Step 4: Download to a temp file, then move into the public Downloads folder
+      final tempDir = await getTemporaryDirectory();
+      final tempPath = '${tempDir.path}/$fileName';
       
-      // Step 5: Download file with progress
       await _dio.download(
         downloadUrl,
-        filePath,
+        tempPath,
         onReceiveProgress: (received, total) {
           if (total != -1 && onProgress != null) {
             final progress = received / total;
@@ -258,29 +231,37 @@ class DownloadService {
           },
         ),
       );
-      
-      // Step 6: Verify file was downloaded correctly
-      final file = File(filePath);
-      if (!await file.exists()) {
+
+      final tempFile = File(tempPath);
+      if (!await tempFile.exists()) {
         return DownloadResult(
           success: false,
           message: 'File download failed',
         );
       }
-      
-      final fileSize = await file.length();
-      
-      // Check if file is too small (might be an error response)
+
+      final fileSize = await tempFile.length();
       if (fileSize < 100) {
-        final content = await file.readAsString();
+        final content = await tempFile.readAsString();
+        await tempFile.delete();
         if (content.contains('<html') || content.contains('<!DOCTYPE') || content.contains('error')) {
-          await file.delete();
           return DownloadResult(
             success: false,
             message: 'Download failed: Invalid file received',
           );
         }
       }
+
+      final saved = await _saveToPublicDownloads(
+        sourcePath: tempPath,
+        fileName: fileName,
+      );
+      final filePath = saved.filePath;
+      try {
+        if (await tempFile.exists()) {
+          await tempFile.delete();
+        }
+      } catch (_) {}
       
       // Step 7: Save download metadata
       await _saveDownloadMetadata(
@@ -288,6 +269,7 @@ class DownloadService {
         subject: subject,
         size: fileSize,
         filePath: filePath,
+        contentUri: saved.contentUri,
       );
       
       return DownloadResult(
@@ -310,6 +292,7 @@ class DownloadService {
     required String subject,
     required int size,
     required String filePath,
+    String? contentUri,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     
@@ -324,6 +307,7 @@ class DownloadService {
       'subject': subject,
       'size': size,
       'filePath': filePath,
+      'contentUri': contentUri,
       'date': DateTime.now().toIso8601String(),
       'type': _getFileType(fileName),
     });
@@ -342,8 +326,7 @@ class DownloadService {
       final validDownloads = <DownloadItem>[];
       for (var json in downloads) {
         final item = DownloadItem.fromJson(json);
-        final file = File(item.filePath);
-        if (await file.exists()) {
+        if (await _downloadExists(item)) {
           validDownloads.add(item);
         }
       }
@@ -363,12 +346,68 @@ class DownloadService {
     }
   }
   
+  static Future<bool> _downloadExists(DownloadItem item) async {
+    if (Platform.isAndroid) {
+      try {
+        final exists = await _downloadsChannel.invokeMethod<bool>(
+          'downloadExists',
+          {
+            'uri': item.contentUri,
+            'filePath': item.filePath,
+            'fileName': item.name,
+          },
+        );
+        return exists == true;
+      } catch (_) {}
+    }
+    return File(item.filePath).exists();
+  }
+
+  static Future<void> openDownloadedFile(DownloadItem item) async {
+    final hasPermission = await requestStoragePermission(forOpening: true);
+    if (!hasPermission) {
+      throw Exception('Storage permission is needed to open this file');
+    }
+
+    if (Platform.isAndroid) {
+      try {
+        await _downloadsChannel.invokeMethod<bool>(
+          'openDownload',
+          {
+            'uri': item.contentUri,
+            'filePath': item.filePath,
+            'fileName': item.name,
+            'mimeType': _getMimeType(item.name),
+          },
+        );
+      } on PlatformException catch (e) {
+        throw Exception(e.message ?? 'Could not open this file');
+      }
+      return;
+    }
+
+    final result = await OpenFile.open(item.filePath);
+    if (result.type != ResultType.done) {
+      throw Exception(result.message);
+    }
+  }
+
   // Delete download
-  static Future<bool> deleteDownload(String filePath) async {
+  static Future<bool> deleteDownload(String filePath, {String? contentUri}) async {
     try {
-      final file = File(filePath);
-      if (await file.exists()) {
-        await file.delete();
+      if (Platform.isAndroid) {
+        await _downloadsChannel.invokeMethod<bool>(
+          'deleteDownload',
+          {
+            'uri': contentUri,
+            'filePath': filePath,
+          },
+        );
+      } else {
+        final file = File(filePath);
+        if (await file.exists()) {
+          await file.delete();
+        }
       }
       
       final prefs = await SharedPreferences.getInstance();
@@ -385,18 +424,93 @@ class DownloadService {
     }
   }
   
-  // Clear all downloads
+  static Future<_SavedDownload> _saveToPublicDownloads({
+    required String sourcePath,
+    required String fileName,
+  }) async {
+    if (Platform.isAndroid) {
+      final saved = await _downloadsChannel.invokeMethod<dynamic>(
+        'saveToDownloads',
+        {
+          'sourcePath': sourcePath,
+          'fileName': fileName,
+          'mimeType': _getMimeType(fileName),
+        },
+      );
+      if (saved is Map) {
+        final path = saved['path'] as String?;
+        if (path != null && path.isNotEmpty) {
+          return _SavedDownload(
+            filePath: path,
+            contentUri: saved['uri'] as String?,
+          );
+        }
+      }
+      throw Exception('Could not save file to Downloads');
+    }
+
+    final folderPath = await getDownloadsFolderPath();
+    var destPath = '$folderPath/$fileName';
+    final destFile = File(destPath);
+    if (await destFile.exists()) {
+      destPath = _uniquePath(folderPath, fileName);
+    }
+    await File(sourcePath).copy(destPath);
+    return _SavedDownload(filePath: destPath);
+  }
+
+  static String _uniquePath(String folderPath, String fileName) {
+    final dot = fileName.lastIndexOf('.');
+    final base = dot > 0 ? fileName.substring(0, dot) : fileName;
+    final ext = dot > 0 ? fileName.substring(dot) : '';
+    var index = 1;
+    var candidate = '$folderPath/$base ($index)$ext';
+    while (File(candidate).existsSync()) {
+      index++;
+      candidate = '$folderPath/$base ($index)$ext';
+    }
+    return candidate;
+  }
+
+  static String _getMimeType(String fileName) {
+    final extension = fileName.split('.').last.toLowerCase();
+    switch (extension) {
+      case 'pdf':
+        return 'application/pdf';
+      case 'doc':
+        return 'application/msword';
+      case 'docx':
+        return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      case 'ppt':
+        return 'application/vnd.ms-powerpoint';
+      case 'pptx':
+        return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+      case 'xls':
+        return 'application/vnd.ms-excel';
+      case 'xlsx':
+        return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      case 'jpg':
+      case 'jpeg':
+        return 'image/jpeg';
+      case 'png':
+        return 'image/png';
+      case 'gif':
+        return 'image/gif';
+      default:
+        return 'application/octet-stream';
+    }
+  }
+
+  // Clear all downloads tracked by the app (does not wipe the whole Downloads folder)
   static Future<void> clearAllDownloads() async {
     try {
+      final downloads = await getDownloads();
+      for (final item in downloads) {
+        await deleteDownload(item.filePath, contentUri: item.contentUri);
+      }
+
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('downloads');
-      
-      final folderPath = await getEdupalFolderPath();
-      final folder = Directory(folderPath);
-      if (await folder.exists()) {
-        await folder.delete(recursive: true);
-        await folder.create();
-      }
     } catch (e) {
       print('Error clearing downloads: $e');
     }
@@ -504,12 +618,20 @@ class DownloadResult {
   });
 }
 
+class _SavedDownload {
+  final String filePath;
+  final String? contentUri;
+
+  _SavedDownload({required this.filePath, this.contentUri});
+}
+
 // Download item model
 class DownloadItem {
   final String name;
   final String subject;
   final int size;
   final String filePath;
+  final String? contentUri;
   final String date;
   final String type;
   
@@ -518,6 +640,7 @@ class DownloadItem {
     required this.subject,
     required this.size,
     required this.filePath,
+    this.contentUri,
     required this.date,
     required this.type,
   });
@@ -528,6 +651,7 @@ class DownloadItem {
       subject: json['subject'] ?? '',
       size: json['size'] ?? 0,
       filePath: json['filePath'] ?? '',
+      contentUri: json['contentUri'] as String?,
       date: json['date'] ?? '',
       type: json['type'] ?? 'FILE',
     );
@@ -539,6 +663,7 @@ class DownloadItem {
       'subject': subject,
       'size': size,
       'filePath': filePath,
+      'contentUri': contentUri,
       'date': date,
       'type': type,
     };
