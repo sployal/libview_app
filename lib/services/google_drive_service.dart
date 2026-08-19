@@ -10,7 +10,7 @@ class GoogleDriveService {
   // Default folder ID (kept for backward compatibility)
   static const String folderId = '1ltEhma0cQ62d3aw2sQVucKdkIUg5JBik';
   
-  static const String apiKey = 'AIzaSyBlCLsPvArqlkJecaq_wmBdjb5bIdd23go';
+  static const String apiKey = 'AIzaSyB2B4mUSsFzSaKvmOpFclMJv9vvh4vGxqI';
   
   // Get folder contents
   static Future<List<DriveItem>> getFolderContents(String folderId) async {

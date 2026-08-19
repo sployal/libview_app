@@ -14,43 +14,43 @@ class SemestersScreen extends StatelessWidget {
   
   static const Map<String, Map<String, String>> semesterFolderIds = {
     'year1_sem1': {
-      'folderId': '1q5b_1KP6n_q9KWitzQyfN0Tgjmri0jYn',
+      'folderId': '18YgdYz4ErI9yJHn2Gx1UoaVqZ7YECSFz',
       'name': 'Year 1 - Semester 1',
     },
     'year1_sem2': {
-      'folderId': '12btgs0JTwnTw_QXiK6Z4pC1QbZYLf82-',
+      'folderId': '13sB0aRpu0xjtScMoJbtlSHcWvbr1gvbp',
       'name': 'Year 1 - Semester 2',
     },
     'year2_sem1': {
-      'folderId': '1xANMxiJV9nMY2NLoH0gQWpn7wPdkqWUo',
+      'folderId': '12RdiiGAfWsJPR9Q9fFf7Pi6p-g51sd1C',
       'name': 'Year 2 - Semester 1',
     },
     'year2_sem2': {
-      'folderId': '1WIQks-VqcrqyJGx4y61PVvmHaBC09aPM',
+      'folderId': '1_50Uj07FIcQY_KTQaFExtFpRnFi4C_G6',
       'name': 'Year 2 - Semester 2',
     },
     'year3_sem1': {
-      'folderId': '1PpsJpwvFZBBkISEDXxweXHOtsQePcFEn',
+      'folderId': '1jAJiVWsNEAcz6GSVLluxBeMGTTiALv6d',
       'name': 'Year 3 - Semester 1',
     },
     'year3_sem2': {
-      'folderId': '15lmcOBEuIfqMcHE5Vh-qlXLwONw2A4A8',
+      'folderId': '16K6uo5lRlS4s93lO8bZ1UkVQ5ywbZCnF',
       'name': 'Year 3 - Semester 2',
     },
     'year4_sem1': {
-      'folderId': '1cj5eTlCl5srYKQrFxeelaMs8WRF44ED4',
+      'folderId': '1-vulmlL7rswowcYWgl0y9DHw3o1hdnmx',
       'name': 'Year 4 - Semester 1',
     },
     'year4_sem2': {
-      'folderId': '1IUDJVwZH_h5BYsu5q0O3uts31ZIpb7OG',
+      'folderId': '15W3I9I9Dqwt3JKjNy8a9fDBCc6V0qjxf',
       'name': 'Year 4 - Semester 2',
     },
     'year5_sem1': {
-      'folderId': '1AxVJT5LwBxrxZ7CsW9iM1YH4dfmyELpt',
+      'folderId': '18oNF6Xm4NV6oPnpZTJVBCPDqrxlWm6vE',
       'name': 'Year 5 - Semester 1',
     },
     'year5_sem2': {
-      'folderId': '19noJ56kc-VtngAG1GyOY_FSFq_Z4PUOi',
+      'folderId': '1VXL_RjzzO8QxDj1JY3eANLXP-38v-FiX',
       'name': 'Year 5 - Semester 2',
     },
   };
