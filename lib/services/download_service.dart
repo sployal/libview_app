@@ -8,13 +8,21 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:open_file/open_file.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class DownloadService {
   static final Dio _dio = Dio();
-  static const String apiKey = 'AIzaSyBlCLsPvArqlkJecaq_wmBdjb5bIdd23go';
   static const String baseUrl = 'https://www.googleapis.com/drive/v3';
   static const MethodChannel _downloadsChannel =
       MethodChannel('com.example.libview/downloads');
+
+  static String get apiKey {
+    final key = dotenv.env['GOOGLE_DRIVE_DOWNLOAD_API_KEY'] ?? '';
+    if (key.isEmpty) {
+      throw StateError('GOOGLE_DRIVE_DOWNLOAD_API_KEY is missing from .env');
+    }
+    return key;
+  }
   
   // Get Android SDK version
   static Future<int> getAndroidSdkVersion() async {

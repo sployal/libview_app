@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class GoogleDriveService {
   static const String baseUrl = 'https://www.googleapis.com/drive/v3';
@@ -10,7 +11,13 @@ class GoogleDriveService {
   // Default folder ID (kept for backward compatibility)
   static const String folderId = '1ltEhma0cQ62d3aw2sQVucKdkIUg5JBik';
   
-  static const String apiKey = 'AIzaSyB2B4mUSsFzSaKvmOpFclMJv9vvh4vGxqI';
+  static String get apiKey {
+    final key = dotenv.env['GOOGLE_DRIVE_API_KEY'] ?? '';
+    if (key.isEmpty) {
+      throw StateError('GOOGLE_DRIVE_API_KEY is missing from .env');
+    }
+    return key;
+  }
   
   // Get folder contents
   static Future<List<DriveItem>> getFolderContents(String folderId) async {
