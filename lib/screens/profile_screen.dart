@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../services/auth_service.dart';
 import 'visibility_controller.dart';
 import 'users_dashboard.dart';
 import 'edit_profile.dart';
@@ -13,7 +14,7 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  final _supabase = Supabase.instance.client;
+  final _firestore = FirebaseFirestore.instance;
   String? _fullName;
   String? _email;
   String? _username;
@@ -41,14 +42,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _loadUserData() async {
     try {
-      final user = _supabase.auth.currentUser;
+      final user = AuthService.instance.currentUser;
       if (user != null) {
-        // Fetch profile data from profiles table
-        final profileData = await _supabase
-            .from('profiles')
-            .select('full_name, username, registration_number, role, avatar_url')
-            .eq('id', user.id)
-            .single();
+        final profileDoc =
+            await _firestore.collection('profiles').doc(user.uid).get();
+
+        final profileData = profileDoc.data() ?? {};
 
         setState(() {
           _email = user.email;
@@ -57,6 +56,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _registrationNumber = profileData['registration_number'] as String?;
           _role = profileData['role'] as String?;
           _avatarUrl = profileData['avatar_url'] as String?;
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
           _isLoading = false;
         });
       }
@@ -109,7 +112,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     if (shouldSignOut == true) {
       try {
-        await _supabase.auth.signOut();
+        await AuthService.instance.signOut();
         // The AuthGate will automatically redirect to login screen
       } catch (e) {
         if (mounted) {

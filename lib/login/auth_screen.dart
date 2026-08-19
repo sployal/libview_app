@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-
+import 'package:firebase_auth/firebase_auth.dart';
+import '../services/auth_service.dart';
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
 
@@ -28,15 +28,12 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    
-    // Listen for auth state changes
-    Supabase.instance.client.auth.onAuthStateChange.listen((data) {
-      final event = data.event;
-      if (event == AuthChangeEvent.signedIn) {
+
+    AuthService.instance.authStateChanges.listen((user) {
+      if (user != null) {
         debugPrint('User signed in successfully');
       }
-    });
-  }
+    });  }
 
   @override
   void dispose() {
@@ -70,13 +67,10 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
       final normalizedRegNumber = _registrationNumberController.text.trim().toUpperCase();
 
       // Check if registration number already exists
-      final existingProfile = await Supabase.instance.client
-          .from('profiles')
-          .select('registration_number')
-          .eq('registration_number', normalizedRegNumber)
-          .maybeSingle();
+      final regNumberTaken = await AuthService.instance
+          .isRegistrationNumberTaken(normalizedRegNumber);
 
-      if (existingProfile != null) {
+      if (regNumberTaken) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -103,21 +97,17 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
         return;
       }
 
-      // Sign up user
-      final response = await Supabase.instance.client.auth.signUp(
+      // Sign up user with Firebase
+      await AuthService.instance.signUp(
         email: _emailController.text.trim(),
         password: _passwordController.text,
-        data: {
-          'full_name': _fullNameController.text.trim(),
-          'registration_number': normalizedRegNumber,
-        },
-        emailRedirectTo: 'io.supabase.edupal://login-callback/',
+        fullName: _fullNameController.text.trim(),
+        registrationNumber: normalizedRegNumber,
       );
 
       if (mounted) {
-        if (response.user != null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
               content: const Row(
                 children: [
                   Icon(Icons.check_circle, color: Colors.white),
@@ -145,9 +135,8 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
           _confirmPasswordController.clear();
           _emailController.clear();
           _passwordController.clear();
-        }
       }
-    } on AuthException catch (error) {
+    } on FirebaseAuthException catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -157,7 +146,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    error.message,
+                    AuthService.instance.authErrorMessage(error),
                     style: const TextStyle(fontWeight: FontWeight.w500),
                   ),
                 ),
@@ -206,11 +195,11 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     setState(() => _isLoading = true);
 
     try {
-      await Supabase.instance.client.auth.signInWithPassword(
+      await AuthService.instance.signIn(
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
-    } on AuthException catch (error) {
+    } on FirebaseAuthException catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -220,7 +209,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    error.message,
+                    AuthService.instance.authErrorMessage(error),
                     style: const TextStyle(fontWeight: FontWeight.w500),
                   ),
                 ),

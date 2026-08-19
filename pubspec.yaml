@@ -35,6 +35,9 @@ dependencies:
   syncfusion_flutter_pdfviewer: ^31.1.23
   file_picker: ^10.3.3
   webview_flutter: ^4.13.0
+  firebase_core: ^3.8.0
+  firebase_auth: ^5.3.0
+  cloud_firestore: ^5.5.0
   supabase_flutter: ^2.10.3
   dio: ^5.9.0
   open_file: ^3.5.10

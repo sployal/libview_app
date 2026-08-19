@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "494545154949",
+    "project_id": "edupal-app-8ccb1",
+    "storage_bucket": "edupal-app-8ccb1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:494545154949:android:9ff9d63d1f81c174208aec",
+        "android_client_info": {
+          "package_name": "com.example.libview"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "494545154949-blol1a78c2j59m4keve80opihqn67m5b.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyADOxCX75BarcFFxuOTtsJhkesFgqZk84c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "494545154949-blol1a78c2j59m4keve80opihqn67m5b.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

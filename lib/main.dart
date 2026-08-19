@@ -1,26 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
+import 'package:supabase_flutter/supabase_flutter.dart' hide User;
+import 'firebase_options.dart';
+import 'services/auth_service.dart';
 import 'screens/home_screen.dart';
 import 'screens/semesters_screen.dart';
 import 'screens/downloads_screen.dart';
 import 'screens/profile_screen.dart';
 import 'login/auth_screen.dart';
 
-// TODO: Replace with your Supabase URL and anon key
-// Get these from: https://app.supabase.com/project/YOUR_PROJECT/settings/api
+// Supabase is kept temporarily for screens not yet migrated to Firebase.
 const supabaseUrl = 'https://xsxxhdfemraipzpknkxv.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhzeHhoZGZlbXJhaXB6cGtua3h2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIwMDc1MTAsImV4cCI6MjA3NzU4MzUxMH0.RjZTvCQFNdYl7L6OyJ_vseh3pqjau3MfW_nvMEquMF4';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-  // Initialize Supabase
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  // Temporary: other screens still use Supabase for data until migrated.
   await Supabase.initialize(
     url: supabaseUrl,
     anonKey: supabaseAnonKey,
   );
-  
+
   runApp(const StudyApp());
 }
 
@@ -80,8 +87,8 @@ class AuthGate extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<AuthState>(
-      stream: Supabase.instance.client.auth.onAuthStateChange,
+    return StreamBuilder<firebase_auth.User?>(
+      stream: AuthService.instance.authStateChanges,
       builder: (context, snapshot) {
         // Show loading while checking auth state
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -92,10 +99,10 @@ class AuthGate extends StatelessWidget {
           );
         }
 
-        final session = snapshot.hasData ? snapshot.data!.session : null;
+        final user = snapshot.data;
 
         // If user is logged in, show main screen
-        if (session != null) {
+        if (user != null) {
           return const MainScreen();
         }
 
