@@ -114,7 +114,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                   SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'Account created! Please check your email to verify.',
+                      'Account created successfully!',
                       style: TextStyle(fontWeight: FontWeight.w500),
                     ),
                   ),

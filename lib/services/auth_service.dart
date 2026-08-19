@@ -49,36 +49,22 @@ class AuthService {
       'created_at': FieldValue.serverTimestamp(),
       'updated_at': FieldValue.serverTimestamp(),
     });
-
-    await user.sendEmailVerification();
-    await _auth.signOut();
   }
 
   Future<void> signIn({
     required String email,
     required String password,
   }) async {
-    final credential = await _auth.signInWithEmailAndPassword(
+    await _auth.signInWithEmailAndPassword(
       email: email,
       password: password,
     );
-
-    final user = credential.user;
-    if (user != null && !user.emailVerified) {
-      await _auth.signOut();
-      throw FirebaseAuthException(
-        code: 'email-not-verified',
-        message: 'Please verify your email before signing in.',
-      );
-    }
   }
 
   Future<void> signOut() => _auth.signOut();
 
   String authErrorMessage(FirebaseAuthException error) {
     switch (error.code) {
-      case 'email-not-verified':
-        return 'Please verify your email before signing in.';
       case 'email-already-in-use':
         return 'An account with this email already exists.';
       case 'invalid-email':
