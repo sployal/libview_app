@@ -19,14 +19,17 @@ class _HomeScreenState extends State<HomeScreen>
   
   List<DownloadItem> recentDownloads = [];
   int totalDownloads = 0;
-  bool isLoading = true;
-  int currentStreak = 0;
-  int longestStreak = 0;
+  bool _downloadsLoaded = false;
+  late int currentStreak;
+  late int longestStreak;
   int unreadNotificationCount = 0;
 
   @override
   void initState() {
     super.initState();
+    final cachedStreak = StreakService.instance.cachedStreak;
+    currentStreak = cachedStreak.currentStreak;
+    longestStreak = cachedStreak.longestStreak;
     _slideController = AnimationController(
       duration: const Duration(milliseconds: 600),
       vsync: this,
@@ -101,20 +104,19 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _loadRecentActivity() async {
-    setState(() {
-      isLoading = true;
-    });
+    await Future.wait([
+      _loadDownloads(),
+      _recordAndLoadStreak(),
+    ]);
+  }
 
+  Future<void> _loadDownloads() async {
     final downloads = await DownloadService.getDownloads();
-    final streak = await StreakService.instance.recordDailyOpen();
-
     if (!mounted) return;
     setState(() {
       totalDownloads = downloads.length;
       recentDownloads = downloads.take(3).toList();
-      currentStreak = streak.currentStreak;
-      longestStreak = streak.longestStreak;
-      isLoading = false;
+      _downloadsLoaded = true;
     });
   }
 
@@ -323,32 +325,13 @@ class _HomeScreenState extends State<HomeScreen>
                     ],
                   ),
                   const SizedBox(height: 24),
-                  
-                  // Content
-                  if (isLoading)
-                    const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(40),
-                        child: CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            Color(0xFF6366F1),
-                          ),
-                        ),
-                      ),
-                    )
-                  else
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _buildStreakTracker(),
-                        const SizedBox(height: 20),
-                        _buildQuickStats(),
-                        const SizedBox(height: 30),
-                        _buildRecentActivity(),
-                        const SizedBox(height: 30),
-                        _buildQuickActions(),
-                      ],
-                    ),
+                  _buildStreakTracker(),
+                  const SizedBox(height: 20),
+                  _buildQuickStats(),
+                  const SizedBox(height: 30),
+                  _buildRecentActivity(),
+                  const SizedBox(height: 30),
+                  _buildQuickActions(),
                 ],
               ),
             ),
@@ -586,7 +569,23 @@ class _HomeScreenState extends State<HomeScreen>
           ],
         ),
         const SizedBox(height: 16),
-        if (recentDownloads.isEmpty)
+        if (!_downloadsLoaded)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 24),
+            child: Center(
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    Color(0xFF6366F1),
+                  ),
+                ),
+              ),
+            ),
+          )
+        else if (recentDownloads.isEmpty)
           Container(
             padding: const EdgeInsets.all(40),
             decoration: BoxDecoration(

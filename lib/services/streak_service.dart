@@ -23,6 +23,10 @@ class StreakService {
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
+  StreakInfo _cached = const StreakInfo.empty();
+
+  /// Last known streak, available immediately without waiting on the network.
+  StreakInfo get cachedStreak => _cached;
 
   DocumentReference<Map<String, dynamic>>? _userStreakRef() {
     final user = _auth.currentUser;
@@ -52,7 +56,7 @@ class StreakService {
     final yesterday = _yesterdayKey(now);
 
     try {
-      return await _firestore.runTransaction((transaction) async {
+      final result = await _firestore.runTransaction((transaction) async {
         final snapshot = await transaction.get(docRef);
         final data = snapshot.data();
 
@@ -93,10 +97,16 @@ class StreakService {
           longestStreak: longestStreak,
         );
       });
+      return _cache(result);
     } catch (e) {
       debugPrint('Error recording streak: $e');
-      return const StreakInfo.empty();
+      return _cached;
     }
+  }
+
+  StreakInfo _cache(StreakInfo info) {
+    _cached = info;
+    return info;
   }
 
   Future<StreakInfo> getStreak() async {
@@ -121,13 +131,13 @@ class StreakService {
         currentStreak = 0;
       }
 
-      return StreakInfo(
+      return _cache(StreakInfo(
         currentStreak: currentStreak,
         longestStreak: longestStreak,
-      );
+      ));
     } catch (e) {
       debugPrint('Error loading streak: $e');
-      return const StreakInfo.empty();
+      return _cached;
     }
   }
 }
