@@ -125,6 +125,89 @@ class UploadService {
     }
   }
 
+  Future<UploadResult> createFolder({
+    required String parentFolderId,
+    required String name,
+  }) async {
+    if (parentFolderId.isEmpty) {
+      throw UploadException('No target folder selected');
+    }
+    if (name.trim().isEmpty) {
+      throw UploadException('Folder name is required');
+    }
+
+    final token = await _idToken();
+
+    try {
+      final response = await _dio.post(
+        '/folders',
+        data: {
+          'parentFolderId': parentFolderId,
+          'name': name.trim(),
+        },
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      );
+
+      final data = response.data;
+      if (data is Map<String, dynamic>) {
+        return UploadResult.fromJson(data);
+      }
+      if (data is Map) {
+        return UploadResult.fromJson(Map<String, dynamic>.from(data));
+      }
+      throw UploadException('Unexpected response from server');
+    } on DioException catch (e) {
+      throw UploadException(
+        _messageFromDio(e, action: 'folder'),
+        statusCode: e.response?.statusCode,
+      );
+    }
+  }
+
+  Future<UploadResult> renameFile({
+    required String fileId,
+    required String name,
+  }) async {
+    if (fileId.isEmpty) {
+      throw UploadException('No folder selected');
+    }
+    if (name.trim().isEmpty) {
+      throw UploadException('Folder name is required');
+    }
+
+    final token = await _idToken();
+
+    try {
+      final response = await _dio.patch(
+        '/files/${Uri.encodeComponent(fileId)}',
+        data: {'name': name.trim()},
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      );
+
+      final data = response.data;
+      if (data is Map<String, dynamic>) {
+        return UploadResult.fromJson(data);
+      }
+      if (data is Map) {
+        return UploadResult.fromJson(Map<String, dynamic>.from(data));
+      }
+      throw UploadException('Unexpected response from server');
+    } on DioException catch (e) {
+      throw UploadException(
+        _messageFromDio(e, action: 'rename'),
+        statusCode: e.response?.statusCode,
+      );
+    }
+  }
+
   Future<void> deleteFile(String fileId) async {
     if (fileId.isEmpty) {
       throw UploadException('No file selected');
@@ -245,13 +328,21 @@ class UploadService {
       case 401:
         return 'Session expired. Please sign in again.';
       case 403:
-        return action == 'delete'
-            ? 'You do not have permission to delete this file.'
-            : 'You cannot upload to this folder.';
+        if (action == 'delete') {
+          return 'You do not have permission to delete this file.';
+        }
+        if (action == 'rename' || action == 'folder') {
+          return 'You do not have permission to change folders here.';
+        }
+        return 'You cannot upload to this folder.';
       case 400:
-        return action == 'delete'
-            ? 'Delete was rejected.'
-            : 'Upload was rejected. Use a file under 20 MB.';
+        if (action == 'delete') {
+          return 'Delete was rejected.';
+        }
+        if (action == 'rename' || action == 'folder') {
+          return 'That folder name is not allowed.';
+        }
+        return 'Upload was rejected. Use a file under 20 MB.';
       default:
         break;
     }
@@ -259,17 +350,28 @@ class UploadService {
     if (error.type == DioExceptionType.connectionTimeout ||
         error.type == DioExceptionType.sendTimeout ||
         error.type == DioExceptionType.receiveTimeout) {
-      return action == 'delete'
-          ? 'Delete timed out. The server may be waking up — try again.'
-          : 'Upload timed out. The server may be waking up — try again.';
+      if (action == 'delete') {
+        return 'Delete timed out. The server may be waking up — try again.';
+      }
+      if (action == 'rename' || action == 'folder') {
+        return 'Request timed out. The server may be waking up — try again.';
+      }
+      return 'Upload timed out. The server may be waking up — try again.';
     }
 
     if (error.type == DioExceptionType.connectionError) {
       return 'Could not reach the upload server. Check your connection.';
     }
 
-    return action == 'delete'
-        ? 'Delete failed. Please try again.'
-        : 'Upload failed. Please try again.';
+    if (action == 'delete') {
+      return 'Delete failed. Please try again.';
+    }
+    if (action == 'rename') {
+      return 'Rename failed. Please try again.';
+    }
+    if (action == 'folder') {
+      return 'Could not create the folder. Please try again.';
+    }
+    return 'Upload failed. Please try again.';
   }
 }

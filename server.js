@@ -183,19 +183,40 @@ async function uploadFile({ fileName, buffer, folderId, uploadedBy, mimeType }) 
   return res.data;
 }
 
+function isSemesterFolder(folderId) {
+  return typeof folderId === 'string' && CONFIG.SEMESTER_FOLDER_IDS.has(folderId);
+}
+
+// New unit folders are created directly under a semester folder.
+// Nested folders can still be created inside an existing unit folder.
+async function isValidCreateParent(folderId) {
+  return isSemesterFolder(folderId) || (await isValidSubjectFolder(folderId));
+}
+
 async function createFolder(folderName, parentFolderId) {
+  const safeName = sanitizeFileName(folderName);
   const res = await drive.files.create({
     requestBody: {
-      name: folderName.trim(),
+      name: safeName,
       mimeType: 'application/vnd.google-apps.folder',
       parents: [parentFolderId],
     },
     fields: 'id, name',
     supportsAllDrives: true,
   });
-  // A newly created folder under a valid subject folder is itself a
-  // valid target for further nested uploads/creates — cache that.
+  // A folder created under a semester is a new unit folder; one created
+  // under a unit is a nested folder. Cache both as valid upload targets.
   validationCache.set(res.data.id, { valid: true, at: Date.now() });
+  return res.data;
+}
+
+async function renameItem(fileId, newName) {
+  const res = await drive.files.update({
+    fileId,
+    requestBody: { name: sanitizeFileName(newName) },
+    fields: 'id, name',
+    supportsAllDrives: true,
+  });
   return res.data;
 }
 
@@ -444,7 +465,7 @@ app.post('/folders', requireAuth, async (req, res) => {
   if (!name || typeof name !== 'string' || !name.trim()) {
     return res.status(400).json({ error: 'A non-empty "name" is required' });
   }
-  if (!(await isValidSubjectFolder(parentFolderId))) {
+  if (!(await isValidCreateParent(parentFolderId))) {
     return res.status(403).json({ error: 'Invalid or unauthorized parent folder' });
   }
 
@@ -454,6 +475,38 @@ app.post('/folders', requireAuth, async (req, res) => {
   } catch (e) {
     console.error('Folder creation failed:', e);
     res.status(500).json({ error: 'Failed to create folder' });
+  }
+});
+
+// --- Rename a file or folder (admin-only by default) --------------------
+
+app.patch('/files/:fileId', requireAuth, requireAdmin, async (req, res) => {
+  if (!driveIsConfigured()) {
+    return res.status(503).json({ error: 'Drive is not configured yet. Complete the OAuth setup first.' });
+  }
+
+  const { fileId } = req.params;
+  const { name } = req.body || {};
+
+  if (!fileId) {
+    return res.status(400).json({ error: 'A file ID is required' });
+  }
+  if (!name || typeof name !== 'string' || !name.trim()) {
+    return res.status(400).json({ error: 'A non-empty "name" is required' });
+  }
+  if (isSemesterFolder(fileId)) {
+    return res.status(403).json({ error: 'Semester folders cannot be renamed' });
+  }
+  if (!(await isManagedItem(fileId))) {
+    return res.status(403).json({ error: 'Invalid or unauthorized file' });
+  }
+
+  try {
+    const result = await renameItem(fileId, name);
+    res.json(result);
+  } catch (e) {
+    console.error('Rename failed:', e);
+    res.status(500).json({ error: 'Rename failed' });
   }
 });
 

@@ -34,6 +34,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
   final Set<String> _deletingIds = {};
   bool isUploading = false;
   double uploadProgress = 0.0;
+  bool _isMutatingFolder = false;
 
   @override
   void initState() {
@@ -378,6 +379,103 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
+  }
+
+  Future<String?> _promptFolderName({
+    required String title,
+    required String confirmLabel,
+    String initial = '',
+  }) async {
+    final result = await showDialog<String>(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) {
+        return _FolderNameDialog(
+          title: title,
+          confirmLabel: confirmLabel,
+          initial: initial,
+        );
+      },
+    );
+    if (result == null || result.isEmpty) return null;
+    return result;
+  }
+
+  Future<void> _createUnitFolder() async {
+    if (!_isLiveFolder || widget.folderId == null || widget.folderId!.isEmpty) {
+      _showMessage('This semester is not connected to Drive', isError: true);
+      return;
+    }
+    if (_isMutatingFolder) return;
+
+    final name = await _promptFolderName(
+      title: 'Create unit folder',
+      confirmLabel: 'Create',
+    );
+    if (name == null) return;
+
+    setState(() {
+      _isMutatingFolder = true;
+    });
+
+    try {
+      await UploadService.instance.createFolder(
+        parentFolderId: widget.folderId!,
+        name: name,
+      );
+      if (!mounted) return;
+      _showMessage('Created "$name"');
+      await _loadSubjects();
+    } on UploadException catch (e) {
+      _showMessage(e.message, isError: true);
+    } catch (_) {
+      _showMessage('Failed to create folder', isError: true);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isMutatingFolder = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _renameUnitFolder(Subject subject) async {
+    if (!_isLiveFolder || subject.folderId.isEmpty) {
+      _showMessage('This unit is not connected to Drive', isError: true);
+      return;
+    }
+    if (_isMutatingFolder) return;
+
+    final name = await _promptFolderName(
+      title: 'Rename folder',
+      confirmLabel: 'Rename',
+      initial: subject.name,
+    );
+    if (name == null || name == subject.name) return;
+
+    setState(() {
+      _isMutatingFolder = true;
+    });
+
+    try {
+      await UploadService.instance.renameFile(
+        fileId: subject.folderId,
+        name: name,
+      );
+      if (!mounted) return;
+      _showMessage('Renamed to "$name"');
+      await _loadSubjects();
+    } on UploadException catch (e) {
+      _showMessage(e.message, isError: true);
+    } catch (_) {
+      _showMessage('Failed to rename folder', isError: true);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isMutatingFolder = false;
+        });
+      }
+    }
   }
 
   Future<void> _pickAndUploadFile() async {
@@ -776,11 +874,29 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
-            onPressed: _loadSubjects,
+            onPressed: _isMutatingFolder ? null : _loadSubjects,
             tooltip: 'Refresh',
           ),
         ],
       ),
+      floatingActionButton: _isLiveFolder
+          ? FloatingActionButton.extended(
+              onPressed: _isMutatingFolder ? null : _createUnitFolder,
+              backgroundColor: const Color(0xFF6366F1),
+              foregroundColor: Colors.white,
+              icon: _isMutatingFolder
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : const Icon(Icons.create_new_folder_rounded),
+              label: Text(_isMutatingFolder ? 'Working...' : 'New folder'),
+            )
+          : null,
       body: Column(
         children: [
           if (_isLiveFolder)
@@ -870,17 +986,17 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                 : RefreshIndicator(
                     onRefresh: _loadSubjects,
                     child: subjects.isEmpty
-                        ? const Center(
+                        ? Center(
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(
+                                const Icon(
                                   Icons.folder_open_rounded,
                                   size: 64,
                                   color: Color(0xFF9CA3AF),
                                 ),
-                                SizedBox(height: 16),
-                                Text(
+                                const SizedBox(height: 16),
+                                const Text(
                                   'No Units found',
                                   style: TextStyle(
                                     fontSize: 18,
@@ -888,134 +1004,163 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                                     color: Color(0xFF6B7280),
                                   ),
                                 ),
-                                SizedBox(height: 8),
-                                Text(
-                                  'units will appear here when available',
+                                const SizedBox(height: 8),
+                                const Text(
+                                  'Create a folder for this semester',
                                   style: TextStyle(
                                     fontSize: 14,
                                     color: Color(0xFF9CA3AF),
                                   ),
                                 ),
+                                if (_isLiveFolder) ...[
+                                  const SizedBox(height: 20),
+                                  FilledButton.icon(
+                                    onPressed:
+                                        _isMutatingFolder ? null : _createUnitFolder,
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: const Color(0xFF6366F1),
+                                    ),
+                                    icon: const Icon(Icons.create_new_folder_rounded),
+                                    label: const Text('New folder'),
+                                  ),
+                                ],
                               ],
                             ),
                           )
                         : Padding(
                             padding: const EdgeInsets.all(20),
                             child: ListView.builder(
+                              padding: const EdgeInsets.only(bottom: 88),
                               itemCount: subjects.length,
                               itemBuilder: (context, index) {
                                 final subject = subjects[index];
                                 return Container(
                                   margin: const EdgeInsets.only(bottom: 16),
-                                  child: GestureDetector(
-                                    onTap: () => _loadSubjectFiles(subject),
-                                    child: Container(
-                                      padding: const EdgeInsets.all(20),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white,
-                                        borderRadius: BorderRadius.circular(20),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.black.withOpacity(0.05),
-                                            blurRadius: 15,
-                                            offset: const Offset(0, 5),
-                                          ),
-                                        ],
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(20),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.05),
+                                        blurRadius: 15,
+                                        offset: const Offset(0, 5),
                                       ),
-                                      child: Row(
-                                        children: [
-                                          Container(
-                                            width: 60,
-                                            height: 60,
-                                            decoration: BoxDecoration(
-                                              color: subject.color.withOpacity(0.1),
-                                              borderRadius: BorderRadius.circular(16),
-                                            ),
-                                            child: Stack(
-                                              children: [
-                                                Center(
-                                                  child: Icon(
-                                                    Icons.folder_rounded,
-                                                    color: subject.color,
-                                                    size: 30,
-                                                  ),
-                                                ),
-                                                if (_isLiveFolder)
-                                                  Positioned(
-                                                    top: 4,
-                                                    right: 4,
-                                                    child: Container(
-                                                      width: 12,
-                                                      height: 12,
-                                                      decoration: const BoxDecoration(
-                                                        color: Color(0xFF10B981),
-                                                        shape: BoxShape.circle,
-                                                      ),
+                                    ],
+                                  ),
+                                  child: Material(
+                                    color: Colors.transparent,
+                                    borderRadius: BorderRadius.circular(20),
+                                    child: InkWell(
+                                      onTap: () => _loadSubjectFiles(subject),
+                                      borderRadius: BorderRadius.circular(20),
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(20),
+                                        child: Row(
+                                          children: [
+                                            Container(
+                                              width: 60,
+                                              height: 60,
+                                              decoration: BoxDecoration(
+                                                color: subject.color.withOpacity(0.1),
+                                                borderRadius: BorderRadius.circular(16),
+                                              ),
+                                              child: Stack(
+                                                children: [
+                                                  Center(
+                                                    child: Icon(
+                                                      Icons.folder_rounded,
+                                                      color: subject.color,
+                                                      size: 30,
                                                     ),
                                                   ),
-                                              ],
-                                            ),
-                                          ),
-                                          const SizedBox(width: 16),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  subject.name,
-                                                  style: const TextStyle(
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: Color(0xFF1F2937),
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 4),
-                                                Text(
-                                                  subject.code,
-                                                  style: const TextStyle(
-                                                    fontSize: 14,
-                                                    color: Color(0xFF6B7280),
-                                                  ),
-                                                ),
-                                                const SizedBox(height: 8),
-                                                Container(
-                                                  padding: const EdgeInsets.symmetric(
-                                                    horizontal: 8,
-                                                    vertical: 4,
-                                                  ),
-                                                  decoration: BoxDecoration(
-                                                    color: subject.color.withOpacity(0.1),
-                                                    borderRadius: BorderRadius.circular(12),
-                                                  ),
-                                                  child: Row(
-                                                    mainAxisSize: MainAxisSize.min,
-                                                    children: [
-                                                      Icon(
-                                                        Icons.insert_drive_file_rounded,
-                                                        size: 14,
-                                                        color: subject.color,
-                                                      ),
-                                                      const SizedBox(width: 4),
-                                                      Text(
-                                                        '${subject.fileCount} files',
-                                                        style: TextStyle(
-                                                          fontSize: 12,
-                                                          color: subject.color,
-                                                          fontWeight: FontWeight.w600,
+                                                  if (_isLiveFolder)
+                                                    Positioned(
+                                                      top: 4,
+                                                      right: 4,
+                                                      child: Container(
+                                                        width: 12,
+                                                        height: 12,
+                                                        decoration: const BoxDecoration(
+                                                          color: Color(0xFF10B981),
+                                                          shape: BoxShape.circle,
                                                         ),
                                                       ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ],
+                                                    ),
+                                                ],
+                                              ),
                                             ),
-                                          ),
-                                          const Icon(
-                                            Icons.arrow_forward_ios_rounded,
-                                            size: 16,
-                                            color: Color(0xFF9CA3AF),
-                                          ),
-                                        ],
+                                            const SizedBox(width: 16),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment: CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    subject.name,
+                                                    style: const TextStyle(
+                                                      fontSize: 16,
+                                                      fontWeight: FontWeight.bold,
+                                                      color: Color(0xFF1F2937),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 4),
+                                                  Text(
+                                                    subject.code,
+                                                    style: const TextStyle(
+                                                      fontSize: 14,
+                                                      color: Color(0xFF6B7280),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 8),
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 4,
+                                                    ),
+                                                    decoration: BoxDecoration(
+                                                      color: subject.color.withOpacity(0.1),
+                                                      borderRadius: BorderRadius.circular(12),
+                                                    ),
+                                                    child: Row(
+                                                      mainAxisSize: MainAxisSize.min,
+                                                      children: [
+                                                        Icon(
+                                                          Icons.insert_drive_file_rounded,
+                                                          size: 14,
+                                                          color: subject.color,
+                                                        ),
+                                                        const SizedBox(width: 4),
+                                                        Text(
+                                                          '${subject.fileCount} files',
+                                                          style: TextStyle(
+                                                            fontSize: 12,
+                                                            color: subject.color,
+                                                            fontWeight: FontWeight.w600,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            if (_isLiveFolder)
+                                              IconButton(
+                                                icon: const Icon(
+                                                  Icons.drive_file_rename_outline_rounded,
+                                                  color: Color(0xFF6366F1),
+                                                ),
+                                                tooltip: 'Rename',
+                                                onPressed: _isMutatingFolder
+                                                    ? null
+                                                    : () => _renameUnitFolder(subject),
+                                              ),
+                                            const Icon(
+                                              Icons.arrow_forward_ios_rounded,
+                                              size: 16,
+                                              color: Color(0xFF9CA3AF),
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -1027,6 +1172,74 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _FolderNameDialog extends StatefulWidget {
+  final String title;
+  final String confirmLabel;
+  final String initial;
+
+  const _FolderNameDialog({
+    required this.title,
+    required this.confirmLabel,
+    this.initial = '',
+  });
+
+  @override
+  State<_FolderNameDialog> createState() => _FolderNameDialogState();
+}
+
+class _FolderNameDialogState extends State<_FolderNameDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initial);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    Navigator.of(context).pop(_controller.text.trim());
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+      ),
+      title: Text(
+        widget.title,
+        style: const TextStyle(fontWeight: FontWeight.bold),
+      ),
+      content: TextField(
+        controller: _controller,
+        autofocus: true,
+        textCapitalization: TextCapitalization.sentences,
+        decoration: const InputDecoration(
+          hintText: 'e.g. CS101 Data Structures',
+          labelText: 'Folder name',
+        ),
+        onSubmitted: (_) => _submit(),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          onPressed: _submit,
+          child: Text(widget.confirmLabel),
+        ),
+      ],
     );
   }
 }
