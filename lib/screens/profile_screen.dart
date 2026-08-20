@@ -5,6 +5,7 @@ import 'visibility_controller.dart';
 import 'users_dashboard.dart';
 import 'edit_profile.dart';
 import 'notifications_screen.dart';
+import 'super_admin_dashboard.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -23,6 +24,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String? _role;
   bool _isLoading = true;
   bool _isAdmin = false;
+
+  bool get _isSuperAdmin {
+    final email = _email ?? AuthService.instance.currentUser?.email;
+    return email?.toLowerCase() == SuperAdminDashboard.allowedEmail;
+  }
 
   @override
   void initState() {
@@ -242,6 +248,62 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 });
               },
             ),
+            if (_isSuperAdmin) ...[
+              const SizedBox(height: 8),
+              ListTile(
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0F172A).withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.shield_rounded,
+                    color: Color(0xFF0F172A),
+                    size: 20,
+                  ),
+                ),
+                title: const Text(
+                  'Super Admin',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                subtitle: const Text(
+                  'Users and staff',
+                  style: TextStyle(fontSize: 12),
+                ),
+                trailing: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0F172A).withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Text(
+                    'OWNER',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF0F172A),
+                    ),
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const SuperAdminDashboard(),
+                    ),
+                  );
+                },
+              ),
+            ],
             const SizedBox(height: 8),
             ListTile(
               leading: Container(

@@ -44,6 +44,7 @@ class AuthService {
 
     await _firestore.collection('profiles').doc(user.uid).set({
       'full_name': fullName,
+      'email': email,
       'registration_number': registrationNumber,
       'role': 'student',
       'created_at': FieldValue.serverTimestamp(),
