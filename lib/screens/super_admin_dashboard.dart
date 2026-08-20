@@ -606,6 +606,47 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
     );
   }
 
+  Widget _buildCourseCard(Course course) {
+    final semesterCount = course.semesters.length;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            course.name,
+            style: const TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w700,
+              color: Color(0xFF0F172A),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '${course.years} ${course.years == 1 ? 'year' : 'years'}  •  $semesterCount semester folders',
+            style: const TextStyle(
+              fontSize: 12,
+              color: Color(0xFF475569),
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'Admission: ${course.sampleAdmissionNumber.isEmpty ? '—' : course.sampleAdmissionNumber}',
+            style: const TextStyle(
+              fontSize: 12,
+              color: Color(0xFF475569),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildAvailableCourses() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -642,55 +683,13 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
             ),
           )
         else
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxHeight: 240),
-            child: ListView.separated(
-              shrinkWrap: true,
-              padding: EdgeInsets.zero,
-              itemCount: _courses.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 8),
-              itemBuilder: (context, index) {
-                final course = _courses[index];
-                final semesterCount = course.semesters.length;
-                return Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        course.name,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF0F172A),
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        '${course.years} ${course.years == 1 ? 'year' : 'years'}  •  $semesterCount semester folders',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF475569),
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Admission: ${course.sampleAdmissionNumber.isEmpty ? '—' : course.sampleAdmissionNumber}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF475569),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
+          Column(
+            children: [
+              for (var i = 0; i < _courses.length; i++) ...[
+                _buildCourseCard(_courses[i]),
+                if (i < _courses.length - 1) const SizedBox(height: 8),
+              ],
+            ],
           ),
       ],
     );
@@ -1118,10 +1117,19 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
         ),
         Expanded(
           child: items.isEmpty
-              ? _buildEmptyState(
-                  isUserTab ? 'No users found' : 'No staff found',
+              ? ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: [
+                    SizedBox(
+                      height: MediaQuery.of(context).size.height * 0.35,
+                      child: _buildEmptyState(
+                        isUserTab ? 'No users found' : 'No staff found',
+                      ),
+                    ),
+                  ],
                 )
               : ListView.builder(
+                  physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.all(16),
                   itemCount: items.length,
                   itemBuilder: (context, index) => _buildUserCard(items[index]),
@@ -1171,29 +1179,29 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                 valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF0F172A)),
               ),
             )
-          : Column(
-              children: [
-                _buildStatisticsSection(),
-                Expanded(
-                  child: TabBarView(
-                    controller: _tabController,
-                    children: [
-                      _buildListTab(
-                        isUserTab: true,
-                        items: _filteredUsers,
-                        searchHint: 'Search users...',
-                        roles: _userRoles,
-                      ),
-                      _buildListTab(
-                        isUserTab: false,
-                        items: _filteredStaff,
-                        searchHint: 'Search staff...',
-                        roles: _staffRoles,
-                      ),
-                    ],
+          : NestedScrollView(
+              headerSliverBuilder: (context, innerBoxIsScrolled) {
+                return [
+                  SliverToBoxAdapter(child: _buildStatisticsSection()),
+                ];
+              },
+              body: TabBarView(
+                controller: _tabController,
+                children: [
+                  _buildListTab(
+                    isUserTab: true,
+                    items: _filteredUsers,
+                    searchHint: 'Search users...',
+                    roles: _userRoles,
                   ),
-                ),
-              ],
+                  _buildListTab(
+                    isUserTab: false,
+                    items: _filteredStaff,
+                    searchHint: 'Search staff...',
+                    roles: _staffRoles,
+                  ),
+                ],
+              ),
             ),
     );
   }
