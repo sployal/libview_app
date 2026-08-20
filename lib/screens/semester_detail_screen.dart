@@ -1,6 +1,8 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import '../services/google_drive_service.dart';
 import '../services/download_service.dart';
+import '../services/upload_service.dart';
 import 'web_view_screen.dart';
 
 class SemesterDetailScreen extends StatefulWidget {
@@ -29,6 +31,8 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
   // NEW: Track downloading state for each file
   Map<String, bool> downloadingFiles = {};
   Map<String, double> downloadProgress = {};
+  bool isUploading = false;
+  double uploadProgress = 0.0;
 
   @override
   void initState() {
@@ -281,6 +285,79 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     }
   }
 
+  void _showMessage(String message, {bool isError = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              isError ? Icons.error : Icons.check_circle,
+              color: Colors.white,
+            ),
+            const SizedBox(width: 12),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: isError ? const Color(0xFFEF4444) : const Color(0xFF10B981),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+
+  Future<void> _pickAndUploadFile() async {
+    final subject = selectedSubject;
+    if (subject == null || !_isLiveFolder || subject.folderId.isEmpty) {
+      _showMessage('Open a live unit before uploading', isError: true);
+      return;
+    }
+    if (isUploading) return;
+
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.any,
+      withData: true,
+      dialogTitle: 'Select a file to upload',
+    );
+
+    if (result == null || result.files.isEmpty) return;
+
+    final file = result.files.first;
+
+    setState(() {
+      isUploading = true;
+      uploadProgress = 0.0;
+    });
+
+    try {
+      await UploadService.instance.uploadFile(
+        folderId: subject.folderId,
+        fileName: file.name,
+        filePath: file.path,
+        bytes: file.bytes,
+        onProgress: (progress) {
+          if (mounted) {
+            setState(() => uploadProgress = progress);
+          }
+        },
+      );
+
+      _showMessage('${file.name} uploaded successfully');
+      await _loadSubjectFiles(subject);
+    } on UploadException catch (e) {
+      _showMessage(e.message, isError: true);
+    } catch (e) {
+      _showMessage('Upload failed. Please try again.', isError: true);
+    } finally {
+      if (mounted) {
+        setState(() {
+          isUploading = false;
+          uploadProgress = 0.0;
+        });
+      }
+    }
+  }
+
   void _backToSubjects() {
     setState(() {
       selectedSubject = null;
@@ -363,11 +440,41 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
-            onPressed: () => _loadSubjectFiles(selectedSubject!),
+            onPressed: isUploading
+                ? null
+                : () => _loadSubjectFiles(selectedSubject!),
           ),
         ],
       ),
-      body: isLoadingFiles
+      floatingActionButton: _isLiveFolder && selectedSubject!.folderId.isNotEmpty
+          ? FloatingActionButton.extended(
+              onPressed: isUploading ? null : _pickAndUploadFile,
+              backgroundColor: const Color(0xFF6366F1),
+              foregroundColor: Colors.white,
+              icon: isUploading
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : const Icon(Icons.upload_file_rounded),
+              label: Text(isUploading ? 'Uploading...' : 'Upload file'),
+            )
+          : null,
+      body: Column(
+        children: [
+          if (isUploading)
+            LinearProgressIndicator(
+              value: uploadProgress > 0 ? uploadProgress : null,
+              backgroundColor: const Color(0xFFE5E7EB),
+              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
+              minHeight: 3,
+            ),
+          Expanded(
+            child: isLoadingFiles
           ? const Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -413,6 +520,17 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                           color: Colors.grey[500],
                         ),
                       ),
+                      if (_isLiveFolder && selectedSubject!.folderId.isNotEmpty) ...[
+                        const SizedBox(height: 20),
+                        FilledButton.icon(
+                          onPressed: isUploading ? null : _pickAndUploadFile,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFF6366F1),
+                          ),
+                          icon: const Icon(Icons.upload_file_rounded),
+                          label: const Text('Upload file'),
+                        ),
+                      ],
                     ],
                   ),
                 )
@@ -545,6 +663,9 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                     },
                   ),
                 ),
+          ),
+        ],
+      ),
     );
   }
 
