@@ -21,7 +21,6 @@ class WebViewScreen extends StatefulWidget {
 class _WebViewScreenState extends State<WebViewScreen> {
   late final WebViewController _controller;
   bool isLoading = true;
-  String? errorMessage;
   bool isDownloading = false;
   double downloadProgress = 0.0;
 
@@ -66,7 +65,6 @@ class _WebViewScreenState extends State<WebViewScreen> {
           onPageStarted: (String url) {
             setState(() {
               isLoading = true;
-              errorMessage = null;
             });
           },
           onPageFinished: (String url) {
@@ -114,9 +112,10 @@ class _WebViewScreenState extends State<WebViewScreen> {
             ''');
           },
           onWebResourceError: (WebResourceError error) {
+            // Ignore sub-resource failures (ads, blocked requests, etc.)
+            // so they don't cover a page that already loaded.
             setState(() {
               isLoading = false;
-              errorMessage = 'Failed to load page: ${error.description}';
             });
           },
           onNavigationRequest: (NavigationRequest request) {
@@ -292,47 +291,6 @@ class _WebViewScreenState extends State<WebViewScreen> {
                     ),
                   ),
                 ],
-              ),
-            ),
-          if (errorMessage != null && !isLoading)
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.error_outline_rounded,
-                      size: 64,
-                      color: Color(0xFFEF4444),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      errorMessage!,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        color: Color(0xFF6B7280),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        _controller.reload();
-                      },
-                      icon: const Icon(Icons.refresh_rounded),
-                      label: const Text('Retry'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF6366F1),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 12,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
               ),
             ),
           if (isDownloading)
