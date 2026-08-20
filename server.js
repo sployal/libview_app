@@ -15,6 +15,10 @@ const admin = require('firebase-admin');
 // These must match the semesterFolderIds map in your Flutter app
 // (semesters_screen.dart). Only folders that are direct children of
 // one of these IDs are treated as valid upload/create targets.
+//
+// IMPORTANT: once you move folders (or start using a different owning
+// account), the IDs below must be updated to match the *current*
+// location of those folders.
 const SEMESTER_FOLDER_IDS = new Set([
   '18YgdYz4ErI9yJHn2Gx1UoaVqZ7YECSFz', // year1_sem1
   '13sB0aRpu0xjtScMoJbtlSHcWvbr1gvbp', // year1_sem2
@@ -38,7 +42,19 @@ const ADMIN_UIDS = new Set(
 const CONFIG = {
   PORT: parseInt(process.env.PORT || '3000', 10),
   ALLOWED_ORIGINS: (process.env.ALLOWED_ORIGINS || '*').split(',').map((s) => s.trim()),
-  GOOGLE_DRIVE_SA_KEY_PATH: process.env.GOOGLE_DRIVE_SA_KEY_PATH || './secrets/drive-service-account.json',
+
+  // --- Google OAuth2 (replaces the old service-account key) ---
+  // Client ID/secret/redirect stay as env vars (they're not secrets that
+  // change at runtime). The refresh token itself is NOT read from env
+  // anymore — it's stored in and loaded from Firestore. See loadRefreshToken().
+  GOOGLE_OAUTH_CLIENT_ID: process.env.GOOGLE_OAUTH_CLIENT_ID,
+  GOOGLE_OAUTH_CLIENT_SECRET: process.env.GOOGLE_OAUTH_CLIENT_SECRET,
+  GOOGLE_OAUTH_REDIRECT_URI: process.env.GOOGLE_OAUTH_REDIRECT_URI, // e.g. https://edupal-backend.onrender.com/auth/google/callback
+
+  // Optional shared secret to protect the /auth/google entry point so
+  // random visitors can't kick off the consent flow against your app.
+  AUTH_SETUP_SECRET: process.env.AUTH_SETUP_SECRET || null,
+
   FIREBASE_SA_KEY_PATH: process.env.FIREBASE_SA_KEY_PATH || './secrets/firebase-service-account.json',
   MAX_UPLOAD_BYTES: parseInt(process.env.MAX_UPLOAD_BYTES || `${20 * 1024 * 1024}`, 10),
   SEMESTER_FOLDER_IDS,
@@ -46,15 +62,74 @@ const CONFIG = {
 };
 
 // =========================================================================
-// drive.js
+// firebaseAdmin.js  (initialized early so Firestore is available to drive.js)
 // =========================================================================
 
-const driveAuth = new google.auth.GoogleAuth({
-  keyFile: path.resolve(CONFIG.GOOGLE_DRIVE_SA_KEY_PATH),
-  scopes: ['https://www.googleapis.com/auth/drive'],
+admin.initializeApp({
+  credential: admin.credential.cert(require(path.resolve(CONFIG.FIREBASE_SA_KEY_PATH))),
 });
 
-const drive = google.drive({ version: 'v3', auth: driveAuth });
+const firestore = admin.firestore();
+
+// Where the refresh token lives in Firestore, instead of an env var.
+// A single document under a "config" collection.
+const OAUTH_DOC_REF = firestore.collection('config').doc('googleDriveOAuth');
+
+async function saveRefreshToken(refreshToken) {
+  await OAUTH_DOC_REF.set(
+    {
+      refreshToken,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    },
+    { merge: true }
+  );
+}
+
+async function loadRefreshToken() {
+  try {
+    const snap = await OAUTH_DOC_REF.get();
+    if (!snap.exists) return null;
+    return snap.data().refreshToken || null;
+  } catch (err) {
+    console.error('Failed to load refresh token from Firestore:', err.message);
+    return null;
+  }
+}
+
+// =========================================================================
+// drive.js  (OAuth2 client instead of a service account)
+// =========================================================================
+
+const DRIVE_SCOPES = ['https://www.googleapis.com/auth/drive'];
+
+const oauth2Client = new google.auth.OAuth2(
+  CONFIG.GOOGLE_OAUTH_CLIENT_ID,
+  CONFIG.GOOGLE_OAUTH_CLIENT_SECRET,
+  CONFIG.GOOGLE_OAUTH_REDIRECT_URI
+);
+
+const drive = google.drive({ version: 'v3', auth: oauth2Client });
+
+// Tracks whether we've successfully loaded/set a refresh token onto
+// oauth2Client, so routes can fail fast with a clear message instead of
+// a confusing Drive error when the token isn't ready yet.
+let driveReady = false;
+
+function driveIsConfigured() {
+  return driveReady;
+}
+
+// Called once at startup, and again right after the one-time OAuth
+// callback succeeds, so a redeploy is never required.
+async function initDriveAuth() {
+  const refreshToken = await loadRefreshToken();
+  if (refreshToken) {
+    oauth2Client.setCredentials({ refresh_token: refreshToken });
+    driveReady = true;
+  } else {
+    driveReady = false;
+  }
+}
 
 // In-memory cache so repeated uploads to the same folder don't each
 // cost an extra Drive API call. Entries expire after 10 minutes.
@@ -173,10 +248,6 @@ function mimeFromFileName(name, fallback) {
 // firebaseAuth.js
 // =========================================================================
 
-admin.initializeApp({
-  credential: admin.credential.cert(require(path.resolve(CONFIG.FIREBASE_SA_KEY_PATH))),
-});
-
 // Verifies the Firebase ID token sent as "Authorization: Bearer <token>".
 // On success attaches req.user = { uid, email, ... } and calls next().
 async function requireAuth(req, res, next) {
@@ -227,11 +298,86 @@ const upload = multer({
 
 // --- Health check -----------------------------------------------------
 
-app.get('/health', (req, res) => res.json({ ok: true }));
+app.get('/health', (req, res) => res.json({ ok: true, driveConfigured: driveIsConfigured() }));
+
+// --- One-time OAuth2 setup routes ---------------------------------------
+//
+// These exist ONLY to generate a refresh token once. After you've
+// captured the refresh token and saved it as GOOGLE_OAUTH_REFRESH_TOKEN
+// in your .env / Render environment variables, you should remove these
+// two routes (or at minimum keep AUTH_SETUP_SECRET set so randoms can't
+// trigger the consent flow against your app).
+
+app.get('/auth/google', (req, res) => {
+  if (CONFIG.AUTH_SETUP_SECRET && req.query.secret !== CONFIG.AUTH_SETUP_SECRET) {
+    return res.status(403).send('Forbidden');
+  }
+  if (!CONFIG.GOOGLE_OAUTH_CLIENT_ID || !CONFIG.GOOGLE_OAUTH_CLIENT_SECRET || !CONFIG.GOOGLE_OAUTH_REDIRECT_URI) {
+    return res.status(500).send('OAuth client is not configured (missing env vars)');
+  }
+
+  const url = oauth2Client.generateAuthUrl({
+    access_type: 'offline', // required to get a refresh_token back
+    prompt: 'consent',      // forces Google to re-issue a refresh_token even on repeat auth
+    scope: DRIVE_SCOPES,
+  });
+
+  res.redirect(url);
+});
+
+app.get('/auth/google/callback', async (req, res) => {
+  const { code, error } = req.query;
+
+  if (error) {
+    return res.status(400).send(`Authorization failed: ${error}`);
+  }
+  if (!code) {
+    return res.status(400).send('Missing "code" query parameter');
+  }
+
+  try {
+    const { tokens } = await oauth2Client.getToken(code);
+
+    if (!tokens.refresh_token) {
+      return res
+        .status(200)
+        .send(
+          'Signed in, but Google did not return a refresh_token (it only returns one the ' +
+          'first time you consent, or when prompt=consent is used and any prior grant was ' +
+          'revoked first). Go to https://myaccount.google.com/permissions, remove access for ' +
+          'this app, then visit /auth/google again.'
+        );
+    }
+
+    // Persist to Firestore so it survives restarts/redeploys and every
+    // server instance (if you ever scale beyond one) can read it — no
+    // manual copy-pasting into env vars required.
+    await saveRefreshToken(tokens.refresh_token);
+
+    // Wire it up immediately so this running server instance can use it
+    // right away too, without waiting for a restart.
+    oauth2Client.setCredentials(tokens);
+    driveReady = true;
+
+    console.log('Google Drive OAuth refresh token saved to Firestore (config/googleDriveOAuth).');
+
+    res.send(
+      'Success. Drive access has been authorized and saved. You can now remove or lock down ' +
+      'the /auth/google and /auth/google/callback routes.'
+    );
+  } catch (e) {
+    console.error('Token exchange failed:', e);
+    res.status(500).send('Token exchange failed. Check server logs.');
+  }
+});
 
 // --- Upload a file into a subject folder --------------------------------
 
 app.post('/upload', requireAuth, (req, res) => {
+  if (!driveIsConfigured()) {
+    return res.status(503).json({ error: 'Drive is not configured yet. Complete the OAuth setup first.' });
+  }
+
   upload.single('file')(req, res, async (err) => {
     if (err) {
       return res.status(400).json({ error: err.message });
@@ -264,6 +410,10 @@ app.post('/upload', requireAuth, (req, res) => {
 // --- Create a folder within a subject folder ---------------------------
 
 app.post('/folders', requireAuth, async (req, res) => {
+  if (!driveIsConfigured()) {
+    return res.status(503).json({ error: 'Drive is not configured yet. Complete the OAuth setup first.' });
+  }
+
   const { name, parentFolderId } = req.body;
 
   if (!name || typeof name !== 'string' || !name.trim()) {
@@ -285,6 +435,10 @@ app.post('/folders', requireAuth, async (req, res) => {
 // --- Delete a file or folder (admin-only by default) --------------------
 
 app.delete('/files/:fileId', requireAuth, requireAdmin, async (req, res) => {
+  if (!driveIsConfigured()) {
+    return res.status(503).json({ error: 'Drive is not configured yet. Complete the OAuth setup first.' });
+  }
+
   try {
     await deleteItem(req.params.fileId);
     res.json({ deleted: true });
@@ -301,6 +455,16 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Unexpected server error' });
 });
 
-app.listen(CONFIG.PORT, () => {
-  console.log(`Edupal backend listening on port ${CONFIG.PORT}`);
+initDriveAuth().then(() => {
+  app.listen(CONFIG.PORT, () => {
+    console.log(`Edupal backend listening on port ${CONFIG.PORT}`);
+    if (!driveIsConfigured()) {
+      console.log(
+        `Drive is not configured yet. Visit /auth/google${CONFIG.AUTH_SETUP_SECRET ? '?secret=YOUR_SECRET' : ''} ` +
+        `once to authorize — the refresh token will be saved to Firestore automatically.`
+      );
+    } else {
+      console.log('Drive OAuth refresh token loaded from Firestore.');
+    }
+  });
 });
