@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
+import 'course_addition.dart';
 
 class SuperAdminDashboard extends StatefulWidget {
   const SuperAdminDashboard({super.key});
@@ -549,6 +550,37 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
     return '${months[date.month - 1]} ${date.day}, ${date.year}';
   }
 
+  Future<void> _openCourseAddition() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const CourseAdditionScreen(),
+      ),
+    );
+  }
+
+  Widget _buildAddCourseButton({bool onDark = false}) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton.icon(
+        onPressed: _openCourseAddition,
+        icon: const Icon(Icons.add_rounded),
+        label: const Text(
+          'Add Course',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+        ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: onDark ? Colors.white : const Color(0xFF0F172A),
+          foregroundColor: onDark ? const Color(0xFF0F172A) : Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildStatisticsSection() {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
@@ -619,6 +651,8 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
               ),
             ],
           ),
+          const SizedBox(height: 16),
+          _buildAddCourseButton(onDark: true),
           AnimatedSize(
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeInOut,
@@ -991,6 +1025,11 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
         ),
         actions: [
           IconButton(
+            tooltip: 'Add Course',
+            icon: const Icon(Icons.add_rounded),
+            onPressed: _openCourseAddition,
+          ),
+          IconButton(
             icon: const Icon(Icons.refresh_rounded),
             onPressed: _loadProfiles,
           ),
@@ -1036,6 +1075,13 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                 ),
               ],
             ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _openCourseAddition,
+        backgroundColor: const Color(0xFF0F172A),
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.add_rounded),
+        label: const Text('Add Course'),
+      ),
     );
   }
 }

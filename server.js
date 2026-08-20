@@ -32,6 +32,10 @@ const SEMESTER_FOLDER_IDS = new Set([
   '1VXL_RjzzO8QxDj1JY3eANLXP-38v-FiX', // year5_sem2
 ]);
 
+// Semester folders created for additional courses (loaded from Firestore).
+const extraSemesterFolderIds = new Set();
+const SUPER_ADMIN_EMAIL = (process.env.SUPER_ADMIN_EMAIL || 'muigaid91@gmail.com').toLowerCase();
+
 const ADMIN_UIDS = new Set(
   (process.env.ADMIN_UIDS || '')
     .split(',')
@@ -70,6 +74,29 @@ admin.initializeApp({
 });
 
 const firestore = admin.firestore();
+
+const extraSemesterIds = new Set();
+
+async function loadSemesterIdsFromFirestore() {
+  try {
+    const snapshot = await firestore.collection('courses').get();
+    snapshot.forEach((doc) => {
+      const semesters = doc.data().semesters || {};
+      Object.values(semesters).forEach((semester) => {
+        const id = semester && semester.folderId;
+        if (typeof id === 'string' && id) extraSemesterIds.add(id);
+      });
+    });
+  } catch (err) {
+    console.error('Failed to load course semester folders from Firestore:', err.message);
+  }
+}
+
+function rememberSemesterFolderId(folderId) {
+  if (typeof folderId === 'string' && folderId) {
+    extraSemesterIds.add(folderId);
+  }
+}
 
 // Where the refresh token lives in Firestore, instead of an env var.
 // A single document under a "config" collection.
@@ -156,7 +183,7 @@ async function isValidSubjectFolder(folderId) {
     });
     const isFolder = res.data.mimeType === 'application/vnd.google-apps.folder';
     const parents = res.data.parents || [];
-    valid = isFolder && parents.some((p) => CONFIG.SEMESTER_FOLDER_IDS.has(p));
+    valid = isFolder && parents.some((p) => isSemesterFolder(p));
   } catch (err) {
     valid = false; // not found, not accessible, or transient error — fail closed
   }
@@ -184,7 +211,8 @@ async function uploadFile({ fileName, buffer, folderId, uploadedBy, mimeType }) 
 }
 
 function isSemesterFolder(folderId) {
-  return typeof folderId === 'string' && CONFIG.SEMESTER_FOLDER_IDS.has(folderId);
+  return typeof folderId === 'string' &&
+    (CONFIG.SEMESTER_FOLDER_IDS.has(folderId) || extraSemesterIds.has(folderId));
 }
 
 // New unit folders are created directly under a semester folder.
@@ -193,7 +221,7 @@ async function isValidCreateParent(folderId) {
   return isSemesterFolder(folderId) || (await isValidSubjectFolder(folderId));
 }
 
-async function createFolder(folderName, parentFolderId) {
+async function createFolder(folderName, parentFolderId, { cacheAsSubject = true } = {}) {
   const safeName = sanitizeFileName(folderName);
   const res = await drive.files.create({
     requestBody: {
@@ -204,10 +232,72 @@ async function createFolder(folderName, parentFolderId) {
     fields: 'id, name',
     supportsAllDrives: true,
   });
-  // A folder created under a semester is a new unit folder; one created
-  // under a unit is a nested folder. Cache both as valid upload targets.
-  validationCache.set(res.data.id, { valid: true, at: Date.now() });
+  if (cacheAsSubject) {
+    validationCache.set(res.data.id, { valid: true, at: Date.now() });
+  }
   return res.data;
+}
+
+async function resolveEdupalFolderId() {
+  if (process.env.EDUPAL_FOLDER_ID) {
+    return process.env.EDUPAL_FOLDER_ID;
+  }
+
+  const semesterId = [...CONFIG.SEMESTER_FOLDER_IDS][0];
+  if (!semesterId) {
+    throw new Error('No known semester folder to locate Edupal from');
+  }
+
+  const semester = await drive.files.get({
+    fileId: semesterId,
+    fields: 'parents',
+    supportsAllDrives: true,
+  });
+  const courseFolderId = (semester.data.parents || [])[0];
+  if (!courseFolderId) {
+    throw new Error('Could not find the Engineering course folder');
+  }
+
+  const courseFolder = await drive.files.get({
+    fileId: courseFolderId,
+    fields: 'parents',
+    supportsAllDrives: true,
+  });
+  const edupalId = (courseFolder.data.parents || [])[0];
+  if (!edupalId) {
+    throw new Error('Could not find the Edupal Drive folder');
+  }
+  return edupalId;
+}
+
+async function createCourseStructure(courseName, years) {
+  const edupalId = await resolveEdupalFolderId();
+  const courseFolder = await createFolder(courseName, edupalId, {
+    cacheAsSubject: false,
+  });
+
+  const semesters = {};
+  for (let year = 1; year <= years; year += 1) {
+    for (let sem = 1; sem <= 2; sem += 1) {
+      const key = `year${year}_sem${sem}`;
+      const driveName = `year ${year} sem ${sem}`;
+      const folder = await createFolder(driveName, courseFolder.id, {
+        cacheAsSubject: false,
+      });
+      rememberSemesterFolderId(folder.id);
+      semesters[key] = {
+        folderId: folder.id,
+        name: `Year ${year} - Semester ${sem}`,
+        driveName,
+      };
+    }
+  }
+
+  return {
+    courseFolderId: courseFolder.id,
+    courseFolderName: courseFolder.name,
+    semesters,
+  };
 }
 
 async function renameItem(fileId, newName) {
@@ -241,7 +331,7 @@ async function isManagedItem(fileId) {
       supportsAllDrives: true,
     });
     const parents = res.data.parents || [];
-    if (parents.some((p) => CONFIG.SEMESTER_FOLDER_IDS.has(p))) {
+    if (parents.some((p) => isSemesterFolder(p))) {
       return true;
     }
     for (const parent of parents) {
@@ -322,6 +412,15 @@ function requireAdmin(req, res, next) {
     return next();
   }
   res.status(403).json({ error: 'Admin privileges required for this action' });
+}
+
+function requireSuperAdmin(req, res, next) {
+  const email = (req.user.email || '').toLowerCase();
+  if (email === SUPER_ADMIN_EMAIL) return next();
+  if (CONFIG.ADMIN_UIDS.size > 0 && CONFIG.ADMIN_UIDS.has(req.user.uid)) {
+    return next();
+  }
+  return res.status(403).json({ error: 'Super admin privileges required' });
 }
 
 // =========================================================================
@@ -478,6 +577,32 @@ app.post('/folders', requireAuth, async (req, res) => {
   }
 });
 
+// --- Create a course folder under Edupal with year/semester subfolders ---
+
+app.post('/course-structure', requireAuth, requireSuperAdmin, async (req, res) => {
+  if (!driveIsConfigured()) {
+    return res.status(503).json({ error: 'Drive is not configured yet. Complete the OAuth setup first.' });
+  }
+
+  const { name, years } = req.body || {};
+  const yearCount = Number(years);
+
+  if (!name || typeof name !== 'string' || !name.trim()) {
+    return res.status(400).json({ error: 'A non-empty course "name" is required' });
+  }
+  if (!Number.isInteger(yearCount) || yearCount < 1 || yearCount > 10) {
+    return res.status(400).json({ error: 'years must be an integer between 1 and 10' });
+  }
+
+  try {
+    const structure = await createCourseStructure(name.trim(), yearCount);
+    res.json(structure);
+  } catch (e) {
+    console.error('Course structure creation failed:', e);
+    res.status(500).json({ error: e.message || 'Failed to create course folders' });
+  }
+});
+
 // --- Rename a file or folder (admin-only by default) --------------------
 
 app.patch('/files/:fileId', requireAuth, requireAdmin, async (req, res) => {
@@ -541,7 +666,8 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Unexpected server error' });
 });
 
-initDriveAuth().then(() => {
+initDriveAuth().then(async () => {
+  await loadSemesterIdsFromFirestore();
   app.listen(CONFIG.PORT, () => {
     console.log(`Edupal backend listening on port ${CONFIG.PORT}`);
     if (!driveIsConfigured()) {

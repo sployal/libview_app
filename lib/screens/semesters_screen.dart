@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/course_service.dart';
 import '../services/google_drive_service.dart';
 import 'semester_detail_screen.dart';
 
@@ -11,102 +12,42 @@ class SemestersScreen extends StatefulWidget {
 
 class _SemestersScreenState extends State<SemestersScreen> {
   final Map<String, int> _unitCounts = {};
+  bool _isLoadingCourse = true;
   bool _isLoadingCounts = true;
+  Course _course = Course.engineeringFallback();
   Map<String, String>? _selectedSemester;
 
-  // ============================================================================
-  // 📁 PASTE YOUR GOOGLE DRIVE FOLDER IDs HERE
-  // ============================================================================
-  // To get the folder ID from a Google Drive link:
-  // Example: https://drive.google.com/drive/folders/1ABC123XYZ456
-  // The folder ID is: 1ABC123XYZ456
-  // ============================================================================
-  
-  static const Map<String, Map<String, String>> semesterFolderIds = {
-    'year1_sem1': {
-      'folderId': '18YgdYz4ErI9yJHn2Gx1UoaVqZ7YECSFz',
-      'name': 'Year 1 - Semester 1',
-    },
-    'year1_sem2': {
-      'folderId': '13sB0aRpu0xjtScMoJbtlSHcWvbr1gvbp',
-      'name': 'Year 1 - Semester 2',
-    },
-    'year2_sem1': {
-      'folderId': '12RdiiGAfWsJPR9Q9fFf7Pi6p-g51sd1C',
-      'name': 'Year 2 - Semester 1',
-    },
-    'year2_sem2': {
-      'folderId': '1_50Uj07FIcQY_KTQaFExtFpRnFi4C_G6',
-      'name': 'Year 2 - Semester 2',
-    },
-    'year3_sem1': {
-      'folderId': '1jAJiVWsNEAcz6GSVLluxBeMGTTiALv6d',
-      'name': 'Year 3 - Semester 1',
-    },
-    'year3_sem2': {
-      'folderId': '16K6uo5lRlS4s93lO8bZ1UkVQ5ywbZCnF',
-      'name': 'Year 3 - Semester 2',
-    },
-    'year4_sem1': {
-      'folderId': '1-vulmlL7rswowcYWgl0y9DHw3o1hdnmx',
-      'name': 'Year 4 - Semester 1',
-    },
-    'year4_sem2': {
-      'folderId': '15W3I9I9Dqwt3JKjNy8a9fDBCc6V0qjxf',
-      'name': 'Year 4 - Semester 2',
-    },
-    'year5_sem1': {
-      'folderId': '18oNF6Xm4NV6oPnpZTJVBCPDqrxlWm6vE',
-      'name': 'Year 5 - Semester 1',
-    },
-    'year5_sem2': {
-      'folderId': '1VXL_RjzzO8QxDj1JY3eANLXP-38v-FiX',
-      'name': 'Year 5 - Semester 2',
-    },
-  };
+  Map<String, Map<String, String>> get _semesterFolderIds => _course.semesters;
 
-  static const _years = [
-    {
-      'year': 'Year 1',
-      'semesters': [
-        {'name': 'Semester 1', 'key': 'year1_sem1'},
-        {'name': 'Semester 2', 'key': 'year1_sem2'},
-      ]
-    },
-    {
-      'year': 'Year 2',
-      'semesters': [
-        {'name': 'Semester 1', 'key': 'year2_sem1'},
-        {'name': 'Semester 2', 'key': 'year2_sem2'},
-      ]
-    },
-    {
-      'year': 'Year 3',
-      'semesters': [
-        {'name': 'Semester 1', 'key': 'year3_sem1'},
-        {'name': 'Semester 2', 'key': 'year3_sem2'},
-      ]
-    },
-    {
-      'year': 'Year 4',
-      'semesters': [
-        {'name': 'Semester 1', 'key': 'year4_sem1'},
-        {'name': 'Semester 2', 'key': 'year4_sem2'},
-      ]
-    },
-    {
-      'year': 'Year 5',
-      'semesters': [
-        {'name': 'Semester 1', 'key': 'year5_sem1'},
-        {'name': 'Semester 2', 'key': 'year5_sem2'},
-      ]
-    },
-  ];
+  List<Map<String, dynamic>> get _years => _course.yearGroups;
 
   @override
   void initState() {
     super.initState();
-    _loadUnitCounts();
+    _loadCourse();
+  }
+
+  Future<void> _loadCourse() async {
+    setState(() {
+      _isLoadingCourse = true;
+    });
+
+    try {
+      final course = await CourseService.instance.courseForCurrentUser();
+      if (!mounted) return;
+      setState(() {
+        _course = course;
+        _isLoadingCourse = false;
+      });
+      await _loadUnitCounts();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _course = Course.engineeringFallback();
+        _isLoadingCourse = false;
+      });
+      await _loadUnitCounts();
+    }
   }
 
   Future<void> _loadUnitCounts() async {
@@ -115,7 +56,7 @@ class _SemestersScreenState extends State<SemestersScreen> {
     });
 
     final counts = await Future.wait(
-      semesterFolderIds.entries.map((entry) async {
+      _semesterFolderIds.entries.map((entry) async {
         final folderId = entry.value['folderId'] ?? '';
         if (folderId.isEmpty || folderId.contains('PASTE_')) {
           return MapEntry(entry.key, 0);
@@ -168,24 +109,43 @@ class _SemestersScreenState extends State<SemestersScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFF0F172A),
       appBar: AppBar(
-        title: const Text(
-          'Academic Years',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.white,
-          ),
+        title: Column(
+          children: [
+            const Text(
+              'Academic Years',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            if (!_isLoadingCourse)
+              Text(
+                _course.name,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white.withOpacity(0.7),
+                ),
+              ),
+          ],
         ),
         backgroundColor: const Color(0xFF0F172A),
         elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded, color: Colors.white),
-            onPressed: _isLoadingCounts ? null : _loadUnitCounts,
-            tooltip: 'Refresh unit counts',
+            onPressed: _isLoadingCourse || _isLoadingCounts ? null : _loadCourse,
+            tooltip: 'Refresh',
           ),
         ],
       ),
-      body: ListView.builder(
+      body: _isLoadingCourse
+          ? const Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+              ),
+            )
+          : ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: years.length,
         itemBuilder: (context, yearIndex) {
@@ -223,7 +183,7 @@ class _SemestersScreenState extends State<SemestersScreen> {
                 ...List.generate(semesters.length, (semIndex) {
                   final semester = semesters[semIndex];
                   final semesterKey = semester['key'] as String;
-                  final semesterConfig = semesterFolderIds[semesterKey];
+                  final semesterConfig = _semesterFolderIds[semesterKey];
                   final semNum = semIndex + 1;
                   final unitCount = _unitCounts[semesterKey];
                   

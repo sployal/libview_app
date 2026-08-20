@@ -168,6 +168,52 @@ class UploadService {
     }
   }
 
+  Future<CourseStructureResult> createCourseStructure({
+    required String courseName,
+    required int years,
+  }) async {
+    if (courseName.trim().isEmpty) {
+      throw UploadException('Course name is required');
+    }
+    if (years < 1 || years > 10) {
+      throw UploadException('Number of years must be between 1 and 10');
+    }
+
+    final token = await _idToken();
+
+    try {
+      final response = await _dio.post(
+        '/course-structure',
+        data: {
+          'name': courseName.trim(),
+          'years': years,
+        },
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+          receiveTimeout: const Duration(minutes: 3),
+        ),
+      );
+
+      final data = response.data;
+      if (data is Map<String, dynamic>) {
+        return CourseStructureResult.fromJson(data);
+      }
+      if (data is Map) {
+        return CourseStructureResult.fromJson(
+          Map<String, dynamic>.from(data),
+        );
+      }
+      throw UploadException('Unexpected response from server');
+    } on DioException catch (e) {
+      throw UploadException(
+        _messageFromDio(e, action: 'course'),
+        statusCode: e.response?.statusCode,
+      );
+    }
+  }
+
   Future<UploadResult> renameFile({
     required String fileId,
     required String name,
@@ -331,7 +377,7 @@ class UploadService {
         if (action == 'delete') {
           return 'You do not have permission to delete this file.';
         }
-        if (action == 'rename' || action == 'folder') {
+        if (action == 'rename' || action == 'folder' || action == 'course') {
           return 'You do not have permission to change folders here.';
         }
         return 'You cannot upload to this folder.';
@@ -339,7 +385,7 @@ class UploadService {
         if (action == 'delete') {
           return 'Delete was rejected.';
         }
-        if (action == 'rename' || action == 'folder') {
+        if (action == 'rename' || action == 'folder' || action == 'course') {
           return 'That folder name is not allowed.';
         }
         return 'Upload was rejected. Use a file under 20 MB.';
@@ -353,7 +399,7 @@ class UploadService {
       if (action == 'delete') {
         return 'Delete timed out. The server may be waking up — try again.';
       }
-      if (action == 'rename' || action == 'folder') {
+      if (action == 'rename' || action == 'folder' || action == 'course') {
         return 'Request timed out. The server may be waking up — try again.';
       }
       return 'Upload timed out. The server may be waking up — try again.';
@@ -372,6 +418,63 @@ class UploadService {
     if (action == 'folder') {
       return 'Could not create the folder. Please try again.';
     }
+    if (action == 'course') {
+      return 'Could not create the course folders. Please try again.';
+    }
     return 'Upload failed. Please try again.';
+  }
+}
+
+class CourseSemesterFolder {
+  final String key;
+  final String folderId;
+  final String name;
+  final String driveName;
+
+  CourseSemesterFolder({
+    required this.key,
+    required this.folderId,
+    required this.name,
+    required this.driveName,
+  });
+}
+
+class CourseStructureResult {
+  final String courseFolderId;
+  final String courseFolderName;
+  final Map<String, CourseSemesterFolder> semesters;
+
+  CourseStructureResult({
+    required this.courseFolderId,
+    required this.courseFolderName,
+    required this.semesters,
+  });
+
+  factory CourseStructureResult.fromJson(Map<String, dynamic> json) {
+    final rawSemesters = json['semesters'];
+    final semesters = <String, CourseSemesterFolder>{};
+    if (rawSemesters is Map) {
+      rawSemesters.forEach((key, value) {
+        if (value is Map) {
+          final map = Map<String, dynamic>.from(value);
+          semesters[key.toString()] = CourseSemesterFolder(
+            key: key.toString(),
+            folderId: map['folderId']?.toString() ?? map['id']?.toString() ?? '',
+            name: map['name']?.toString() ?? key.toString(),
+            driveName: map['driveName']?.toString() ?? '',
+          );
+        }
+      });
+    }
+
+    return CourseStructureResult(
+      courseFolderId: json['courseFolderId']?.toString() ??
+          json['id']?.toString() ??
+          '',
+      courseFolderName: json['courseFolderName']?.toString() ??
+          json['name']?.toString() ??
+          '',
+      semesters: semesters,
+    );
   }
 }

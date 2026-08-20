@@ -1,0 +1,272 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+import 'auth_service.dart';
+import 'upload_service.dart';
+
+class Course {
+  final String id;
+  final String name;
+  final int years;
+  final String sampleAdmissionNumber;
+  final String admissionPrefix;
+  final String driveFolderId;
+  final Map<String, Map<String, String>> semesters;
+
+  const Course({
+    required this.id,
+    required this.name,
+    required this.years,
+    required this.sampleAdmissionNumber,
+    required this.admissionPrefix,
+    required this.driveFolderId,
+    required this.semesters,
+  });
+
+  List<Map<String, dynamic>> get yearGroups {
+    return List.generate(years, (index) {
+      final year = index + 1;
+      return {
+        'year': 'Year $year',
+        'semesters': [
+          {'name': 'Semester 1', 'key': semesterKey(year, 1)},
+          {'name': 'Semester 2', 'key': semesterKey(year, 2)},
+        ],
+      };
+    });
+  }
+
+  static String semesterKey(int year, int sem) => 'year${year}_sem$sem';
+
+  static String driveFolderName(int year, int sem) => 'year $year sem $sem';
+
+  static String displayName(int year, int sem) =>
+      'Year $year - Semester $sem';
+
+  static String admissionPrefixFromSample(String sample) {
+    final match = RegExp(r'^([A-Za-z]+)').firstMatch(sample.trim());
+    return (match?.group(1) ?? sample.trim()).toUpperCase();
+  }
+
+  factory Course.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
+    final data = doc.data() ?? {};
+    final rawSemesters = data['semesters'];
+    final semesters = <String, Map<String, String>>{};
+    if (rawSemesters is Map) {
+      rawSemesters.forEach((key, value) {
+        if (value is Map) {
+          semesters[key.toString()] = {
+            'folderId': value['folderId']?.toString() ?? '',
+            'name': value['name']?.toString() ?? key.toString(),
+            'driveName': value['driveName']?.toString() ?? '',
+          };
+        }
+      });
+    }
+
+    return Course(
+      id: doc.id,
+      name: (data['name'] as String?)?.trim() ?? 'Course',
+      years: (data['years'] as num?)?.toInt() ?? 0,
+      sampleAdmissionNumber:
+          (data['sample_admission_number'] as String?) ?? '',
+      admissionPrefix:
+          ((data['admission_prefix'] as String?) ?? '').toUpperCase(),
+      driveFolderId: (data['drive_folder_id'] as String?) ?? '',
+      semesters: semesters,
+    );
+  }
+
+  factory Course.engineeringFallback() {
+    const folderIds = {
+      'year1_sem1': '18YgdYz4ErI9yJHn2Gx1UoaVqZ7YECSFz',
+      'year1_sem2': '13sB0aRpu0xjtScMoJbtlSHcWvbr1gvbp',
+      'year2_sem1': '12RdiiGAfWsJPR9Q9fFf7Pi6p-g51sd1C',
+      'year2_sem2': '1_50Uj07FIcQY_KTQaFExtFpRnFi4C_G6',
+      'year3_sem1': '1jAJiVWsNEAcz6GSVLluxBeMGTTiALv6d',
+      'year3_sem2': '16K6uo5lRlS4s93lO8bZ1UkVQ5ywbZCnF',
+      'year4_sem1': '1-vulmlL7rswowcYWgl0y9DHw3o1hdnmx',
+      'year4_sem2': '15W3I9I9Dqwt3JKjNy8a9fDBCc6V0qjxf',
+      'year5_sem1': '18oNF6Xm4NV6oPnpZTJVBCPDqrxlWm6vE',
+      'year5_sem2': '1VXL_RjzzO8QxDj1JY3eANLXP-38v-FiX',
+    };
+
+    final semesters = <String, Map<String, String>>{};
+    for (var year = 1; year <= 5; year++) {
+      for (var sem = 1; sem <= 2; sem++) {
+        final key = semesterKey(year, sem);
+        semesters[key] = {
+          'folderId': folderIds[key] ?? '',
+          'name': displayName(year, sem),
+          'driveName': driveFolderName(year, sem),
+        };
+      }
+    }
+
+    return Course(
+      id: 'engineering',
+      name: 'Engineering',
+      years: 5,
+      sampleAdmissionNumber: 'EB24/46271/20',
+      admissionPrefix: 'EB',
+      driveFolderId: '',
+      semesters: semesters,
+    );
+  }
+}
+
+class CourseService {
+  CourseService._();
+
+  static final CourseService instance = CourseService._();
+
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  CollectionReference<Map<String, dynamic>> get _courses =>
+      _firestore.collection('courses');
+
+  Future<List<Course>> listCourses() async {
+    try {
+      await seedEngineeringIfNeeded();
+    } catch (_) {
+      // Students may not be allowed to write the seed document.
+    }
+    final snapshot = await _courses.get();
+    return snapshot.docs.map(Course.fromDoc).toList();
+  }
+
+  Future<void> seedEngineeringIfNeeded() async {
+    final existingDoc = await _courses.doc('engineering').get();
+    if (existingDoc.exists) return;
+
+    final existing = await _courses
+        .where('admission_prefix', isEqualTo: 'EB')
+        .limit(1)
+        .get();
+    if (existing.docs.isNotEmpty) return;
+
+    final fallback = Course.engineeringFallback();
+    await _courses.doc('engineering').set({
+      'name': fallback.name,
+      'years': fallback.years,
+      'sample_admission_number': fallback.sampleAdmissionNumber,
+      'admission_prefix': fallback.admissionPrefix,
+      'drive_folder_id': fallback.driveFolderId,
+      'semesters': fallback.semesters,
+      'created_at': FieldValue.serverTimestamp(),
+      'updated_at': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
+  Future<Course> courseForCurrentUser() async {
+    final courses = await listCourses();
+    final uid = AuthService.instance.currentUser?.uid;
+    String registrationNumber = '';
+
+    if (uid != null) {
+      final profile = await _firestore.collection('profiles').doc(uid).get();
+      registrationNumber =
+          (profile.data()?['registration_number'] as String?) ?? '';
+    }
+
+    final matched = matchCourse(registrationNumber, courses);
+    if (matched != null) return matched;
+
+    for (final course in courses) {
+      if (course.admissionPrefix == 'EB') return course;
+    }
+    return Course.engineeringFallback();
+  }
+
+  Course? matchCourse(String registrationNumber, List<Course> courses) {
+    final reg = registrationNumber.trim().toUpperCase();
+    if (reg.isEmpty) return null;
+
+    Course? best;
+    for (final course in courses) {
+      final prefix = course.admissionPrefix.toUpperCase();
+      if (prefix.isEmpty) continue;
+      if (reg.startsWith(prefix) &&
+          (best == null || prefix.length > best.admissionPrefix.length)) {
+        best = course;
+      }
+    }
+    return best;
+  }
+
+  Future<Course> createCourse({
+    required String name,
+    required int years,
+    required String sampleAdmissionNumber,
+  }) async {
+    final courseName = name.trim();
+    final sample = sampleAdmissionNumber.trim().toUpperCase();
+    final prefix = Course.admissionPrefixFromSample(sample);
+
+    if (courseName.isEmpty) {
+      throw UploadException('Course name is required');
+    }
+    if (years < 1 || years > 10) {
+      throw UploadException('Number of years must be between 1 and 10');
+    }
+    if (prefix.isEmpty) {
+      throw UploadException('Sample admission number is required');
+    }
+
+    await seedEngineeringIfNeeded();
+
+    final existing = await listCourses();
+    final nameTaken = existing.any(
+      (course) => course.name.toLowerCase() == courseName.toLowerCase(),
+    );
+    if (nameTaken) {
+      throw UploadException('A course with this name already exists');
+    }
+
+    final prefixTaken = existing.any(
+      (course) => course.admissionPrefix.toUpperCase() == prefix,
+    );
+    if (prefixTaken) {
+      throw UploadException(
+        'Admission prefix "$prefix" is already linked to another course',
+      );
+    }
+
+    final structure = await UploadService.instance.createCourseStructure(
+      courseName: courseName,
+      years: years,
+    );
+
+    final semesters = <String, Map<String, String>>{};
+    structure.semesters.forEach((key, value) {
+      semesters[key] = {
+        'folderId': value.folderId,
+        'name': value.name,
+        'driveName': value.driveName,
+      };
+    });
+
+    final payload = {
+      'name': courseName,
+      'years': years,
+      'sample_admission_number': sample,
+      'admission_prefix': prefix,
+      'drive_folder_id': structure.courseFolderId,
+      'semesters': semesters,
+      'created_at': FieldValue.serverTimestamp(),
+      'updated_at': FieldValue.serverTimestamp(),
+      'created_by': FirebaseAuth.instance.currentUser?.uid,
+    };
+
+    final doc = await _courses.add(payload);
+    return Course(
+      id: doc.id,
+      name: courseName,
+      years: years,
+      sampleAdmissionNumber: sample,
+      admissionPrefix: prefix,
+      driveFolderId: structure.courseFolderId,
+      semesters: semesters,
+    );
+  }
+}
