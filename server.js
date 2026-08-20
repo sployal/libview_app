@@ -207,6 +207,31 @@ async function deleteItem(fileId) {
   validationCache.delete(fileId);
 }
 
+// A file/folder may be deleted only if it lives under a known semester
+// folder: either it *is* a subject folder (parent is a semester ID), or
+// it sits inside a valid subject folder.
+async function isManagedItem(fileId) {
+  if (!fileId || typeof fileId !== 'string') return false;
+
+  try {
+    const res = await drive.files.get({
+      fileId,
+      fields: 'id, parents',
+      supportsAllDrives: true,
+    });
+    const parents = res.data.parents || [];
+    if (parents.some((p) => CONFIG.SEMESTER_FOLDER_IDS.has(p))) {
+      return true;
+    }
+    for (const parent of parents) {
+      if (await isValidSubjectFolder(parent)) return true;
+    }
+    return false;
+  } catch (err) {
+    return false;
+  }
+}
+
 // Strips characters that are awkward in file names or could be used
 // for path traversal — Drive doesn't have real paths, but this keeps
 // names clean and avoids surprises in UIs that render them.
@@ -439,8 +464,16 @@ app.delete('/files/:fileId', requireAuth, requireAdmin, async (req, res) => {
     return res.status(503).json({ error: 'Drive is not configured yet. Complete the OAuth setup first.' });
   }
 
+  const { fileId } = req.params;
+  if (!fileId) {
+    return res.status(400).json({ error: 'A file ID is required' });
+  }
+  if (!(await isManagedItem(fileId))) {
+    return res.status(403).json({ error: 'Invalid or unauthorized file' });
+  }
+
   try {
-    await deleteItem(req.params.fileId);
+    await deleteItem(fileId);
     res.json({ deleted: true });
   } catch (e) {
     console.error('Delete failed:', e);

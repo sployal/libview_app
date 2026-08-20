@@ -31,6 +31,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
   // NEW: Track downloading state for each file
   Map<String, bool> downloadingFiles = {};
   Map<String, double> downloadProgress = {};
+  final Set<String> _deletingIds = {};
   bool isUploading = false;
   double uploadProgress = 0.0;
 
@@ -282,6 +283,79 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
           duration: Duration(seconds: result.success ? 3 : 5),
         ),
       );
+    }
+  }
+
+  Future<void> _confirmDelete(StudyMaterial material) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Text(
+            'Delete material?',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          content: Text(
+            '“${material.name}” will be permanently removed from this unit.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFFEF4444),
+              ),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      await _deleteMaterial(material);
+    }
+  }
+
+  Future<void> _deleteMaterial(StudyMaterial material) async {
+    if (_deletingIds.contains(material.id)) return;
+
+    setState(() {
+      _deletingIds.add(material.id);
+    });
+
+    try {
+      if (_isLiveFolder) {
+        await UploadService.instance.deleteFile(material.id);
+      }
+
+      if (!mounted) return;
+      setState(() {
+        currentFiles.removeWhere((item) => item.id == material.id);
+        _deletingIds.remove(material.id);
+        if (selectedSubject != null && selectedSubject!.fileCount > 0) {
+          selectedSubject!.fileCount -= 1;
+        }
+      });
+      _showMessage('Deleted ${material.name}');
+    } on UploadException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _deletingIds.remove(material.id);
+      });
+      _showMessage(e.message, isError: true);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _deletingIds.remove(material.id);
+      });
+      _showMessage('Failed to delete ${material.name}', isError: true);
     }
   }
 
@@ -631,7 +705,29 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                                     ),
                                   ),
                                   const SizedBox(width: 8),
-                                  // NEW: Download button
+                                  if (_deletingIds.contains(file.id))
+                                    const Padding(
+                                      padding: EdgeInsets.symmetric(horizontal: 12),
+                                      child: SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFEF4444)),
+                                        ),
+                                      ),
+                                    )
+                                  else
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.delete_outline_rounded,
+                                        color: Color(0xFFEF4444),
+                                      ),
+                                      tooltip: 'Delete',
+                                      onPressed: isDownloading
+                                          ? null
+                                          : () => _confirmDelete(file),
+                                    ),
                                   IconButton(
                                     icon: isDownloading
                                         ? SizedBox(

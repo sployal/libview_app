@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/google_drive_service.dart';
+import '../services/upload_service.dart';
 
 class SubjectDetailScreen extends StatefulWidget {
   final String subjectName;
@@ -27,6 +28,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
   List<StudyMaterial> materials = [];
   bool isLoading = true;
   String? errorMessage;
+  final Set<String> _deletingIds = {};
 
   @override
   void initState() {
@@ -88,6 +90,78 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
         date: '2024-01-22',
       ),
     ];
+  }
+
+  Future<void> _confirmDelete(StudyMaterial material) async {
+    HapticFeedback.lightImpact();
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Text(
+            'Delete material?',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          content: Text(
+            '“${material.name}” will be permanently removed from this subject.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFFEF4444),
+              ),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      await _deleteMaterial(material);
+    }
+  }
+
+  Future<void> _deleteMaterial(StudyMaterial material) async {
+    if (_deletingIds.contains(material.id)) return;
+
+    setState(() {
+      _deletingIds.add(material.id);
+    });
+
+    try {
+      if (widget.isLiveFolder) {
+        await UploadService.instance.deleteFile(material.id);
+      }
+
+      if (!mounted) return;
+      setState(() {
+        materials.removeWhere((item) => item.id == material.id);
+        _deletingIds.remove(material.id);
+      });
+      _showMessage('Deleted ${material.name}');
+    } on UploadException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _deletingIds.remove(material.id);
+      });
+      _showMessage(e.message, isError: true);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _deletingIds.remove(material.id);
+      });
+      _showMessage('Failed to delete ${material.name}', isError: true);
+    }
   }
 
   Future<void> _openFile(StudyMaterial material) async {
@@ -463,6 +537,28 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
                                                 },
                                               ),
                                             ],
+                                            if (_deletingIds.contains(material.id))
+                                              const Padding(
+                                                padding: EdgeInsets.symmetric(horizontal: 12),
+                                                child: SizedBox(
+                                                  width: 20,
+                                                  height: 20,
+                                                  child: CircularProgressIndicator(
+                                                    strokeWidth: 2,
+                                                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFEF4444)),
+                                                  ),
+                                                ),
+                                              )
+                                            else
+                                              IconButton(
+                                                icon: const Icon(
+                                                  Icons.delete_outline_rounded,
+                                                  color: Color(0xFFEF4444),
+                                                  size: 20,
+                                                ),
+                                                tooltip: 'Delete',
+                                                onPressed: () => _confirmDelete(material),
+                                              ),
                                             IconButton(
                                               icon: Icon(
                                                 widget.isLiveFolder 

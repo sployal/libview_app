@@ -60,7 +60,7 @@ class UploadService {
   Future<String> _idToken() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      throw UploadException('Please sign in to upload files');
+        throw UploadException('Please sign in to continue');
     }
 
     final token = await user.getIdToken();
@@ -120,6 +120,30 @@ class UploadService {
     } on DioException catch (e) {
       throw UploadException(
         _messageFromDio(e),
+        statusCode: e.response?.statusCode,
+      );
+    }
+  }
+
+  Future<void> deleteFile(String fileId) async {
+    if (fileId.isEmpty) {
+      throw UploadException('No file selected');
+    }
+
+    final token = await _idToken();
+
+    try {
+      await _dio.delete(
+        '/files/${Uri.encodeComponent(fileId)}',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      );
+    } on DioException catch (e) {
+      throw UploadException(
+        _messageFromDio(e, action: 'delete'),
         statusCode: e.response?.statusCode,
       );
     }
@@ -211,7 +235,7 @@ class UploadService {
     }
   }
 
-  String _messageFromDio(DioException error) {
+  String _messageFromDio(DioException error, {String action = 'upload'}) {
     final data = error.response?.data;
     if (data is Map && data['error'] is String) {
       return data['error'] as String;
@@ -221,9 +245,13 @@ class UploadService {
       case 401:
         return 'Session expired. Please sign in again.';
       case 403:
-        return 'You cannot upload to this folder.';
+        return action == 'delete'
+            ? 'You do not have permission to delete this file.'
+            : 'You cannot upload to this folder.';
       case 400:
-        return 'Upload was rejected. Use a file under 20 MB.';
+        return action == 'delete'
+            ? 'Delete was rejected.'
+            : 'Upload was rejected. Use a file under 20 MB.';
       default:
         break;
     }
@@ -231,13 +259,17 @@ class UploadService {
     if (error.type == DioExceptionType.connectionTimeout ||
         error.type == DioExceptionType.sendTimeout ||
         error.type == DioExceptionType.receiveTimeout) {
-      return 'Upload timed out. The server may be waking up — try again.';
+      return action == 'delete'
+          ? 'Delete timed out. The server may be waking up — try again.'
+          : 'Upload timed out. The server may be waking up — try again.';
     }
 
     if (error.type == DioExceptionType.connectionError) {
       return 'Could not reach the upload server. Check your connection.';
     }
 
-    return 'Upload failed. Please try again.';
+    return action == 'delete'
+        ? 'Delete failed. Please try again.'
+        : 'Upload failed. Please try again.';
   }
 }
