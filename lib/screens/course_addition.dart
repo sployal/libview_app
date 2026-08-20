@@ -28,10 +28,6 @@ class _CourseAdditionScreenState extends State<CourseAdditionScreen> {
     super.dispose();
   }
 
-  bool _isValidAdmissionNumber(String value) {
-    return RegExp(r'^[a-zA-Z]{2}\d{2}/\d{5}/\d{2}$').hasMatch(value.trim());
-  }
-
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate() || _isSubmitting) return;
 
@@ -185,14 +181,10 @@ class _CourseAdditionScreenState extends State<CourseAdditionScreen> {
                   label: 'Sample admission number',
                   hint: 'e.g. EB24/46271/20',
                   icon: Icons.badge_rounded,
-                  textCapitalization: TextCapitalization.characters,
                   onChanged: (_) => setState(() {}),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
                       return 'Enter a sample admission number';
-                    }
-                    if (!_isValidAdmissionNumber(value)) {
-                      return 'Use format AA00/00000/00';
                     }
                     return null;
                   },
@@ -200,8 +192,8 @@ class _CourseAdditionScreenState extends State<CourseAdditionScreen> {
                 const SizedBox(height: 12),
                 Text(
                   prefix.isEmpty
-                      ? 'Students whose admission number starts with this prefix will load this course.'
-                      : 'Users with admission numbers starting with $prefix will be linked to this course.',
+                      ? 'Students whose admission number starts with this sample will load this course.'
+                      : 'Users whose admission number starts with "$prefix" will be linked to this course.',
                   style: const TextStyle(
                     fontSize: 13,
                     color: Color(0xFF6B7280),

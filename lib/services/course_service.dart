@@ -44,8 +44,7 @@ class Course {
       'Year $year - Semester $sem';
 
   static String admissionPrefixFromSample(String sample) {
-    final match = RegExp(r'^([A-Za-z]+)').firstMatch(sample.trim());
-    return (match?.group(1) ?? sample.trim()).toUpperCase();
+    return sample.trim().toUpperCase();
   }
 
   factory Course.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
@@ -200,7 +199,7 @@ class CourseService {
     required String sampleAdmissionNumber,
   }) async {
     final courseName = name.trim();
-    final sample = sampleAdmissionNumber.trim().toUpperCase();
+    final sample = sampleAdmissionNumber.trim();
     final prefix = Course.admissionPrefixFromSample(sample);
 
     if (courseName.isEmpty) {
@@ -209,7 +208,7 @@ class CourseService {
     if (years < 1 || years > 10) {
       throw UploadException('Number of years must be between 1 and 10');
     }
-    if (prefix.isEmpty) {
+    if (sample.isEmpty) {
       throw UploadException('Sample admission number is required');
     }
 
@@ -221,15 +220,6 @@ class CourseService {
     );
     if (nameTaken) {
       throw UploadException('A course with this name already exists');
-    }
-
-    final prefixTaken = existing.any(
-      (course) => course.admissionPrefix.toUpperCase() == prefix,
-    );
-    if (prefixTaken) {
-      throw UploadException(
-        'Admission prefix "$prefix" is already linked to another course',
-      );
     }
 
     final structure = await UploadService.instance.createCourseStructure(

@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
+import '../services/course_service.dart';
 import 'course_addition.dart';
 
 class SuperAdminDashboard extends StatefulWidget {
@@ -27,7 +28,9 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
   List<Map<String, dynamic>> _profiles = [];
   List<Map<String, dynamic>> _filteredUsers = [];
   List<Map<String, dynamic>> _filteredStaff = [];
+  List<Course> _courses = [];
   bool _isLoading = true;
+  bool _isLoadingCourses = true;
   bool _isStatsExpanded = true;
   String _userSearchQuery = '';
   String _staffSearchQuery = '';
@@ -93,6 +96,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
       return;
     }
     await _loadProfiles();
+    await _loadCourses();
   }
 
   Future<void> _loadProfiles() async {
@@ -550,13 +554,34 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
     return '${months[date.month - 1]} ${date.day}, ${date.year}';
   }
 
+  Future<void> _loadCourses() async {
+    setState(() => _isLoadingCourses = true);
+    try {
+      final courses = await CourseService.instance.listCourses();
+      courses.sort(
+        (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+      );
+      if (!mounted) return;
+      setState(() {
+        _courses = courses;
+        _isLoadingCourses = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isLoadingCourses = false);
+    }
+  }
+
   Future<void> _openCourseAddition() async {
-    await Navigator.push(
+    final created = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
         builder: (context) => const CourseAdditionScreen(),
       ),
     );
+    if (created == true && mounted) {
+      await _loadCourses();
+    }
   }
 
   Widget _buildAddCourseButton({bool onDark = false}) {
@@ -578,6 +603,96 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildAvailableCourses() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Available courses',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: Colors.white.withOpacity(0.95),
+          ),
+        ),
+        const SizedBox(height: 10),
+        if (_isLoadingCourses)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 12),
+            child: Center(
+              child: SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              ),
+            ),
+          )
+        else if (_courses.isEmpty)
+          Text(
+            'No courses yet. Add one to create Drive folders.',
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.7),
+              fontSize: 13,
+            ),
+          )
+        else
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 240),
+            child: ListView.separated(
+              shrinkWrap: true,
+              padding: EdgeInsets.zero,
+              itemCount: _courses.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 8),
+              itemBuilder: (context, index) {
+                final course = _courses[index];
+                final semesterCount = course.semesters.length;
+                return Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        course.name,
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF0F172A),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        '${course.years} ${course.years == 1 ? 'year' : 'years'}  •  $semesterCount semester folders',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF475569),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Admission: ${course.sampleAdmissionNumber.isEmpty ? '—' : course.sampleAdmissionNumber}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Color(0xFF475569),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+      ],
     );
   }
 
@@ -653,6 +768,8 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
           ),
           const SizedBox(height: 16),
           _buildAddCourseButton(onDark: true),
+          const SizedBox(height: 20),
+          _buildAvailableCourses(),
           AnimatedSize(
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeInOut,
@@ -1031,7 +1148,10 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
           ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
-            onPressed: _loadProfiles,
+            onPressed: () {
+              _loadProfiles();
+              _loadCourses();
+            },
           ),
         ],
         bottom: TabBar(
@@ -1075,13 +1195,6 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                 ),
               ],
             ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _openCourseAddition,
-        backgroundColor: const Color(0xFF0F172A),
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Add Course'),
-      ),
     );
   }
 }
