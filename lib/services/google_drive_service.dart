@@ -224,6 +224,11 @@ class GoogleDriveService {
       throw Exception('Failed to load subjects from folder: $e');
     }
   }
+
+  static Future<int> countFoldersInFolder(String folderId) async {
+    final items = await getFolderContents(folderId);
+    return items.where((item) => item.isFolder).length;
+  }
   
   // ============================================================================
   // BACKWARD COMPATIBILITY: Keep old method for existing Semester 4 code

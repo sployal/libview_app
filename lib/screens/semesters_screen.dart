@@ -1,8 +1,17 @@
 import 'package:flutter/material.dart';
+import '../services/google_drive_service.dart';
 import 'semester_detail_screen.dart';
 
-class SemestersScreen extends StatelessWidget {
+class SemestersScreen extends StatefulWidget {
   const SemestersScreen({super.key});
+
+  @override
+  State<SemestersScreen> createState() => _SemestersScreenState();
+}
+
+class _SemestersScreenState extends State<SemestersScreen> {
+  final Map<String, int> _unitCounts = {};
+  bool _isLoadingCounts = true;
 
   // ============================================================================
   // 📁 PASTE YOUR GOOGLE DRIVE FOLDER IDs HERE
@@ -55,45 +64,95 @@ class SemestersScreen extends StatelessWidget {
     },
   };
 
+  static const _years = [
+    {
+      'year': 'Year 1',
+      'semesters': [
+        {'name': 'Semester 1', 'key': 'year1_sem1'},
+        {'name': 'Semester 2', 'key': 'year1_sem2'},
+      ]
+    },
+    {
+      'year': 'Year 2',
+      'semesters': [
+        {'name': 'Semester 1', 'key': 'year2_sem1'},
+        {'name': 'Semester 2', 'key': 'year2_sem2'},
+      ]
+    },
+    {
+      'year': 'Year 3',
+      'semesters': [
+        {'name': 'Semester 1', 'key': 'year3_sem1'},
+        {'name': 'Semester 2', 'key': 'year3_sem2'},
+      ]
+    },
+    {
+      'year': 'Year 4',
+      'semesters': [
+        {'name': 'Semester 1', 'key': 'year4_sem1'},
+        {'name': 'Semester 2', 'key': 'year4_sem2'},
+      ]
+    },
+    {
+      'year': 'Year 5',
+      'semesters': [
+        {'name': 'Semester 1', 'key': 'year5_sem1'},
+        {'name': 'Semester 2', 'key': 'year5_sem2'},
+      ]
+    },
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUnitCounts();
+  }
+
+  Future<void> _loadUnitCounts() async {
+    setState(() {
+      _isLoadingCounts = true;
+    });
+
+    final counts = await Future.wait(
+      semesterFolderIds.entries.map((entry) async {
+        final folderId = entry.value['folderId'] ?? '';
+        if (folderId.isEmpty || folderId.contains('PASTE_')) {
+          return MapEntry(entry.key, 0);
+        }
+        try {
+          final count = await GoogleDriveService.countFoldersInFolder(folderId);
+          return MapEntry(entry.key, count);
+        } catch (_) {
+          return MapEntry(entry.key, _unitCounts[entry.key] ?? 0);
+        }
+      }),
+    );
+
+    if (!mounted) return;
+    setState(() {
+      _unitCounts
+        ..clear()
+        ..addEntries(counts);
+      _isLoadingCounts = false;
+    });
+  }
+
+  Future<void> _openSemester(Map<String, String> semesterConfig) async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SemesterDetailScreen(
+          semesterName: semesterConfig['name']!,
+          folderId: semesterConfig['folderId']!,
+        ),
+      ),
+    );
+    await _loadUnitCounts();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final years = [
-      {
-        'year': 'Year 1',
-        'semesters': [
-          {'name': 'Semester 1', 'Units': 6, 'progress': 0.8, 'key': 'year1_sem1'},
-          {'name': 'Semester 2', 'Units': 5, 'progress': 0.6, 'key': 'year1_sem2'},
-        ]
-      },
-      {
-        'year': 'Year 2',
-        'semesters': [
-          {'name': 'Semester 1', 'Units': 7, 'progress': 1.0, 'key': 'year2_sem1'},
-          {'name': 'Semester 2', 'Units': 6, 'progress': 0.9, 'key': 'year2_sem2'},
-        ]
-      },
-      {
-        'year': 'Year 3',
-        'semesters': [
-          {'name': 'Semester 1', 'Units': 6, 'progress': 0.75, 'key': 'year3_sem1'},
-          {'name': 'Semester 2', 'Units': 7, 'progress': 0.85, 'key': 'year3_sem2'},
-        ]
-      },
-      {
-        'year': 'Year 4',
-        'semesters': [
-          {'name': 'Semester 1', 'Units': 5, 'progress': 0.95, 'key': 'year4_sem1'},
-          {'name': 'Semester 2', 'Units': 6, 'progress': 0.88, 'key': 'year4_sem2'},
-        ]
-      },
-      {
-        'year': 'Year 5',
-        'semesters': [
-          {'name': 'Semester 1', 'Units': 6, 'progress': 1.0, 'key': 'year5_sem1'},
-          {'name': 'Semester 2', 'Units': 5, 'progress': 0.92, 'key': 'year5_sem2'},
-        ]
-      },
-    ];
+    final years = _years;
 
     return Scaffold(
       backgroundColor: const Color(0xFF0F172A),
@@ -109,8 +168,9 @@ class SemestersScreen extends StatelessWidget {
         elevation: 0,
         actions: [
           IconButton(
-            icon: const Icon(Icons.search_rounded, color: Colors.white),
-            onPressed: () {},
+            icon: const Icon(Icons.refresh_rounded, color: Colors.white),
+            onPressed: _isLoadingCounts ? null : _loadUnitCounts,
+            tooltip: 'Refresh unit counts',
           ),
         ],
       ),
@@ -154,7 +214,7 @@ class SemestersScreen extends StatelessWidget {
                   final semesterKey = semester['key'] as String;
                   final semesterConfig = semesterFolderIds[semesterKey];
                   final semNum = semIndex + 1;
-                  final progress = semester['progress'] as double;
+                  final unitCount = _unitCounts[semesterKey];
                   
                   // Determine card color based on semester
                   final colors = semNum == 1
@@ -168,15 +228,7 @@ class SemestersScreen extends StatelessWidget {
                         if (semesterConfig != null && semesterConfig['folderId']!.isNotEmpty && 
                             !semesterConfig['folderId']!.contains('PASTE_')) {
                           // Navigate to SemesterDetailScreen with Google Drive folder ID
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => SemesterDetailScreen(
-                                semesterName: semesterConfig['name']!,
-                                folderId: semesterConfig['folderId']!,
-                              ),
-                            ),
-                          );
+                          _openSemester(semesterConfig);
                         } else {
                           // Show error if folder ID is not configured
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -298,7 +350,9 @@ class SemestersScreen extends StatelessWidget {
                                   ),
                                   const SizedBox(height: 4),
                                   Text(
-                                    '${semester['Units']} Units',
+                                    _isLoadingCounts && unitCount == null
+                                        ? 'Loading units...'
+                                        : '${unitCount ?? 0} ${(unitCount ?? 0) == 1 ? 'Unit' : 'Units'}',
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: Colors.white.withOpacity(0.7),
@@ -306,37 +360,6 @@ class SemestersScreen extends StatelessWidget {
                                   ),
                                 ],
                               ),
-                            ),
-                            
-                            // Progress Circle
-                            Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                SizedBox(
-                                  width: 48,
-                                  height: 48,
-                                  child: CircularProgressIndicator(
-                                    value: progress,
-                                    strokeWidth: 4,
-                                    backgroundColor: Colors.white.withOpacity(0.1),
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                      progress >= 0.9
-                                          ? const Color(0xFF10B981)
-                                          : progress >= 0.7
-                                              ? const Color(0xFF3B82F6)
-                                              : const Color(0xFFF59E0B),
-                                    ),
-                                  ),
-                                ),
-                                Text(
-                                  '${(progress * 100).toInt()}%',
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ],
                             ),
                             
                             const SizedBox(width: 8),
