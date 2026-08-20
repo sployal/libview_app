@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/download_service.dart';
+import '../services/streak_service.dart';
 import 'downloads_screen.dart';
 import 'notifications_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -11,7 +12,8 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen>
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   late AnimationController _slideController;
   late Animation<Offset> _slideAnimation;
   
@@ -37,6 +39,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       curve: Curves.easeOutCubic,
     ));
     _slideController.forward();
+    WidgetsBinding.instance.addObserver(this);
     _loadRecentActivity();
     _loadUnreadNotificationCount();
     _setupNotificationSubscription();
@@ -44,8 +47,16 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _slideController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _recordAndLoadStreak();
+    }
   }
 
   void _setupNotificationSubscription() {
@@ -95,87 +106,25 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     });
 
     final downloads = await DownloadService.getDownloads();
-    
-    // Calculate streak
-    final streakData = _calculateStreak(downloads);
-    
+    final streak = await StreakService.instance.recordDailyOpen();
+
+    if (!mounted) return;
     setState(() {
       totalDownloads = downloads.length;
-      // Get the 3 most recent downloads
       recentDownloads = downloads.take(3).toList();
-      currentStreak = streakData['current']!;
-      longestStreak = streakData['longest']!;
+      currentStreak = streak.currentStreak;
+      longestStreak = streak.longestStreak;
       isLoading = false;
     });
   }
 
-  Map<String, int> _calculateStreak(List<DownloadItem> downloads) {
-    if (downloads.isEmpty) {
-      return {'current': 0, 'longest': 0};
-    }
-
-    // Group downloads by date (ignoring time)
-    Map<String, bool> activeDays = {};
-    
-    for (var download in downloads) {
-      try {
-        final date = DateTime.parse(download.date);
-        final dateKey = '${date.year}-${date.month}-${date.day}';
-        activeDays[dateKey] = true;
-      } catch (e) {
-        // Skip if date parsing fails
-        continue;
-      }
-    }
-
-    if (activeDays.isEmpty) {
-      return {'current': 0, 'longest': 0};
-    }
-
-    // Calculate current streak
-    int currentStreak = 0;
-    DateTime checkDate = DateTime.now();
-    
-    while (true) {
-      final dateKey = '${checkDate.year}-${checkDate.month}-${checkDate.day}';
-      if (activeDays.containsKey(dateKey)) {
-        currentStreak++;
-        checkDate = checkDate.subtract(const Duration(days: 1));
-      } else {
-        // Check if we're on the first day (today might not have activity yet)
-        if (currentStreak == 0 && checkDate.day == DateTime.now().day) {
-          checkDate = checkDate.subtract(const Duration(days: 1));
-          continue;
-        }
-        break;
-      }
-      
-      // Safety limit
-      if (currentStreak > 365) break;
-    }
-
-    // Calculate longest streak
-    List<DateTime> sortedDates = activeDays.keys.map((key) {
-      final parts = key.split('-');
-      return DateTime(int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
-    }).toList()..sort();
-
-    int longestStreak = 0;
-    int tempStreak = 1;
-
-    for (int i = 1; i < sortedDates.length; i++) {
-      final diff = sortedDates[i].difference(sortedDates[i - 1]).inDays;
-      if (diff == 1) {
-        tempStreak++;
-        longestStreak = tempStreak > longestStreak ? tempStreak : longestStreak;
-      } else {
-        longestStreak = tempStreak > longestStreak ? tempStreak : longestStreak;
-        tempStreak = 1;
-      }
-    }
-    longestStreak = tempStreak > longestStreak ? tempStreak : longestStreak;
-
-    return {'current': currentStreak, 'longest': longestStreak};
+  Future<void> _recordAndLoadStreak() async {
+    final streak = await StreakService.instance.recordDailyOpen();
+    if (!mounted) return;
+    setState(() {
+      currentStreak = streak.currentStreak;
+      longestStreak = streak.longestStreak;
+    });
   }
 
   String _getStreakEmoji(int streak) {
