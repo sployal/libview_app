@@ -8,11 +8,13 @@ import 'web_view_screen.dart';
 class SemesterDetailScreen extends StatefulWidget {
   final String semesterName;
   final String? folderId;
+  final VoidCallback? onBack;
 
   const SemesterDetailScreen({
     super.key,
     this.semesterName = 'Semester',
     this.folderId,
+    this.onBack,
   });
 
   @override
@@ -539,6 +541,22 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     });
   }
 
+  void _leaveSemester() {
+    if (widget.onBack != null) {
+      widget.onBack!();
+      return;
+    }
+    Navigator.maybePop(context);
+  }
+
+  Future<void> _onSystemBack() async {
+    if (selectedSubject != null) {
+      _backToSubjects();
+      return;
+    }
+    _leaveSemester();
+  }
+
   IconData _getFileIcon(String type) {
     switch (type) {
       case 'PDF':
@@ -575,11 +593,14 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (selectedSubject != null) {
-      return _buildFilesView();
-    }
-    
-    return _buildSubjectsView();
+    return PopScope(
+      canPop: widget.onBack == null && selectedSubject == null,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _onSystemBack();
+      },
+      child: selectedSubject != null ? _buildFilesView() : _buildSubjectsView(),
+    );
   }
 
   Widget _buildFilesView() {
@@ -867,6 +888,10 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: _leaveSemester,
+        ),
         title: Text(
           widget.semesterName,
           style: const TextStyle(fontWeight: FontWeight.bold),

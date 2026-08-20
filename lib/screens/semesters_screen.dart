@@ -12,6 +12,7 @@ class SemestersScreen extends StatefulWidget {
 class _SemestersScreenState extends State<SemestersScreen> {
   final Map<String, int> _unitCounts = {};
   bool _isLoadingCounts = true;
+  Map<String, String>? _selectedSemester;
 
   // ============================================================================
   // 📁 PASTE YOUR GOOGLE DRIVE FOLDER IDs HERE
@@ -137,21 +138,31 @@ class _SemestersScreenState extends State<SemestersScreen> {
     });
   }
 
-  Future<void> _openSemester(Map<String, String> semesterConfig) async {
-    await Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => SemesterDetailScreen(
-          semesterName: semesterConfig['name']!,
-          folderId: semesterConfig['folderId']!,
-        ),
-      ),
-    );
-    await _loadUnitCounts();
+  void _openSemester(Map<String, String> semesterConfig) {
+    setState(() {
+      _selectedSemester = semesterConfig;
+    });
+  }
+
+  void _closeSemester() {
+    setState(() {
+      _selectedSemester = null;
+    });
+    _loadUnitCounts();
   }
 
   @override
   Widget build(BuildContext context) {
+    final selected = _selectedSemester;
+    if (selected != null) {
+      return SemesterDetailScreen(
+        key: ValueKey(selected['folderId']),
+        semesterName: selected['name']!,
+        folderId: selected['folderId'],
+        onBack: _closeSemester,
+      );
+    }
+
     final years = _years;
 
     return Scaffold(

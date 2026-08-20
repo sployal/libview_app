@@ -173,7 +173,10 @@ class _MainScreenState extends State<MainScreen>
     return Scaffold(
       body: FadeTransition(
         opacity: _fadeAnimation,
-        child: _screens[_selectedIndex],
+        child: IndexedStack(
+          index: _selectedIndex,
+          children: _screens,
+        ),
       ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
