@@ -98,5 +98,12 @@
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="https" />
         </intent>
+
+        <!-- Open OAuth in Google Chrome specifically -->
+        <package android:name="com.android.chrome" />
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="googlechrome" />
+        </intent>
     </queries>
 </manifest>

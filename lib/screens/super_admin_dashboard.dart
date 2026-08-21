@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../services/auth_service.dart';
 import '../services/course_service.dart';
@@ -874,6 +877,95 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
     );
   }
 
+  static const _googleAuthUrl = 'https://edupal-backend.onrender.com/auth/google';
+
+  Future<void> _openRefreshTokenInChrome() async {
+    try {
+      var launched = false;
+
+      if (Platform.isAndroid) {
+        try {
+          launched = await launchUrl(
+            Uri.parse('googlechrome://navigate?url=$_googleAuthUrl'),
+            mode: LaunchMode.externalApplication,
+          );
+        } catch (_) {
+          launched = false;
+        }
+      } else if (Platform.isIOS) {
+        final chromeUri = Uri.parse(
+          'googlechromes://edupal-backend.onrender.com/auth/google',
+        );
+        if (await canLaunchUrl(chromeUri)) {
+          launched = await launchUrl(
+            chromeUri,
+            mode: LaunchMode.externalApplication,
+          );
+        }
+      }
+
+      if (!launched) {
+        launched = await launchUrl(
+          Uri.parse(_googleAuthUrl),
+          mode: LaunchMode.externalApplication,
+        );
+      }
+
+      if (!launched && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not open Google Chrome.'),
+            backgroundColor: Color(0xFFEF4444),
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not open Google Chrome: $e'),
+          backgroundColor: const Color(0xFFEF4444),
+        ),
+      );
+    }
+  }
+
+  Widget _buildTokenRefreshSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Token refresh',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w700,
+            color: Colors.white.withValues(alpha: 0.95),
+          ),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: _openRefreshTokenInChrome,
+            icon: const Icon(Icons.refresh_rounded),
+            label: const Text(
+              'Refresh token',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.white,
+              foregroundColor: const Color(0xFF0F172A),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildStatisticsSection() {
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
@@ -948,6 +1040,8 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
           _buildAddCourseButton(onDark: true),
           const SizedBox(height: 20),
           _buildAvailableCourses(),
+          const SizedBox(height: 20),
+          _buildTokenRefreshSection(),
           AnimatedSize(
             duration: const Duration(milliseconds: 300),
             curve: Curves.easeInOut,
