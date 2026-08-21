@@ -214,7 +214,24 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
     return null;
   }
 
+  bool _isCurrentUser(Map<String, dynamic> user) {
+    final currentUid = AuthService.instance.currentUser?.uid;
+    if (currentUid == null) return false;
+    return user['id']?.toString() == currentUid;
+  }
+
   Future<void> _updateUserRole(String userId, String newRole) async {
+    if (userId == AuthService.instance.currentUser?.uid) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You cannot change your own role.'),
+          backgroundColor: Color(0xFFEF4444),
+        ),
+      );
+      return;
+    }
+
     try {
       await _firestore.collection('profiles').doc(userId).update({
         'role': newRole,
@@ -248,6 +265,16 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
   }
 
   void _showRoleChangeDialog(Map<String, dynamic> user) {
+    if (_isCurrentUser(user)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You cannot change your own role.'),
+          backgroundColor: Color(0xFFEF4444),
+        ),
+      );
+      return;
+    }
+
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -447,25 +474,43 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                       Icons.calendar_today_rounded,
                     ),
                     const SizedBox(height: 32),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          _showRoleChangeDialog(user);
-                        },
-                        icon: const Icon(Icons.edit_rounded),
-                        label: const Text('Change Role'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF6366F1),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                    if (_isCurrentUser(user))
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Text(
+                          'You cannot change your own role.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Color(0xFF64748B),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      )
+                    else
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            _showRoleChangeDialog(user);
+                          },
+                          icon: const Icon(Icons.edit_rounded),
+                          label: const Text('Change Role'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF6366F1),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
                         ),
                       ),
-                    ),
                   ],
                 ),
               ),
