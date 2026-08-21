@@ -279,11 +279,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     Expanded(
                       child: ElevatedButton(
                         onPressed: () async {
-                          if (titleController.text.trim().isEmpty ||
-                              messageController.text.trim().isEmpty) {
+                          if (messageController.text.trim().isEmpty) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
-                                content: const Text('Please fill all fields'),
+                                content: const Text('Please enter a message'),
                                 backgroundColor: const Color(0xFFEF4444),
                                 behavior: SnackBarBehavior.floating,
                                 shape: RoundedRectangleBorder(
@@ -692,7 +691,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         children: [
                           Expanded(
                             child: Text(
-                              notification.title,
+                              notification.displayTitle,
                               style: TextStyle(
                                 fontSize: 16,
                                 fontWeight: notification.isRead
@@ -959,7 +958,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        notification.title,
+                        notification.displayTitle,
                         style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,

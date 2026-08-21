@@ -374,19 +374,10 @@ class _CreateNotificationScreenState extends State<CreateNotificationScreen> {
                     const SizedBox(height: 32),
                     _buildTextField(
                       controller: _titleController,
-                      label: 'Title',
-                      hint: 'Enter notification title',
+                      label: 'Title (optional)',
+                      hint: 'Enter a title, or leave blank',
                       icon: Icons.title_rounded,
                       maxLines: 1,
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Please enter a title';
-                        }
-                        if (value.trim().length < 3) {
-                          return 'Title must be at least 3 characters';
-                        }
-                        return null;
-                      },
                     ),
                     const SizedBox(height: 24),
                     _buildTextField(

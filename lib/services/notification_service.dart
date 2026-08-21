@@ -34,6 +34,14 @@ class AppNotification {
     required this.isRead,
   });
 
+  String get displayTitle {
+    final trimmed = title.trim();
+    if (trimmed.isNotEmpty) return trimmed;
+    final preview = message.trim();
+    if (preview.isEmpty) return 'Notification';
+    return preview.split('\n').first;
+  }
+
   AppNotification copyWith({bool? isRead}) {
     return AppNotification(
       id: id,
@@ -112,7 +120,7 @@ class NotificationService {
   }
 
   Future<void> create({
-    required String title,
+    String title = '',
     required String message,
     required String type,
     required String audience,
