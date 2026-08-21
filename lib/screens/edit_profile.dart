@@ -16,13 +16,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   // Controllers
   final _fullNameController = TextEditingController();
   final _usernameController = TextEditingController();
-  final _registrationNumberController = TextEditingController();
   final _avatarUrlController = TextEditingController();
 
   bool _isLoading = true;
   bool _isSaving = false;
   String? _currentEmail;
   String? _currentRole;
+  String? _registrationNumber;
 
   @override
   void initState() {
@@ -34,7 +34,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   void dispose() {
     _fullNameController.dispose();
     _usernameController.dispose();
-    _registrationNumberController.dispose();
     _avatarUrlController.dispose();
     super.dispose();
   }
@@ -50,10 +49,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         setState(() {
           _currentEmail = user.email;
           _currentRole = profileData['role'] as String?;
+          _registrationNumber =
+              profileData['registration_number'] as String?;
           _fullNameController.text = profileData['full_name'] as String? ?? '';
           _usernameController.text = profileData['username'] as String? ?? '';
-          _registrationNumberController.text =
-              profileData['registration_number'] as String? ?? '';
           _avatarUrlController.text =
               profileData['avatar_url'] as String? ?? '';
           _isLoading = false;
@@ -94,7 +93,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         await _firestore.collection('profiles').doc(user.uid).set({
           'full_name': _fullNameController.text.trim(),
           'username': _usernameController.text.trim(),
-          'registration_number': _registrationNumberController.text.trim(),
           'avatar_url': avatarUrl.isEmpty ? null : avatarUrl,
           'updated_at': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true));
@@ -133,7 +131,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     // Check if there are unsaved changes
     final hasChanges = _fullNameController.text.trim().isNotEmpty ||
         _usernameController.text.trim().isNotEmpty ||
-        _registrationNumberController.text.trim().isNotEmpty ||
         _avatarUrlController.text.trim().isNotEmpty;
 
     if (!hasChanges) {
@@ -310,14 +307,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           return null;
                         },
                       ),
-                      const SizedBox(height: 16),
-
-                      _buildTextField(
-                        controller: _registrationNumberController,
-                        label: 'Registration Number',
-                        icon: Icons.badge_rounded,
-                        hint: 'Enter your registration number',
-                      ),
                       const SizedBox(height: 24),
 
                       _buildSectionTitle('Avatar'),
@@ -336,6 +325,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
                       // Read-only fields
                       _buildSectionTitle('Account Information'),
+                      const SizedBox(height: 16),
+
+                      _buildReadOnlyField(
+                        label: 'Admission Number',
+                        value: (_registrationNumber == null ||
+                                _registrationNumber!.trim().isEmpty)
+                            ? 'Not available'
+                            : _registrationNumber!,
+                        icon: Icons.badge_rounded,
+                      ),
                       const SizedBox(height: 16),
 
                       _buildReadOnlyField(
