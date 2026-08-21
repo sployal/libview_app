@@ -124,12 +124,7 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   String _getStreakEmoji(int streak) {
-    if (streak == 0) return '📚';
-    if (streak < 3) return '🔥';
-    if (streak < 7) return '🔥🔥';
-    if (streak < 14) return '🔥🔥🔥';
-    if (streak < 30) return '🔥🔥🔥🔥';
-    return '🔥🔥🔥🔥🔥';
+    return streak == 0 ? '📚' : '🔥';
   }
 
   String _getStreakMessage(int streak) {
@@ -369,18 +364,20 @@ class _HomeScreenState extends State<HomeScreen>
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   _getStreakEmoji(currentStreak),
-                  style: const TextStyle(fontSize: 32),
+                  style: const TextStyle(fontSize: 28, height: 1),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 Text(
                   '$currentStreak',
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 20,
+                    fontSize: 18,
                     fontWeight: FontWeight.bold,
+                    height: 1,
                   ),
                 ),
               ],
