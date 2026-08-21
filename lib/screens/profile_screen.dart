@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
-import 'users_dashboard.dart';
 import 'edit_profile.dart';
 import 'class_members.dart';
 import 'course_members.dart';
@@ -155,65 +154,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            
-            // Users Management - Only visible to admins
-            if (_isAdmin) ...[
-              ListTile(
-                leading: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF8B5CF6).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(
-                    Icons.people_rounded,
-                    color: Color(0xFF8B5CF6),
-                    size: 20,
-                  ),
-                ),
-                title: const Text(
-                  'Users Management',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                subtitle: const Text(
-                  'Admin only',
-                  style: TextStyle(fontSize: 12),
-                ),
-                trailing: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEF4444).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: const Text(
-                    'ADMIN',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFFEF4444),
-                    ),
-                  ),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const UsersDashboard(),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 8),
-            ],
-            
             ListTile(
               leading: Container(
                 width: 40,
