@@ -1,3 +1,6 @@
+import 'dart:typed_data';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../services/ai_service.dart';
@@ -13,6 +16,8 @@ class _AiScreenState extends State<AiScreen> {
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
   final List<ChatMessage> _messages = [];
+  Uint8List? _pendingImage;
+  String? _pendingImageMime;
   bool _isSending = false;
 
   @override
@@ -22,28 +27,89 @@ class _AiScreenState extends State<AiScreen> {
     super.dispose();
   }
 
-  Future<void> _send() async {
-    final text = _controller.text.trim();
-    if (text.isEmpty || _isSending) return;
+  Future<void> _pickImage() async {
+    if (_isSending) return;
+
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      withData: true,
+      dialogTitle: 'Attach an image',
+    );
+    if (result == null || result.files.isEmpty) return;
+
+    final file = result.files.first;
+    final bytes = file.bytes;
+    if (bytes == null || bytes.isEmpty) return;
+
+    const maxBytes = 4 * 1024 * 1024;
+    if (bytes.length > maxBytes) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Please choose an image smaller than 4 MB.'),
+          backgroundColor: const Color(0xFFEF4444),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+      return;
+    }
 
     setState(() {
-      _messages.add(ChatMessage(role: 'user', text: text));
+      _pendingImage = bytes;
+      _pendingImageMime = _mimeFromName(file.name, file.extension);
+    });
+  }
+
+  String _mimeFromName(String name, String? extension) {
+    final ext = (extension ?? name.split('.').last).toLowerCase();
+    switch (ext) {
+      case 'png':
+        return 'image/png';
+      case 'gif':
+        return 'image/gif';
+      case 'webp':
+        return 'image/webp';
+      case 'jpg':
+      case 'jpeg':
+      default:
+        return 'image/jpeg';
+    }
+  }
+
+  Future<void> _send() async {
+    final text = _controller.text.trim();
+    final image = _pendingImage;
+    final imageMime = _pendingImageMime;
+    if ((text.isEmpty && image == null) || _isSending) return;
+
+    setState(() {
+      _messages.add(ChatMessage(
+        role: 'user',
+        text: text,
+        imageBytes: image,
+        imageMime: imageMime,
+      ));
       _isSending = true;
+      _pendingImage = null;
+      _pendingImageMime = null;
     });
     _controller.clear();
     _scrollToBottom();
 
     try {
-      final reply = await AiService.sendMessage(_messages);
+      final reply = await AiService.instance.sendMessage(_messages);
       if (!mounted) return;
       setState(() {
-        _messages.add(ChatMessage(role: 'model', text: reply));
+        _messages.add(ChatMessage(role: 'assistant', text: reply));
       });
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _messages.removeLast();
         _controller.text = text;
+        _pendingImage = image;
+        _pendingImageMime = imageMime;
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -77,6 +143,8 @@ class _AiScreenState extends State<AiScreen> {
   void _clearChat() {
     setState(() {
       _messages.clear();
+      _pendingImage = null;
+      _pendingImageMime = null;
     });
   }
 
@@ -113,9 +181,8 @@ class _AiScreenState extends State<AiScreen> {
                       if (index == _messages.length) {
                         return _TypingBubble(accent: accent, isDark: isDark);
                       }
-                      final message = _messages[index];
                       return _ChatBubble(
-                        message: message,
+                        message: _messages[index],
                         accent: accent,
                         isDark: isDark,
                       );
@@ -127,6 +194,14 @@ class _AiScreenState extends State<AiScreen> {
             isSending: _isSending,
             accent: accent,
             isDark: isDark,
+            pendingImage: _pendingImage,
+            onAttach: _pickImage,
+            onClearImage: () {
+              setState(() {
+                _pendingImage = null;
+                _pendingImageMime = null;
+              });
+            },
             onSend: _send,
           ),
         ],
@@ -168,7 +243,7 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Get help with notes, exam prep, explanations, and study plans.',
+              'Ask a question or attach an image from your notes, slides, or a diagram.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 15,
@@ -222,15 +297,32 @@ class _ChatBubble extends StatelessWidget {
             ),
           ],
         ),
-        child: Text(
-          message.text,
-          style: TextStyle(
-            fontSize: 15,
-            height: 1.4,
-            color: isUser
-                ? Colors.white
-                : (isDark ? const Color(0xFFF9FAFB) : const Color(0xFF1F2937)),
-          ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (message.imageBytes != null) ...[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: Image.memory(
+                  message.imageBytes!,
+                  width: 220,
+                  fit: BoxFit.cover,
+                ),
+              ),
+              if (message.text.isNotEmpty) const SizedBox(height: 8),
+            ],
+            if (message.text.isNotEmpty)
+              Text(
+                message.text,
+                style: TextStyle(
+                  fontSize: 15,
+                  height: 1.4,
+                  color: isUser
+                      ? Colors.white
+                      : (isDark ? const Color(0xFFF9FAFB) : const Color(0xFF1F2937)),
+                ),
+              ),
+          ],
         ),
       ),
     );
@@ -290,6 +382,9 @@ class _Composer extends StatelessWidget {
     required this.isSending,
     required this.accent,
     required this.isDark,
+    required this.pendingImage,
+    required this.onAttach,
+    required this.onClearImage,
     required this.onSend,
   });
 
@@ -297,6 +392,9 @@ class _Composer extends StatelessWidget {
   final bool isSending;
   final Color accent;
   final bool isDark;
+  final Uint8List? pendingImage;
+  final VoidCallback onAttach;
+  final VoidCallback onClearImage;
   final VoidCallback onSend;
 
   @override
@@ -304,7 +402,7 @@ class _Composer extends StatelessWidget {
     return SafeArea(
       top: false,
       child: Container(
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+        padding: const EdgeInsets.fromLTRB(8, 8, 12, 8),
         decoration: BoxDecoration(
           color: isDark ? const Color(0xFF1F2937) : Colors.white,
           boxShadow: [
@@ -315,44 +413,90 @@ class _Composer extends StatelessWidget {
             ),
           ],
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: TextField(
-                controller: controller,
-                enabled: !isSending,
-                minLines: 1,
-                maxLines: 5,
-                textInputAction: TextInputAction.send,
-                onSubmitted: (_) => onSend(),
-                decoration: InputDecoration(
-                  hintText: 'Ask a study question…',
-                  filled: true,
-                  fillColor: isDark
-                      ? const Color(0xFF111827)
-                      : const Color(0xFFF8FAFC),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(24),
-                    borderSide: BorderSide.none,
-                  ),
+            if (pendingImage != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                child: Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.memory(
+                        pendingImage!,
+                        height: 72,
+                        width: 72,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    Positioned(
+                      top: 2,
+                      right: 2,
+                      child: GestureDetector(
+                        onTap: isSending ? null : onClearImage,
+                        child: Container(
+                          decoration: const BoxDecoration(
+                            color: Colors.black54,
+                            shape: BoxShape.circle,
+                          ),
+                          padding: const EdgeInsets.all(2),
+                          child: const Icon(
+                            Icons.close_rounded,
+                            size: 14,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ),
-            const SizedBox(width: 8),
-            CircleAvatar(
-              backgroundColor: accent,
-              child: IconButton(
-                onPressed: isSending ? null : onSend,
-                icon: Icon(
-                  isSending ? Icons.hourglass_top_rounded : Icons.send_rounded,
-                  color: Colors.white,
-                  size: 20,
+            Row(
+              children: [
+                IconButton(
+                  tooltip: 'Attach image',
+                  onPressed: isSending ? null : onAttach,
+                  icon: Icon(Icons.image_outlined, color: accent),
                 ),
-              ),
+                Expanded(
+                  child: TextField(
+                    controller: controller,
+                    enabled: !isSending,
+                    minLines: 1,
+                    maxLines: 5,
+                    textInputAction: TextInputAction.send,
+                    onSubmitted: (_) => onSend(),
+                    decoration: InputDecoration(
+                      hintText: 'Ask a study question…',
+                      filled: true,
+                      fillColor: isDark
+                          ? const Color(0xFF111827)
+                          : const Color(0xFFF8FAFC),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(24),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                CircleAvatar(
+                  backgroundColor: accent,
+                  child: IconButton(
+                    onPressed: isSending ? null : onSend,
+                    icon: Icon(
+                      isSending ? Icons.hourglass_top_rounded : Icons.send_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),

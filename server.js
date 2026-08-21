@@ -7,6 +7,7 @@ const multer = require('multer');
 const { google } = require('googleapis');
 const { Readable } = require('stream');
 const admin = require('firebase-admin');
+const { registerAiRoutes } = require('./ai_chat');
 
 // =========================================================================
 // config
@@ -488,7 +489,7 @@ app.use(
     origin: CONFIG.ALLOWED_ORIGINS.includes('*') ? '*' : CONFIG.ALLOWED_ORIGINS,
   })
 );
-app.use(express.json());
+app.use(express.json({ limit: '12mb' }));
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -770,6 +771,10 @@ app.delete('/files/:fileId', requireAuth, requireAdmin, async (req, res) => {
     res.status(500).json({ error: 'Delete failed' });
   }
 });
+
+// --- AI chat (NVIDIA Llama vision) --------------------------------------
+
+registerAiRoutes(app, { requireAuth });
 
 // --- Fallback error handler --------------------------------------------
 

@@ -123,8 +123,8 @@ class _MainScreenState extends State<MainScreen>
   final List<Widget> _screens = [
     const HomeScreen(),
     const SemestersScreen(),
-    const DownloadsScreen(),
     const AiScreen(),
+    const DownloadsScreen(),
     const ProfileScreen(),
   ];
 
@@ -205,12 +205,12 @@ class _MainScreenState extends State<MainScreen>
               label: 'Semesters',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.download_rounded),
-              label: 'Downloads',
-            ),
-            BottomNavigationBarItem(
               icon: Icon(Icons.auto_awesome_rounded),
               label: 'AI',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.download_rounded),
+              label: 'Downloads',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.person_rounded),

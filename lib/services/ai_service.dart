@@ -1,93 +1,90 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
-import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:http/http.dart' as http;
+import 'package:dio/dio.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+import 'upload_service.dart';
 
 class ChatMessage {
-  final String role; // 'user' or 'model'
+  final String role; // 'user' or 'assistant'
   final String text;
+  final Uint8List? imageBytes;
+  final String? imageMime;
 
-  const ChatMessage({required this.role, required this.text});
+  const ChatMessage({
+    required this.role,
+    required this.text,
+    this.imageBytes,
+    this.imageMime,
+  });
 }
 
 class AiService {
-  static const String _model = 'gemini-2.0-flash';
-  static const String _systemInstruction =
-      'You are UniStudy AI, a helpful university study assistant. '
-      'Answer clearly and concisely. Help with coursework, exam prep, '
-      'explanations, summaries, and study planning. If a question is '
-      'outside academics, still be helpful but keep a study-focused tone.';
+  AiService._();
 
-  static String get apiKey {
-    final key = dotenv.env['GEMINI_API_KEY'] ?? '';
-    if (key.isEmpty) {
-      throw StateError(
-        'GEMINI_API_KEY is missing from .env. Add your Gemini API key to use the AI chat.',
-      );
+  static final AiService instance = AiService._();
+
+  final Dio _dio = Dio(
+    BaseOptions(
+      baseUrl: UploadService.baseUrl,
+      connectTimeout: const Duration(seconds: 60),
+      receiveTimeout: const Duration(minutes: 2),
+      sendTimeout: const Duration(minutes: 2),
+    ),
+  );
+
+  Future<String> sendMessage(List<ChatMessage> history) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw Exception('Please sign in to use AI chat.');
     }
-    return key;
-  }
 
-  static Future<String> sendMessage(List<ChatMessage> history) async {
-    final uri = Uri.parse(
-      'https://generativelanguage.googleapis.com/v1beta/models/$_model:generateContent?key=${apiKey}',
-    );
+    final token = await user.getIdToken();
+    if (token == null || token.isEmpty) {
+      throw Exception('Could not get auth token. Please sign in again.');
+    }
 
-    final contents = history
-        .where((m) => m.text.trim().isNotEmpty)
-        .map((m) => {
-              'role': m.role == 'user' ? 'user' : 'model',
-              'parts': [
-                {'text': m.text},
-              ],
-            })
-        .toList();
+    final payload = {
+      'messages': history.map((m) {
+        final map = <String, dynamic>{
+          'role': m.role == 'user' ? 'user' : 'assistant',
+          'content': m.text,
+        };
+        if (m.imageBytes != null && m.imageBytes!.isNotEmpty) {
+          map['imageBase64'] = base64Encode(m.imageBytes!);
+          map['imageMime'] = m.imageMime ?? 'image/jpeg';
+        }
+        return map;
+      }).toList(),
+    };
 
-    final body = jsonEncode({
-      'systemInstruction': {
-        'parts': [
-          {'text': _systemInstruction},
-        ],
-      },
-      'contents': contents,
-      'generationConfig': {
-        'temperature': 0.7,
-        'maxOutputTokens': 2048,
-      },
-    });
+    try {
+      final response = await _dio.post(
+        '/ai/chat',
+        data: payload,
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
 
-    final response = await http.post(
-      uri,
-      headers: {'Content-Type': 'application/json'},
-      body: body,
-    );
-
-    if (response.statusCode != 200) {
-      String detail = 'Request failed (${response.statusCode})';
-      try {
-        final error = jsonDecode(response.body);
-        detail = error['error']?['message']?.toString() ?? detail;
-      } catch (_) {}
+      final reply = response.data?['reply']?.toString().trim() ?? '';
+      if (reply.isEmpty) {
+        throw Exception('The AI returned an empty reply. Try rephrasing.');
+      }
+      return reply;
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      String detail = 'AI request failed';
+      if (data is Map && data['error'] != null) {
+        detail = data['error'].toString();
+      } else if (e.message != null && e.message!.isNotEmpty) {
+        detail = e.message!;
+      }
       throw Exception(detail);
     }
-
-    final data = jsonDecode(response.body) as Map<String, dynamic>;
-    final candidates = data['candidates'] as List<dynamic>?;
-    if (candidates == null || candidates.isEmpty) {
-      throw Exception('No response from AI. Try again.');
-    }
-
-    final parts = candidates.first['content']?['parts'] as List<dynamic>?;
-    final text = parts
-            ?.map((p) => p['text']?.toString() ?? '')
-            .join()
-            .trim() ??
-        '';
-
-    if (text.isEmpty) {
-      throw Exception('The AI returned an empty reply. Try rephrasing.');
-    }
-
-    return text;
   }
 }
