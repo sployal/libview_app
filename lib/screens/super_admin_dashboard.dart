@@ -1502,120 +1502,136 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
     );
   }
 
+  Widget _buildFilterHeader({
+    required bool isUserTab,
+    required String searchHint,
+    required List<String> roles,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      color: Colors.white,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextField(
+            onChanged: (value) {
+              setState(() {
+                if (isUserTab) {
+                  _userSearchQuery = value;
+                } else {
+                  _staffSearchQuery = value;
+                }
+                _filterLists();
+              });
+            },
+            decoration: InputDecoration(
+              hintText: searchHint,
+              prefixIcon: const Icon(Icons.search_rounded),
+              filled: true,
+              fillColor: const Color(0xFFF8FAFC),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Role',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF64748B),
+            ),
+          ),
+          const SizedBox(height: 8),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _buildFilterChip('All', 'all', isUserTab),
+                ...roles.map(
+                  (role) =>
+                      _buildFilterChip(_formatRole(role), role, isUserTab),
+                ),
+              ],
+            ),
+          ),
+          if (_courses.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            const Text(
+              'Course',
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF64748B),
+              ),
+            ),
+            const SizedBox(height: 8),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _buildFilterChip(
+                    'All courses',
+                    'all',
+                    isUserTab,
+                    isCourseFilter: true,
+                  ),
+                  ..._courses.map(
+                    (course) => _buildFilterChip(
+                      course.name,
+                      course.id,
+                      isUserTab,
+                      isCourseFilter: true,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _buildListTab({
     required bool isUserTab,
     required List<Map<String, dynamic>> items,
     required String searchHint,
     required List<String> roles,
   }) {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          color: Colors.white,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              TextField(
-                onChanged: (value) {
-                  setState(() {
-                    if (isUserTab) {
-                      _userSearchQuery = value;
-                    } else {
-                      _staffSearchQuery = value;
-                    }
-                    _filterLists();
-                  });
-                },
-                decoration: InputDecoration(
-                  hintText: searchHint,
-                  prefixIcon: const Icon(Icons.search_rounded),
-                  filled: true,
-                  fillColor: const Color(0xFFF8FAFC),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'Role',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: Color(0xFF64748B),
-                ),
-              ),
-              const SizedBox(height: 8),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    _buildFilterChip('All', 'all', isUserTab),
-                    ...roles.map(
-                      (role) =>
-                          _buildFilterChip(_formatRole(role), role, isUserTab),
-                    ),
-                  ],
-                ),
-              ),
-              if (_courses.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                const Text(
-                  'Course',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF64748B),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      _buildFilterChip(
-                        'All courses',
-                        'all',
-                        isUserTab,
-                        isCourseFilter: true,
-                      ),
-                      ..._courses.map(
-                        (course) => _buildFilterChip(
-                          course.name,
-                          course.id,
-                          isUserTab,
-                          isCourseFilter: true,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ],
+    // CustomScrollView (not Column+Expanded) so NestedScrollView can give the
+    // body near-zero height while Overview still fills the viewport without
+    // overflowing the search/filter header.
+    return CustomScrollView(
+      key: PageStorageKey<String>(isUserTab ? 'users-tab' : 'staff-tab'),
+      physics: const AlwaysScrollableScrollPhysics(),
+      slivers: [
+        SliverToBoxAdapter(
+          child: _buildFilterHeader(
+            isUserTab: isUserTab,
+            searchHint: searchHint,
+            roles: roles,
           ),
         ),
-        Expanded(
-          child: items.isEmpty
-              ? ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  children: [
-                    SizedBox(
-                      height: MediaQuery.of(context).size.height * 0.35,
-                      child: _buildEmptyState(
-                        isUserTab ? 'No users found' : 'No staff found',
-                      ),
-                    ),
-                  ],
-                )
-              : ListView.builder(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  padding: const EdgeInsets.all(16),
-                  itemCount: items.length,
-                  itemBuilder: (context, index) => _buildUserCard(items[index]),
-                ),
-        ),
+        if (items.isEmpty)
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: _buildEmptyState(
+              isUserTab ? 'No users found' : 'No staff found',
+            ),
+          )
+        else
+          SliverPadding(
+            padding: const EdgeInsets.all(16),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) => _buildUserCard(items[index]),
+                childCount: items.length,
+              ),
+            ),
+          ),
       ],
     );
   }
