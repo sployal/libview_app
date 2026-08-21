@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:supabase_flutter/supabase_flutter.dart' hide User;
 import 'firebase_options.dart';
 import 'services/auth_service.dart';
 import 'services/streak_service.dart';
@@ -13,10 +12,6 @@ import 'screens/downloads_screen.dart';
 import 'screens/profile_screen.dart';
 import 'login/auth_screen.dart';
 
-// Supabase is kept temporarily for screens not yet migrated to Firebase.
-const supabaseUrl = 'https://xsxxhdfemraipzpknkxv.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhzeHhoZGZlbXJhaXB6cGtua3h2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjIwMDc1MTAsImV4cCI6MjA3NzU4MzUxMH0.RjZTvCQFNdYl7L6OyJ_vseh3pqjau3MfW_nvMEquMF4';
-
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -24,12 +19,6 @@ Future<void> main() async {
 
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
-  );
-
-  // Temporary: other screens still use Supabase for data until migrated.
-  await Supabase.initialize(
-    url: supabaseUrl,
-    anonKey: supabaseAnonKey,
   );
 
   runApp(const StudyApp());

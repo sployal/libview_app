@@ -45,18 +45,6 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
             
-            <!-- Deep link intent filter for Supabase email confirmation -->
-            <intent-filter android:autoVerify="true">
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                
-                <!-- Deep link scheme: io.supabase.edupal://login-callback/ -->
-                <data 
-                    android:scheme="io.supabase.edupal"
-                    android:host="login-callback" />
-            </intent-filter>
-            
         </activity>
         
         <provider
