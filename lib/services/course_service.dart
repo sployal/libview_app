@@ -259,4 +259,111 @@ class CourseService {
       semesters: semesters,
     );
   }
+
+  Future<Course> updateCourse({
+    required Course course,
+    required String name,
+    required int years,
+    required String sampleAdmissionNumber,
+  }) async {
+    final courseName = name.trim();
+    final sample = sampleAdmissionNumber.trim();
+    final prefix = Course.admissionPrefixFromSample(sample);
+
+    if (courseName.isEmpty) {
+      throw UploadException('Course name is required');
+    }
+    if (years < 1 || years > 10) {
+      throw UploadException('Number of years must be between 1 and 10');
+    }
+    if (sample.isEmpty) {
+      throw UploadException('Sample admission number is required');
+    }
+
+    final existing = await listCourses();
+    final nameTaken = existing.any(
+      (other) =>
+          other.id != course.id &&
+          other.name.toLowerCase() == courseName.toLowerCase(),
+    );
+    if (nameTaken) {
+      throw UploadException('A course with this name already exists');
+    }
+
+    final semesters = Map<String, Map<String, String>>.from(course.semesters);
+    for (var year = 1; year <= years; year++) {
+      for (var sem = 1; sem <= 2; sem++) {
+        final key = Course.semesterKey(year, sem);
+        semesters.putIfAbsent(
+          key,
+          () => {
+            'folderId': '',
+            'name': Course.displayName(year, sem),
+            'driveName': Course.driveFolderName(year, sem),
+          },
+        );
+      }
+    }
+
+    await _courses.doc(course.id).update({
+      'name': courseName,
+      'years': years,
+      'sample_admission_number': sample,
+      'admission_prefix': prefix,
+      'semesters': semesters,
+      'updated_at': FieldValue.serverTimestamp(),
+    });
+
+    return Course(
+      id: course.id,
+      name: courseName,
+      years: years,
+      sampleAdmissionNumber: sample,
+      admissionPrefix: prefix,
+      driveFolderId: course.driveFolderId,
+      semesters: semesters,
+    );
+  }
+
+  List<Map<String, dynamic>> profilesForCourse(
+    Course course,
+    List<Map<String, dynamic>> profiles, {
+    List<Course>? courses,
+  }) {
+    final allCourses = courses ?? [course];
+    return profiles.where((profile) {
+      final registration =
+          profile['registration_number']?.toString() ?? '';
+      final matched = matchCourse(registration, allCourses);
+      return matched?.id == course.id;
+    }).toList();
+  }
+
+  Future<int> deleteCourse({
+    required Course course,
+    bool deleteAssociatedUsers = false,
+  }) async {
+    var deletedUsers = 0;
+
+    if (deleteAssociatedUsers) {
+      final courses = await listCourses();
+      final snapshot = await _firestore.collection('profiles').get();
+      final profiles = snapshot.docs.map((doc) {
+        final data = Map<String, dynamic>.from(doc.data());
+        data['id'] = doc.id;
+        return data;
+      }).toList();
+
+      final associated = profilesForCourse(course, profiles, courses: courses);
+      for (final profile in associated) {
+        final id = profile['id']?.toString() ?? '';
+        if (id.isEmpty) continue;
+        await _firestore.collection('profiles').doc(id).delete();
+        deletedUsers++;
+      }
+    }
+
+    await _courses.doc(course.id).delete();
+    return deletedUsers;
+  }
 }

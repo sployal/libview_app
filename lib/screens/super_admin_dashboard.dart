@@ -254,12 +254,12 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                   child: Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: _roleColors[role]!.withOpacity(0.1),
+                      color: _roleColors[role]!.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: isCurrentRole
                             ? _roleColors[role]!
-                            : _roleColors[role]!.withOpacity(0.3),
+                            : _roleColors[role]!.withValues(alpha: 0.3),
                         width: isCurrentRole ? 2 : 1,
                       ),
                     ),
@@ -445,7 +445,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
       height: radius * 2,
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [color, color.withOpacity(0.7)],
+          colors: [color, color.withValues(alpha: 0.7)],
         ),
         shape: BoxShape.circle,
       ),
@@ -572,15 +572,143 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
     }
   }
 
-  Future<void> _openCourseAddition() async {
-    final created = await Navigator.push<bool>(
+  Future<void> _openCourseAddition({Course? course}) async {
+    final saved = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
-        builder: (context) => const CourseAdditionScreen(),
+        builder: (context) => CourseAdditionScreen(course: course),
       ),
     );
-    if (created == true && mounted) {
+    if (saved == true && mounted) {
       await _loadCourses();
+    }
+  }
+
+  List<Map<String, dynamic>> _associatedProfiles(Course course) {
+    return CourseService.instance.profilesForCourse(
+      course,
+      _profiles,
+      courses: _courses,
+    );
+  }
+
+  Future<void> _showDeleteCourseDialog(Course course) async {
+    final associated = _associatedProfiles(course);
+    var deleteUsers = false;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: const Text(
+                'Delete course',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'This will remove "${course.name}" from the database.',
+                    style: const TextStyle(color: Color(0xFF1F2937)),
+                  ),
+                  const SizedBox(height: 16),
+                  CheckboxListTile(
+                    value: deleteUsers,
+                    contentPadding: EdgeInsets.zero,
+                    controlAffinity: ListTileControlAffinity.leading,
+                    activeColor: const Color(0xFFEF4444),
+                    title: Text(
+                      associated.isEmpty
+                          ? 'Also delete users linked to this course'
+                          : 'Also delete ${associated.length} user${associated.length == 1 ? '' : 's'} linked to this course',
+                    ),
+                    subtitle: const Text(
+                      'Matches profiles whose admission number belongs to this course.',
+                    ),
+                    onChanged: (value) {
+                      setDialogState(() {
+                        deleteUsers = value ?? false;
+                      });
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFEF4444),
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Delete'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (confirmed != true || !mounted) return;
+    await _deleteCourse(course, deleteAssociatedUsers: deleteUsers);
+  }
+
+  Future<void> _deleteCourse(
+    Course course, {
+    required bool deleteAssociatedUsers,
+  }) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF0F172A)),
+        ),
+      ),
+    );
+
+    try {
+      final deletedUsers = await CourseService.instance.deleteCourse(
+        course: course,
+        deleteAssociatedUsers: deleteAssociatedUsers,
+      );
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            deletedUsers > 0
+                ? 'Deleted ${course.name} and $deletedUsers associated user${deletedUsers == 1 ? '' : 's'}'
+                : 'Deleted ${course.name}',
+          ),
+          backgroundColor: const Color(0xFF10B981),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      await _loadCourses();
+      if (deleteAssociatedUsers) {
+        await _loadProfiles();
+      }
+    } catch (error) {
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not delete course: $error'),
+          backgroundColor: const Color(0xFFEF4444),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
@@ -618,13 +746,64 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            course.name,
-            style: const TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF0F172A),
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  course.name,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF0F172A),
+                  ),
+                ),
+              ),
+              PopupMenuButton<String>(
+                tooltip: 'Course options',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                icon: const Icon(
+                  Icons.more_vert_rounded,
+                  color: Color(0xFF0F172A),
+                ),
+                onSelected: (value) {
+                  if (value == 'edit') {
+                    _openCourseAddition(course: course);
+                  } else if (value == 'delete') {
+                    _showDeleteCourseDialog(course);
+                  }
+                },
+                itemBuilder: (context) => const [
+                  PopupMenuItem(
+                    value: 'edit',
+                    child: Row(
+                      children: [
+                        Icon(Icons.edit_rounded, size: 18),
+                        SizedBox(width: 10),
+                        Text('Edit course'),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.delete_rounded,
+                          size: 18,
+                          color: Color(0xFFEF4444),
+                        ),
+                        SizedBox(width: 10),
+                        Text(
+                          'Delete course',
+                          style: TextStyle(color: Color(0xFFEF4444)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
           const SizedBox(height: 6),
           Text(
@@ -656,7 +835,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w700,
-            color: Colors.white.withOpacity(0.95),
+            color: Colors.white.withValues(alpha: 0.95),
           ),
         ),
         const SizedBox(height: 10),
@@ -678,7 +857,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
           Text(
             'No courses yet. Add one to create Drive folders.',
             style: TextStyle(
-              color: Colors.white.withOpacity(0.7),
+              color: Colors.white.withValues(alpha: 0.7),
               fontSize: 13,
             ),
           )
@@ -710,7 +889,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF0F172A).withOpacity(0.25),
+            color: const Color(0xFF0F172A).withValues(alpha: 0.25),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -724,7 +903,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
+                  color: Colors.white.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(
@@ -760,7 +939,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                   ),
                 ),
                 style: IconButton.styleFrom(
-                  backgroundColor: Colors.white.withOpacity(0.2),
+                  backgroundColor: Colors.white.withValues(alpha: 0.2),
                 ),
               ),
             ],
@@ -910,7 +1089,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.1),
+                  color: color.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(icon, color: color, size: 20),
@@ -960,7 +1139,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
           });
         },
         backgroundColor: Colors.white,
-        selectedColor: const Color(0xFF6366F1).withOpacity(0.2),
+        selectedColor: const Color(0xFF6366F1).withValues(alpha: 0.2),
         labelStyle: TextStyle(
           color: isSelected ? const Color(0xFF6366F1) : const Color(0xFF6B7280),
           fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
@@ -985,7 +1164,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -1016,9 +1195,9 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: roleColor.withOpacity(0.1),
+                color: roleColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: roleColor.withOpacity(0.3)),
+                border: Border.all(color: roleColor.withValues(alpha: 0.3)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,

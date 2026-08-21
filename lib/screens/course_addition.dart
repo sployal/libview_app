@@ -5,7 +5,9 @@ import '../services/course_service.dart';
 import '../services/upload_service.dart';
 
 class CourseAdditionScreen extends StatefulWidget {
-  const CourseAdditionScreen({super.key});
+  const CourseAdditionScreen({super.key, this.course});
+
+  final Course? course;
 
   @override
   State<CourseAdditionScreen> createState() => _CourseAdditionScreenState();
@@ -19,6 +21,19 @@ class _CourseAdditionScreenState extends State<CourseAdditionScreen> {
 
   bool _isSubmitting = false;
   String? _status;
+
+  bool get _isEditing => widget.course != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final course = widget.course;
+    if (course != null) {
+      _nameController.text = course.name;
+      _yearsController.text = course.years.toString();
+      _admissionController.text = course.sampleAdmissionNumber;
+    }
+  }
 
   @override
   void dispose() {
@@ -34,28 +49,44 @@ class _CourseAdditionScreenState extends State<CourseAdditionScreen> {
     final years = int.parse(_yearsController.text.trim());
     setState(() {
       _isSubmitting = true;
-      _status =
-          'Creating "${_nameController.text.trim()}" and $years year folders on Drive...';
+      _status = _isEditing
+          ? 'Updating "${_nameController.text.trim()}"...'
+          : 'Creating "${_nameController.text.trim()}" and $years year folders on Drive...';
     });
 
     try {
-      await CourseService.instance.createCourse(
-        name: _nameController.text,
-        years: years,
-        sampleAdmissionNumber: _admissionController.text,
-      );
+      if (_isEditing) {
+        await CourseService.instance.updateCourse(
+          course: widget.course!,
+          name: _nameController.text,
+          years: years,
+          sampleAdmissionNumber: _admissionController.text,
+        );
+      } else {
+        await CourseService.instance.createCourse(
+          name: _nameController.text,
+          years: years,
+          sampleAdmissionNumber: _admissionController.text,
+        );
+      }
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Row(
             children: [
-              Icon(Icons.check_circle, color: Colors.white),
-              SizedBox(width: 12),
-              Expanded(child: Text('Course created and folders saved')),
+              const Icon(Icons.check_circle, color: Colors.white),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  _isEditing
+                      ? 'Course updated'
+                      : 'Course created and folders saved',
+                ),
+              ),
             ],
           ),
-          backgroundColor: Color(0xFF10B981),
+          backgroundColor: const Color(0xFF10B981),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -81,7 +112,11 @@ class _CourseAdditionScreenState extends State<CourseAdditionScreen> {
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Could not create course: $error'),
+          content: Text(
+          _isEditing
+              ? 'Could not update course: $error'
+              : 'Could not create course: $error',
+        ),
           backgroundColor: const Color(0xFFEF4444),
           behavior: SnackBarBehavior.floating,
         ),
@@ -100,9 +135,9 @@ class _CourseAdditionScreenState extends State<CourseAdditionScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text(
-          'Add Course',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: Text(
+          _isEditing ? 'Edit Course' : 'Add Course',
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
       body: SafeArea(
@@ -121,14 +156,16 @@ class _CourseAdditionScreenState extends State<CourseAdditionScreen> {
                     ),
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: const Row(
+                  child: Row(
                     children: [
-                      Icon(Icons.folder_copy_rounded, color: Colors.white),
-                      SizedBox(width: 12),
+                      const Icon(Icons.folder_copy_rounded, color: Colors.white),
+                      const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          'A course folder is created under Edupal, with year / semester subfolders. Those Drive IDs are stored in Firebase so students see the right materials.',
-                          style: TextStyle(
+                          _isEditing
+                              ? 'Name, years, and admission prefix are updated in Firebase. Existing Drive folders stay in place.'
+                              : 'A course folder is created under Edupal, with year / semester subfolders. Those Drive IDs are stored in Firebase so students see the right materials.',
+                          style: const TextStyle(
                             color: Colors.white,
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
@@ -257,8 +294,14 @@ class _CourseAdditionScreenState extends State<CourseAdditionScreen> {
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     onPressed: _isSubmitting ? null : _submit,
-                    icon: const Icon(Icons.add_rounded),
-                    label: Text(_isSubmitting ? 'Creating...' : 'Create course'),
+                    icon: Icon(
+                      _isEditing ? Icons.save_rounded : Icons.add_rounded,
+                    ),
+                    label: Text(
+                      _isSubmitting
+                          ? (_isEditing ? 'Saving...' : 'Creating...')
+                          : (_isEditing ? 'Save changes' : 'Create course'),
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF0F172A),
                       foregroundColor: Colors.white,
