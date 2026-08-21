@@ -53,7 +53,16 @@ class Course {
       'Year $year - Semester $sem';
 
   static String admissionPrefixFromSample(String sample) {
-    return sample.trim().toUpperCase();
+    final trimmed = sample.trim().toUpperCase();
+    if (trimmed.isEmpty) return '';
+
+    var end = trimmed.length;
+    final slash = trimmed.indexOf('/');
+    final backslash = trimmed.indexOf(r'\');
+    if (slash >= 0) end = slash;
+    if (backslash >= 0 && backslash < end) end = backslash;
+
+    return trimmed.substring(0, end).trim();
   }
 
   factory Course.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
@@ -72,14 +81,19 @@ class Course {
       });
     }
 
+    final sampleAdmissionNumber =
+        (data['sample_admission_number'] as String?) ?? '';
+    final storedPrefix = (data['admission_prefix'] as String?) ?? '';
+    final fromSample = admissionPrefixFromSample(sampleAdmissionNumber);
+
     return Course(
       id: doc.id,
       name: (data['name'] as String?)?.trim() ?? 'Course',
       years: (data['years'] as num?)?.toInt() ?? 0,
-      sampleAdmissionNumber:
-          (data['sample_admission_number'] as String?) ?? '',
-      admissionPrefix:
-          ((data['admission_prefix'] as String?) ?? '').toUpperCase(),
+      sampleAdmissionNumber: sampleAdmissionNumber,
+      admissionPrefix: fromSample.isNotEmpty
+          ? fromSample
+          : admissionPrefixFromSample(storedPrefix),
       driveFolderId: (data['drive_folder_id'] as String?) ?? '',
       semesters: semesters,
     );
@@ -116,7 +130,7 @@ class Course {
       name: 'Engineering',
       years: 5,
       sampleAdmissionNumber: 'EB24/46271/20',
-      admissionPrefix: 'EB',
+      admissionPrefix: 'EB24',
       driveFolderId: '',
       semesters: semesters,
     );
@@ -148,7 +162,7 @@ class CourseService {
     if (existingDoc.exists) return;
 
     final existing = await _courses
-        .where('admission_prefix', isEqualTo: 'EB')
+        .where('admission_prefix', whereIn: ['EB', 'EB24'])
         .limit(1)
         .get();
     if (existing.docs.isNotEmpty) return;
@@ -181,25 +195,27 @@ class CourseService {
     if (matched != null) return matched;
 
     for (final course in courses) {
-      if (course.admissionPrefix == 'EB') return course;
+      if (course.id == 'engineering' || course.admissionPrefix == 'EB24') {
+        return course;
+      }
     }
     return Course.engineeringFallback();
   }
 
   Course? matchCourse(String registrationNumber, List<Course> courses) {
-    final reg = registrationNumber.trim().toUpperCase();
-    if (reg.isEmpty) return null;
+    final segment = Course.admissionPrefixFromSample(registrationNumber);
+    if (segment.isEmpty) return null;
 
-    Course? best;
     for (final course in courses) {
-      final prefix = course.admissionPrefix.toUpperCase();
+      final prefix = Course.admissionPrefixFromSample(
+        course.admissionPrefix.isNotEmpty
+            ? course.admissionPrefix
+            : course.sampleAdmissionNumber,
+      );
       if (prefix.isEmpty) continue;
-      if (reg.startsWith(prefix) &&
-          (best == null || prefix.length > best.admissionPrefix.length)) {
-        best = course;
-      }
+      if (segment == prefix) return course;
     }
-    return best;
+    return null;
   }
 
   Future<Course> createCourse({
@@ -220,6 +236,11 @@ class CourseService {
     if (sample.isEmpty) {
       throw UploadException('Sample admission number is required');
     }
+    if (prefix.isEmpty) {
+      throw UploadException(
+        'Sample admission number must start with a course code before the first /',
+      );
+    }
 
     await seedEngineeringIfNeeded();
 
@@ -229,6 +250,12 @@ class CourseService {
     );
     if (nameTaken) {
       throw UploadException('A course with this name already exists');
+    }
+    final prefixTaken = existing.any((course) => course.admissionPrefix == prefix);
+    if (prefixTaken) {
+      throw UploadException(
+        'A course already uses admission code "$prefix"',
+      );
     }
 
     final structure = await UploadService.instance.createCourseStructure(
@@ -288,6 +315,11 @@ class CourseService {
     if (sample.isEmpty) {
       throw UploadException('Sample admission number is required');
     }
+    if (prefix.isEmpty) {
+      throw UploadException(
+        'Sample admission number must start with a course code before the first /',
+      );
+    }
 
     final existing = await listCourses();
     final nameTaken = existing.any(
@@ -297,6 +329,14 @@ class CourseService {
     );
     if (nameTaken) {
       throw UploadException('A course with this name already exists');
+    }
+    final prefixTaken = existing.any(
+      (other) => other.id != course.id && other.admissionPrefix == prefix,
+    );
+    if (prefixTaken) {
+      throw UploadException(
+        'A course already uses admission code "$prefix"',
+      );
     }
 
     final driveTargetId = course.driveFolderTargetId;

@@ -829,7 +829,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
           ),
           const SizedBox(height: 2),
           Text(
-            'Admission: ${course.sampleAdmissionNumber.isEmpty ? '—' : course.sampleAdmissionNumber}',
+            'Admission: ${course.admissionPrefix.isEmpty ? (course.sampleAdmissionNumber.isEmpty ? '—' : course.sampleAdmissionNumber) : course.admissionPrefix}',
             style: const TextStyle(
               fontSize: 12,
               color: Color(0xFF475569),

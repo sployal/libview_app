@@ -223,14 +223,17 @@ class _CourseAdditionScreenState extends State<CourseAdditionScreen> {
                     if (value == null || value.trim().isEmpty) {
                       return 'Enter a sample admission number';
                     }
+                    if (Course.admissionPrefixFromSample(value).isEmpty) {
+                      return 'Use a code before the first /, e.g. EB24/56121/21';
+                    }
                     return null;
                   },
                 ),
                 const SizedBox(height: 12),
                 Text(
                   prefix.isEmpty
-                      ? 'Students whose admission number starts with this sample will load this course.'
-                      : 'Users whose admission number starts with "$prefix" will be linked to this course.',
+                      ? 'The code before the first / (for example EB24 in EB24/56121/21) decides the course.'
+                      : 'Users whose admission number starts with "$prefix/" will be linked to this course.',
                   style: const TextStyle(
                     fontSize: 13,
                     color: Color(0xFF6B7280),
