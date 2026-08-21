@@ -1,5 +1,6 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import '../services/auth_service.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -9,15 +10,15 @@ class EditProfileScreen extends StatefulWidget {
 }
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
-  final _supabase = Supabase.instance.client;
+  final _firestore = FirebaseFirestore.instance;
   final _formKey = GlobalKey<FormState>();
-  
+
   // Controllers
   final _fullNameController = TextEditingController();
   final _usernameController = TextEditingController();
   final _registrationNumberController = TextEditingController();
   final _avatarUrlController = TextEditingController();
-  
+
   bool _isLoading = true;
   bool _isSaving = false;
   String? _currentEmail;
@@ -40,21 +41,25 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   Future<void> _loadUserData() async {
     try {
-      final user = _supabase.auth.currentUser;
+      final user = AuthService.instance.currentUser;
       if (user != null) {
-        final profileData = await _supabase
-            .from('profiles')
-            .select('full_name, username, registration_number, role, avatar_url')
-            .eq('id', user.id)
-            .single();
+        final profileDoc =
+            await _firestore.collection('profiles').doc(user.uid).get();
+        final profileData = profileDoc.data() ?? {};
 
         setState(() {
           _currentEmail = user.email;
           _currentRole = profileData['role'] as String?;
           _fullNameController.text = profileData['full_name'] as String? ?? '';
           _usernameController.text = profileData['username'] as String? ?? '';
-          _registrationNumberController.text = profileData['registration_number'] as String? ?? '';
-          _avatarUrlController.text = profileData['avatar_url'] as String? ?? '';
+          _registrationNumberController.text =
+              profileData['registration_number'] as String? ?? '';
+          _avatarUrlController.text =
+              profileData['avatar_url'] as String? ?? '';
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
           _isLoading = false;
         });
       }
@@ -83,17 +88,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     });
 
     try {
-      final user = _supabase.auth.currentUser;
+      final user = AuthService.instance.currentUser;
       if (user != null) {
-        await _supabase.from('profiles').update({
+        final avatarUrl = _avatarUrlController.text.trim();
+        await _firestore.collection('profiles').doc(user.uid).set({
           'full_name': _fullNameController.text.trim(),
           'username': _usernameController.text.trim(),
           'registration_number': _registrationNumberController.text.trim(),
-          'avatar_url': _avatarUrlController.text.trim().isEmpty 
-              ? null 
-              : _avatarUrlController.text.trim(),
-          'updated_at': DateTime.now().toIso8601String(),
-        }).eq('id', user.id);
+          'avatar_url': avatarUrl.isEmpty ? null : avatarUrl,
+          'updated_at': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
