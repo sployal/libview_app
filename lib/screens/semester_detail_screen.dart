@@ -566,6 +566,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
   }
 
   Future<void> _pickAndUploadFile() async {
+    if (!_canManageFolders) return;
     final subject = selectedSubject;
     if (subject == null || !_isLiveFolder || subject.folderId.isEmpty) {
       _showMessage('Open a live unit before uploading', isError: true);
@@ -724,7 +725,9 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
           ),
         ],
       ),
-      floatingActionButton: _isLiveFolder && selectedSubject!.folderId.isNotEmpty
+      floatingActionButton: _isLiveFolder &&
+              _canManageFolders &&
+              selectedSubject!.folderId.isNotEmpty
           ? FloatingActionButton.extended(
               onPressed: isUploading ? null : _pickAndUploadFile,
               backgroundColor: const Color(0xFF6366F1),
@@ -798,7 +801,9 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                           color: Colors.grey[500],
                         ),
                       ),
-                      if (_isLiveFolder && selectedSubject!.folderId.isNotEmpty) ...[
+                      if (_isLiveFolder &&
+                          _canManageFolders &&
+                          selectedSubject!.folderId.isNotEmpty) ...[
                         const SizedBox(height: 20),
                         FilledButton.icon(
                           onPressed: isUploading ? null : _pickAndUploadFile,
