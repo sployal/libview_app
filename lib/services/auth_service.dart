@@ -13,6 +13,16 @@ class AuthService {
 
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
+  Future<String> currentRole() async {
+    final user = currentUser;
+    if (user == null) return 'student';
+
+    final doc = await _firestore.collection('profiles').doc(user.uid).get();
+    final role = (doc.data()?['role'] as String?)?.toLowerCase().trim();
+    if (role == null || role.isEmpty) return 'student';
+    return role;
+  }
+
   Future<bool> isRegistrationNumberTaken(String registrationNumber) async {
     final snapshot = await _firestore
         .collection('profiles')

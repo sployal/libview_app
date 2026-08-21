@@ -1,5 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import '../services/auth_service.dart';
 import '../services/google_drive_service.dart';
 import '../services/download_service.dart';
 import '../services/upload_service.dart';
@@ -37,11 +38,23 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
   bool isUploading = false;
   double uploadProgress = 0.0;
   bool _isMutatingFolder = false;
+  String _role = 'student';
+
+  bool get _canManageFolders => _role != 'student';
 
   @override
   void initState() {
     super.initState();
+    _loadUserRole();
     _loadSubjects();
+  }
+
+  Future<void> _loadUserRole() async {
+    final role = await AuthService.instance.currentRole();
+    if (!mounted) return;
+    setState(() {
+      _role = role;
+    });
   }
 
   Future<void> _loadSubjects() async {
@@ -290,6 +303,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
   }
 
   Future<void> _confirmDelete(StudyMaterial material) async {
+    if (!_canManageFolders) return;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) {
@@ -404,6 +418,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
   }
 
   Future<void> _createUnitFolder() async {
+    if (!_canManageFolders) return;
     if (!_isLiveFolder || widget.folderId == null || widget.folderId!.isEmpty) {
       _showMessage('This semester is not connected to Drive', isError: true);
       return;
@@ -442,6 +457,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
   }
 
   Future<void> _renameUnitFolder(Subject subject) async {
+    if (!_canManageFolders) return;
     if (!_isLiveFolder || subject.folderId.isEmpty) {
       _showMessage('This unit is not connected to Drive', isError: true);
       return;
@@ -481,6 +497,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
   }
 
   Future<void> _confirmDeleteUnitFolder(Subject subject) async {
+    if (!_canManageFolders) return;
     if (!_isLiveFolder || subject.folderId.isEmpty) {
       _showMessage('This unit is not connected to Drive', isError: true);
       return;
@@ -904,7 +921,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                                         ),
                                       ),
                                     )
-                                  else
+                                  else if (_canManageFolders)
                                     IconButton(
                                       icon: const Icon(
                                         Icons.delete_outline_rounded,
@@ -972,7 +989,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
           ),
         ],
       ),
-      floatingActionButton: _isLiveFolder
+      floatingActionButton: _isLiveFolder && _canManageFolders
           ? FloatingActionButton.extended(
               onPressed: _isMutatingFolder ? null : _createUnitFolder,
               backgroundColor: const Color(0xFF6366F1),
@@ -1098,14 +1115,16 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                                   ),
                                 ),
                                 const SizedBox(height: 8),
-                                const Text(
-                                  'Create a folder for this semester',
-                                  style: TextStyle(
+                                Text(
+                                  _canManageFolders
+                                      ? 'Create a folder for this semester'
+                                      : 'No unit folders yet',
+                                  style: const TextStyle(
                                     fontSize: 14,
                                     color: Color(0xFF9CA3AF),
                                   ),
                                 ),
-                                if (_isLiveFolder) ...[
+                                if (_isLiveFolder && _canManageFolders) ...[
                                   const SizedBox(height: 20),
                                   FilledButton.icon(
                                     onPressed:
@@ -1236,7 +1255,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                                                 ],
                                               ),
                                             ),
-                                            if (_isLiveFolder)
+                                            if (_isLiveFolder && _canManageFolders)
                                               PopupMenuButton<String>(
                                                 tooltip: 'Folder options',
                                                 enabled: !_isMutatingFolder,
