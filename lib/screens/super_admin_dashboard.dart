@@ -40,14 +40,21 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
   String _userRoleFilter = 'all';
   String _staffRoleFilter = 'all';
 
-  static const _userRoles = ['student', 'class_rep'];
+  static const _userRoles = ['student', 'class_rep', 'assistant_class_rep'];
   static const _staffRoles = ['lecturer', 'admin'];
-  static const _allRoles = ['student', 'class_rep', 'lecturer', 'admin'];
+  static const _allRoles = [
+    'student',
+    'class_rep',
+    'assistant_class_rep',
+    'lecturer',
+    'admin',
+  ];
 
   final Map<String, Color> _roleColors = {
     'admin': const Color(0xFFEF4444),
     'lecturer': const Color(0xFF8B5CF6),
     'class_rep': const Color(0xFFF59E0B),
+    'assistant_class_rep': const Color(0xFF06B6D4),
     'student': const Color(0xFF10B981),
   };
 
@@ -59,6 +66,8 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
       _profiles.where((p) => p['role'] == 'student').length;
   int get _totalClassReps =>
       _profiles.where((p) => p['role'] == 'class_rep').length;
+  int get _totalAssistantClassReps =>
+      _profiles.where((p) => p['role'] == 'assistant_class_rep').length;
   int get _totalLecturers =>
       _profiles.where((p) => p['role'] == 'lecturer').length;
   int get _totalAdmins => _profiles.where((p) => p['role'] == 'admin').length;
@@ -531,6 +540,8 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
         return Icons.school_rounded;
       case 'class_rep':
         return Icons.people_rounded;
+      case 'assistant_class_rep':
+        return Icons.group_outlined;
       case 'student':
       default:
         return Icons.person_rounded;
@@ -1101,6 +1112,21 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                               Icons.people_rounded,
                             ),
                           ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildRoleStatCard(
+                              'Asst. Class Reps',
+                              _totalAssistantClassReps.toString(),
+                              _roleColors['assistant_class_rep']!,
+                              Icons.group_outlined,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          const Expanded(child: SizedBox()),
                         ],
                       ),
                       const SizedBox(height: 12),
