@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
-import 'visibility_controller.dart';
 import 'users_dashboard.dart';
 import 'edit_profile.dart';
 import 'class_members.dart';
+import 'course_members.dart';
 import 'notifications_screen.dart';
 import 'super_admin_dashboard.dart';
 
@@ -24,7 +24,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String? _avatarUrl;
   String? _role;
   bool _isLoading = true;
-  bool _isAdmin = false;
+
+  bool get _isAdmin {
+    final role = (_role ?? '').toLowerCase();
+    return role == 'admin';
+  }
 
   bool get _isSuperAdmin {
     final email = _email ?? AuthService.instance.currentUser?.email;
@@ -40,16 +44,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     _loadUserData();
-    _checkAdminStatus();
-  }
-
-  Future<void> _checkAdminStatus() async {
-    final isAdmin = await VisibilityController.isAdmin();
-    if (mounted) {
-      setState(() {
-        _isAdmin = isAdmin;
-      });
-    }
   }
 
   Future<void> _loadUserData() async {
@@ -142,14 +136,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _showSettingsMenu() {
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
+      builder: (context) => SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
             Container(
               width: 40,
               height: 4,
@@ -254,6 +250,62 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 });
               },
             ),
+            if (_isAdmin) ...[
+              const SizedBox(height: 8),
+              ListTile(
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0EA5E9).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.school_rounded,
+                    color: Color(0xFF0EA5E9),
+                    size: 20,
+                  ),
+                ),
+                title: const Text(
+                  'Course Members',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                subtitle: const Text(
+                  'Admin only',
+                  style: TextStyle(fontSize: 12),
+                ),
+                trailing: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEF4444).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Text(
+                    'ADMIN',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFFEF4444),
+                    ),
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const CourseMembersScreen(),
+                    ),
+                  );
+                },
+              ),
+            ],
             if (_canOpenClassMembers) ...[
               const SizedBox(height: 8),
               ListTile(
@@ -378,6 +430,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 16),
           ],
+        ),
         ),
       ),
     );
