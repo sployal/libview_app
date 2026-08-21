@@ -9,6 +9,7 @@ import 'services/streak_service.dart';
 import 'screens/home_screen.dart';
 import 'screens/semesters_screen.dart';
 import 'screens/downloads_screen.dart';
+import 'screens/ai_screen.dart';
 import 'screens/profile_screen.dart';
 import 'login/auth_screen.dart';
 
@@ -123,6 +124,7 @@ class _MainScreenState extends State<MainScreen>
     const HomeScreen(),
     const SemestersScreen(),
     const DownloadsScreen(),
+    const AiScreen(),
     const ProfileScreen(),
   ];
 
@@ -205,6 +207,10 @@ class _MainScreenState extends State<MainScreen>
             BottomNavigationBarItem(
               icon: Icon(Icons.download_rounded),
               label: 'Downloads',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.auto_awesome_rounded),
+              label: 'AI',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.person_rounded),
