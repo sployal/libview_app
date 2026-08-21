@@ -65,6 +65,32 @@ class Course {
     return trimmed.substring(0, end).trim();
   }
 
+  /// Last segment after the last `/` or `\`, e.g. `21` in `EB24/56171/21`.
+  static String classSuffixFromSample(String sample) {
+    final trimmed = sample.trim().toUpperCase();
+    if (trimmed.isEmpty) return '';
+
+    var start = -1;
+    final slash = trimmed.lastIndexOf('/');
+    final backslash = trimmed.lastIndexOf(r'\');
+    if (slash > start) start = slash;
+    if (backslash > start) start = backslash;
+    if (start < 0 || start >= trimmed.length - 1) return '';
+
+    return trimmed.substring(start + 1).trim();
+  }
+
+  /// Same course prefix and same class-year suffix, e.g. both `EB24/.../21`.
+  static bool isSameClass(String registrationA, String registrationB) {
+    final prefixA = admissionPrefixFromSample(registrationA);
+    final prefixB = admissionPrefixFromSample(registrationB);
+    final suffixA = classSuffixFromSample(registrationA);
+    final suffixB = classSuffixFromSample(registrationB);
+    if (prefixA.isEmpty || prefixB.isEmpty) return false;
+    if (suffixA.isEmpty || suffixB.isEmpty) return false;
+    return prefixA == prefixB && suffixA == suffixB;
+  }
+
   factory Course.fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? {};
     final rawSemesters = data['semesters'];

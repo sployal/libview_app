@@ -4,6 +4,7 @@ import '../services/auth_service.dart';
 import 'visibility_controller.dart';
 import 'users_dashboard.dart';
 import 'edit_profile.dart';
+import 'class_members.dart';
 import 'notifications_screen.dart';
 import 'super_admin_dashboard.dart';
 
@@ -28,6 +29,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool get _isSuperAdmin {
     final email = _email ?? AuthService.instance.currentUser?.email;
     return email?.toLowerCase() == SuperAdminDashboard.allowedEmail;
+  }
+
+  bool get _canOpenClassMembers {
+    final role = (_role ?? '').toLowerCase();
+    return role == 'class_rep' || role == 'assistant_class_rep';
   }
 
   @override
@@ -248,6 +254,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 });
               },
             ),
+            if (_canOpenClassMembers) ...[
+              const SizedBox(height: 8),
+              ListTile(
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF59E0B).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.groups_rounded,
+                    color: Color(0xFFF59E0B),
+                    size: 20,
+                  ),
+                ),
+                title: const Text(
+                  'Class Members',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                subtitle: const Text(
+                  'View and manage your class',
+                  style: TextStyle(fontSize: 12),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ClassMembersScreen(),
+                    ),
+                  );
+                },
+              ),
+            ],
             if (_isSuperAdmin) ...[
               const SizedBox(height: 8),
               ListTile(
@@ -697,6 +741,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return const Color(0xFF8B5CF6);
       case 'class_rep':
         return const Color(0xFFF59E0B);
+      case 'assistant_class_rep':
+        return const Color(0xFF06B6D4);
       case 'student':
       default:
         return const Color(0xFF10B981);
@@ -711,6 +757,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         return Icons.school_rounded;
       case 'class_rep':
         return Icons.people_rounded;
+      case 'assistant_class_rep':
+        return Icons.group_outlined;
       case 'student':
       default:
         return Icons.person_rounded;
@@ -721,6 +769,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     switch (role.toLowerCase()) {
       case 'class_rep':
         return 'Class Rep';
+      case 'assistant_class_rep':
+        return 'Assistant Class Rep';
       default:
         return role[0].toUpperCase() + role.substring(1);
     }
