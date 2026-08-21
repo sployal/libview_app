@@ -1,5 +1,9 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../services/auth_service.dart';
+import '../services/course_service.dart';
+import '../services/notification_service.dart';
 
 class CreateNotificationScreen extends StatefulWidget {
   const CreateNotificationScreen({super.key});
@@ -13,9 +17,14 @@ class _CreateNotificationScreenState extends State<CreateNotificationScreen> {
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _messageController = TextEditingController();
-  
+
   String _selectedType = 'general';
+  String _audience = 'class';
   bool _isLoading = false;
+  bool _isLoadingProfile = true;
+  String _role = 'student';
+  String _classLabel = '';
+  String _courseName = '';
 
   final List<Map<String, dynamic>> _notificationTypes = [
     {
@@ -50,11 +59,74 @@ class _CreateNotificationScreenState extends State<CreateNotificationScreen> {
     },
   ];
 
+  bool get _isClassLeadership =>
+      _role == 'class_rep' || _role == 'assistant_class_rep';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSenderContext();
+  }
+
+  Future<void> _loadSenderContext() async {
+    try {
+      final user = AuthService.instance.currentUser;
+      if (user == null) {
+        if (mounted) setState(() => _isLoadingProfile = false);
+        return;
+      }
+
+      final profileDoc = await FirebaseFirestore.instance
+          .collection('profiles')
+          .doc(user.uid)
+          .get();
+      final data = profileDoc.data() ?? {};
+      final role = ((data['role'] as String?) ?? 'student').toLowerCase();
+      final registrationNumber =
+          (data['registration_number'] as String?) ?? '';
+      final prefix = Course.admissionPrefixFromSample(registrationNumber);
+      final suffix = Course.classSuffixFromSample(registrationNumber);
+      final courses = await CourseService.instance.listCourses();
+      final course =
+          CourseService.instance.matchCourse(registrationNumber, courses);
+
+      if (!mounted) return;
+      setState(() {
+        _role = role;
+        _classLabel = prefix.isNotEmpty && suffix.isNotEmpty
+            ? '$prefix / $suffix'
+            : '';
+        _courseName = course?.name ?? '';
+        _audience = (role == 'class_rep' || role == 'assistant_class_rep')
+            ? 'class'
+            : 'all';
+        _isLoadingProfile = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoadingProfile = false);
+    }
+  }
+
   @override
   void dispose() {
     _titleController.dispose();
     _messageController.dispose();
     super.dispose();
+  }
+
+  String get _audienceHint {
+    if (_isClassLeadership && _audience == 'course') {
+      return _courseName.isEmpty
+          ? 'This notification will be visible to everyone in your course'
+          : 'This notification will be visible to all $_courseName students';
+    }
+    if (_isClassLeadership) {
+      return _classLabel.isEmpty
+          ? 'This notification will be visible to your class only'
+          : 'This notification will be visible to class $_classLabel';
+    }
+    return 'This notification will be visible to all users';
   }
 
   Future<void> _createNotification() async {
@@ -63,17 +135,12 @@ class _CreateNotificationScreenState extends State<CreateNotificationScreen> {
     setState(() => _isLoading = true);
 
     try {
-      final userId = Supabase.instance.client.auth.currentUser?.id;
-      if (userId == null) {
-        throw Exception('User not authenticated');
-      }
-
-      await Supabase.instance.client.from('notifications').insert({
-        'title': _titleController.text.trim(),
-        'message': _messageController.text.trim(),
-        'type': _selectedType,
-        'sender_id': userId,
-      });
+      await NotificationService.instance.create(
+        title: _titleController.text,
+        message: _messageController.text,
+        type: _selectedType,
+        audience: _audience,
+      );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -148,229 +215,328 @@ class _CreateNotificationScreenState extends State<CreateNotificationScreen> {
           ),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Info Card
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Row(
+      body: _isLoadingProfile
+          ? const Center(
+              child: CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
+              ),
+            )
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(12),
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
                       ),
-                      child: const Icon(
-                        Icons.info_outline_rounded,
-                        color: Colors.white,
-                        size: 24,
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(
+                              Icons.info_outline_rounded,
+                              color: Colors.white,
+                              size: 24,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Text(
+                              _audienceHint,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(width: 16),
-                    const Expanded(
-                      child: Text(
-                        'This notification will be visible to all users',
+                    if (_isClassLeadership) ...[
+                      const SizedBox(height: 32),
+                      const Text(
+                        'Send to',
                         style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1F2937),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      _buildAudienceOption(
+                        value: 'class',
+                        title: _classLabel.isEmpty
+                            ? 'My class'
+                            : 'My class ($_classLabel)',
+                        subtitle: 'Only students in your year/class',
+                        icon: Icons.groups_rounded,
+                      ),
+                      const SizedBox(height: 8),
+                      _buildAudienceOption(
+                        value: 'course',
+                        title: _courseName.isEmpty
+                            ? 'Entire course'
+                            : 'Entire course ($_courseName)',
+                        subtitle: 'All years in your course',
+                        icon: Icons.school_rounded,
+                      ),
+                    ],
+                    const SizedBox(height: 32),
+                    const Text(
+                      'Notification Type',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1F2937),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: _notificationTypes.map((type) {
+                        final isSelected = _selectedType == type['value'];
+                        return GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _selectedType = type['value'] as String;
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? (type['color'] as Color).withOpacity(0.1)
+                                  : Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: isSelected
+                                    ? type['color'] as Color
+                                    : const Color(0xFFE5E7EB),
+                                width: isSelected ? 2 : 1,
+                              ),
+                              boxShadow: [
+                                if (isSelected)
+                                  BoxShadow(
+                                    color: (type['color'] as Color)
+                                        .withOpacity(0.2),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  type['icon'] as IconData,
+                                  color: isSelected
+                                      ? type['color'] as Color
+                                      : const Color(0xFF6B7280),
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  type['label'] as String,
+                                  style: TextStyle(
+                                    color: isSelected
+                                        ? type['color'] as Color
+                                        : const Color(0xFF6B7280),
+                                    fontWeight: isSelected
+                                        ? FontWeight.bold
+                                        : FontWeight.w500,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 32),
+                    _buildTextField(
+                      controller: _titleController,
+                      label: 'Title',
+                      hint: 'Enter notification title',
+                      icon: Icons.title_rounded,
+                      maxLines: 1,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter a title';
+                        }
+                        if (value.trim().length < 3) {
+                          return 'Title must be at least 3 characters';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                    _buildTextField(
+                      controller: _messageController,
+                      label: 'Message',
+                      hint: 'Enter notification message',
+                      icon: Icons.message_rounded,
+                      maxLines: 5,
+                      validator: (value) {
+                        if (value == null || value.trim().isEmpty) {
+                          return 'Please enter a message';
+                        }
+                        if (value.trim().length < 10) {
+                          return 'Message must be at least 10 characters';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 32),
+                    SizedBox(
+                      width: double.infinity,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [
+                              Color(0xFF6366F1),
+                              Color(0xFF8B5CF6),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF6366F1).withOpacity(0.4),
+                              blurRadius: 15,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        child: ElevatedButton(
+                          onPressed: _isLoading ? null : _createNotification,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            foregroundColor: Colors.white,
+                            shadowColor: Colors.transparent,
+                            padding: const EdgeInsets.symmetric(vertical: 18),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: _isLoading
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white,
+                                    ),
+                                  ),
+                                )
+                              : const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.send_rounded, size: 20),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      'Send Notification',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 32),
+            ),
+    );
+  }
 
-              // Notification Type
-              const Text(
-                'Notification Type',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1F2937),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: _notificationTypes.map((type) {
-                  final isSelected = _selectedType == type['value'];
-                  return GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _selectedType = type['value'] as String;
-                      });
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isSelected
-                            ? (type['color'] as Color).withOpacity(0.1)
-                            : Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: isSelected
-                              ? type['color'] as Color
-                              : const Color(0xFFE5E7EB),
-                          width: isSelected ? 2 : 1,
-                        ),
-                        boxShadow: [
-                          if (isSelected)
-                            BoxShadow(
-                              color: (type['color'] as Color).withOpacity(0.2),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                        ],
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            type['icon'] as IconData,
-                            color: isSelected
-                                ? type['color'] as Color
-                                : const Color(0xFF6B7280),
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            type['label'] as String,
-                            style: TextStyle(
-                              color: isSelected
-                                  ? type['color'] as Color
-                                  : const Color(0xFF6B7280),
-                              fontWeight:
-                                  isSelected ? FontWeight.bold : FontWeight.w500,
-                              fontSize: 14,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 32),
-
-              // Title Field
-              _buildTextField(
-                controller: _titleController,
-                label: 'Title',
-                hint: 'Enter notification title',
-                icon: Icons.title_rounded,
-                maxLines: 1,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Please enter a title';
-                  }
-                  if (value.trim().length < 3) {
-                    return 'Title must be at least 3 characters';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 24),
-
-              // Message Field
-              _buildTextField(
-                controller: _messageController,
-                label: 'Message',
-                hint: 'Enter notification message',
-                icon: Icons.message_rounded,
-                maxLines: 5,
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Please enter a message';
-                  }
-                  if (value.trim().length < 10) {
-                    return 'Message must be at least 10 characters';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 32),
-
-              // Send Button
-              SizedBox(
-                width: double.infinity,
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [
-                        Color(0xFF6366F1),
-                        Color(0xFF8B5CF6),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF6366F1).withOpacity(0.4),
-                        blurRadius: 15,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _createNotification,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.transparent,
-                      foregroundColor: Colors.white,
-                      shadowColor: Colors.transparent,
-                      padding: const EdgeInsets.symmetric(vertical: 18),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      elevation: 0,
-                    ),
-                    child: _isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor:
-                                  AlwaysStoppedAnimation<Color>(Colors.white),
-                            ),
-                          )
-                        : const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.send_rounded, size: 20),
-                              SizedBox(width: 8),
-                              Text(
-                                'Send Notification',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                  ),
-                ),
-              ),
-            ],
+  Widget _buildAudienceOption({
+    required String value,
+    required String title,
+    required String subtitle,
+    required IconData icon,
+  }) {
+    final isSelected = _audience == value;
+    return GestureDetector(
+      onTap: () => setState(() => _audience = value),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? const Color(0xFF6366F1).withOpacity(0.08)
+              : Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected
+                ? const Color(0xFF6366F1)
+                : const Color(0xFFE5E7EB),
+            width: isSelected ? 2 : 1,
           ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: isSelected
+                  ? const Color(0xFF6366F1)
+                  : const Color(0xFF6B7280),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: isSelected
+                          ? const Color(0xFF6366F1)
+                          : const Color(0xFF1F2937),
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFF6B7280),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              isSelected
+                  ? Icons.radio_button_checked
+                  : Icons.radio_button_off,
+              color: isSelected
+                  ? const Color(0xFF6366F1)
+                  : const Color(0xFF9CA3AF),
+            ),
+          ],
         ),
       ),
     );

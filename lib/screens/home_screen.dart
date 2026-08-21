@@ -1,9 +1,13 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+
+import '../services/auth_service.dart';
 import '../services/download_service.dart';
+import '../services/notification_service.dart';
 import '../services/streak_service.dart';
 import 'downloads_screen.dart';
 import 'notifications_screen.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -23,6 +27,8 @@ class _HomeScreenState extends State<HomeScreen>
   late int currentStreak;
   late int longestStreak;
   int unreadNotificationCount = 0;
+  StreamSubscription? _notificationsSub;
+  StreamSubscription? _readsSub;
 
   @override
   void initState() {
@@ -51,6 +57,8 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _notificationsSub?.cancel();
+    _readsSub?.cancel();
     _slideController.dispose();
     super.dispose();
   }
@@ -63,39 +71,25 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   void _setupNotificationSubscription() {
-    // Listen for new notifications
-    Supabase.instance.client
-        .channel('notifications_updates')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.insert,
-          schema: 'public',
-          table: 'notifications',
-          callback: (payload) {
-            _loadUnreadNotificationCount();
-          },
-        )
-        .onPostgresChanges(
-          event: PostgresChangeEvent.insert,
-          schema: 'public',
-          table: 'notification_reads',
-          callback: (payload) {
-            _loadUnreadNotificationCount();
-          },
-        )
-        .subscribe();
+    _notificationsSub = NotificationService.instance.snapshots().listen((_) {
+      _loadUnreadNotificationCount();
+    });
+    final userId = AuthService.instance.currentUser?.uid;
+    if (userId != null) {
+      _readsSub =
+          NotificationService.instance.readSnapshots(userId).listen((_) {
+        _loadUnreadNotificationCount();
+      });
+    }
   }
 
   Future<void> _loadUnreadNotificationCount() async {
     try {
-      final userId = Supabase.instance.client.auth.currentUser?.id;
-      if (userId == null) return;
-
-      final response = await Supabase.instance.client
-          .rpc('get_unread_count', params: {'user_uuid': userId});
-
+      final count =
+          await NotificationService.instance.unreadCountForCurrentUser();
       if (mounted) {
         setState(() {
-          unreadNotificationCount = response as int;
+          unreadNotificationCount = count;
         });
       }
     } catch (e) {

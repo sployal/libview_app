@@ -1,31 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:timeago/timeago.dart' as timeago;
+
+import '../services/auth_service.dart';
+import '../services/notification_service.dart';
 import 'create_notification_screen.dart';
-
-class NotificationItem {
-  final String id;
-  final String title;
-  final String message;
-  final String type;
-  final String senderId;
-  final String senderName;
-  final String senderRole;
-  final DateTime createdAt;
-  final bool isRead;
-
-  NotificationItem({
-    required this.id,
-    required this.title,
-    required this.message,
-    required this.type,
-    required this.senderId,
-    required this.senderName,
-    required this.senderRole,
-    required this.createdAt,
-    required this.isRead,
-  });
-}
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -35,7 +13,7 @@ class NotificationsScreen extends StatefulWidget {
 }
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
-  List<NotificationItem> notifications = [];
+  List<AppNotification> notifications = [];
   bool isLoading = true;
   bool canCreateNotifications = false;
   String? currentUserRole;
@@ -45,54 +23,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     super.initState();
     _loadNotifications();
     _checkUserRole();
-    _setupRealtimeSubscription();
-  }
-
-  void _setupRealtimeSubscription() {
-    Supabase.instance.client
-        .channel('notifications_screen')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.insert,
-          schema: 'public',
-          table: 'notifications',
-          callback: (payload) {
-            _loadNotifications();
-          },
-        )
-        .onPostgresChanges(
-          event: PostgresChangeEvent.update,
-          schema: 'public',
-          table: 'notifications',
-          callback: (payload) {
-            _loadNotifications();
-          },
-        )
-        .onPostgresChanges(
-          event: PostgresChangeEvent.delete,
-          schema: 'public',
-          table: 'notifications',
-          callback: (payload) {
-            _loadNotifications();
-          },
-        )
-        .subscribe();
   }
 
   Future<void> _checkUserRole() async {
     try {
-      final userId = Supabase.instance.client.auth.currentUser?.id;
-      if (userId == null) return;
-
-      final response = await Supabase.instance.client
-          .from('profiles')
-          .select('role')
-          .eq('id', userId)
-          .single();
-
-      final role = response['role'] as String;
+      final role = await AuthService.instance.currentRole();
+      if (!mounted) return;
       setState(() {
         currentUserRole = role;
-        canCreateNotifications = ['class_rep', 'lecturer', 'admin'].contains(role);
+        canCreateNotifications = role != 'student';
       });
     } catch (e) {
       debugPrint('Error checking user role: $e');
@@ -105,59 +44,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     });
 
     try {
-      final userId = Supabase.instance.client.auth.currentUser?.id;
-      if (userId == null) {
-        debugPrint('User not authenticated');
-        setState(() {
-          isLoading = false;
-        });
-        return;
-      }
+      final notificationsList =
+          await NotificationService.instance.listForCurrentUser();
 
-      final response = await Supabase.instance.client
-          .from('notifications')
-          .select('id, title, message, type, sender_id, created_at, profiles!sender_id(full_name, role)')
-          .order('created_at', ascending: false);
-
-      debugPrint('Notifications response: $response');
-
-      final readResponse = await Supabase.instance.client
-          .from('notification_reads')
-          .select('notification_id')
-          .eq('user_id', userId);
-
-      debugPrint('Read status response: $readResponse');
-
-      final readNotificationIds = (readResponse as List)
-          .map((item) => item['notification_id'] as String)
-          .toSet();
-
-      final notificationsList = (response as List).map((item) {
-        final isRead = readNotificationIds.contains(item['id']);
-        
-        String senderName = 'Unknown';
-        String senderRole = 'student';
-        
-        if (item['profiles'] != null && item['profiles'] is Map) {
-          senderName = item['profiles']['full_name'] ?? 'Unknown';
-          senderRole = item['profiles']['role'] ?? 'student';
-        }
-        
-        return NotificationItem(
-          id: item['id'],
-          title: item['title'],
-          message: item['message'],
-          type: item['type'],
-          senderId: item['sender_id'],
-          senderName: senderName,
-          senderRole: senderRole,
-          createdAt: DateTime.parse(item['created_at']),
-          isRead: isRead,
-        );
-      }).toList();
-
-      debugPrint('Loaded ${notificationsList.length} notifications');
-
+      if (!mounted) return;
       setState(() {
         notifications = notificationsList;
         isLoading = false;
@@ -182,31 +72,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   Future<void> _markAsRead(String notificationId) async {
     try {
-      final userId = Supabase.instance.client.auth.currentUser?.id;
-      if (userId == null) return;
-
-      await Supabase.instance.client.rpc(
-        'mark_notification_read',
-        params: {
-          'notification_uuid': notificationId,
-          'user_uuid': userId,
-        },
-      );
+      await NotificationService.instance.markAsRead(notificationId);
 
       setState(() {
         final index = notifications.indexWhere((n) => n.id == notificationId);
         if (index != -1) {
-          notifications[index] = NotificationItem(
-            id: notifications[index].id,
-            title: notifications[index].title,
-            message: notifications[index].message,
-            type: notifications[index].type,
-            senderId: notifications[index].senderId,
-            senderName: notifications[index].senderName,
-            senderRole: notifications[index].senderRole,
-            createdAt: notifications[index].createdAt,
-            isRead: true,
-          );
+          notifications[index] = notifications[index].copyWith(isRead: true);
         }
       });
     } catch (e) {
@@ -216,12 +87,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   Future<void> _markAllAsRead() async {
     try {
-      final userId = Supabase.instance.client.auth.currentUser?.id;
-      if (userId == null) return;
-
-      await Supabase.instance.client.rpc(
-        'mark_all_notifications_read',
-        params: {'user_uuid': userId},
+      await NotificationService.instance.markAllAsRead(
+        notifications.map((n) => n.id).toList(),
       );
 
       _loadNotifications();
@@ -247,7 +114,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
-  Future<void> _editNotification(NotificationItem notification) async {
+  Future<void> _editNotification(AppNotification notification) async {
     final titleController = TextEditingController(text: notification.title);
     final messageController = TextEditingController(text: notification.message);
     String selectedType = notification.type;
@@ -428,13 +295,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           }
 
                           try {
-                            await Supabase.instance.client
-                                .from('notifications')
-                                .update({
-                              'title': titleController.text.trim(),
-                              'message': messageController.text.trim(),
-                              'type': selectedType,
-                            }).eq('id', notification.id);
+                            await NotificationService.instance.update(
+                              id: notification.id,
+                              title: titleController.text.trim(),
+                              message: messageController.text.trim(),
+                              type: selectedType,
+                            );
 
                             Navigator.of(context).pop();
                             _loadNotifications();
@@ -507,10 +373,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   Future<void> _deleteNotification(String notificationId) async {
     try {
-      await Supabase.instance.client
-          .from('notifications')
-          .delete()
-          .eq('id', notificationId);
+      await NotificationService.instance.delete(notificationId);
 
       _loadNotifications();
 
@@ -592,6 +455,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return const Color(0xFF8B5CF6);
       case 'class_rep':
         return const Color(0xFFF59E0B);
+      case 'assistant_class_rep':
+        return const Color(0xFF06B6D4);
       case 'student':
       default:
         return const Color(0xFF10B981);
@@ -606,6 +471,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         return Icons.school_rounded;
       case 'class_rep':
         return Icons.people_rounded;
+      case 'assistant_class_rep':
+        return Icons.group_rounded;
       case 'student':
       default:
         return Icons.person_rounded;
@@ -616,8 +483,25 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     switch (role.toLowerCase()) {
       case 'class_rep':
         return 'Class Rep';
+      case 'assistant_class_rep':
+        return 'Assistant Class Rep';
       default:
         return role[0].toUpperCase() + role.substring(1);
+    }
+  }
+
+  String _audienceLabel(AppNotification notification) {
+    switch (notification.audience) {
+      case 'class':
+        if (notification.admissionPrefix.isNotEmpty &&
+            notification.classSuffix.isNotEmpty) {
+          return 'Class ${notification.admissionPrefix} / ${notification.classSuffix}';
+        }
+        return 'Class only';
+      case 'course':
+        return 'Entire course';
+      default:
+        return 'Everyone';
     }
   }
 
@@ -700,11 +584,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 _loadNotifications();
               },
               backgroundColor: const Color(0xFF6366F1),
-              icon: const Icon(Icons.add_rounded),
-              label: const Text(
-                'Create',
-                style: TextStyle(fontWeight: FontWeight.bold),
-              ),
+              foregroundColor: Colors.white,
+              icon: const Icon(Icons.notification_add_rounded),
+              label: const Text('New notification'),
             )
           : null,
     );
@@ -750,10 +632,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  Widget _buildNotificationCard(NotificationItem notification) {
+  Widget _buildNotificationCard(AppNotification notification) {
     final typeColor = _getTypeColor(notification.type);
     final typeIcon = _getTypeIcon(notification.type);
-    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+    final currentUserId = AuthService.instance.currentUser?.uid;
     final isOwnNotification = notification.senderId == currentUserId;
     final canDelete = isOwnNotification || currentUserRole == 'admin';
     final canEdit = isOwnNotification;
@@ -849,6 +731,28 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
                               color: typeColor,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Icon(
+                            notification.audience == 'course'
+                                ? Icons.school_rounded
+                                : notification.audience == 'class'
+                                    ? Icons.groups_rounded
+                                    : Icons.public_rounded,
+                            size: 14,
+                            color: const Color(0xFF6B7280),
+                          ),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              _audienceLabel(notification),
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF6B7280),
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
@@ -1015,7 +919,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  void _showNotificationDetails(NotificationItem notification) {
+  void _showNotificationDetails(AppNotification notification) {
     if (!notification.isRead) {
       _markAsRead(notification.id);
     }
@@ -1077,6 +981,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
                               color: _getTypeColor(notification.type),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '• ${_audienceLabel(notification)}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: Color(0xFF6B7280),
                             ),
                           ),
                         ],
