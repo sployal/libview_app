@@ -480,6 +480,74 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     }
   }
 
+  Future<void> _confirmDeleteUnitFolder(Subject subject) async {
+    if (!_isLiveFolder || subject.folderId.isEmpty) {
+      _showMessage('This unit is not connected to Drive', isError: true);
+      return;
+    }
+    if (_isMutatingFolder) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Text(
+            'Delete folder',
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
+          content: Text(
+            'This will permanently delete "${subject.name}" and all files inside it.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFFEF4444),
+              ),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed == true) {
+      await _deleteUnitFolder(subject);
+    }
+  }
+
+  Future<void> _deleteUnitFolder(Subject subject) async {
+    if (_isMutatingFolder) return;
+
+    setState(() {
+      _isMutatingFolder = true;
+    });
+
+    try {
+      await UploadService.instance.deleteFile(subject.folderId);
+      if (!mounted) return;
+      _showMessage('Deleted "${subject.name}"');
+      await _loadSubjects();
+    } on UploadException catch (e) {
+      _showMessage(e.message, isError: true);
+    } catch (_) {
+      _showMessage('Failed to delete folder', isError: true);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isMutatingFolder = false;
+        });
+      }
+    }
+  }
+
   Future<void> _pickAndUploadFile() async {
     final subject = selectedSubject;
     if (subject == null || !_isLiveFolder || subject.folderId.isEmpty) {
@@ -1169,15 +1237,59 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                                               ),
                                             ),
                                             if (_isLiveFolder)
-                                              IconButton(
+                                              PopupMenuButton<String>(
+                                                tooltip: 'Folder options',
+                                                enabled: !_isMutatingFolder,
+                                                padding: EdgeInsets.zero,
+                                                constraints: const BoxConstraints(
+                                                  minWidth: 32,
+                                                  minHeight: 32,
+                                                ),
                                                 icon: const Icon(
-                                                  Icons.drive_file_rename_outline_rounded,
+                                                  Icons.more_vert_rounded,
                                                   color: Color(0xFF6366F1),
                                                 ),
-                                                tooltip: 'Rename',
-                                                onPressed: _isMutatingFolder
-                                                    ? null
-                                                    : () => _renameUnitFolder(subject),
+                                                onSelected: (value) {
+                                                  if (value == 'edit') {
+                                                    _renameUnitFolder(subject);
+                                                  } else if (value == 'delete') {
+                                                    _confirmDeleteUnitFolder(subject);
+                                                  }
+                                                },
+                                                itemBuilder: (context) => const [
+                                                  PopupMenuItem(
+                                                    value: 'edit',
+                                                    child: Row(
+                                                      children: [
+                                                        Icon(
+                                                          Icons.edit_rounded,
+                                                          size: 18,
+                                                        ),
+                                                        SizedBox(width: 10),
+                                                        Text('Edit'),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                  PopupMenuItem(
+                                                    value: 'delete',
+                                                    child: Row(
+                                                      children: [
+                                                        Icon(
+                                                          Icons.delete_rounded,
+                                                          size: 18,
+                                                          color: Color(0xFFEF4444),
+                                                        ),
+                                                        SizedBox(width: 10),
+                                                        Text(
+                                                          'Delete folder',
+                                                          style: TextStyle(
+                                                            color: Color(0xFFEF4444),
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ],
                                               ),
                                             const Icon(
                                               Icons.arrow_forward_ios_rounded,
