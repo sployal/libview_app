@@ -12,10 +12,17 @@ class SuperAdminDashboard extends StatefulWidget {
   const SuperAdminDashboard({super.key});
 
   static const allowedEmail = 'muigaid91@gmail.com';
+  static const superAdminRole = 'super_admin';
 
-  static bool get isCurrentUserSuperAdmin {
+  static bool isAllowedEmail(String? email) =>
+      email?.toLowerCase() == allowedEmail;
+
+  /// Owner email or users with the `super_admin` role.
+  static Future<bool> isCurrentUserSuperAdmin() async {
     final email = AuthService.instance.currentUser?.email;
-    return email?.toLowerCase() == allowedEmail;
+    if (isAllowedEmail(email)) return true;
+    final role = await AuthService.instance.currentRole();
+    return role == superAdminRole;
   }
 
   @override
@@ -41,16 +48,18 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
   String _staffRoleFilter = 'all';
 
   static const _userRoles = ['student', 'class_rep', 'assistant_class_rep'];
-  static const _staffRoles = ['lecturer', 'admin'];
+  static const _staffRoles = ['lecturer', 'admin', 'super_admin'];
   static const _allRoles = [
     'student',
     'class_rep',
     'assistant_class_rep',
     'lecturer',
     'admin',
+    'super_admin',
   ];
 
   final Map<String, Color> _roleColors = {
+    'super_admin': const Color(0xFF0F172A),
     'admin': const Color(0xFFEF4444),
     'lecturer': const Color(0xFF8B5CF6),
     'class_rep': const Color(0xFFF59E0B),
@@ -71,6 +80,8 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
   int get _totalLecturers =>
       _profiles.where((p) => p['role'] == 'lecturer').length;
   int get _totalAdmins => _profiles.where((p) => p['role'] == 'admin').length;
+  int get _totalSuperAdmins =>
+      _profiles.where((p) => p['role'] == 'super_admin').length;
 
   int get _newThisWeek {
     final weekAgo = DateTime.now().subtract(const Duration(days: 7));
@@ -94,7 +105,8 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
   }
 
   Future<void> _guardAndLoad() async {
-    if (!SuperAdminDashboard.isCurrentUserSuperAdmin) {
+    final hasAccess = await SuperAdminDashboard.isCurrentUserSuperAdmin();
+    if (!hasAccess) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
@@ -534,6 +546,8 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
 
   IconData _getRoleIcon(String role) {
     switch (role.toLowerCase()) {
+      case 'super_admin':
+        return Icons.shield_rounded;
       case 'admin':
         return Icons.admin_panel_settings_rounded;
       case 'lecturer':
@@ -1149,6 +1163,21 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                               Icons.admin_panel_settings_rounded,
                             ),
                           ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildRoleStatCard(
+                              'Super Admins',
+                              _totalSuperAdmins.toString(),
+                              _roleColors['super_admin']!,
+                              Icons.shield_rounded,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          const Expanded(child: SizedBox()),
                         ],
                       ),
                     ],

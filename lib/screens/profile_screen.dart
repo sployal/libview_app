@@ -31,7 +31,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   bool get _isSuperAdmin {
     final email = _email ?? AuthService.instance.currentUser?.email;
-    return email?.toLowerCase() == SuperAdminDashboard.allowedEmail;
+    if (SuperAdminDashboard.isAllowedEmail(email)) return true;
+    return (_role ?? '').toLowerCase() == SuperAdminDashboard.superAdminRole;
   }
 
   bool get _canOpenClassMembers {
@@ -728,6 +729,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Color _getRoleColor(String role) {
     switch (role.toLowerCase()) {
+      case 'super_admin':
+        return const Color(0xFF0F172A);
       case 'admin':
         return const Color(0xFFEF4444);
       case 'lecturer':
@@ -744,6 +747,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   IconData _getRoleIcon(String role) {
     switch (role.toLowerCase()) {
+      case 'super_admin':
+        return Icons.shield_rounded;
       case 'admin':
         return Icons.admin_panel_settings_rounded;
       case 'lecturer':
@@ -760,6 +765,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   String _formatRole(String role) {
     switch (role.toLowerCase()) {
+      case 'super_admin':
+        return 'Super Admin';
       case 'class_rep':
         return 'Class Rep';
       case 'assistant_class_rep':
