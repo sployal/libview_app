@@ -46,6 +46,8 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
   String _staffSearchQuery = '';
   String _userRoleFilter = 'all';
   String _staffRoleFilter = 'all';
+  String _userCourseFilter = 'all';
+  String _staffCourseFilter = 'all';
 
   static const _userRoles = ['student', 'class_rep', 'assistant_class_rep'];
   static const _staffRoles = ['lecturer', 'admin', 'super_admin'];
@@ -169,6 +171,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
       if (_userRoleFilter != 'all' && user['role'] != _userRoleFilter) {
         return false;
       }
+      if (!_matchesCourseFilter(user, _userCourseFilter)) return false;
       return _matchesSearch(user, _userSearchQuery);
     }).toList();
 
@@ -177,17 +180,32 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
       if (_staffRoleFilter != 'all' && user['role'] != _staffRoleFilter) {
         return false;
       }
+      if (!_matchesCourseFilter(user, _staffCourseFilter)) return false;
       return _matchesSearch(user, _staffSearchQuery);
     }).toList();
+  }
+
+  bool _matchesCourseFilter(Map<String, dynamic> user, String courseFilter) {
+    if (courseFilter == 'all') return true;
+    final matched = _courseForProfile(user);
+    return matched?.id == courseFilter;
+  }
+
+  Course? _courseForProfile(Map<String, dynamic> user) {
+    final registration = user['registration_number']?.toString() ?? '';
+    if (registration.isEmpty || _courses.isEmpty) return null;
+    return CourseService.instance.matchCourse(registration, _courses);
   }
 
   bool _matchesSearch(Map<String, dynamic> user, String query) {
     if (query.trim().isEmpty) return true;
     final q = query.toLowerCase();
+    final courseName = _courseForProfile(user)?.name.toLowerCase() ?? '';
     return user['full_name'].toString().toLowerCase().contains(q) ||
         user['username'].toString().toLowerCase().contains(q) ||
         user['email'].toString().toLowerCase().contains(q) ||
-        user['registration_number'].toString().toLowerCase().contains(q);
+        user['registration_number'].toString().toLowerCase().contains(q) ||
+        courseName.contains(q);
   }
 
   DateTime? _parseDate(dynamic value) {
@@ -411,6 +429,12 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                     ),
                     const SizedBox(height: 16),
                     _buildDetailRow(
+                      'Course',
+                      _courseForProfile(user)?.name ?? 'Unassigned',
+                      Icons.menu_book_rounded,
+                    ),
+                    const SizedBox(height: 16),
+                    _buildDetailRow(
                       'Role',
                       _formatRole(user['role'].toString()),
                       _getRoleIcon(user['role'].toString()),
@@ -593,6 +617,16 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
       setState(() {
         _courses = courses;
         _isLoadingCourses = false;
+        final courseIds = courses.map((c) => c.id).toSet();
+        if (_userCourseFilter != 'all' &&
+            !courseIds.contains(_userCourseFilter)) {
+          _userCourseFilter = 'all';
+        }
+        if (_staffCourseFilter != 'all' &&
+            !courseIds.contains(_staffCourseFilter)) {
+          _staffCourseFilter = 'all';
+        }
+        _filterLists();
       });
     } catch (_) {
       if (!mounted) return;
@@ -1268,10 +1302,19 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
     );
   }
 
-  Widget _buildFilterChip(String label, String value, bool isUserTab) {
-    final isSelected = isUserTab
-        ? _userRoleFilter == value
-        : _staffRoleFilter == value;
+  Widget _buildFilterChip(
+    String label,
+    String value,
+    bool isUserTab, {
+    bool isCourseFilter = false,
+  }) {
+    final isSelected = isCourseFilter
+        ? (isUserTab
+            ? _userCourseFilter == value
+            : _staffCourseFilter == value)
+        : (isUserTab
+            ? _userRoleFilter == value
+            : _staffRoleFilter == value);
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: FilterChip(
@@ -1279,7 +1322,13 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
         selected: isSelected,
         onSelected: (_) {
           setState(() {
-            if (isUserTab) {
+            if (isCourseFilter) {
+              if (isUserTab) {
+                _userCourseFilter = value;
+              } else {
+                _staffCourseFilter = value;
+              }
+            } else if (isUserTab) {
               _userRoleFilter = value;
             } else {
               _staffRoleFilter = value;
@@ -1305,6 +1354,8 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
     final roleColor = _roleColors[role] ?? const Color(0xFF6366F1);
     final email = user['email'].toString();
     final username = user['username'].toString();
+    final course = _courseForProfile(user);
+    final registration = user['registration_number']?.toString() ?? '';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -1340,6 +1391,20 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                   : (username.isNotEmpty ? '@$username' : 'No email'),
               style: const TextStyle(color: Colors.black87),
             ),
+            if (course != null || registration.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                course != null
+                    ? (registration.isNotEmpty
+                        ? '${course.name} · $registration'
+                        : course.name)
+                    : registration,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF64748B),
+                ),
+              ),
+            ],
             const SizedBox(height: 6),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -1404,6 +1469,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
           padding: const EdgeInsets.all(16),
           color: Colors.white,
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               TextField(
                 onChanged: (value) {
@@ -1428,6 +1494,15 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                 ),
               ),
               const SizedBox(height: 12),
+              const Text(
+                'Role',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: Color(0xFF64748B),
+                ),
+              ),
+              const SizedBox(height: 8),
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
@@ -1440,6 +1515,39 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                   ],
                 ),
               ),
+              if (_courses.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                const Text(
+                  'Course',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF64748B),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _buildFilterChip(
+                        'All courses',
+                        'all',
+                        isUserTab,
+                        isCourseFilter: true,
+                      ),
+                      ..._courses.map(
+                        (course) => _buildFilterChip(
+                          course.name,
+                          course.id,
+                          isUserTab,
+                          isCourseFilter: true,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ],
           ),
         ),
