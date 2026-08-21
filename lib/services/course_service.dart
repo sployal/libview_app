@@ -23,6 +23,15 @@ class Course {
     required this.semesters,
   });
 
+  String get driveFolderTargetId {
+    if (driveFolderId.isNotEmpty) return driveFolderId;
+    for (final semester in semesters.values) {
+      final id = semester['folderId'] ?? '';
+      if (id.isNotEmpty) return id;
+    }
+    return '';
+  }
+
   List<Map<String, dynamic>> get yearGroups {
     return List.generate(years, (index) {
       final year = index + 1;
@@ -290,6 +299,15 @@ class CourseService {
       throw UploadException('A course with this name already exists');
     }
 
+    final driveTargetId = course.driveFolderTargetId;
+    if (driveTargetId.isNotEmpty &&
+        course.name.trim().toLowerCase() != courseName.toLowerCase()) {
+      await UploadService.instance.renameCourseFolder(
+        folderId: driveTargetId,
+        name: courseName,
+      );
+    }
+
     final semesters = Map<String, Map<String, String>>.from(course.semesters);
     for (var year = 1; year <= years; year++) {
       for (var sem = 1; sem <= 2; sem++) {
@@ -344,6 +362,11 @@ class CourseService {
     bool deleteAssociatedUsers = false,
   }) async {
     var deletedUsers = 0;
+
+    final driveTargetId = course.driveFolderTargetId;
+    if (driveTargetId.isNotEmpty) {
+      await UploadService.instance.deleteCourseFolder(driveTargetId);
+    }
 
     if (deleteAssociatedUsers) {
       final courses = await listCourses();

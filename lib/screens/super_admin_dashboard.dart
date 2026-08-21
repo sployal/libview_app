@@ -614,7 +614,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'This will remove "${course.name}" from the database.',
+                    'This will remove "${course.name}" from the database and permanently delete its Drive folder, including year / semester folders and files inside it.',
                     style: const TextStyle(color: Color(0xFF1F2937)),
                   ),
                   const SizedBox(height: 16),

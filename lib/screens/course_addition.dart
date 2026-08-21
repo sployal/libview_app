@@ -50,7 +50,7 @@ class _CourseAdditionScreenState extends State<CourseAdditionScreen> {
     setState(() {
       _isSubmitting = true;
       _status = _isEditing
-          ? 'Updating "${_nameController.text.trim()}"...'
+          ? 'Updating "${_nameController.text.trim()}" and renaming the Drive course folder...'
           : 'Creating "${_nameController.text.trim()}" and $years year folders on Drive...';
     });
 
@@ -80,7 +80,7 @@ class _CourseAdditionScreenState extends State<CourseAdditionScreen> {
               Expanded(
                 child: Text(
                   _isEditing
-                      ? 'Course updated'
+                      ? 'Course updated and Drive folder renamed'
                       : 'Course created and folders saved',
                 ),
               ),
@@ -163,7 +163,7 @@ class _CourseAdditionScreenState extends State<CourseAdditionScreen> {
                       Expanded(
                         child: Text(
                           _isEditing
-                              ? 'Name, years, and admission prefix are updated in Firebase. Existing Drive folders stay in place.'
+                              ? 'Changing the course name also renames the main Drive folder under Edupal. Year and semester folders stay in place.'
                               : 'A course folder is created under Edupal, with year / semester subfolders. Those Drive IDs are stored in Firebase so students see the right materials.',
                           style: const TextStyle(
                             color: Colors.white,

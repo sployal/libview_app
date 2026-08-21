@@ -300,6 +300,60 @@ async function createCourseStructure(courseName, years) {
   };
 }
 
+async function isCourseFolderUnderEdupal(folderId) {
+  if (!folderId || typeof folderId !== 'string') return false;
+  if (isSemesterFolder(folderId)) return false;
+
+  try {
+    const edupalId = await resolveEdupalFolderId();
+    if (folderId === edupalId) return false;
+
+    const res = await drive.files.get({
+      fileId: folderId,
+      fields: 'id, mimeType, parents',
+      supportsAllDrives: true,
+    });
+    const isFolder = res.data.mimeType === 'application/vnd.google-apps.folder';
+    const parents = res.data.parents || [];
+    return Boolean(isFolder && parents.includes(edupalId));
+  } catch (err) {
+    return false;
+  }
+}
+
+async function resolveCourseFolderId(folderId) {
+  if (await isCourseFolderUnderEdupal(folderId)) return folderId;
+
+  try {
+    const res = await drive.files.get({
+      fileId: folderId,
+      fields: 'id, parents',
+      supportsAllDrives: true,
+    });
+    const parent = (res.data.parents || [])[0];
+    if (parent && (await isCourseFolderUnderEdupal(parent))) return parent;
+  } catch (err) {
+    return null;
+  }
+  return null;
+}
+
+async function forgetCourseSemesterIds(courseFolderId) {
+  try {
+    const res = await drive.files.list({
+      q: `'${courseFolderId}' in parents and trashed = false`,
+      fields: 'files(id)',
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true,
+    });
+    for (const file of res.data.files || []) {
+      extraSemesterIds.delete(file.id);
+    }
+  } catch (err) {
+    console.error('Could not forget semester folder IDs:', err.message);
+  }
+}
+
 async function renameItem(fileId, newName) {
   const res = await drive.files.update({
     fileId,
@@ -600,6 +654,64 @@ app.post('/course-structure', requireAuth, requireSuperAdmin, async (req, res) =
   } catch (e) {
     console.error('Course structure creation failed:', e);
     res.status(500).json({ error: e.message || 'Failed to create course folders' });
+  }
+});
+
+// --- Rename the main course folder under Edupal (super admin) ------------
+
+app.patch('/course-folder/:folderId', requireAuth, requireSuperAdmin, async (req, res) => {
+  if (!driveIsConfigured()) {
+    return res.status(503).json({ error: 'Drive is not configured yet. Complete the OAuth setup first.' });
+  }
+
+  const { folderId } = req.params;
+  const { name } = req.body || {};
+
+  if (!folderId) {
+    return res.status(400).json({ error: 'A folder ID is required' });
+  }
+  if (!name || typeof name !== 'string' || !name.trim()) {
+    return res.status(400).json({ error: 'A non-empty "name" is required' });
+  }
+
+  const courseFolderId = await resolveCourseFolderId(folderId);
+  if (!courseFolderId) {
+    return res.status(403).json({ error: 'Invalid or unauthorized course folder' });
+  }
+
+  try {
+    const result = await renameItem(courseFolderId, name.trim());
+    res.json(result);
+  } catch (e) {
+    console.error('Course folder rename failed:', e);
+    res.status(500).json({ error: 'Failed to rename the course folder' });
+  }
+});
+
+// --- Delete the course folder and all nested Drive folders (super admin) --
+
+app.delete('/course-folder/:folderId', requireAuth, requireSuperAdmin, async (req, res) => {
+  if (!driveIsConfigured()) {
+    return res.status(503).json({ error: 'Drive is not configured yet. Complete the OAuth setup first.' });
+  }
+
+  const { folderId } = req.params;
+  if (!folderId) {
+    return res.status(400).json({ error: 'A folder ID is required' });
+  }
+
+  const courseFolderId = await resolveCourseFolderId(folderId);
+  if (!courseFolderId) {
+    return res.status(403).json({ error: 'Invalid or unauthorized course folder' });
+  }
+
+  try {
+    await forgetCourseSemesterIds(courseFolderId);
+    await deleteItem(courseFolderId);
+    res.json({ deleted: true, courseFolderId });
+  } catch (e) {
+    console.error('Course folder delete failed:', e);
+    res.status(500).json({ error: 'Failed to delete the course Drive folders' });
   }
 });
 

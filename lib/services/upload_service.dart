@@ -214,6 +214,70 @@ class UploadService {
     }
   }
 
+  Future<UploadResult> renameCourseFolder({
+    required String folderId,
+    required String name,
+  }) async {
+    if (folderId.isEmpty) {
+      throw UploadException('No course folder to rename');
+    }
+    if (name.trim().isEmpty) {
+      throw UploadException('Course name is required');
+    }
+
+    final token = await _idToken();
+
+    try {
+      final response = await _dio.patch(
+        '/course-folder/${Uri.encodeComponent(folderId)}',
+        data: {'name': name.trim()},
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      );
+
+      final data = response.data;
+      if (data is Map<String, dynamic>) {
+        return UploadResult.fromJson(data);
+      }
+      if (data is Map) {
+        return UploadResult.fromJson(Map<String, dynamic>.from(data));
+      }
+      throw UploadException('Unexpected response from server');
+    } on DioException catch (e) {
+      throw UploadException(
+        _messageFromDio(e, action: 'course'),
+        statusCode: e.response?.statusCode,
+      );
+    }
+  }
+
+  Future<void> deleteCourseFolder(String folderId) async {
+    if (folderId.isEmpty) {
+      throw UploadException('No course folder to delete');
+    }
+
+    final token = await _idToken();
+
+    try {
+      await _dio.delete(
+        '/course-folder/${Uri.encodeComponent(folderId)}',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      );
+    } on DioException catch (e) {
+      throw UploadException(
+        _messageFromDio(e, action: 'course'),
+        statusCode: e.response?.statusCode,
+      );
+    }
+  }
+
   Future<UploadResult> renameFile({
     required String fileId,
     required String name,
@@ -419,7 +483,7 @@ class UploadService {
       return 'Could not create the folder. Please try again.';
     }
     if (action == 'course') {
-      return 'Could not create the course folders. Please try again.';
+      return 'Could not update the course Drive folders. Please try again.';
     }
     return 'Upload failed. Please try again.';
   }
