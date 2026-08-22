@@ -105,9 +105,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       final user = AuthService.instance.currentUser;
       if (user != null) {
         final avatarUrl = _avatarUrlController.text.trim();
+        final username = _usernameController.text.trim();
         await _firestore.collection('profiles').doc(user.uid).set({
           'full_name': _fullNameController.text.trim(),
-          'username': _usernameController.text.trim(),
+          'username': username.isEmpty ? null : username,
           'avatar_url': avatarUrl.isEmpty ? null : avatarUrl,
           'avatar_public_id':
               avatarUrl.isEmpty ? null : _avatarPublicId,
@@ -419,12 +420,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
                       _buildTextField(
                         controller: _usernameController,
-                        label: 'Username',
+                        label: 'Username (optional)',
                         icon: Icons.alternate_email_rounded,
-                        hint: 'Enter your username',
+                        hint: 'Enter a username if you want one',
                         validator: (value) {
                           if (value == null || value.trim().isEmpty) {
-                            return 'Please enter a username';
+                            return null;
                           }
                           if (value.contains(' ')) {
                             return 'Username cannot contain spaces';

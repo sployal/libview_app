@@ -594,7 +594,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               color: Color(0xFF1F2937),
                             ),
                           ),
-                          if (_username != null) ...[
+                          if (_username != null && _username!.trim().isNotEmpty) ...[
                             const SizedBox(height: 4),
                             Text(
                               '@$_username',
