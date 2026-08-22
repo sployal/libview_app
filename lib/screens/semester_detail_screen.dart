@@ -43,7 +43,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
   bool _isMutatingFolder = false;
   String _role = 'student';
   bool _useLargeIcons = false;
-  static const _filesViewPrefKey = 'files_view_large_icons';
+  static const _filesViewPrefKey = 'semester_files_view_large_icons';
 
   bool get _canManageFolders => _role != 'student';
 

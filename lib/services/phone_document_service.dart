@@ -120,6 +120,34 @@ class PhoneDocumentService {
         .toList(growable: false);
   }
 
+  final Map<String, String?> _thumbnailCache = {};
+
+  Future<String?> thumbnailPath(PhoneDocument document) async {
+    final key = document.key;
+    if (_thumbnailCache.containsKey(key)) {
+      return _thumbnailCache[key];
+    }
+    if (document.extension != 'pdf' || !Platform.isAndroid) {
+      _thumbnailCache[key] = null;
+      return null;
+    }
+
+    try {
+      final path = await _channel.invokeMethod<String>('documentThumbnail', {
+        'uri': document.uri,
+        'path': document.path,
+        'fileName': document.name,
+        'modifiedMs': document.modifiedMs,
+      });
+      final resolved = (path == null || path.isEmpty) ? null : path;
+      _thumbnailCache[key] = resolved;
+      return resolved;
+    } catch (_) {
+      _thumbnailCache[key] = null;
+      return null;
+    }
+  }
+
   Future<PhonePickedDocument> prepareForUpload(PhoneDocument document) async {
     if (!Platform.isAndroid) {
       final path = document.path;

@@ -4,11 +4,15 @@ import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.Color
+import android.graphics.pdf.PdfRenderer
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.os.Handler
 import android.os.Looper
+import android.os.ParcelFileDescriptor
 import android.provider.MediaStore
 import android.webkit.MimeTypeMap
 import androidx.core.content.FileProvider
@@ -54,6 +58,20 @@ class MainActivity : FlutterActivity() {
                                 mainHandler.post {
                                     result.error("COPY_ERROR", e.message, null)
                                 }
+                            }
+                        }
+                    }
+                    "documentThumbnail" -> {
+                        val uri = call.argument<String>("uri")
+                        val path = call.argument<String>("path")
+                        val fileName = call.argument<String>("fileName")
+                        val modifiedMs = call.argument<Number>("modifiedMs")?.toLong() ?: 0L
+                        thread {
+                            try {
+                                val thumb = createDocumentThumbnail(uri, path, fileName, modifiedMs)
+                                mainHandler.post { result.success(thumb) }
+                            } catch (_: Exception) {
+                                mainHandler.post { result.success(null) }
                             }
                         }
                     }
@@ -543,6 +561,62 @@ class MainActivity : FlutterActivity() {
     private fun mimeFromName(name: String): String {
         val ext = name.substringAfterLast('.', "").lowercase(Locale.US)
         return MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext) ?: "application/octet-stream"
+    }
+
+    private fun createDocumentThumbnail(
+        uriString: String?,
+        path: String?,
+        fileName: String?,
+        modifiedMs: Long,
+    ): String? {
+        val name = fileName ?: path ?: return null
+        val ext = name.substringAfterLast('.', "").lowercase(Locale.US)
+        if (ext != "pdf") return null
+
+        val keySource = (path ?: uriString ?: name) + ":$modifiedMs"
+        val cacheName = "thumb_${keySource.hashCode().toUInt()}.jpg"
+        val dest = File(File(cacheDir, "doc_thumbs"), cacheName)
+        if (dest.exists() && dest.length() > 0) {
+            return dest.absolutePath
+        }
+        dest.parentFile?.mkdirs()
+
+        val pfd = openDocumentDescriptor(uriString, path) ?: return null
+        pfd.use { descriptor ->
+            PdfRenderer(descriptor).use { renderer ->
+                if (renderer.pageCount < 1) return null
+                renderer.openPage(0).use { page ->
+                    val maxWidth = 400
+                    val scale = maxWidth.toFloat() / page.width.coerceAtLeast(1)
+                    val width = maxWidth
+                    val height = (page.height * scale).toInt().coerceAtLeast(1)
+                    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+                    bitmap.eraseColor(Color.WHITE)
+                    page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                    dest.outputStream().use { output ->
+                        bitmap.compress(Bitmap.CompressFormat.JPEG, 80, output)
+                    }
+                    bitmap.recycle()
+                }
+            }
+        }
+        return if (dest.exists() && dest.length() > 0) dest.absolutePath else null
+    }
+
+    private fun openDocumentDescriptor(
+        uriString: String?,
+        path: String?,
+    ): ParcelFileDescriptor? {
+        if (!path.isNullOrBlank()) {
+            val file = File(path)
+            if (file.exists()) {
+                return ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
+            }
+        }
+        if (!uriString.isNullOrBlank()) {
+            return contentResolver.openFileDescriptor(Uri.parse(uriString), "r")
+        }
+        return null
     }
 
     private fun copyDocumentToCache(uriString: String?, path: String?, fileName: String?): String {
