@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/services.dart';
+import 'package:open_file/open_file.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class PhoneDocument {
@@ -145,6 +146,52 @@ class PhoneDocumentService {
     } catch (_) {
       _thumbnailCache[key] = null;
       return null;
+    }
+  }
+
+  Future<void> openDocument(PhoneDocument document) async {
+    if (!Platform.isAndroid) {
+      final path = document.path;
+      if (path == null || path.isEmpty || !File(path).existsSync()) {
+        throw Exception('Could not open this document');
+      }
+      final result = await OpenFile.open(path);
+      if (result.type != ResultType.done) {
+        throw Exception(result.message);
+      }
+      return;
+    }
+
+    try {
+      await _channel.invokeMethod<bool>('openDocument', {
+        'uri': document.uri,
+        'path': document.path,
+        'fileName': document.name,
+        'mimeType': document.mime,
+      });
+    } on PlatformException catch (e) {
+      throw Exception(e.message ?? 'Could not open this document');
+    }
+  }
+
+  Future<void> openPath(String path, {String? fileName}) async {
+    if (path.isEmpty || !File(path).existsSync()) {
+      throw Exception('Could not open this document');
+    }
+    if (Platform.isAndroid) {
+      try {
+        await _channel.invokeMethod<bool>('openDocument', {
+          'path': path,
+          'fileName': fileName ?? path.split(Platform.pathSeparator).last,
+        });
+        return;
+      } on PlatformException catch (e) {
+        throw Exception(e.message ?? 'Could not open this document');
+      }
+    }
+    final result = await OpenFile.open(path);
+    if (result.type != ResultType.done) {
+      throw Exception(result.message);
     }
   }
 

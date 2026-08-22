@@ -7,6 +7,7 @@ import '../services/auth_service.dart';
 import '../services/download_service.dart';
 import '../services/notification_service.dart';
 import '../services/streak_service.dart';
+import 'browse_documents.dart';
 import 'downloads_screen.dart';
 import 'notifications_screen.dart';
 
@@ -814,7 +815,11 @@ class _HomeScreenState extends State<HomeScreen>
                 Icons.folder_rounded,
                 const Color(0xFF6366F1),
                 () {
-                  const SwitchMainTabNotification(1).dispatch(context);
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (ctx) => const BrowseDocumentsScreen(),
+                    ),
+                  );
                 },
               ),
             ),

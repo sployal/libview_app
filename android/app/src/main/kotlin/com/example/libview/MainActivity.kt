@@ -61,6 +61,18 @@ class MainActivity : FlutterActivity() {
                             }
                         }
                     }
+                    "openDocument" -> {
+                        val uri = call.argument<String>("uri")
+                        val path = call.argument<String>("path")
+                        val fileName = call.argument<String>("fileName")
+                        val mimeType = call.argument<String>("mimeType") ?: "application/octet-stream"
+                        try {
+                            openDownload(uri, path, fileName, mimeType)
+                            result.success(true)
+                        } catch (e: Exception) {
+                            result.error("OPEN_ERROR", e.message, null)
+                        }
+                    }
                     "documentThumbnail" -> {
                         val uri = call.argument<String>("uri")
                         val path = call.argument<String>("path")
