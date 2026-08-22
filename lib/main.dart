@@ -161,7 +161,15 @@ class _MainScreenState extends State<MainScreen>
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
-    return Scaffold(
+    return NotificationListener<SwitchMainTabNotification>(
+      onNotification: (notification) {
+        setState(() {
+          _selectedIndex = notification.index;
+        });
+        HapticFeedback.lightImpact();
+        return true;
+      },
+      child: Scaffold(
       body: FadeTransition(
         opacity: _fadeAnimation,
         child: IndexedStack(
@@ -219,6 +227,7 @@ class _MainScreenState extends State<MainScreen>
           ],
         ),
       ),
+    ),
     );
   }
 }

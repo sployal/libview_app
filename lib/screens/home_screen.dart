@@ -1,6 +1,9 @@
 import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:timeago/timeago.dart' as timeago;
 
 import '../services/auth_service.dart';
 import '../services/download_service.dart';
@@ -8,6 +11,11 @@ import '../services/notification_service.dart';
 import '../services/streak_service.dart';
 import 'downloads_screen.dart';
 import 'notifications_screen.dart';
+
+class SwitchMainTabNotification extends Notification {
+  const SwitchMainTabNotification(this.index);
+  final int index;
+}
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -32,6 +40,8 @@ class _HomeScreenState extends State<HomeScreen>
 
   late DateTime _visibleMonth;
   late DateTime _selectedDay;
+  String? _firstName;
+  AppNotification? _latestNotification;
 
   @override
   void initState() {
@@ -79,6 +89,7 @@ class _HomeScreenState extends State<HomeScreen>
   void _setupNotificationSubscription() {
     _notificationsSub = NotificationService.instance.snapshots().listen((_) {
       _loadUnreadNotificationCount();
+      _loadLatestNotification();
     });
     final userId = AuthService.instance.currentUser?.uid;
     if (userId != null) {
@@ -107,7 +118,62 @@ class _HomeScreenState extends State<HomeScreen>
     await Future.wait([
       _loadDownloads(),
       _recordAndLoadStreak(),
+      _loadGreetingName(),
+      _loadLatestNotification(),
     ]);
+  }
+
+  Future<void> _loadGreetingName() async {
+    try {
+      final user = AuthService.instance.currentUser;
+      if (user == null) return;
+      final doc = await FirebaseFirestore.instance
+          .collection('profiles')
+          .doc(user.uid)
+          .get();
+      final fullName = (doc.data()?['full_name'] as String?)?.trim() ?? '';
+      final first = fullName.split(RegExp(r'\s+')).firstWhere(
+            (part) => part.isNotEmpty,
+            orElse: () => '',
+          );
+      if (!mounted) return;
+      setState(() {
+        _firstName = first.isEmpty ? null : first;
+      });
+    } catch (e) {
+      debugPrint('Error loading greeting name: $e');
+    }
+  }
+
+  Future<void> _loadLatestNotification() async {
+    try {
+      final list = await NotificationService.instance.listForCurrentUser();
+      if (!mounted) return;
+      setState(() {
+        _latestNotification = list.isEmpty ? null : list.first;
+      });
+    } catch (e) {
+      debugPrint('Error loading latest notification: $e');
+    }
+  }
+
+  String _greetingTitle() {
+    final hour = DateTime.now().hour;
+    final name = _firstName;
+    if (hour < 12) {
+      return name == null ? 'Good morning ☀️' : 'Good morning, $name ☀️';
+    }
+    if (hour < 17) {
+      return name == null ? 'Good afternoon 👋' : 'Good afternoon, $name 👋';
+    }
+    return name == null ? 'Good evening 🌙' : 'Good evening, $name 🌙';
+  }
+
+  String _greetingSubtitle() {
+    if (currentStreak > 0) {
+      return 'You\'re on a $currentStreak-day streak. Keep going.';
+    }
+    return 'Open a file or start a focus session to begin.';
   }
 
   Future<void> _loadDownloads() async {
@@ -232,23 +298,23 @@ class _HomeScreenState extends State<HomeScreen>
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Expanded(
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Welcome back! 👋',
-                              style: TextStyle(
-                                fontSize: 28,
+                              _greetingTitle(),
+                              style: const TextStyle(
+                                fontSize: 26,
                                 fontWeight: FontWeight.bold,
                                 color: Color(0xFF1F2937),
                               ),
                             ),
-                            SizedBox(height: 4),
+                            const SizedBox(height: 4),
                             Text(
-                              'Continue your learning journey',
-                              style: TextStyle(
-                                fontSize: 16,
+                              _greetingSubtitle(),
+                              style: const TextStyle(
+                                fontSize: 15,
                                 color: Color(0xFF6B7280),
                               ),
                             ),
@@ -321,6 +387,12 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                   const SizedBox(height: 24),
                   _buildStreakTracker(),
+                  if (_latestNotification != null) ...[
+                    const SizedBox(height: 20),
+                    _buildLatestUpdate(),
+                  ],
+                  const SizedBox(height: 20),
+                  const _StudyFocusCard(),
                   const SizedBox(height: 20),
                   _buildQuickStats(),
                   const SizedBox(height: 30),
@@ -436,6 +508,117 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildLatestUpdate() {
+    final notification = _latestNotification;
+    if (notification == null) return const SizedBox.shrink();
+
+    return GestureDetector(
+      onTap: () async {
+        await Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (ctx) => const NotificationsScreen(),
+          ),
+        );
+        _loadUnreadNotificationCount();
+        _loadLatestNotification();
+      },
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: (notification.isRead
+                        ? const Color(0xFF6366F1)
+                        : const Color(0xFFF59E0B))
+                    .withOpacity(0.12),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(
+                notification.isRead
+                    ? Icons.campaign_rounded
+                    : Icons.mark_email_unread_rounded,
+                color: notification.isRead
+                    ? const Color(0xFF6366F1)
+                    : const Color(0xFFF59E0B),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        notification.isRead ? 'Latest update' : 'New update',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFF6B7280),
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                      if (!notification.isRead) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFEF4444),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    notification.displayTitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF1F2937),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${notification.senderName} · ${timeago.format(notification.createdAt)}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: Color(0xFF6B7280),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: Color(0xFF9CA3AF),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -754,14 +937,25 @@ class _HomeScreenState extends State<HomeScreen>
                 },
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 12),
             Expanded(
               child: _buildActionCard(
                 'Browse Files',
                 Icons.folder_rounded,
                 const Color(0xFF6366F1),
                 () {
-                  DefaultTabController.of(context).animateTo(1);
+                  const SwitchMainTabNotification(1).dispatch(context);
+                },
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildActionCard(
+                'Ask AI',
+                Icons.auto_awesome_rounded,
+                const Color(0xFF8B5CF6),
+                () {
+                  const SwitchMainTabNotification(2).dispatch(context);
                 },
               ),
             ),
@@ -1107,7 +1301,7 @@ class _HomeScreenState extends State<HomeScreen>
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
@@ -1122,26 +1316,276 @@ class _HomeScreenState extends State<HomeScreen>
         child: Column(
           children: [
             Container(
-              width: 56,
-              height: 56,
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
                 color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(14),
               ),
-              child: Icon(icon, color: color, size: 28),
+              child: Icon(icon, color: color, size: 24),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             Text(
               title,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                fontSize: 16,
+                fontSize: 13,
                 fontWeight: FontWeight.w600,
                 color: Color(0xFF1F2937),
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _StudyFocusCard extends StatefulWidget {
+  const _StudyFocusCard();
+
+  @override
+  State<_StudyFocusCard> createState() => _StudyFocusCardState();
+}
+
+class _StudyFocusCardState extends State<_StudyFocusCard> {
+  static const _presets = [15, 25, 45];
+  int _minutes = 25;
+  int _remainingSeconds = 25 * 60;
+  bool _running = false;
+  Timer? _timer;
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  String get _timeLabel {
+    final minutes = _remainingSeconds ~/ 60;
+    final seconds = _remainingSeconds % 60;
+    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  }
+
+  double get _progress {
+    final total = _minutes * 60;
+    if (total <= 0) return 0;
+    return 1 - (_remainingSeconds / total);
+  }
+
+  void _selectPreset(int minutes) {
+    if (_running) return;
+    setState(() {
+      _minutes = minutes;
+      _remainingSeconds = minutes * 60;
+    });
+  }
+
+  void _toggle() {
+    if (_running) {
+      _timer?.cancel();
+      setState(() => _running = false);
+      return;
+    }
+
+    if (_remainingSeconds <= 0) {
+      _remainingSeconds = _minutes * 60;
+    }
+
+    HapticFeedback.lightImpact();
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (_remainingSeconds <= 1) {
+        _timer?.cancel();
+        setState(() {
+          _remainingSeconds = 0;
+          _running = false;
+        });
+        HapticFeedback.mediumImpact();
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Focus session complete. Nice work!'),
+            backgroundColor: const Color(0xFF10B981),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+        return;
+      }
+      setState(() => _remainingSeconds -= 1);
+    });
+    setState(() => _running = true);
+  }
+
+  void _reset() {
+    _timer?.cancel();
+    setState(() {
+      _running = false;
+      _remainingSeconds = _minutes * 60;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF0EA5E9), Color(0xFF6366F1)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF0EA5E9).withOpacity(0.28),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.18),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.timer_rounded,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Focus session',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      'A quiet timer for reading and revision',
+                      style: TextStyle(
+                        color: Color(0xE6FFFFFF),
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              Text(
+                _timeLabel,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 36,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1,
+                ),
+              ),
+              const Spacer(),
+              if (_running || _remainingSeconds != _minutes * 60)
+                IconButton(
+                  onPressed: _reset,
+                  icon: const Icon(Icons.refresh_rounded, color: Colors.white),
+                ),
+              const SizedBox(width: 4),
+              GestureDetector(
+                onTap: _toggle,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        _running
+                            ? Icons.pause_rounded
+                            : Icons.play_arrow_rounded,
+                        color: const Color(0xFF6366F1),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        _running ? 'Pause' : 'Start',
+                        style: const TextStyle(
+                          color: Color(0xFF6366F1),
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: LinearProgressIndicator(
+              value: _progress,
+              minHeight: 7,
+              backgroundColor: Colors.white.withOpacity(0.22),
+              valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: _presets.map((minutes) {
+              final selected = _minutes == minutes;
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: GestureDetector(
+                  onTap: () => _selectPreset(minutes),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: selected
+                          ? Colors.white
+                          : Colors.white.withOpacity(0.16),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      '$minutes min',
+                      style: TextStyle(
+                        color: selected
+                            ? const Color(0xFF4F46E5)
+                            : Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ],
       ),
     );
   }
