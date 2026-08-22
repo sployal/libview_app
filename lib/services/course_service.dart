@@ -45,6 +45,16 @@ class Course {
     });
   }
 
+  /// Firestore document ID, matching Engineering (`engineering`).
+  static String documentIdFromName(String name) {
+    final slug = name
+        .trim()
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
+        .replaceAll(RegExp(r'^-+|-+$'), '');
+    return slug;
+  }
+
   static String semesterKey(int year, int sem) => 'year${year}_sem$sem';
 
   static String driveFolderName(int year, int sem) => 'year $year sem $sem';
@@ -284,6 +294,20 @@ class CourseService {
       );
     }
 
+    final docId = Course.documentIdFromName(courseName);
+    if (docId.isEmpty) {
+      throw UploadException(
+        'Course name must include letters or numbers so it can be stored in the database',
+      );
+    }
+    if (existing.any((course) => course.id == docId)) {
+      throw UploadException('A course with this name already exists');
+    }
+    final existingDoc = await _courses.doc(docId).get();
+    if (existingDoc.exists) {
+      throw UploadException('A course with this name already exists');
+    }
+
     final structure = await UploadService.instance.createCourseStructure(
       courseName: courseName,
       years: years,
@@ -310,9 +334,9 @@ class CourseService {
       'created_by': FirebaseAuth.instance.currentUser?.uid,
     };
 
-    final doc = await _courses.add(payload);
+    await _courses.doc(docId).set(payload);
     return Course(
-      id: doc.id,
+      id: docId,
       name: courseName,
       years: years,
       sampleAdmissionNumber: sample,
