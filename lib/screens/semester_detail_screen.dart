@@ -565,6 +565,18 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     }
   }
 
+  Future<_UploadSource?> _showUploadSourceSheet() {
+    return showModalBottomSheet<_UploadSource>(
+      context: context,
+      backgroundColor: const Color(0xFF1B2230),
+      barrierColor: Colors.black.withValues(alpha: 0.55),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (context) => const _UploadSourceSheet(),
+    );
+  }
+
   Future<void> _pickAndUploadFile() async {
     if (!_canManageFolders) return;
     final subject = selectedSubject;
@@ -574,11 +586,41 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     }
     if (isUploading) return;
 
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.any,
-      withData: true,
-      dialogTitle: 'Select a file to upload',
-    );
+    final source = await _showUploadSourceSheet();
+    if (source == null || !mounted) return;
+
+    final result = source == _UploadSource.photos
+        ? await FilePicker.platform.pickFiles(
+            type: FileType.image,
+            withData: true,
+            dialogTitle: 'Choose a photo',
+          )
+        : await FilePicker.platform.pickFiles(
+            type: FileType.custom,
+            allowedExtensions: const [
+              'pdf',
+              'doc',
+              'docx',
+              'ppt',
+              'pptx',
+              'xls',
+              'xlsx',
+              'txt',
+              'rtf',
+              'odt',
+              'ods',
+              'odp',
+              'csv',
+              'png',
+              'jpg',
+              'jpeg',
+              'webp',
+              'gif',
+              'heic',
+            ],
+            withData: true,
+            dialogTitle: 'Select a document to upload',
+          );
 
     if (result == null || result.files.isEmpty) return;
 
@@ -1332,6 +1374,141 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                   ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+enum _UploadSource { photos, documents }
+
+class _UploadSourceSheet extends StatelessWidget {
+  const _UploadSourceSheet();
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.28),
+                borderRadius: BorderRadius.circular(99),
+              ),
+            ),
+            const SizedBox(height: 18),
+            const Text(
+              'Upload from',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Choose photos, Files by Google, Drive, or a PDF app',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.62),
+                fontSize: 13,
+                height: 1.35,
+              ),
+            ),
+            const SizedBox(height: 20),
+            _UploadSourceOption(
+              icon: Icons.photo_library_rounded,
+              iconColor: const Color(0xFF3B82F6),
+              title: 'Photos & images',
+              subtitle: 'Same picker as profile photo',
+              onTap: () => Navigator.pop(context, _UploadSource.photos),
+            ),
+            const SizedBox(height: 10),
+            _UploadSourceOption(
+              icon: Icons.picture_as_pdf_rounded,
+              iconColor: const Color(0xFFE25A45),
+              title: 'PDF & documents',
+              subtitle: 'Notes, slides, Word, Excel, and images',
+              onTap: () => Navigator.pop(context, _UploadSource.documents),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _UploadSourceOption extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _UploadSourceOption({
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0xFF2A3344),
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: iconColor,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(icon, color: Colors.white, size: 24),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.55),
+                        fontSize: 12.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: Colors.white.withValues(alpha: 0.7),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
