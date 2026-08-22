@@ -6,6 +6,8 @@ import 'class_members.dart';
 import 'course_members.dart';
 import 'notifications_screen.dart';
 import 'super_admin_dashboard.dart';
+import 'help_and_support.dart';
+import 'users_feedback.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -191,6 +193,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 });
               },
             ),
+            if (_isSuperAdmin) ...[
+              const SizedBox(height: 8),
+              ListTile(
+                leading: Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.feedback_outlined,
+                    color: Color(0xFF10B981),
+                    size: 20,
+                  ),
+                ),
+                title: const Text(
+                  'User Feedback',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                subtitle: const Text(
+                  'Messages from Help & Support',
+                  style: TextStyle(fontSize: 12),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const UsersFeedbackScreen(),
+                    ),
+                  );
+                },
+              ),
+            ],
             if (_isAdmin) ...[
               const SizedBox(height: 8),
               ListTile(
@@ -684,10 +724,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             Icons.help_outline_rounded,
                             const Color(0xFFF59E0B),
                             () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Help & Support coming soon!'),
-                                  behavior: SnackBarBehavior.floating,
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const HelpAndSupportScreen(),
                                 ),
                               );
                             },

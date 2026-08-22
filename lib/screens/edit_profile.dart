@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import 'super_admin_dashboard.dart';
+import 'users_feedback.dart';
 
 class EditProfileScreen extends StatefulWidget {
   const EditProfileScreen({super.key});
@@ -23,6 +25,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   String? _currentEmail;
   String? _currentRole;
   String? _registrationNumber;
+
+  bool get _isSuperAdmin {
+    if (SuperAdminDashboard.isAllowedEmail(_currentEmail)) return true;
+    return (_currentRole ?? '').toLowerCase() == SuperAdminDashboard.superAdminRole;
+  }
 
   @override
   void initState() {
@@ -351,6 +358,40 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         color: _getRoleColor(_currentRole ?? 'student'),
                       ),
                       const SizedBox(height: 32),
+
+                      if (_isSuperAdmin) ...[
+                        SizedBox(
+                          width: double.infinity,
+                          height: 54,
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const UsersFeedbackScreen(),
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.feedback_outlined),
+                            label: const Text(
+                              'User Feedback',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: const Color(0xFF0F172A),
+                              side: const BorderSide(color: Color(0xFF0F172A)),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                      ],
 
                       // Save Button
                       SizedBox(

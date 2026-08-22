@@ -8,6 +8,7 @@ const { google } = require('googleapis');
 const { Readable } = require('stream');
 const admin = require('firebase-admin');
 const { registerAiRoutes } = require('./ai_chat');
+const { registerMediaRoutes } = require('./media server.js');
 
 // =========================================================================
 // config
@@ -475,7 +476,20 @@ function requireSuperAdmin(req, res, next) {
   if (CONFIG.ADMIN_UIDS.size > 0 && CONFIG.ADMIN_UIDS.has(req.user.uid)) {
     return next();
   }
-  return res.status(403).json({ error: 'Super admin privileges required' });
+
+  firestore
+    .collection('profiles')
+    .doc(req.user.uid)
+    .get()
+    .then((snap) => {
+      const role = String(snap.data()?.role || '').toLowerCase();
+      if (role === 'super_admin') return next();
+      return res.status(403).json({ error: 'Super admin privileges required' });
+    })
+    .catch((err) => {
+      console.error('Super admin check failed:', err.message);
+      return res.status(403).json({ error: 'Super admin privileges required' });
+    });
 }
 
 // =========================================================================
@@ -775,6 +789,7 @@ app.delete('/files/:fileId', requireAuth, requireAdmin, async (req, res) => {
 // --- AI chat (NVIDIA Llama vision) --------------------------------------
 
 registerAiRoutes(app, { requireAuth });
+registerMediaRoutes(app, { requireAuth, requireSuperAdmin, upload });
 
 // --- Fallback error handler --------------------------------------------
 
