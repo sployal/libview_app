@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../screens/super_admin_dashboard.dart';
 import 'auth_service.dart';
 import 'course_service.dart';
 import 'media_service.dart';
@@ -95,6 +96,7 @@ class NotificationService {
 
     final profile = await _firestore.collection('profiles').doc(user.uid).get();
     final data = profile.data() ?? {};
+    final role = ((data['role'] as String?) ?? 'student').toLowerCase();
     final registrationNumber =
         (data['registration_number'] as String?) ?? '';
     final courses = await CourseService.instance.listCourses();
@@ -109,16 +111,32 @@ class NotificationService {
         .where((id) => id.isNotEmpty)
         .toSet();
 
+    final seeAll = role == 'super_admin' ||
+        SuperAdminDashboard.isAllowedEmail(user.email);
+
     return notificationsSnap.docs
         .map((doc) => _fromDoc(doc, readIds.contains(doc.id)))
         .where(
-          (item) => _isVisibleToUser(
-            item: item,
-            registrationNumber: registrationNumber,
-            userCourse: userCourse,
-          ),
+          (item) =>
+              seeAll ||
+              _isVisibleToUser(
+                item: item,
+                registrationNumber: registrationNumber,
+                userCourse: userCourse,
+              ),
         )
         .toList();
+  }
+
+  static bool matchesCourse(AppNotification item, Course course) {
+    if (item.courseId.isNotEmpty) {
+      return item.courseId == course.id;
+    }
+    if (item.admissionPrefix.isNotEmpty) {
+      return item.admissionPrefix.toUpperCase() ==
+          course.admissionPrefix.toUpperCase();
+    }
+    return false;
   }
 
   Future<int> unreadCountForCurrentUser() async {

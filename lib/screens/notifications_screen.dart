@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 import '../services/auth_service.dart';
+import '../services/course_service.dart';
 import '../services/notification_service.dart';
 import 'create_notification_screen.dart';
+import 'super_admin_dashboard.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -14,9 +16,12 @@ class NotificationsScreen extends StatefulWidget {
 
 class _NotificationsScreenState extends State<NotificationsScreen> {
   List<AppNotification> notifications = [];
+  List<Course> _courses = [];
   bool isLoading = true;
   bool canCreateNotifications = false;
+  bool _isSuperAdmin = false;
   String? currentUserRole;
+  String _courseFilter = 'all';
 
   @override
   void initState() {
@@ -28,14 +33,43 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Future<void> _checkUserRole() async {
     try {
       final role = await AuthService.instance.currentRole();
+      final isSuperAdmin =
+          await SuperAdminDashboard.isCurrentUserSuperAdmin();
+      List<Course> courses = [];
+      if (isSuperAdmin) {
+        courses = await CourseService.instance.listCourses();
+        courses.sort(
+          (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+        );
+      }
       if (!mounted) return;
       setState(() {
         currentUserRole = role;
-        canCreateNotifications = role != 'student';
+        _isSuperAdmin = isSuperAdmin;
+        _courses = courses;
+        canCreateNotifications = role != 'student' || isSuperAdmin;
       });
     } catch (e) {
       debugPrint('Error checking user role: $e');
     }
+  }
+
+  List<AppNotification> get _visibleNotifications {
+    if (!_isSuperAdmin || _courseFilter == 'all') {
+      return notifications;
+    }
+    Course? selected;
+    for (final course in _courses) {
+      if (course.id == _courseFilter) {
+        selected = course;
+        break;
+      }
+    }
+    if (selected == null) return notifications;
+    final course = selected;
+    return notifications
+        .where((item) => NotificationService.matchesCourse(item, course))
+        .toList();
   }
 
   Future<void> _loadNotifications() async {
@@ -88,7 +122,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Future<void> _markAllAsRead() async {
     try {
       await NotificationService.instance.markAllAsRead(
-        notifications.map((n) => n.id).toList(),
+        _visibleNotifications.map((n) => n.id).toList(),
       );
 
       _loadNotifications();
@@ -448,6 +482,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   Color _getRoleColor(String role) {
     switch (role.toLowerCase()) {
+      case 'super_admin':
+        return const Color(0xFF0F172A);
       case 'admin':
         return const Color(0xFFEF4444);
       case 'lecturer':
@@ -464,6 +500,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   IconData _getRoleIcon(String role) {
     switch (role.toLowerCase()) {
+      case 'super_admin':
+        return Icons.shield_rounded;
       case 'admin':
         return Icons.admin_panel_settings_rounded;
       case 'lecturer':
@@ -480,6 +518,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   String _formatRole(String role) {
     switch (role.toLowerCase()) {
+      case 'super_admin':
+        return 'Super Admin';
       case 'class_rep':
         return 'Class Rep';
       case 'assistant_class_rep':
@@ -507,9 +547,67 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
+  Widget _buildCourseFilterBar() {
+    return Container(
+      width: double.infinity,
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Filter',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Color(0xFF64748B),
+            ),
+          ),
+          const SizedBox(height: 8),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                _buildFilterChip('All', 'all'),
+                ..._courses.map(
+                  (course) => _buildFilterChip(course.name, course.id),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterChip(String label, String value) {
+    final isSelected = _courseFilter == value;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: FilterChip(
+        label: Text(label),
+        selected: isSelected,
+        onSelected: (_) {
+          setState(() => _courseFilter = value);
+        },
+        backgroundColor: Colors.white,
+        selectedColor: const Color(0xFF6366F1).withOpacity(0.2),
+        labelStyle: TextStyle(
+          color: isSelected ? const Color(0xFF6366F1) : const Color(0xFF6B7280),
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+        ),
+        side: BorderSide(
+          color: isSelected ? const Color(0xFF6366F1) : const Color(0xFFE5E7EB),
+        ),
+        showCheckmark: false,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final unreadCount = notifications.where((n) => !n.isRead).length;
+    final visible = _visibleNotifications;
+    final unreadCount = visible.where((n) => !n.isRead).length;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -562,19 +660,26 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
               ),
             )
-          : notifications.isEmpty
-              ? _buildEmptyState()
-              : RefreshIndicator(
-                  onRefresh: _loadNotifications,
-                  color: const Color(0xFF6366F1),
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: notifications.length,
-                    itemBuilder: (context, index) {
-                      return _buildNotificationCard(notifications[index]);
-                    },
-                  ),
+          : Column(
+              children: [
+                if (_isSuperAdmin) _buildCourseFilterBar(),
+                Expanded(
+                  child: visible.isEmpty
+                      ? _buildEmptyState()
+                      : RefreshIndicator(
+                          onRefresh: _loadNotifications,
+                          color: const Color(0xFF6366F1),
+                          child: ListView.builder(
+                            padding: const EdgeInsets.all(16),
+                            itemCount: visible.length,
+                            itemBuilder: (context, index) {
+                              return _buildNotificationCard(visible[index]);
+                            },
+                          ),
+                        ),
                 ),
+              ],
+            ),
       floatingActionButton: canCreateNotifications
           ? FloatingActionButton.extended(
               onPressed: () async {
@@ -613,9 +718,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             ),
           ),
           const SizedBox(height: 24),
-          const Text(
-            'No notifications yet',
-            style: TextStyle(
+          Text(
+            _isSuperAdmin && _courseFilter != 'all'
+                ? 'No notifications for this course'
+                : 'No notifications yet',
+            style: const TextStyle(
               fontSize: 20,
               fontWeight: FontWeight.bold,
               color: Color(0xFF1F2937),
@@ -623,7 +730,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'You\'re all caught up!',
+            _isSuperAdmin && _courseFilter != 'all'
+                ? 'Try All to see campus-wide posts as well'
+                : 'You\'re all caught up!',
             style: TextStyle(
               fontSize: 16,
               color: Colors.grey[600],
@@ -639,7 +748,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final typeIcon = _getTypeIcon(notification.type);
     final currentUserId = AuthService.instance.currentUser?.uid;
     final isOwnNotification = notification.senderId == currentUserId;
-    final canDelete = isOwnNotification || currentUserRole == 'admin';
+    final canDelete = isOwnNotification ||
+        currentUserRole == 'admin' ||
+        _isSuperAdmin;
     final canEdit = isOwnNotification;
 
     return Container(
@@ -899,7 +1010,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             content: Text(
                               isOwnNotification
                                   ? 'Are you sure you want to delete this notification?'
-                                  : 'As an admin, you are about to delete ${notification.senderName}\'s notification. Continue?',
+                                  : 'You are about to delete ${notification.senderName}\'s notification. Continue?',
                             ),
                             actions: [
                               TextButton(
