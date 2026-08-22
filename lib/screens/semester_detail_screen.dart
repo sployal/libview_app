@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../services/google_drive_service.dart';
 import '../services/download_service.dart';
+import '../services/phone_document_service.dart';
 import '../services/upload_service.dart';
+import 'phone_pdf.dart';
 import 'web_view_screen.dart';
 
 class SemesterDetailScreen extends StatefulWidget {
@@ -589,42 +591,44 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     final source = await _showUploadSourceSheet();
     if (source == null || !mounted) return;
 
-    final result = source == _UploadSource.photos
-        ? await FilePicker.platform.pickFiles(
-            type: FileType.image,
-            withData: true,
-            dialogTitle: 'Choose a photo',
-          )
-        : await FilePicker.platform.pickFiles(
-            type: FileType.custom,
-            allowedExtensions: const [
-              'pdf',
-              'doc',
-              'docx',
-              'ppt',
-              'pptx',
-              'xls',
-              'xlsx',
-              'txt',
-              'rtf',
-              'odt',
-              'ods',
-              'odp',
-              'csv',
-              'png',
-              'jpg',
-              'jpeg',
-              'webp',
-              'gif',
-              'heic',
-            ],
-            withData: true,
-            dialogTitle: 'Select a document to upload',
-          );
+    if (source == _UploadSource.documents) {
+      final picked = await Navigator.push<PhonePickedDocument>(
+        context,
+        MaterialPageRoute(builder: (_) => const PhonePdfScreen()),
+      );
+      if (picked == null || !mounted) return;
+      await _uploadPickedFile(
+        folderId: subject.folderId,
+        fileName: picked.name,
+        filePath: picked.path,
+      );
+      return;
+    }
+
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      withData: true,
+      dialogTitle: 'Choose a photo',
+    );
 
     if (result == null || result.files.isEmpty) return;
 
     final file = result.files.first;
+    await _uploadPickedFile(
+      folderId: subject.folderId,
+      fileName: file.name,
+      filePath: file.path,
+      bytes: file.bytes,
+    );
+  }
+
+  Future<void> _uploadPickedFile({
+    required String folderId,
+    required String fileName,
+    String? filePath,
+    List<int>? bytes,
+  }) async {
+    if (isUploading) return;
 
     setState(() {
       isUploading = true;
@@ -633,10 +637,10 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
 
     try {
       await UploadService.instance.uploadFile(
-        folderId: subject.folderId,
-        fileName: file.name,
-        filePath: file.path,
-        bytes: file.bytes,
+        folderId: folderId,
+        fileName: fileName,
+        filePath: filePath,
+        bytes: bytes,
         onProgress: (progress) {
           if (mounted) {
             setState(() => uploadProgress = progress);
@@ -644,8 +648,11 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
         },
       );
 
-      _showMessage('${file.name} uploaded successfully');
-      await _loadSubjectFiles(subject);
+      _showMessage('$fileName uploaded successfully');
+      final subject = selectedSubject;
+      if (subject != null) {
+        await _loadSubjectFiles(subject);
+      }
     } on UploadException catch (e) {
       _showMessage(e.message, isError: true);
     } catch (e) {
@@ -1411,7 +1418,7 @@ class _UploadSourceSheet extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              'Choose photos, Files by Google, Drive, or a PDF app',
+              'Choose photos, or browse PDFs and documents on this phone',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.62),
@@ -1432,7 +1439,7 @@ class _UploadSourceSheet extends StatelessWidget {
               icon: Icons.picture_as_pdf_rounded,
               iconColor: const Color(0xFFE25A45),
               title: 'PDF & documents',
-              subtitle: 'Notes, slides, Word, Excel, and images',
+              subtitle: 'Search recent PDFs, Word, Excel, and PowerPoint',
               onTap: () => Navigator.pop(context, _UploadSource.documents),
             ),
           ],
