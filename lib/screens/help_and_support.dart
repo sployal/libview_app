@@ -175,6 +175,8 @@ class _HelpAndSupportScreenState extends State<HelpAndSupportScreen> {
               TextFormField(
                 controller: _headingController,
                 textCapitalization: TextCapitalization.sentences,
+                style: const TextStyle(color: Colors.black, fontSize: 16),
+                cursorColor: Colors.black,
                 decoration: _inputDecoration('Short title for the issue'),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
@@ -198,6 +200,8 @@ class _HelpAndSupportScreenState extends State<HelpAndSupportScreen> {
                 minLines: 6,
                 maxLines: 12,
                 textCapitalization: TextCapitalization.sentences,
+                style: const TextStyle(color: Colors.black, fontSize: 16),
+                cursorColor: Colors.black,
                 decoration: _inputDecoration('Describe what happened and what you expected'),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
@@ -266,6 +270,8 @@ class _HelpAndSupportScreenState extends State<HelpAndSupportScreen> {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFFF59E0B),
                     foregroundColor: Colors.white,
+                    disabledBackgroundColor: const Color(0xFFF59E0B),
+                    disabledForegroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
