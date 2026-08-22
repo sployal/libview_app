@@ -31,6 +31,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   int _downloadedFileCount = 0;
   int _uniqueSubjectsCount = 0;
   int _thisWeekDownloadCount = 0;
+  int _pdfCount = 0;
 
   bool get _isAdmin {
     final role = (_role ?? '').toLowerCase();
@@ -75,11 +76,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
       final date = DateTime.tryParse(item.date);
       return date != null && date.isAfter(weekAgo);
     }).length;
+    final pdfs = downloads
+        .where((item) => item.type.toUpperCase() == 'PDF')
+        .length;
     if (!mounted) return;
     if (bytes == _downloadsStorageBytes &&
         downloads.length == _downloadedFileCount &&
         subjects == _uniqueSubjectsCount &&
-        thisWeek == _thisWeekDownloadCount) {
+        thisWeek == _thisWeekDownloadCount &&
+        pdfs == _pdfCount) {
       return;
     }
     setState(() {
@@ -87,6 +92,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       _downloadedFileCount = downloads.length;
       _uniqueSubjectsCount = subjects;
       _thisWeekDownloadCount = thisWeek;
+      _pdfCount = pdfs;
     });
   }
 
@@ -699,12 +705,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             children: [
                               Expanded(
                                 child: _buildStatCard(
-                                  'Storage',
-                                  DownloadService.formatFileSize(
-                                    _downloadsStorageBytes,
-                                  ),
-                                  Icons.folder_rounded,
-                                  const Color(0xFF8B5CF6),
+                                  'PDFs',
+                                  '$_pdfCount',
+                                  Icons.picture_as_pdf_rounded,
+                                  const Color(0xFFEF4444),
                                 ),
                               ),
                               const SizedBox(width: 16),
