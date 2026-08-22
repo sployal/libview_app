@@ -308,6 +308,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     if (!_canManageFolders) return;
     final confirmed = await showDialog<bool>(
       context: context,
+      useRootNavigator: true,
       builder: (context) {
         return AlertDialog(
           shape: RoundedRectangleBorder(
@@ -339,6 +340,54 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
 
     if (confirmed == true) {
       await _deleteMaterial(material);
+    }
+  }
+
+  Future<void> _renameMaterial(StudyMaterial material) async {
+    if (!_canManageFolders) return;
+    if (!_isLiveFolder) {
+      _showMessage('This file is not connected to Drive', isError: true);
+      return;
+    }
+
+    final name = await _promptFolderName(
+      title: 'Edit file',
+      confirmLabel: 'Save',
+      initial: material.name,
+      fieldLabel: 'File name',
+    );
+    if (name == null) return;
+
+    final nextName = _fileNameWithExtension(name, material.name);
+    if (nextName == material.name) return;
+
+    try {
+      final result = await UploadService.instance.renameFile(
+        fileId: material.id,
+        name: nextName,
+      );
+      if (!mounted) return;
+      final savedName = result.name.isNotEmpty ? result.name : nextName;
+      setState(() {
+        final index = currentFiles.indexWhere((item) => item.id == material.id);
+        if (index != -1) {
+          final existing = currentFiles[index];
+          currentFiles[index] = StudyMaterial(
+            id: existing.id,
+            name: savedName,
+            type: existing.type,
+            size: existing.size,
+            date: existing.date,
+            downloadUrl: existing.downloadUrl,
+            thumbnailUrl: existing.thumbnailUrl,
+          );
+        }
+      });
+      _showMessage('Renamed to "$savedName"');
+    } on UploadException catch (e) {
+      _showMessage(e.message, isError: true);
+    } catch (_) {
+      _showMessage('Failed to rename file', isError: true);
     }
   }
 
@@ -403,20 +452,36 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     required String title,
     required String confirmLabel,
     String initial = '',
+    String fieldLabel = 'Folder name',
   }) async {
     final result = await showDialog<String>(
       context: context,
       barrierDismissible: true,
+      useRootNavigator: true,
       builder: (dialogContext) {
         return _FolderNameDialog(
           title: title,
           confirmLabel: confirmLabel,
           initial: initial,
+          fieldLabel: fieldLabel,
         );
       },
     );
     if (result == null || result.isEmpty) return null;
     return result;
+  }
+
+  String _fileNameWithExtension(String nextName, String originalName) {
+    final trimmed = nextName.trim();
+    final originalDot = originalName.lastIndexOf('.');
+    if (originalDot <= 0 || originalDot == originalName.length - 1) {
+      return trimmed;
+    }
+    final extension = originalName.substring(originalDot);
+    if (trimmed.toLowerCase().endsWith(extension.toLowerCase())) {
+      return trimmed;
+    }
+    return '$trimmed$extension';
   }
 
   Future<void> _createUnitFolder() async {
@@ -1017,15 +1082,64 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                                       ),
                                     )
                                   else if (_canManageFolders)
-                                    IconButton(
+                                    PopupMenuButton<String>(
+                                      tooltip: 'File options',
+                                      enabled: !isDownloading,
+                                      padding: EdgeInsets.zero,
                                       icon: const Icon(
-                                        Icons.delete_outline_rounded,
-                                        color: Color(0xFFEF4444),
+                                        Icons.more_vert_rounded,
+                                        color: Color(0xFF6366F1),
                                       ),
-                                      tooltip: 'Delete',
-                                      onPressed: isDownloading
-                                          ? null
-                                          : () => _confirmDelete(file),
+                                      onSelected: (value) {
+                                        // Let the popup finish closing first. Showing a
+                                        // text-field dialog in the same frame often
+                                        // dismisses it immediately on mobile.
+                                        Future<void>.delayed(
+                                          const Duration(milliseconds: 150),
+                                          () {
+                                            if (!mounted) return;
+                                            if (value == 'edit') {
+                                              _renameMaterial(file);
+                                            } else if (value == 'delete') {
+                                              _confirmDelete(file);
+                                            }
+                                          },
+                                        );
+                                      },
+                                      itemBuilder: (context) => const [
+                                        PopupMenuItem(
+                                          value: 'edit',
+                                          child: Row(
+                                            children: [
+                                              Icon(
+                                                Icons.edit_rounded,
+                                                size: 18,
+                                              ),
+                                              SizedBox(width: 10),
+                                              Text('Edit file'),
+                                            ],
+                                          ),
+                                        ),
+                                        PopupMenuItem(
+                                          value: 'delete',
+                                          child: Row(
+                                            children: [
+                                              Icon(
+                                                Icons.delete_rounded,
+                                                size: 18,
+                                                color: Color(0xFFEF4444),
+                                              ),
+                                              SizedBox(width: 10),
+                                              Text(
+                                                'Delete',
+                                                style: TextStyle(
+                                                  color: Color(0xFFEF4444),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   IconButton(
                                     icon: isDownloading
@@ -1566,11 +1680,13 @@ class _FolderNameDialog extends StatefulWidget {
   final String title;
   final String confirmLabel;
   final String initial;
+  final String fieldLabel;
 
   const _FolderNameDialog({
     required this.title,
     required this.confirmLabel,
     this.initial = '',
+    this.fieldLabel = 'Folder name',
   });
 
   @override
@@ -1610,9 +1726,9 @@ class _FolderNameDialogState extends State<_FolderNameDialog> {
         controller: _controller,
         autofocus: true,
         textCapitalization: TextCapitalization.sentences,
-        decoration: const InputDecoration(
+        decoration: InputDecoration(
           hintText: 'e.g. CS101 Data Structures',
-          labelText: 'Folder name',
+          labelText: widget.fieldLabel,
         ),
         onSubmitted: (_) => _submit(),
       ),

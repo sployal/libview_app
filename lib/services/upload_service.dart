@@ -296,8 +296,10 @@ class UploadService {
         '/files/${Uri.encodeComponent(fileId)}',
         data: {'name': name.trim()},
         options: Options(
+          contentType: Headers.jsonContentType,
           headers: {
             'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
           },
         ),
       );
@@ -442,14 +444,17 @@ class UploadService {
           return 'You do not have permission to delete this file.';
         }
         if (action == 'rename' || action == 'folder' || action == 'course') {
-          return 'You do not have permission to change folders here.';
+          return 'You do not have permission to rename this item.';
         }
         return 'You cannot upload to this folder.';
       case 400:
         if (action == 'delete') {
           return 'Delete was rejected.';
         }
-        if (action == 'rename' || action == 'folder' || action == 'course') {
+        if (action == 'rename') {
+          return 'That file name is not allowed.';
+        }
+        if (action == 'folder' || action == 'course') {
           return 'That folder name is not allowed.';
         }
         return 'Upload was rejected. Use a file under 20 MB.';
