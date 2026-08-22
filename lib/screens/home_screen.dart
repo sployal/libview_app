@@ -3,8 +3,6 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:timeago/timeago.dart' as timeago;
-
 import '../services/auth_service.dart';
 import '../services/download_service.dart';
 import '../services/notification_service.dart';
@@ -41,7 +39,6 @@ class _HomeScreenState extends State<HomeScreen>
   late DateTime _visibleMonth;
   late DateTime _selectedDay;
   String? _firstName;
-  AppNotification? _latestNotification;
 
   @override
   void initState() {
@@ -89,7 +86,6 @@ class _HomeScreenState extends State<HomeScreen>
   void _setupNotificationSubscription() {
     _notificationsSub = NotificationService.instance.snapshots().listen((_) {
       _loadUnreadNotificationCount();
-      _loadLatestNotification();
     });
     final userId = AuthService.instance.currentUser?.uid;
     if (userId != null) {
@@ -119,7 +115,6 @@ class _HomeScreenState extends State<HomeScreen>
       _loadDownloads(),
       _recordAndLoadStreak(),
       _loadGreetingName(),
-      _loadLatestNotification(),
     ]);
   }
 
@@ -142,18 +137,6 @@ class _HomeScreenState extends State<HomeScreen>
       });
     } catch (e) {
       debugPrint('Error loading greeting name: $e');
-    }
-  }
-
-  Future<void> _loadLatestNotification() async {
-    try {
-      final list = await NotificationService.instance.listForCurrentUser();
-      if (!mounted) return;
-      setState(() {
-        _latestNotification = list.isEmpty ? null : list.first;
-      });
-    } catch (e) {
-      debugPrint('Error loading latest notification: $e');
     }
   }
 
@@ -387,10 +370,6 @@ class _HomeScreenState extends State<HomeScreen>
                   ),
                   const SizedBox(height: 24),
                   _buildStreakTracker(),
-                  if (_latestNotification != null) ...[
-                    const SizedBox(height: 20),
-                    _buildLatestUpdate(),
-                  ],
                   const SizedBox(height: 20),
                   const _StudyFocusCard(),
                   const SizedBox(height: 20),
@@ -508,117 +487,6 @@ class _HomeScreenState extends State<HomeScreen>
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildLatestUpdate() {
-    final notification = _latestNotification;
-    if (notification == null) return const SizedBox.shrink();
-
-    return GestureDetector(
-      onTap: () async {
-        await Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (ctx) => const NotificationsScreen(),
-          ),
-        );
-        _loadUnreadNotificationCount();
-        _loadLatestNotification();
-      },
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 48,
-              height: 48,
-              decoration: BoxDecoration(
-                color: (notification.isRead
-                        ? const Color(0xFF6366F1)
-                        : const Color(0xFFF59E0B))
-                    .withOpacity(0.12),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Icon(
-                notification.isRead
-                    ? Icons.campaign_rounded
-                    : Icons.mark_email_unread_rounded,
-                color: notification.isRead
-                    ? const Color(0xFF6366F1)
-                    : const Color(0xFFF59E0B),
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        notification.isRead ? 'Latest update' : 'New update',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF6B7280),
-                          letterSpacing: 0.3,
-                        ),
-                      ),
-                      if (!notification.isRead) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFEF4444),
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    notification.displayTitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF1F2937),
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${notification.senderName} · ${timeago.format(notification.createdAt)}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: Color(0xFF6B7280),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(
-              Icons.chevron_right_rounded,
-              color: Color(0xFF9CA3AF),
-            ),
-          ],
-        ),
       ),
     );
   }
