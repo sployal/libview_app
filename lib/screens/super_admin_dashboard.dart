@@ -865,51 +865,54 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                   ),
                 ),
               ),
-              PopupMenuButton<String>(
-                tooltip: 'Course options',
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                icon: const Icon(
-                  Icons.more_vert_rounded,
-                  color: Color(0xFF0F172A),
+              if (course.id != 'engineering' &&
+                  course.name.toLowerCase() != 'engineering')
+                PopupMenuButton<String>(
+                  tooltip: 'Course options',
+                  padding: EdgeInsets.zero,
+                  constraints:
+                      const BoxConstraints(minWidth: 32, minHeight: 32),
+                  icon: const Icon(
+                    Icons.more_vert_rounded,
+                    color: Color(0xFF0F172A),
+                  ),
+                  onSelected: (value) {
+                    if (value == 'edit') {
+                      _openCourseAddition(course: course);
+                    } else if (value == 'delete') {
+                      _showDeleteCourseDialog(course);
+                    }
+                  },
+                  itemBuilder: (context) => const [
+                    PopupMenuItem(
+                      value: 'edit',
+                      child: Row(
+                        children: [
+                          Icon(Icons.edit_rounded, size: 18),
+                          SizedBox(width: 10),
+                          Text('Edit course'),
+                        ],
+                      ),
+                    ),
+                    PopupMenuItem(
+                      value: 'delete',
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.delete_rounded,
+                            size: 18,
+                            color: Color(0xFFEF4444),
+                          ),
+                          SizedBox(width: 10),
+                          Text(
+                            'Delete course',
+                            style: TextStyle(color: Color(0xFFEF4444)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                onSelected: (value) {
-                  if (value == 'edit') {
-                    _openCourseAddition(course: course);
-                  } else if (value == 'delete') {
-                    _showDeleteCourseDialog(course);
-                  }
-                },
-                itemBuilder: (context) => const [
-                  PopupMenuItem(
-                    value: 'edit',
-                    child: Row(
-                      children: [
-                        Icon(Icons.edit_rounded, size: 18),
-                        SizedBox(width: 10),
-                        Text('Edit course'),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: 'delete',
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.delete_rounded,
-                          size: 18,
-                          color: Color(0xFFEF4444),
-                        ),
-                        SizedBox(width: 10),
-                        Text(
-                          'Delete course',
-                          style: TextStyle(color: Color(0xFFEF4444)),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
             ],
           ),
           const SizedBox(height: 6),
