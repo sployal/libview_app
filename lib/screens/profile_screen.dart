@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
+import '../services/download_service.dart';
 import 'edit_profile.dart';
 import 'class_members.dart';
 import 'course_members.dart';
+import 'downloads_screen.dart';
 import 'notifications_screen.dart';
 import 'super_admin_dashboard.dart';
 import 'help_and_support.dart';
@@ -25,6 +27,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String? _avatarUrl;
   String? _role;
   bool _isLoading = true;
+  int _downloadsStorageBytes = 0;
+  int _downloadedFileCount = 0;
+  DateTime? _lastStorageRefresh;
 
   bool get _isAdmin {
     final role = (_role ?? '').toLowerCase();
@@ -46,6 +51,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     _loadUserData();
+    _loadStorageUsage();
+  }
+
+  Future<void> _loadStorageUsage() async {
+    final downloads = await DownloadService.getDownloads();
+    final bytes = downloads.fold<int>(0, (sum, item) => sum + item.size);
+    if (!mounted) return;
+    if (bytes == _downloadsStorageBytes &&
+        downloads.length == _downloadedFileCount) {
+      return;
+    }
+    setState(() {
+      _downloadsStorageBytes = bytes;
+      _downloadedFileCount = downloads.length;
+    });
   }
 
   Future<void> _loadUserData() async {
@@ -419,6 +439,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final now = DateTime.now();
+    if (_lastStorageRefresh == null ||
+        now.difference(_lastStorageRefresh!) > const Duration(seconds: 2)) {
+      _lastStorageRefresh = now;
+      Future.microtask(_loadStorageUsage);
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
@@ -712,14 +739,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             'Storage Usage',
                             Icons.storage_rounded,
                             const Color(0xFF10B981),
-                            () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Storage usage coming soon!'),
-                                  behavior: SnackBarBehavior.floating,
-                                ),
-                              );
-                            },
+                            _showStorageUsage,
+                            trailingText: DownloadService.formatFileSize(
+                              _downloadsStorageBytes,
+                            ),
                           ),
                           _buildDivider(),
                           _buildMenuItem(
@@ -857,12 +880,53 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Future<void> _showStorageUsage() async {
+    await _loadStorageUsage();
+    if (!mounted) return;
+
+    final sizeLabel = DownloadService.formatFileSize(_downloadsStorageBytes);
+    final fileLabel = _downloadedFileCount == 1
+        ? '1 downloaded file'
+        : '$_downloadedFileCount downloaded files';
+
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Storage Usage'),
+          content: Text(
+            'This app is using $sizeLabel for $fileLabel.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Close'),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const DownloadsScreen(),
+                  ),
+                ).then((_) => _loadStorageUsage());
+              },
+              child: const Text('View downloads'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   Widget _buildMenuItem(
     String title,
     IconData icon,
     Color color,
     VoidCallback onTap, {
     bool isDestructive = false,
+    String? trailingText,
   }) {
     return ListTile(
       leading: Container(
@@ -882,10 +946,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
           color: isDestructive ? color : const Color(0xFF1F2937),
         ),
       ),
-      trailing: Icon(
-        Icons.arrow_forward_ios_rounded,
-        size: 16,
-        color: isDestructive ? color : const Color(0xFF9CA3AF),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (trailingText != null) ...[
+            Text(
+              trailingText,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF6B7280),
+              ),
+            ),
+            const SizedBox(width: 8),
+          ],
+          Icon(
+            Icons.arrow_forward_ios_rounded,
+            size: 16,
+            color: isDestructive ? color : const Color(0xFF9CA3AF),
+          ),
+        ],
       ),
       onTap: onTap,
     );
