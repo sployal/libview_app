@@ -29,6 +29,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isLoading = true;
   int _downloadsStorageBytes = 0;
   int _downloadedFileCount = 0;
+  int _uniqueSubjectsCount = 0;
+  int _thisWeekDownloadCount = 0;
 
   bool get _isAdmin {
     final role = (_role ?? '').toLowerCase();
@@ -63,14 +65,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _loadStorageUsage() async {
     final downloads = await DownloadService.getDownloads();
     final bytes = downloads.fold<int>(0, (sum, item) => sum + item.size);
+    final subjects = downloads
+        .map((item) => item.subject.trim())
+        .where((subject) => subject.isNotEmpty)
+        .toSet()
+        .length;
+    final weekAgo = DateTime.now().subtract(const Duration(days: 7));
+    final thisWeek = downloads.where((item) {
+      final date = DateTime.tryParse(item.date);
+      return date != null && date.isAfter(weekAgo);
+    }).length;
     if (!mounted) return;
     if (bytes == _downloadsStorageBytes &&
-        downloads.length == _downloadedFileCount) {
+        downloads.length == _downloadedFileCount &&
+        subjects == _uniqueSubjectsCount &&
+        thisWeek == _thisWeekDownloadCount) {
       return;
     }
     setState(() {
       _downloadsStorageBytes = bytes;
       _downloadedFileCount = downloads.length;
+      _uniqueSubjectsCount = subjects;
+      _thisWeekDownloadCount = thisWeek;
     });
   }
 
@@ -662,7 +678,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               Expanded(
                                 child: _buildStatCard(
                                   'Downloads',
-                                  '24',
+                                  '$_downloadedFileCount',
                                   Icons.download_rounded,
                                   const Color(0xFF6366F1),
                                 ),
@@ -671,7 +687,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               Expanded(
                                 child: _buildStatCard(
                                   'Subjects',
-                                  '12',
+                                  '$_uniqueSubjectsCount',
                                   Icons.book_rounded,
                                   const Color(0xFF10B981),
                                 ),
@@ -683,18 +699,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             children: [
                               Expanded(
                                 child: _buildStatCard(
-                                  'Study Hours',
-                                  '156',
-                                  Icons.schedule_rounded,
-                                  const Color(0xFFEF4444),
+                                  'Storage',
+                                  DownloadService.formatFileSize(
+                                    _downloadsStorageBytes,
+                                  ),
+                                  Icons.folder_rounded,
+                                  const Color(0xFF8B5CF6),
                                 ),
                               ),
                               const SizedBox(width: 16),
                               Expanded(
                                 child: _buildStatCard(
-                                  'Achievements',
-                                  '8',
-                                  Icons.emoji_events_rounded,
+                                  'This week',
+                                  '$_thisWeekDownloadCount',
+                                  Icons.calendar_today_rounded,
                                   const Color(0xFFF59E0B),
                                 ),
                               ),
