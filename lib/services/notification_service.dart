@@ -16,6 +16,7 @@ class AppNotification {
   final String admissionPrefix;
   final String classSuffix;
   final String courseId;
+  final String courseName;
   final String? imageUrl;
   final DateTime createdAt;
   final bool isRead;
@@ -32,6 +33,7 @@ class AppNotification {
     required this.admissionPrefix,
     required this.classSuffix,
     required this.courseId,
+    this.courseName = '',
     this.imageUrl,
     required this.createdAt,
     required this.isRead,
@@ -58,6 +60,7 @@ class AppNotification {
       admissionPrefix: admissionPrefix,
       classSuffix: classSuffix,
       courseId: courseId,
+      courseName: courseName,
       imageUrl: imageUrl,
       createdAt: createdAt,
       isRead: isRead ?? this.isRead,
@@ -130,6 +133,7 @@ class NotificationService {
     required String audience,
     String? imageUrl,
     String? imagePublicId,
+    String? targetCourseId,
   }) async {
     final user = AuthService.instance.currentUser;
     if (user == null) {
@@ -153,7 +157,14 @@ class NotificationService {
 
     final isClassLeadership =
         role == 'class_rep' || role == 'assistant_class_rep';
+    final isSuperAdmin = role == 'super_admin';
+
     var resolvedAudience = audience;
+    var resolvedPrefix = prefix;
+    var resolvedSuffix = suffix;
+    var resolvedCourseId = course?.id ?? '';
+    var resolvedCourseName = course?.name ?? '';
+
     if (isClassLeadership) {
       resolvedAudience = audience == 'course' ? 'course' : 'class';
       if (prefix.isEmpty || (resolvedAudience == 'class' && suffix.isEmpty)) {
@@ -161,8 +172,26 @@ class NotificationService {
           'Your registration number is needed to send a class or course notification.',
         );
       }
+    } else if (isSuperAdmin && audience == 'course') {
+      Course? selected;
+      for (final item in courses) {
+        if (item.id == (targetCourseId ?? '')) {
+          selected = item;
+          break;
+        }
+      }
+      if (selected == null) {
+        throw Exception('Select a course to notify its members.');
+      }
+      resolvedAudience = 'course';
+      resolvedCourseId = selected.id;
+      resolvedCourseName = selected.name;
+      resolvedPrefix = selected.admissionPrefix;
+      resolvedSuffix = '';
     } else {
       resolvedAudience = 'all';
+      resolvedCourseId = '';
+      resolvedCourseName = '';
     }
 
     await _notifications.add({
@@ -173,9 +202,10 @@ class NotificationService {
       'sender_name': (data['full_name'] as String?) ?? 'Unknown',
       'sender_role': role,
       'audience': resolvedAudience,
-      'admission_prefix': prefix,
-      'class_suffix': suffix,
-      'course_id': course?.id ?? '',
+      'admission_prefix': resolvedPrefix,
+      'class_suffix': resolvedSuffix,
+      'course_id': resolvedCourseId,
+      'course_name': resolvedCourseName,
       'image_url': imageUrl,
       'image_public_id': imagePublicId,
       'created_at': FieldValue.serverTimestamp(),
@@ -280,6 +310,7 @@ class NotificationService {
       admissionPrefix: (data['admission_prefix'] as String?) ?? '',
       classSuffix: (data['class_suffix'] as String?) ?? '',
       courseId: (data['course_id'] as String?) ?? '',
+      courseName: (data['course_name'] as String?) ?? '',
       imageUrl: data['image_url'] as String?,
       createdAt: createdAt is Timestamp ? createdAt.toDate() : DateTime.now(),
       isRead: isRead,

@@ -29,6 +29,8 @@ class _CreateNotificationScreenState extends State<CreateNotificationScreen> {
   String _role = 'student';
   String _classLabel = '';
   String _courseName = '';
+  List<Course> _courses = [];
+  String? _selectedCourseId;
   Uint8List? _imageBytes;
   String? _imageName;
   String? _imageMime;
@@ -69,6 +71,15 @@ class _CreateNotificationScreenState extends State<CreateNotificationScreen> {
   bool get _isClassLeadership =>
       _role == 'class_rep' || _role == 'assistant_class_rep';
 
+  bool get _isSuperAdmin => _role == 'super_admin';
+
+  Course? get _selectedCourse {
+    for (final course in _courses) {
+      if (course.id == _selectedCourseId) return course;
+    }
+    return null;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -104,6 +115,8 @@ class _CreateNotificationScreenState extends State<CreateNotificationScreen> {
             ? '$prefix / $suffix'
             : '';
         _courseName = course?.name ?? '';
+        _courses = List<Course>.from(courses)
+          ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
         _audience = (role == 'class_rep' || role == 'assistant_class_rep')
             ? 'class'
             : 'all';
@@ -132,6 +145,12 @@ class _CreateNotificationScreenState extends State<CreateNotificationScreen> {
       return _classLabel.isEmpty
           ? 'This notification will be visible to your class only'
           : 'This notification will be visible to class $_classLabel';
+    }
+    if (_isSuperAdmin && _audience == 'course') {
+      final selected = _selectedCourse;
+      return selected == null
+          ? 'Choose a course to notify its members'
+          : 'This notification will be visible to all ${selected.name} members';
     }
     return 'This notification will be visible to all users';
   }
@@ -173,6 +192,20 @@ class _CreateNotificationScreenState extends State<CreateNotificationScreen> {
   Future<void> _createNotification() async {
     if (!_formKey.currentState!.validate()) return;
 
+    if (_isSuperAdmin &&
+        _audience == 'course' &&
+        (_selectedCourseId == null || _selectedCourseId!.isEmpty)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Please select a course'),
+          backgroundColor: const Color(0xFFEF4444),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
@@ -197,6 +230,7 @@ class _CreateNotificationScreenState extends State<CreateNotificationScreen> {
         audience: _audience,
         imageUrl: imageUrl,
         imagePublicId: imagePublicId,
+        targetCourseId: _isSuperAdmin ? _selectedCourseId : null,
       );
 
       if (mounted) {
@@ -351,6 +385,100 @@ class _CreateNotificationScreenState extends State<CreateNotificationScreen> {
                         subtitle: 'All years in your course',
                         icon: Icons.school_rounded,
                       ),
+                    ],
+                    if (_isSuperAdmin) ...[
+                      const SizedBox(height: 32),
+                      const Text(
+                        'Send to',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF1F2937),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      _buildAudienceOption(
+                        value: 'all',
+                        title: 'Everyone',
+                        subtitle: 'All users on the platform',
+                        icon: Icons.public_rounded,
+                      ),
+                      const SizedBox(height: 8),
+                      _buildAudienceOption(
+                        value: 'course',
+                        title: 'Course members',
+                        subtitle: _courses.isEmpty
+                            ? 'No courses available yet'
+                            : 'Members of a specific existing course',
+                        icon: Icons.school_rounded,
+                      ),
+                      if (_audience == 'course') ...[
+                        const SizedBox(height: 12),
+                        if (_courses.isEmpty)
+                          const Text(
+                            'No courses available yet',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: Color(0xFF6B7280),
+                            ),
+                          )
+                        else
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: _courses.map((course) {
+                              final isSelected = _selectedCourseId == course.id;
+                              return GestureDetector(
+                                onTap: () {
+                                  setState(() => _selectedCourseId = course.id);
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                    vertical: 12,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? const Color(0xFF6366F1).withOpacity(0.1)
+                                        : Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: isSelected
+                                          ? const Color(0xFF6366F1)
+                                          : const Color(0xFFE5E7EB),
+                                      width: isSelected ? 2 : 1,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        Icons.school_rounded,
+                                        size: 18,
+                                        color: isSelected
+                                            ? const Color(0xFF6366F1)
+                                            : const Color(0xFF6B7280),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        course.name,
+                                        style: TextStyle(
+                                          color: isSelected
+                                              ? const Color(0xFF6366F1)
+                                              : const Color(0xFF1F2937),
+                                          fontWeight: isSelected
+                                              ? FontWeight.bold
+                                              : FontWeight.w500,
+                                          fontSize: 14,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                      ],
                     ],
                     const SizedBox(height: 32),
                     const Text(

@@ -498,6 +498,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         }
         return 'Class only';
       case 'course':
+        if (notification.courseName.isNotEmpty) {
+          return notification.courseName;
+        }
         return 'Entire course';
       default:
         return 'Everyone';
