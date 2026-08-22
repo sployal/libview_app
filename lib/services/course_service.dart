@@ -127,16 +127,16 @@ class Course {
 
   factory Course.engineeringFallback() {
     const folderIds = {
-      'year1_sem1': '18YgdYz4ErI9yJHn2Gx1UoaVqZ7YECSFz',
-      'year1_sem2': '13sB0aRpu0xjtScMoJbtlSHcWvbr1gvbp',
-      'year2_sem1': '12RdiiGAfWsJPR9Q9fFf7Pi6p-g51sd1C',
-      'year2_sem2': '1_50Uj07FIcQY_KTQaFExtFpRnFi4C_G6',
-      'year3_sem1': '1jAJiVWsNEAcz6GSVLluxBeMGTTiALv6d',
-      'year3_sem2': '16K6uo5lRlS4s93lO8bZ1UkVQ5ywbZCnF',
-      'year4_sem1': '1-vulmlL7rswowcYWgl0y9DHw3o1hdnmx',
-      'year4_sem2': '15W3I9I9Dqwt3JKjNy8a9fDBCc6V0qjxf',
-      'year5_sem1': '18oNF6Xm4NV6oPnpZTJVBCPDqrxlWm6vE',
-      'year5_sem2': '1VXL_RjzzO8QxDj1JY3eANLXP-38v-FiX',
+      'year1_sem1': '15iLkDdDl1-BzH8j-4rKnlfM1yvThv-_b',
+      'year1_sem2': '1mdLVxGH4ipBj8qmVhvs-bHbLnLwfcHKy',
+      'year2_sem1': '1QfXoPJEVTKpfmuFpohbLK2gNb_aOwpmd',
+      'year2_sem2': '1F-BHcmmx4lj3uQ7sV_CRzW0w4BuVDUgx',
+      'year3_sem1': '1y35rFcrodvV6ck_nUO69Iv8z3jGCg5On',
+      'year3_sem2': '1ji3Y3bfhmUVumLE1dSGIrEW872olipsU',
+      'year4_sem1': '1wAPEQZR8s7TUSCE0ejaKCm79m8LjpAJ9',
+      'year4_sem2': '1-S7crcf-aIusfxvUcoC4xglw1c6x_ead',
+      'year5_sem1': '13Lp2vVZlbcfASu9CMxFIk8IgbC41yO5k',
+      'year5_sem2': '1P1FTWqjLCq_4U9lH-xkGNjUv-kR7v6nj',
     };
 
     final semesters = <String, Map<String, String>>{};

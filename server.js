@@ -14,25 +14,40 @@ const { registerMediaRoutes } = require('./media server.js');
 // config
 // =========================================================================
 
-// These must match the semesterFolderIds map in your Flutter app
-// (semesters_screen.dart). Only folders that are direct children of
-// one of these IDs are treated as valid upload/create targets.
-//
-// IMPORTANT: once you move folders (or start using a different owning
-// account), the IDs below must be updated to match the *current*
-// location of those folders.
-const SEMESTER_FOLDER_IDS = new Set([
-  '18YgdYz4ErI9yJHn2Gx1UoaVqZ7YECSFz', // year1_sem1
-  '13sB0aRpu0xjtScMoJbtlSHcWvbr1gvbp', // year1_sem2
-  '12RdiiGAfWsJPR9Q9fFf7Pi6p-g51sd1C', // year2_sem1
-  '1_50Uj07FIcQY_KTQaFExtFpRnFi4C_G6', // year2_sem2
-  '1jAJiVWsNEAcz6GSVLluxBeMGTTiALv6d', // year3_sem1
-  '16K6uo5lRlS4s93lO8bZ1UkVQ5ywbZCnF', // year3_sem2
-  '1-vulmlL7rswowcYWgl0y9DHw3o1hdnmx', // year4_sem1
-  '15W3I9I9Dqwt3JKjNy8a9fDBCc6V0qjxf', // year4_sem2
-  '18oNF6Xm4NV6oPnpZTJVBCPDqrxlWm6vE', // year5_sem1
-  '1VXL_RjzzO8QxDj1JY3eANLXP-38v-FiX', // year5_sem2
-]);
+// Engineering Drive layout comes from .env (see .env.example):
+//   ROOT_FOLDER_ID or EDUPAL_FOLDER_ID
+//   SEMESTER_FOLDER_IDS  — comma-separated, year1_sem1 … year5_sem2
+// On startup those IDs are written to Firestore (`courses/engineering`).
+const ENGINEERING_SEMESTER_KEYS = [
+  'year1_sem1',
+  'year1_sem2',
+  'year2_sem1',
+  'year2_sem2',
+  'year3_sem1',
+  'year3_sem2',
+  'year4_sem1',
+  'year4_sem2',
+  'year5_sem1',
+  'year5_sem2',
+];
+
+function parseEngineeringSemesterFolderIds() {
+  const fromEnv = (process.env.SEMESTER_FOLDER_IDS || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const map = {};
+  ENGINEERING_SEMESTER_KEYS.forEach((key, index) => {
+    if (fromEnv[index]) map[key] = fromEnv[index];
+  });
+  return map;
+}
+
+const ENGINEERING_SEMESTER_FOLDER_IDS = parseEngineeringSemesterFolderIds();
+const SEMESTER_FOLDER_IDS = new Set(Object.values(ENGINEERING_SEMESTER_FOLDER_IDS));
+const EDUPAL_FOLDER_ID =
+  process.env.EDUPAL_FOLDER_ID || process.env.ROOT_FOLDER_ID || '';
 
 // Semester folders created for additional courses (loaded from Firestore).
 const extraSemesterFolderIds = new Set();
@@ -63,6 +78,8 @@ const CONFIG = {
 
   FIREBASE_SA_KEY_PATH: process.env.FIREBASE_SA_KEY_PATH || './secrets/firebase-service-account.json',
   MAX_UPLOAD_BYTES: parseInt(process.env.MAX_UPLOAD_BYTES || `${20 * 1024 * 1024}`, 10),
+  EDUPAL_FOLDER_ID,
+  ENGINEERING_SEMESTER_FOLDER_IDS,
   SEMESTER_FOLDER_IDS,
   ADMIN_UIDS,
 };
@@ -78,6 +95,80 @@ admin.initializeApp({
 const firestore = admin.firestore();
 
 const extraSemesterIds = new Set();
+
+function engineeringFolderConfigIsComplete() {
+  if (!CONFIG.EDUPAL_FOLDER_ID) return false;
+  return ENGINEERING_SEMESTER_KEYS.every((key) => CONFIG.ENGINEERING_SEMESTER_FOLDER_IDS[key]);
+}
+
+function engineeringSemesterPayload() {
+  const semesters = {};
+  ENGINEERING_SEMESTER_KEYS.forEach((key) => {
+    const match = /^year(\d+)_sem(\d+)$/.exec(key);
+    const year = match ? match[1] : '?';
+    const sem = match ? match[2] : '?';
+    semesters[key] = {
+      folderId: CONFIG.ENGINEERING_SEMESTER_FOLDER_IDS[key],
+      name: `Year ${year} - Semester ${sem}`,
+      driveName: `year ${year} sem ${sem}`,
+    };
+  });
+  return semesters;
+}
+
+async function resolveEngineeringCourseFolderId() {
+  if (process.env.ENGINEERING_COURSE_FOLDER_ID) {
+    return process.env.ENGINEERING_COURSE_FOLDER_ID;
+  }
+  if (!driveIsConfigured()) return '';
+
+  const semesterId = CONFIG.ENGINEERING_SEMESTER_FOLDER_IDS.year1_sem1;
+  try {
+    const semester = await drive.files.get({
+      fileId: semesterId,
+      fields: 'parents',
+      supportsAllDrives: true,
+    });
+    return (semester.data.parents || [])[0] || '';
+  } catch (err) {
+    console.error('Could not resolve Engineering course folder from Drive:', err.message);
+    return '';
+  }
+}
+
+async function syncEngineeringCourseToFirestore() {
+  if (!engineeringFolderConfigIsComplete()) {
+    console.warn(
+      'Skipping Engineering Drive sync: set ROOT_FOLDER_ID (or EDUPAL_FOLDER_ID) and SEMESTER_FOLDER_IDS ' +
+        '(10 comma-separated IDs, year1_sem1 … year5_sem2) in .env.'
+    );
+    return;
+  }
+
+  const semesters = engineeringSemesterPayload();
+  const courseFolderId = await resolveEngineeringCourseFolderId();
+  const payload = {
+    name: 'Engineering',
+    years: 5,
+    sample_admission_number: 'EB24/46271/20',
+    admission_prefix: 'EB24',
+    semesters,
+    updated_at: admin.firestore.FieldValue.serverTimestamp(),
+  };
+  if (courseFolderId) payload.drive_folder_id = courseFolderId;
+
+  await firestore.collection('courses').doc('engineering').set(payload, { merge: true });
+  await firestore.collection('config').doc('googleDriveFolders').set(
+    {
+      edupalFolderId: CONFIG.EDUPAL_FOLDER_ID,
+      engineeringCourseFolderId: courseFolderId || null,
+      semesterFolderIds: CONFIG.ENGINEERING_SEMESTER_FOLDER_IDS,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    },
+    { merge: true }
+  );
+  console.log('Synced Engineering Drive folder IDs to Firestore (courses/engineering).');
+}
 
 async function loadSemesterIdsFromFirestore() {
   try {
@@ -241,8 +332,8 @@ async function createFolder(folderName, parentFolderId, { cacheAsSubject = true 
 }
 
 async function resolveEdupalFolderId() {
-  if (process.env.EDUPAL_FOLDER_ID) {
-    return process.env.EDUPAL_FOLDER_ID;
+  if (CONFIG.EDUPAL_FOLDER_ID) {
+    return CONFIG.EDUPAL_FOLDER_ID;
   }
 
   const semesterId = [...CONFIG.SEMESTER_FOLDER_IDS][0];
@@ -799,6 +890,11 @@ app.use((err, req, res, next) => {
 });
 
 initDriveAuth().then(async () => {
+  try {
+    await syncEngineeringCourseToFirestore();
+  } catch (err) {
+    console.error('Failed to sync Engineering Drive folders to Firestore:', err.message);
+  }
   await loadSemesterIdsFromFirestore();
   app.listen(CONFIG.PORT, () => {
     console.log(`Edupal backend listening on port ${CONFIG.PORT}`);
