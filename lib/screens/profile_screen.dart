@@ -1,6 +1,8 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../services/auth_service.dart';
+import '../services/media_service.dart';
 import 'edit_profile.dart';
 import 'class_members.dart';
 import 'course_members.dart';
@@ -83,6 +85,68 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         );
       }
+    }
+  }
+
+  Future<void> _changeProfilePhoto() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      withData: true,
+      dialogTitle: 'Choose a profile photo',
+    );
+    if (result == null || result.files.isEmpty) return;
+
+    final file = result.files.first;
+    final bytes = file.bytes;
+    if (bytes == null || bytes.isEmpty) return;
+
+    const maxBytes = 8 * 1024 * 1024;
+    if (bytes.length > maxBytes) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please choose an image smaller than 8 MB.'),
+          backgroundColor: Color(0xFFEF4444),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    try {
+      final uploaded = await MediaService.instance.uploadImage(
+        bytes: bytes,
+        fileName: file.name,
+        mimeType: MediaService.mimeFromName(file.name, file.extension),
+        folder: MediaService.folderProfiles,
+      );
+      final user = AuthService.instance.currentUser;
+      if (user == null) return;
+
+      await _firestore.collection('profiles').doc(user.uid).set({
+        'avatar_url': uploaded.url,
+        'avatar_public_id': uploaded.publicId,
+        'updated_at': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+
+      if (!mounted) return;
+      setState(() => _avatarUrl = uploaded.url);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Profile photo updated'),
+          backgroundColor: Color(0xFF10B981),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not update photo: $e'),
+          backgroundColor: const Color(0xFFEF4444),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
@@ -464,34 +528,63 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: Column(
                         children: [
                           // Avatar
-                          _avatarUrl != null && _avatarUrl!.isNotEmpty
-                              ? CircleAvatar(
-                                  radius: 40,
-                                  backgroundImage: NetworkImage(_avatarUrl!),
-                                  backgroundColor: Colors.grey[200],
-                                )
-                              : Container(
-                                  width: 80,
-                                  height: 80,
-                                  decoration: BoxDecoration(
-                                    gradient: const LinearGradient(
-                                      colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
-                                    ),
-                                    borderRadius: BorderRadius.circular(40),
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      _getInitials(_fullName ?? 'User'),
-                                      style: const TextStyle(
-                                        fontSize: 32,
-                                        fontWeight: FontWeight.bold,
-                                        color: Colors.white,
+                          GestureDetector(
+                            onTap: _changeProfilePhoto,
+                            child: Stack(
+                              children: [
+                                _avatarUrl != null && _avatarUrl!.isNotEmpty
+                                    ? CircleAvatar(
+                                        radius: 40,
+                                        backgroundImage:
+                                            NetworkImage(_avatarUrl!),
+                                        backgroundColor: Colors.grey[200],
+                                      )
+                                    : Container(
+                                        width: 80,
+                                        height: 80,
+                                        decoration: BoxDecoration(
+                                          gradient: const LinearGradient(
+                                            colors: [
+                                              Color(0xFF6366F1),
+                                              Color(0xFF8B5CF6)
+                                            ],
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                          ),
+                                          borderRadius:
+                                              BorderRadius.circular(40),
+                                        ),
+                                        child: Center(
+                                          child: Text(
+                                            _getInitials(_fullName ?? 'User'),
+                                            style: const TextStyle(
+                                              fontSize: 32,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ),
                                       ),
+                                Positioned(
+                                  right: 0,
+                                  bottom: 0,
+                                  child: Container(
+                                    width: 28,
+                                    height: 28,
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFF6366F1),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.camera_alt_rounded,
+                                      color: Colors.white,
+                                      size: 14,
                                     ),
                                   ),
                                 ),
+                              ],
+                            ),
+                          ),
                           const SizedBox(height: 16),
                           Text(
                             _fullName ?? 'User Name',

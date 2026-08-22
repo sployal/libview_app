@@ -3,8 +3,8 @@ import 'dart:typed_data';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:http_parser/http_parser.dart';
 
+import 'media_service.dart';
 import 'upload_service.dart';
 
 class SupportMessage {
@@ -83,35 +83,16 @@ class SupportService {
     required String fileName,
     required String mimeType,
   }) async {
-    final token = await _idToken();
-    final parts = mimeType.split('/');
-    final formData = FormData.fromMap({
-      'image': MultipartFile.fromBytes(
-        bytes,
-        filename: fileName,
-        contentType: MediaType(parts.first, parts.length > 1 ? parts[1] : 'jpeg'),
-      ),
-    });
-
-    try {
-      final response = await _dio.post(
-        '/media/upload',
-        data: formData,
-        options: Options(
-          headers: {'Authorization': 'Bearer $token'},
-        ),
-      );
-      final data = response.data as Map<String, dynamic>;
-      return {
-        'url': data['url']?.toString() ?? '',
-        'publicId': data['publicId']?.toString() ?? '',
-      };
-    } on DioException catch (e) {
-      final message = e.response?.data is Map
-          ? (e.response!.data['error']?.toString() ?? e.message)
-          : e.message;
-      throw Exception(message ?? 'Screenshot upload failed');
-    }
+    final uploaded = await MediaService.instance.uploadImage(
+      bytes: bytes,
+      fileName: fileName,
+      mimeType: mimeType,
+      folder: MediaService.folderSupport,
+    );
+    return {
+      'url': uploaded.url,
+      'publicId': uploaded.publicId,
+    };
   }
 
   Future<void> submitMessage({

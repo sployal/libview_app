@@ -1,6 +1,10 @@
+import 'dart:typed_data';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
+import '../services/media_service.dart';
 import 'super_admin_dashboard.dart';
 import 'users_feedback.dart';
 
@@ -25,6 +29,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   String? _currentEmail;
   String? _currentRole;
   String? _registrationNumber;
+  String? _avatarPublicId;
+  Uint8List? _pendingAvatarBytes;
+  bool _isUploadingAvatar = false;
 
   bool get _isSuperAdmin {
     if (SuperAdminDashboard.isAllowedEmail(_currentEmail)) return true;
@@ -62,6 +69,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           _usernameController.text = profileData['username'] as String? ?? '';
           _avatarUrlController.text =
               profileData['avatar_url'] as String? ?? '';
+          _avatarPublicId = profileData['avatar_public_id'] as String?;
           _isLoading = false;
         });
       } else {
@@ -101,6 +109,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           'full_name': _fullNameController.text.trim(),
           'username': _usernameController.text.trim(),
           'avatar_url': avatarUrl.isEmpty ? null : avatarUrl,
+          'avatar_public_id':
+              avatarUrl.isEmpty ? null : _avatarPublicId,
           'updated_at': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true));
 
@@ -131,6 +141,68 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           _isSaving = false;
         });
       }
+    }
+  }
+
+  Future<void> _pickAndUploadAvatar() async {
+    if (_isSaving || _isUploadingAvatar) return;
+
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      withData: true,
+      dialogTitle: 'Choose a profile photo',
+    );
+    if (result == null || result.files.isEmpty) return;
+
+    final file = result.files.first;
+    final bytes = file.bytes;
+    if (bytes == null || bytes.isEmpty) return;
+
+    const maxBytes = 8 * 1024 * 1024;
+    if (bytes.length > maxBytes) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please choose an image smaller than 8 MB.'),
+          backgroundColor: Color(0xFFEF4444),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _pendingAvatarBytes = bytes;
+      _isUploadingAvatar = true;
+    });
+
+    try {
+      final uploaded = await MediaService.instance.uploadImage(
+        bytes: bytes,
+        fileName: file.name,
+        mimeType: MediaService.mimeFromName(file.name, file.extension),
+        folder: MediaService.folderProfiles,
+      );
+      if (!mounted) return;
+      setState(() {
+        _avatarUrlController.text = uploaded.url;
+        _avatarPublicId = uploaded.publicId;
+        _pendingAvatarBytes = null;
+        _isUploadingAvatar = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _pendingAvatarBytes = null;
+        _isUploadingAvatar = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not upload photo: $e'),
+          backgroundColor: const Color(0xFFEF4444),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
@@ -230,35 +302,82 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       Center(
                         child: Column(
                           children: [
-                            _avatarUrlController.text.isNotEmpty
-                                ? CircleAvatar(
-                                    radius: 50,
-                                    backgroundImage: NetworkImage(_avatarUrlController.text),
-                                    backgroundColor: Colors.grey[200],
-                                    onBackgroundImageError: (_, __) {},
-                                  )
-                                : Container(
-                                    width: 100,
-                                    height: 100,
-                                    decoration: BoxDecoration(
-                                      gradient: const LinearGradient(
-                                        colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
+                            GestureDetector(
+                              onTap: _isUploadingAvatar ? null : _pickAndUploadAvatar,
+                              child: Stack(
+                                children: [
+                                  _pendingAvatarBytes != null
+                                      ? CircleAvatar(
+                                          radius: 50,
+                                          backgroundImage:
+                                              MemoryImage(_pendingAvatarBytes!),
+                                          backgroundColor: Colors.grey[200],
+                                        )
+                                      : _avatarUrlController.text.isNotEmpty
+                                          ? CircleAvatar(
+                                              radius: 50,
+                                              backgroundImage: NetworkImage(
+                                                  _avatarUrlController.text),
+                                              backgroundColor: Colors.grey[200],
+                                              onBackgroundImageError: (_, __) {},
+                                            )
+                                          : Container(
+                                              width: 100,
+                                              height: 100,
+                                              decoration: BoxDecoration(
+                                                gradient: const LinearGradient(
+                                                  colors: [
+                                                    Color(0xFF6366F1),
+                                                    Color(0xFF8B5CF6)
+                                                  ],
+                                                  begin: Alignment.topLeft,
+                                                  end: Alignment.bottomRight,
+                                                ),
+                                                borderRadius:
+                                                    BorderRadius.circular(50),
+                                              ),
+                                              child: Center(
+                                                child: Text(
+                                                  _getInitials(
+                                                      _fullNameController.text),
+                                                  style: const TextStyle(
+                                                    fontSize: 36,
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Colors.white,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                  Positioned(
+                                    right: 0,
+                                    bottom: 0,
+                                    child: Container(
+                                      width: 32,
+                                      height: 32,
+                                      decoration: const BoxDecoration(
+                                        color: Color(0xFF6366F1),
+                                        shape: BoxShape.circle,
                                       ),
-                                      borderRadius: BorderRadius.circular(50),
-                                    ),
-                                    child: Center(
-                                      child: Text(
-                                        _getInitials(_fullNameController.text),
-                                        style: const TextStyle(
-                                          fontSize: 36,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                        ),
-                                      ),
+                                      child: _isUploadingAvatar
+                                          ? const Padding(
+                                              padding: EdgeInsets.all(7),
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                valueColor:
+                                                    AlwaysStoppedAnimation<
+                                                        Color>(Colors.white),
+                                              ),
+                                            )
+                                          : const Icon(
+                                              Icons.camera_alt_rounded,
+                                              color: Colors.white,
+                                              size: 16,
+                                            ),
                                     ),
                                   ),
+                                ],
+                              ),
+                            ),
                             const SizedBox(height: 12),
                             const Text(
                               'Profile Picture',
@@ -269,12 +388,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                               ),
                             ),
                             const SizedBox(height: 4),
-                            Text(
-                              'Enter URL below to update',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Colors.grey[600],
-                              ),
+                            TextButton(
+                              onPressed: _isUploadingAvatar
+                                  ? null
+                                  : _pickAndUploadAvatar,
+                              child: const Text('Upload photo'),
                             ),
                           ],
                         ),
@@ -312,20 +430,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             return 'Username cannot contain spaces';
                           }
                           return null;
-                        },
-                      ),
-                      const SizedBox(height: 24),
-
-                      _buildSectionTitle('Avatar'),
-                      const SizedBox(height: 16),
-
-                      _buildTextField(
-                        controller: _avatarUrlController,
-                        label: 'Avatar URL',
-                        icon: Icons.image_rounded,
-                        hint: 'https://example.com/avatar.jpg',
-                        onChanged: (value) {
-                          setState(() {}); // Rebuild to update preview
                         },
                       ),
                       const SizedBox(height: 24),

@@ -57,8 +57,16 @@ function registerMediaRoutes(app, { requireAuth, requireSuperAdmin, upload }) {
     }
 
     try {
+      const folders = {
+        support: 'edupal/support',
+        notifications: 'edupal/notifications',
+        profiles: 'edupal/profiles',
+      };
+      const folderKey = String(req.body?.folder || 'support').toLowerCase();
+      const folder = folders[folderKey] || folders.support;
+
       const result = await uploadBuffer(req.file.buffer, {
-        folder: 'edupal/support',
+        folder,
         originalName: req.file.originalname,
       });
 

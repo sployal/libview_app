@@ -15,6 +15,7 @@ class AppNotification {
   final String admissionPrefix;
   final String classSuffix;
   final String courseId;
+  final String? imageUrl;
   final DateTime createdAt;
   final bool isRead;
 
@@ -30,6 +31,7 @@ class AppNotification {
     required this.admissionPrefix,
     required this.classSuffix,
     required this.courseId,
+    this.imageUrl,
     required this.createdAt,
     required this.isRead,
   });
@@ -55,6 +57,7 @@ class AppNotification {
       admissionPrefix: admissionPrefix,
       classSuffix: classSuffix,
       courseId: courseId,
+      imageUrl: imageUrl,
       createdAt: createdAt,
       isRead: isRead ?? this.isRead,
     );
@@ -124,6 +127,8 @@ class NotificationService {
     required String message,
     required String type,
     required String audience,
+    String? imageUrl,
+    String? imagePublicId,
   }) async {
     final user = AuthService.instance.currentUser;
     if (user == null) {
@@ -170,6 +175,8 @@ class NotificationService {
       'admission_prefix': prefix,
       'class_suffix': suffix,
       'course_id': course?.id ?? '',
+      'image_url': imageUrl,
+      'image_public_id': imagePublicId,
       'created_at': FieldValue.serverTimestamp(),
     });
   }
@@ -263,6 +270,7 @@ class NotificationService {
       admissionPrefix: (data['admission_prefix'] as String?) ?? '',
       classSuffix: (data['class_suffix'] as String?) ?? '',
       courseId: (data['course_id'] as String?) ?? '',
+      imageUrl: data['image_url'] as String?,
       createdAt: createdAt is Timestamp ? createdAt.toDate() : DateTime.now(),
       isRead: isRead,
     );

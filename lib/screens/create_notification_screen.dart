@@ -1,8 +1,12 @@
+import 'dart:typed_data';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
 import '../services/course_service.dart';
+import '../services/media_service.dart';
 import '../services/notification_service.dart';
 
 class CreateNotificationScreen extends StatefulWidget {
@@ -25,6 +29,9 @@ class _CreateNotificationScreenState extends State<CreateNotificationScreen> {
   String _role = 'student';
   String _classLabel = '';
   String _courseName = '';
+  Uint8List? _imageBytes;
+  String? _imageName;
+  String? _imageMime;
 
   final List<Map<String, dynamic>> _notificationTypes = [
     {
@@ -129,17 +136,67 @@ class _CreateNotificationScreenState extends State<CreateNotificationScreen> {
     return 'This notification will be visible to all users';
   }
 
+  Future<void> _pickImage() async {
+    if (_isLoading) return;
+
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      withData: true,
+      dialogTitle: 'Attach an image',
+    );
+    if (result == null || result.files.isEmpty) return;
+
+    final file = result.files.first;
+    final bytes = file.bytes;
+    if (bytes == null || bytes.isEmpty) return;
+
+    const maxBytes = 8 * 1024 * 1024;
+    if (bytes.length > maxBytes) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please choose an image smaller than 8 MB.'),
+          backgroundColor: Color(0xFFEF4444),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _imageBytes = bytes;
+      _imageName = file.name;
+      _imageMime = MediaService.mimeFromName(file.name, file.extension);
+    });
+  }
+
   Future<void> _createNotification() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
     try {
+      String? imageUrl;
+      String? imagePublicId;
+      final bytes = _imageBytes;
+      if (bytes != null && bytes.isNotEmpty) {
+        final uploaded = await MediaService.instance.uploadImage(
+          bytes: bytes,
+          fileName: _imageName ?? 'notification.jpg',
+          mimeType: _imageMime ?? 'image/jpeg',
+          folder: MediaService.folderNotifications,
+        );
+        imageUrl = uploaded.url;
+        imagePublicId = uploaded.publicId;
+      }
+
       await NotificationService.instance.create(
         title: _titleController.text,
         message: _messageController.text,
         type: _selectedType,
         audience: _audience,
+        imageUrl: imageUrl,
+        imagePublicId: imagePublicId,
       );
 
       if (mounted) {
@@ -369,7 +426,7 @@ class _CreateNotificationScreenState extends State<CreateNotificationScreen> {
                             ),
                           ),
                         );
-                      }).toList(),
+                      }).toList(                      ),
                     ),
                     const SizedBox(height: 32),
                     _buildTextField(
@@ -396,6 +453,56 @@ class _CreateNotificationScreenState extends State<CreateNotificationScreen> {
                         return null;
                       },
                     ),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'Image (optional)',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1F2937),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    if (_imageBytes != null) ...[
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: Image.memory(
+                          _imageBytes!,
+                          height: 180,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                      TextButton.icon(
+                        onPressed: _isLoading
+                            ? null
+                            : () {
+                                setState(() {
+                                  _imageBytes = null;
+                                  _imageName = null;
+                                  _imageMime = null;
+                                });
+                              },
+                        icon: const Icon(Icons.close_rounded, color: Color(0xFFEF4444)),
+                        label: const Text(
+                          'Remove image',
+                          style: TextStyle(color: Color(0xFFEF4444)),
+                        ),
+                      ),
+                    ] else
+                      OutlinedButton.icon(
+                        onPressed: _isLoading ? null : _pickImage,
+                        icon: const Icon(Icons.add_photo_alternate_outlined),
+                        label: const Text('Upload image'),
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(double.infinity, 52),
+                          foregroundColor: const Color(0xFF6366F1),
+                          side: const BorderSide(color: Color(0xFF6366F1)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                      ),
                     const SizedBox(height: 32),
                     SizedBox(
                       width: double.infinity,

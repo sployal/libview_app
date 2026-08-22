@@ -757,6 +757,19 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         ],
                       ),
                       const SizedBox(height: 6),
+                      if (notification.imageUrl != null &&
+                          notification.imageUrl!.isNotEmpty) ...[
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: Image.network(
+                            notification.imageUrl!,
+                            height: 88,
+                            width: double.infinity,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
                       Text(
                         notification.message,
                         style: const TextStyle(
@@ -1014,6 +1027,18 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 ),
               ),
             ),
+            if (notification.imageUrl != null &&
+                notification.imageUrl!.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Image.network(
+                  notification.imageUrl!,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(12),
