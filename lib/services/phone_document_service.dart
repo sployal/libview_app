@@ -20,6 +20,8 @@ class PhoneDocument {
     required this.modifiedMs,
   });
 
+  String get key => path ?? uri ?? '$name:$sizeBytes:$modifiedMs';
+
   String get extension {
     final dot = name.lastIndexOf('.');
     if (dot < 0 || dot == name.length - 1) return '';

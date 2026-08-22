@@ -592,16 +592,12 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     if (source == null || !mounted) return;
 
     if (source == _UploadSource.documents) {
-      final picked = await Navigator.push<PhonePickedDocument>(
+      final picked = await Navigator.push<List<PhonePickedDocument>>(
         context,
         MaterialPageRoute(builder: (_) => const PhonePdfScreen()),
       );
-      if (picked == null || !mounted) return;
-      await _uploadPickedFile(
-        folderId: subject.folderId,
-        fileName: picked.name,
-        filePath: picked.path,
-      );
+      if (picked == null || picked.isEmpty || !mounted) return;
+      await _uploadPickedFiles(subject.folderId, picked);
       return;
     }
 
@@ -627,36 +623,81 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     required String fileName,
     String? filePath,
     List<int>? bytes,
+  }) {
+    return _uploadPickedFiles(
+      folderId,
+      [
+        PhonePickedDocument(
+          name: fileName,
+          path: filePath ?? '',
+          sizeBytes: bytes?.length ?? 0,
+        ),
+      ],
+      bytesByName: bytes == null ? null : {fileName: bytes},
+    );
+  }
+
+  Future<void> _uploadPickedFiles(
+    String folderId,
+    List<PhonePickedDocument> files, {
+    Map<String, List<int>>? bytesByName,
   }) async {
-    if (isUploading) return;
+    if (isUploading || files.isEmpty) return;
 
     setState(() {
       isUploading = true;
       uploadProgress = 0.0;
     });
 
-    try {
-      await UploadService.instance.uploadFile(
-        folderId: folderId,
-        fileName: fileName,
-        filePath: filePath,
-        bytes: bytes,
-        onProgress: (progress) {
-          if (mounted) {
-            setState(() => uploadProgress = progress);
-          }
-        },
-      );
+    var uploaded = 0;
+    String? lastError;
 
-      _showMessage('$fileName uploaded successfully');
+    try {
+      for (var i = 0; i < files.length; i++) {
+        final file = files[i];
+        try {
+          await UploadService.instance.uploadFile(
+            folderId: folderId,
+            fileName: file.name,
+            filePath: file.path.isEmpty ? null : file.path,
+            bytes: bytesByName?[file.name],
+            onProgress: (progress) {
+              if (!mounted) return;
+              setState(() {
+                uploadProgress = (i + progress) / files.length;
+              });
+            },
+          );
+          uploaded++;
+        } on UploadException catch (e) {
+          lastError = e.message;
+        } catch (_) {
+          lastError = 'Upload failed. Please try again.';
+        }
+      }
+
+      if (uploaded == files.length) {
+        _showMessage(
+          uploaded == 1
+              ? '${files.first.name} uploaded successfully'
+              : '$uploaded documents uploaded successfully',
+        );
+      } else if (uploaded > 0) {
+        _showMessage(
+          '$uploaded of ${files.length} uploaded. ${lastError ?? 'Some files failed.'}',
+          isError: true,
+        );
+      } else {
+        _showMessage(
+          lastError ?? 'Upload failed. Please try again.',
+          isError: true,
+        );
+      }
+
       final subject = selectedSubject;
-      if (subject != null) {
+      if (uploaded > 0 && subject != null) {
         await _loadSubjectFiles(subject);
       }
-    } on UploadException catch (e) {
-      _showMessage(e.message, isError: true);
-    } catch (e) {
-      _showMessage('Upload failed. Please try again.', isError: true);
     } finally {
       if (mounted) {
         setState(() {

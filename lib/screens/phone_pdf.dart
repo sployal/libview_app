@@ -14,16 +14,21 @@ class PhonePdfScreen extends StatefulWidget {
 
 class _PhonePdfScreenState extends State<PhonePdfScreen>
     with WidgetsBindingObserver {
+  static const int _maxSelection = 5;
+  static const _kinds = ['All', 'PDF', 'Word', 'Excel', 'PowerPoint'];
+
   final TextEditingController _searchController = TextEditingController();
+  final Map<String, PhoneDocument> _selected = {};
   List<PhoneDocument> _documents = [];
   bool _isLoading = true;
   bool _hasAllFilesAccess = false;
+  bool _isPreparing = false;
   String? _errorMessage;
   String _query = '';
   String _kindFilter = 'All';
   String? _preparingName;
 
-  static const _kinds = ['All', 'PDF', 'Word', 'Excel', 'PowerPoint'];
+  bool get _selectionMode => _selected.isNotEmpty;
 
   @override
   void initState() {
@@ -41,7 +46,10 @@ class _PhonePdfScreenState extends State<PhonePdfScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed && !_isLoading) {
+    if (state == AppLifecycleState.resumed &&
+        !_isLoading &&
+        !_selectionMode &&
+        !_isPreparing) {
       _loadDocuments(requestPermission: false);
     }
   }
@@ -88,16 +96,66 @@ class _PhonePdfScreenState extends State<PhonePdfScreen>
     }).toList(growable: false);
   }
 
-  Future<void> _selectDocument(PhoneDocument document) async {
-    if (_preparingName != null) return;
+  void _clearSelection() {
+    setState(_selected.clear);
+  }
+
+  void _onLongPress(PhoneDocument document) {
+    if (_isPreparing) return;
+    _toggleSelected(document);
+  }
+
+  void _onTap(PhoneDocument document) {
+    if (_isPreparing) return;
+    if (_selectionMode) {
+      _toggleSelected(document);
+      return;
+    }
+    _uploadDocuments([document]);
+  }
+
+  void _toggleSelected(PhoneDocument document) {
+    final key = document.key;
+    final atLimit =
+        !_selected.containsKey(key) && _selected.length >= _maxSelection;
+
+    if (atLimit) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You can upload up to 5 documents at a time'),
+          backgroundColor: Color(0xFF111827),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
 
     setState(() {
-      _preparingName = document.name;
+      if (_selected.containsKey(key)) {
+        _selected.remove(key);
+      } else {
+        _selected[key] = document;
+      }
+    });
+  }
+
+  Future<void> _uploadDocuments(List<PhoneDocument> documents) async {
+    if (_isPreparing || documents.isEmpty) return;
+
+    setState(() {
+      _isPreparing = true;
+      _preparingName = documents.first.name;
     });
 
     try {
-      final picked =
-          await PhoneDocumentService.instance.prepareForUpload(document);
+      final picked = <PhonePickedDocument>[];
+      for (final document in documents) {
+        if (!mounted) return;
+        setState(() => _preparingName = document.name);
+        picked.add(
+          await PhoneDocumentService.instance.prepareForUpload(document),
+        );
+      }
       if (!mounted) return;
       Navigator.pop(context, picked);
     } catch (e) {
@@ -112,6 +170,7 @@ class _PhonePdfScreenState extends State<PhonePdfScreen>
     } finally {
       if (mounted) {
         setState(() {
+          _isPreparing = false;
           _preparingName = null;
         });
       }
@@ -119,8 +178,10 @@ class _PhonePdfScreenState extends State<PhonePdfScreen>
   }
 
   Future<void> _browseWithPicker() async {
+    if (_isPreparing) return;
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
+      allowMultiple: true,
       allowedExtensions: const [
         'pdf',
         'doc',
@@ -141,9 +202,20 @@ class _PhonePdfScreenState extends State<PhonePdfScreen>
     );
     if (result == null || result.files.isEmpty || !mounted) return;
 
-    final file = result.files.first;
-    final path = file.path;
-    if (path == null || path.isEmpty) {
+    final picked = <PhonePickedDocument>[];
+    for (final file in result.files.take(_maxSelection)) {
+      final path = file.path;
+      if (path == null || path.isEmpty) continue;
+      picked.add(
+        PhonePickedDocument(
+          name: file.name,
+          path: path,
+          sizeBytes: file.size,
+        ),
+      );
+    }
+
+    if (picked.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Could not open the selected document'),
@@ -154,14 +226,7 @@ class _PhonePdfScreenState extends State<PhonePdfScreen>
       return;
     }
 
-    Navigator.pop(
-      context,
-      PhonePickedDocument(
-        name: file.name,
-        path: path,
-        sizeBytes: file.size,
-      ),
-    );
+    Navigator.pop(context, picked);
   }
 
   IconData _iconFor(String kind) {
@@ -212,240 +277,334 @@ class _PhonePdfScreenState extends State<PhonePdfScreen>
   Widget build(BuildContext context) {
     final filtered = _filtered;
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        title: const Text(
-          'PDFs & documents',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        actions: [
-          IconButton(
-            tooltip: 'Browse files',
-            onPressed: _preparingName == null ? _browseWithPicker : null,
-            icon: const Icon(Icons.folder_open_rounded),
+    return PopScope(
+      canPop: !_selectionMode,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _clearSelection();
+      },
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF8FAFC),
+        appBar: AppBar(
+          leading: _selectionMode
+              ? IconButton(
+                  icon: const Icon(Icons.close_rounded),
+                  onPressed: _clearSelection,
+                )
+              : null,
+          title: Text(
+            _selectionMode
+                ? '${_selected.length} of $_maxSelection selected'
+                : 'PDFs & documents',
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+            ),
           ),
-          IconButton(
-            tooltip: 'Refresh',
-            onPressed: _isLoading ? null : () => _loadDocuments(),
-            icon: const Icon(Icons.refresh_rounded),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-            child: TextField(
-              controller: _searchController,
-              onChanged: (value) => setState(() => _query = value),
-              textInputAction: TextInputAction.search,
-              decoration: InputDecoration(
-                hintText: 'Search PDFs, Word, Excel, PowerPoint…',
-                prefixIcon: const Icon(Icons.search_rounded),
-                suffixIcon: _query.isEmpty
-                    ? null
-                    : IconButton(
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() => _query = '');
-                        },
-                        icon: const Icon(Icons.close_rounded),
-                      ),
-                filled: true,
-                fillColor: Colors.white,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14),
-                  borderSide: BorderSide.none,
-                ),
+          actions: [
+            if (!_selectionMode) ...[
+              IconButton(
+                tooltip: 'Browse files',
+                onPressed: _isPreparing ? null : _browseWithPicker,
+                icon: const Icon(Icons.folder_open_rounded),
               ),
-            ),
-          ),
-          const SizedBox(height: 10),
-          SizedBox(
-            height: 38,
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              scrollDirection: Axis.horizontal,
-              itemCount: _kinds.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
-              itemBuilder: (context, index) {
-                final kind = _kinds[index];
-                final selected = _kindFilter == kind;
-                return ChoiceChip(
-                  label: Text(kind),
-                  selected: selected,
-                  onSelected: (_) => setState(() => _kindFilter = kind),
-                  selectedColor: const Color(0xFF6366F1),
-                  labelStyle: TextStyle(
-                    color: selected ? Colors.white : const Color(0xFF374151),
-                    fontWeight: FontWeight.w600,
+              IconButton(
+                tooltip: 'Refresh',
+                onPressed: _isLoading ? null : () => _loadDocuments(),
+                icon: const Icon(Icons.refresh_rounded),
+              ),
+            ],
+          ],
+        ),
+        bottomNavigationBar: _selectionMode
+            ? SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                  child: FilledButton.icon(
+                    onPressed: _isPreparing
+                        ? null
+                        : () => _uploadDocuments(_selected.values.toList()),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF6366F1),
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size.fromHeight(48),
+                    ),
+                    icon: _isPreparing
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : const Icon(Icons.upload_rounded),
+                    label: Text(
+                      _isPreparing
+                          ? 'Preparing…'
+                          : 'Upload ${_selected.length} document${_selected.length == 1 ? '' : 's'}',
+                    ),
                   ),
-                  backgroundColor: Colors.white,
-                  side: BorderSide(
-                    color: selected
-                        ? const Color(0xFF6366F1)
-                        : const Color(0xFFE5E7EB),
-                  ),
-                  showCheckmark: false,
-                );
-              },
-            ),
-          ),
-          if (!_hasAllFilesAccess && !_isLoading)
+                ),
+              )
+            : null,
+        body: Column(
+          children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: Material(
-                color: const Color(0xFFEEF2FF),
-                borderRadius: BorderRadius.circular(14),
-                child: ListTile(
-                  dense: true,
-                  leading: const Icon(
-                    Icons.folder_off_rounded,
-                    color: Color(0xFF6366F1),
+              child: TextField(
+                controller: _searchController,
+                onChanged: (value) => setState(() => _query = value),
+                textInputAction: TextInputAction.search,
+                style: const TextStyle(color: Colors.black),
+                decoration: InputDecoration(
+                  hintText: 'Search PDFs, Word, Excel, PowerPoint…',
+                  hintStyle: const TextStyle(color: Colors.black54),
+                  prefixIcon: const Icon(
+                    Icons.search_rounded,
+                    color: Colors.black,
                   ),
-                  title: const Text(
-                    'Allow all-files access to see every document',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                  suffixIcon: _query.isEmpty
+                      ? null
+                      : IconButton(
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() => _query = '');
+                          },
+                          icon: const Icon(
+                            Icons.close_rounded,
+                            color: Colors.black,
+                          ),
+                        ),
+                  filled: true,
+                  fillColor: Colors.white,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
                   ),
-                  trailing: TextButton(
-                    onPressed: () async {
-                      final granted =
-                          await PhoneDocumentService.instance.requestAccess();
-                      if (!granted) {
-                        await openAppSettings();
-                      }
-                      if (!mounted) return;
-                      await _loadDocuments(requestPermission: false);
-                    },
-                    child: const Text('Enable'),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
                   ),
                 ),
               ),
             ),
-          const SizedBox(height: 8),
-          Expanded(
-            child: _isLoading
-                ? const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircularProgressIndicator(
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
-                        ),
-                        SizedBox(height: 16),
-                        Text(
-                          'Looking for documents…',
-                          style: TextStyle(
-                            color: Color(0xFF6B7280),
-                            fontSize: 16,
-                          ),
-                        ),
-                      ],
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 38,
+              child: ListView.separated(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                scrollDirection: Axis.horizontal,
+                itemCount: _kinds.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemBuilder: (context, index) {
+                  final kind = _kinds[index];
+                  final selected = _kindFilter == kind;
+                  return ChoiceChip(
+                    label: Text(kind),
+                    selected: selected,
+                    onSelected: (_) => setState(() => _kindFilter = kind),
+                    selectedColor: const Color(0xFF6366F1),
+                    labelStyle: TextStyle(
+                      color: selected ? Colors.white : Colors.black,
+                      fontWeight: FontWeight.w600,
                     ),
-                  )
-                : _errorMessage != null
-                    ? _EmptyState(
-                        icon: Icons.error_outline_rounded,
-                        title: _errorMessage!,
-                        actionLabel: 'Try again',
-                        onAction: _loadDocuments,
-                      )
-                    : filtered.isEmpty
-                        ? _EmptyState(
-                            icon: Icons.insert_drive_file_outlined,
-                            title: _query.isEmpty
-                                ? 'No documents found on this phone'
-                                : 'No documents match “$_query”',
-                            subtitle:
-                                'Tap browse to pick a file from Files or Drive.',
-                            actionLabel: 'Browse files',
-                            onAction: _browseWithPicker,
-                          )
-                        : RefreshIndicator(
-                            onRefresh: () => _loadDocuments(),
-                            child: ListView.builder(
-                              padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
-                              itemCount: filtered.length,
-                              itemBuilder: (context, index) {
-                                final doc = filtered[index];
-                                final color = _colorFor(doc.kind);
-                                final preparing = _preparingName == doc.name;
-                                final size = _formatSize(doc.sizeBytes);
-                                final when = _formatDate(doc.modifiedMs);
-                                final meta = [
-                                  doc.kind,
-                                  if (size.isNotEmpty) size,
-                                  if (when.isNotEmpty) when,
-                                ].join(' · ');
-
-                                return Container(
-                                  margin: const EdgeInsets.only(bottom: 10),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(16),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(
-                                          alpha: 0.04,
-                                        ),
-                                        blurRadius: 10,
-                                        offset: const Offset(0, 4),
-                                      ),
-                                    ],
-                                  ),
-                                  child: ListTile(
-                                    onTap: _preparingName == null
-                                        ? () => _selectDocument(doc)
-                                        : null,
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 14,
-                                      vertical: 6,
-                                    ),
-                                    leading: CircleAvatar(
-                                      backgroundColor: color.withValues(
-                                        alpha: 0.12,
-                                      ),
-                                      foregroundColor: color,
-                                      child: Icon(_iconFor(doc.kind)),
-                                    ),
-                                    title: Text(
-                                      doc.name,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    subtitle: Text(
-                                      meta,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    trailing: preparing
-                                        ? const SizedBox(
-                                            width: 22,
-                                            height: 22,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                            ),
-                                          )
-                                        : const Icon(
-                                            Icons.upload_rounded,
-                                            color: Color(0xFF9CA3AF),
-                                          ),
-                                  ),
-                                );
-                              },
+                    backgroundColor: Colors.white,
+                    side: BorderSide(
+                      color: selected
+                          ? const Color(0xFF6366F1)
+                          : const Color(0xFFE5E7EB),
+                    ),
+                    showCheckmark: false,
+                  );
+                },
+              ),
+            ),
+            if (!_hasAllFilesAccess && !_isLoading)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: Material(
+                  color: const Color(0xFFEEF2FF),
+                  borderRadius: BorderRadius.circular(14),
+                  child: ListTile(
+                    dense: true,
+                    leading: const Icon(
+                      Icons.folder_off_rounded,
+                      color: Color(0xFF6366F1),
+                    ),
+                    title: const Text(
+                      'Allow all-files access to see every document',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black,
+                      ),
+                    ),
+                    trailing: TextButton(
+                      onPressed: () async {
+                        final granted =
+                            await PhoneDocumentService.instance.requestAccess();
+                        if (!granted) {
+                          await openAppSettings();
+                        }
+                        if (!mounted) return;
+                        await _loadDocuments(requestPermission: false);
+                      },
+                      child: const Text('Enable'),
+                    ),
+                  ),
+                ),
+              ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: _isLoading
+                  ? const Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          CircularProgressIndicator(
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Color(0xFF6366F1),
                             ),
                           ),
-          ),
-        ],
+                          SizedBox(height: 16),
+                          Text(
+                            'Looking for documents…',
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : _errorMessage != null
+                      ? _EmptyState(
+                          icon: Icons.error_outline_rounded,
+                          title: _errorMessage!,
+                          actionLabel: 'Try again',
+                          onAction: _loadDocuments,
+                        )
+                      : filtered.isEmpty
+                          ? _EmptyState(
+                              icon: Icons.insert_drive_file_outlined,
+                              title: _query.isEmpty
+                                  ? 'No documents found on this phone'
+                                  : 'No documents match “$_query”',
+                              subtitle:
+                                  'Tap browse to pick a file from Files or Drive.',
+                              actionLabel: 'Browse files',
+                              onAction: _browseWithPicker,
+                            )
+                          : RefreshIndicator(
+                              onRefresh: _selectionMode
+                                  ? () async {}
+                                  : () => _loadDocuments(),
+                              child: ListView.builder(
+                                padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                                itemCount: filtered.length,
+                                itemBuilder: (context, index) {
+                                  final doc = filtered[index];
+                                  final color = _colorFor(doc.kind);
+                                  final selected = _selected.containsKey(doc.key);
+                                  final preparing = _preparingName == doc.name;
+                                  final size = _formatSize(doc.sizeBytes);
+                                  final when = _formatDate(doc.modifiedMs);
+                                  final meta = [
+                                    doc.kind,
+                                    if (size.isNotEmpty) size,
+                                    if (when.isNotEmpty) when,
+                                  ].join(' · ');
+
+                                  return Container(
+                                    margin: const EdgeInsets.only(bottom: 10),
+                                    decoration: BoxDecoration(
+                                      color: selected
+                                          ? const Color(0xFFEEF2FF)
+                                          : Colors.white,
+                                      borderRadius: BorderRadius.circular(16),
+                                      border: selected
+                                          ? Border.all(
+                                              color: const Color(0xFF6366F1),
+                                            )
+                                          : null,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(
+                                            alpha: 0.04,
+                                          ),
+                                          blurRadius: 10,
+                                          offset: const Offset(0, 4),
+                                        ),
+                                      ],
+                                    ),
+                                    child: ListTile(
+                                      onTap: _isPreparing
+                                          ? null
+                                          : () => _onTap(doc),
+                                      onLongPress: _isPreparing
+                                          ? null
+                                          : () => _onLongPress(doc),
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                        horizontal: 14,
+                                        vertical: 6,
+                                      ),
+                                      leading: CircleAvatar(
+                                        backgroundColor: selected
+                                            ? const Color(0xFF6366F1)
+                                            : color.withValues(alpha: 0.12),
+                                        foregroundColor: selected
+                                            ? Colors.white
+                                            : color,
+                                        child: Icon(
+                                          selected
+                                              ? Icons.check_rounded
+                                              : _iconFor(doc.kind),
+                                        ),
+                                      ),
+                                      title: Text(
+                                        doc.name,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.black,
+                                        ),
+                                      ),
+                                      subtitle: Text(
+                                        meta,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          color: Colors.black,
+                                        ),
+                                      ),
+                                      trailing: preparing
+                                          ? const SizedBox(
+                                              width: 22,
+                                              height: 22,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                              ),
+                                            )
+                                          : Icon(
+                                              selected
+                                                  ? Icons.check_circle_rounded
+                                                  : Icons.upload_rounded,
+                                              color: selected
+                                                  ? const Color(0xFF6366F1)
+                                                  : Colors.black,
+                                            ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -479,10 +638,10 @@ class _EmptyState extends StatelessWidget {
             Text(
               title,
               textAlign: TextAlign.center,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
-                color: Colors.grey[600],
+                color: Colors.black,
               ),
             ),
             if (subtitle != null) ...[
@@ -490,7 +649,7 @@ class _EmptyState extends StatelessWidget {
               Text(
                 subtitle!,
                 textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+                style: const TextStyle(fontSize: 14, color: Colors.black),
               ),
             ],
             const SizedBox(height: 20),
