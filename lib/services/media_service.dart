@@ -85,6 +85,36 @@ class MediaService {
     }
   }
 
+  Future<void> deleteImage(String publicId) async {
+    final id = publicId.trim();
+    if (id.isEmpty) return;
+
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw Exception('Please sign in to continue');
+    }
+
+    final token = await user.getIdToken();
+    if (token == null || token.isEmpty) {
+      throw Exception('Could not get auth token. Please sign in again.');
+    }
+
+    try {
+      await _dio.post(
+        '/media/delete',
+        data: {'publicId': id},
+        options: Options(
+          headers: {'Authorization': 'Bearer $token'},
+        ),
+      );
+    } on DioException catch (e) {
+      final message = e.response?.data is Map
+          ? (e.response!.data['error']?.toString() ?? e.message)
+          : e.message;
+      throw Exception(message ?? 'Image delete failed');
+    }
+  }
+
   static String mimeFromName(String name, String? extension) {
     final ext = (extension ?? name.split('.').last).toLowerCase();
     switch (ext) {

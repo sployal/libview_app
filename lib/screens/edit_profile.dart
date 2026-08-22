@@ -31,7 +31,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   String? _registrationNumber;
   String? _avatarPublicId;
   Uint8List? _pendingAvatarBytes;
-  bool _isUploadingAvatar = false;
+  String? _pendingAvatarFileName;
+  String? _pendingAvatarMime;
+  bool _removeAvatar = false;
 
   bool get _isSuperAdmin {
     if (SuperAdminDashboard.isAllowedEmail(_currentEmail)) return true;
@@ -70,6 +72,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           _avatarUrlController.text =
               profileData['avatar_url'] as String? ?? '';
           _avatarPublicId = profileData['avatar_public_id'] as String?;
+          _pendingAvatarBytes = null;
+          _pendingAvatarFileName = null;
+          _pendingAvatarMime = null;
+          _removeAvatar = false;
           _isLoading = false;
         });
       } else {
@@ -104,14 +110,51 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     try {
       final user = AuthService.instance.currentUser;
       if (user != null) {
-        final avatarUrl = _avatarUrlController.text.trim();
+        String avatarUrl = _avatarUrlController.text.trim();
+        String? avatarPublicId = _avatarPublicId;
+        final previousPublicId = _avatarPublicId;
+
+        if (_pendingAvatarBytes != null && _pendingAvatarBytes!.isNotEmpty) {
+          final uploaded = await MediaService.instance.uploadImage(
+            bytes: _pendingAvatarBytes!,
+            fileName: _pendingAvatarFileName ?? 'profile.jpg',
+            mimeType: _pendingAvatarMime ?? 'image/jpeg',
+            folder: MediaService.folderProfiles,
+          );
+          avatarUrl = uploaded.url;
+          avatarPublicId = uploaded.publicId;
+
+          if (previousPublicId != null &&
+              previousPublicId.isNotEmpty &&
+              previousPublicId != uploaded.publicId) {
+            try {
+              await MediaService.instance.deleteImage(previousPublicId);
+            } catch (_) {}
+          }
+        } else if (_removeAvatar) {
+          if (previousPublicId != null && previousPublicId.isNotEmpty) {
+            try {
+              await MediaService.instance.deleteImage(previousPublicId);
+            } catch (_) {}
+          }
+          avatarUrl = '';
+          avatarPublicId = null;
+        }
+
         final username = _usernameController.text.trim();
+        final resolvedAvatarUrl = avatarUrl.trim();
         await _firestore.collection('profiles').doc(user.uid).set({
           'full_name': _fullNameController.text.trim(),
-          'username': username.isEmpty ? null : username,
-          'avatar_url': avatarUrl.isEmpty ? null : avatarUrl,
+          'username': username.isEmpty ? FieldValue.delete() : username,
+          'avatar_url': resolvedAvatarUrl.isEmpty
+              ? FieldValue.delete()
+              : resolvedAvatarUrl,
           'avatar_public_id':
-              avatarUrl.isEmpty ? null : _avatarPublicId,
+              (resolvedAvatarUrl.isEmpty ||
+                      avatarPublicId == null ||
+                      avatarPublicId.isEmpty)
+                  ? FieldValue.delete()
+                  : avatarPublicId,
           'updated_at': FieldValue.serverTimestamp(),
         }, SetOptions(merge: true));
 
@@ -145,8 +188,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
-  Future<void> _pickAndUploadAvatar() async {
-    if (_isSaving || _isUploadingAvatar) return;
+  Future<void> _pickAvatar() async {
+    if (_isSaving) return;
 
     final result = await FilePicker.platform.pickFiles(
       type: FileType.image,
@@ -174,37 +217,20 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     setState(() {
       _pendingAvatarBytes = bytes;
-      _isUploadingAvatar = true;
+      _pendingAvatarFileName = file.name;
+      _pendingAvatarMime = MediaService.mimeFromName(file.name, file.extension);
+      _removeAvatar = false;
     });
+  }
 
-    try {
-      final uploaded = await MediaService.instance.uploadImage(
-        bytes: bytes,
-        fileName: file.name,
-        mimeType: MediaService.mimeFromName(file.name, file.extension),
-        folder: MediaService.folderProfiles,
-      );
-      if (!mounted) return;
-      setState(() {
-        _avatarUrlController.text = uploaded.url;
-        _avatarPublicId = uploaded.publicId;
-        _pendingAvatarBytes = null;
-        _isUploadingAvatar = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _pendingAvatarBytes = null;
-        _isUploadingAvatar = false;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Could not upload photo: $e'),
-          backgroundColor: const Color(0xFFEF4444),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
+  void _markAvatarForRemoval() {
+    if (_isSaving) return;
+    setState(() {
+      _pendingAvatarBytes = null;
+      _pendingAvatarFileName = null;
+      _pendingAvatarMime = null;
+      _removeAvatar = true;
+    });
   }
 
   Future<bool> _onWillPop() async {
@@ -304,7 +330,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         child: Column(
                           children: [
                             GestureDetector(
-                              onTap: _isUploadingAvatar ? null : _pickAndUploadAvatar,
+                              onTap: _isSaving ? null : _pickAvatar,
                               child: Stack(
                                 children: [
                                   _pendingAvatarBytes != null
@@ -314,7 +340,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                               MemoryImage(_pendingAvatarBytes!),
                                           backgroundColor: Colors.grey[200],
                                         )
-                                      : _avatarUrlController.text.isNotEmpty
+                                      : (!_removeAvatar &&
+                                              _avatarUrlController.text.isNotEmpty)
                                           ? CircleAvatar(
                                               radius: 50,
                                               backgroundImage: NetworkImage(
@@ -359,21 +386,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                         color: Color(0xFF6366F1),
                                         shape: BoxShape.circle,
                                       ),
-                                      child: _isUploadingAvatar
-                                          ? const Padding(
-                                              padding: EdgeInsets.all(7),
-                                              child: CircularProgressIndicator(
-                                                strokeWidth: 2,
-                                                valueColor:
-                                                    AlwaysStoppedAnimation<
-                                                        Color>(Colors.white),
-                                              ),
-                                            )
-                                          : const Icon(
-                                              Icons.camera_alt_rounded,
-                                              color: Colors.white,
-                                              size: 16,
-                                            ),
+                                      child: const Icon(
+                                        Icons.camera_alt_rounded,
+                                        color: Colors.white,
+                                        size: 16,
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -390,11 +407,24 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             ),
                             const SizedBox(height: 4),
                             TextButton(
-                              onPressed: _isUploadingAvatar
-                                  ? null
-                                  : _pickAndUploadAvatar,
-                              child: const Text('Upload photo'),
+                              onPressed: _isSaving ? null : _pickAvatar,
+                              child: const Text('Choose photo'),
                             ),
+                            if (_pendingAvatarBytes != null ||
+                                (!_removeAvatar &&
+                                    _avatarUrlController.text.isNotEmpty))
+                              TextButton.icon(
+                                onPressed:
+                                    _isSaving ? null : _markAvatarForRemoval,
+                                icon: const Icon(
+                                  Icons.delete_outline_rounded,
+                                  color: Color(0xFFEF4444),
+                                ),
+                                label: const Text(
+                                  'Remove profile picture',
+                                  style: TextStyle(color: Color(0xFFEF4444)),
+                                ),
+                              ),
                           ],
                         ),
                       ),

@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'auth_service.dart';
 import 'course_service.dart';
+import 'media_service.dart';
 
 class AppNotification {
   final String id;
@@ -196,6 +197,15 @@ class NotificationService {
   }
 
   Future<void> delete(String id) async {
+    final doc = await _notifications.doc(id).get();
+    final publicId = doc.data()?['image_public_id']?.toString() ?? '';
+    if (publicId.isNotEmpty) {
+      try {
+        await MediaService.instance.deleteImage(publicId);
+      } catch (_) {
+        // Still remove the notification if Cloudinary cleanup fails.
+      }
+    }
     await _notifications.doc(id).delete();
   }
 

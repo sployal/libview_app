@@ -83,7 +83,7 @@ function registerMediaRoutes(app, { requireAuth, requireSuperAdmin, upload }) {
     }
   });
 
-  app.post('/media/delete', requireAuth, requireSuperAdmin, async (req, res) => {
+  app.post('/media/delete', requireAuth, async (req, res) => {
     if (!cloudinaryConfigured()) {
       return res.status(503).json({ error: 'Cloudinary is not configured' });
     }
@@ -91,6 +91,11 @@ function registerMediaRoutes(app, { requireAuth, requireSuperAdmin, upload }) {
     const publicId = typeof req.body?.publicId === 'string' ? req.body.publicId.trim() : '';
     if (!publicId) {
       return res.status(400).json({ error: 'A Cloudinary publicId is required' });
+    }
+
+    // Only allow deleting assets this app uploaded.
+    if (!publicId.startsWith('edupal/')) {
+      return res.status(403).json({ error: 'You can only delete Edupal media' });
     }
 
     try {

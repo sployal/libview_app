@@ -1,11 +1,9 @@
 import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'media_service.dart';
-import 'upload_service.dart';
 
 class SupportMessage {
   final String id;
@@ -57,26 +55,6 @@ class SupportService {
   static const _collection = 'support_messages';
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  final Dio _dio = Dio(
-    BaseOptions(
-      baseUrl: UploadService.baseUrl,
-      connectTimeout: const Duration(seconds: 60),
-      receiveTimeout: const Duration(minutes: 2),
-      sendTimeout: const Duration(minutes: 2),
-    ),
-  );
-
-  Future<String> _idToken() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      throw Exception('Please sign in to continue');
-    }
-    final token = await user.getIdToken();
-    if (token == null || token.isEmpty) {
-      throw Exception('Could not get auth token. Please sign in again.');
-    }
-    return token;
-  }
 
   Future<Map<String, String>> uploadScreenshot({
     required Uint8List bytes,
@@ -149,14 +127,7 @@ class SupportService {
     final publicId = message.screenshotPublicId;
     if (publicId != null && publicId.isNotEmpty) {
       try {
-        final token = await _idToken();
-        await _dio.post(
-          '/media/delete',
-          data: {'publicId': publicId},
-          options: Options(
-            headers: {'Authorization': 'Bearer $token'},
-          ),
-        );
+        await MediaService.instance.deleteImage(publicId);
       } catch (_) {
         // Still remove the ticket if Cloudinary cleanup fails.
       }
