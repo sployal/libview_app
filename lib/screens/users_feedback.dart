@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 import '../services/support_service.dart';
-import 'super_admin_dashboard.dart';
+import 'system_admin_dashboard.dart';
 
 class UsersFeedbackScreen extends StatefulWidget {
   const UsersFeedbackScreen({super.key});
@@ -22,7 +22,7 @@ class _UsersFeedbackScreenState extends State<UsersFeedbackScreen> {
   }
 
   Future<void> _verifyAccess() async {
-    final allowed = await SuperAdminDashboard.isCurrentUserSuperAdmin();
+    final allowed = await SystemAdminDashboard.isCurrentUserSystemAdmin();
     if (!mounted) return;
     if (!allowed) {
       if (mounted) {

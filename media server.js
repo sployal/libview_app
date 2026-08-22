@@ -37,7 +37,7 @@ function uploadBuffer(buffer, { folder, originalName }) {
   });
 }
 
-function registerMediaRoutes(app, { requireAuth, requireSuperAdmin, upload }) {
+function registerMediaRoutes(app, { requireAuth, requireSystemAdmin, upload }) {
   configureCloudinary();
 
   app.post('/media/upload', requireAuth, upload.single('image'), async (req, res) => {

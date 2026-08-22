@@ -8,28 +8,33 @@ import '../services/auth_service.dart';
 import '../services/course_service.dart';
 import 'course_addition.dart';
 
-class SuperAdminDashboard extends StatefulWidget {
-  const SuperAdminDashboard({super.key});
+class SystemAdminDashboard extends StatefulWidget {
+  const SystemAdminDashboard({super.key});
 
   static const allowedEmail = 'muigaid91@gmail.com';
-  static const superAdminRole = 'super_admin';
+  static const systemAdminRole = 'system_admin';
 
   static bool isAllowedEmail(String? email) =>
       email?.toLowerCase() == allowedEmail;
 
-  /// Owner email or users with the `super_admin` role.
-  static Future<bool> isCurrentUserSuperAdmin() async {
+  static bool isSystemAdminRole(String? role) {
+    final value = (role ?? '').toLowerCase();
+    return value == systemAdminRole || value == 'super_admin';
+  }
+
+  /// Owner email or users with the `system_admin` role.
+  static Future<bool> isCurrentUserSystemAdmin() async {
     final email = AuthService.instance.currentUser?.email;
     if (isAllowedEmail(email)) return true;
     final role = await AuthService.instance.currentRole();
-    return role == superAdminRole;
+    return isSystemAdminRole(role);
   }
 
   @override
-  State<SuperAdminDashboard> createState() => _SuperAdminDashboardState();
+  State<SystemAdminDashboard> createState() => _SystemAdminDashboardState();
 }
 
-class _SuperAdminDashboardState extends State<SuperAdminDashboard>
+class _SystemAdminDashboardState extends State<SystemAdminDashboard>
     with SingleTickerProviderStateMixin {
   final _firestore = FirebaseFirestore.instance;
 
@@ -50,18 +55,18 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
   String _staffCourseFilter = 'all';
 
   static const _userRoles = ['student', 'class_rep', 'assistant_class_rep'];
-  static const _staffRoles = ['lecturer', 'admin', 'super_admin'];
+  static const _staffRoles = ['lecturer', 'admin', 'system_admin'];
   static const _allRoles = [
     'student',
     'class_rep',
     'assistant_class_rep',
     'lecturer',
     'admin',
-    'super_admin',
+    'system_admin',
   ];
 
   final Map<String, Color> _roleColors = {
-    'super_admin': const Color(0xFF0F172A),
+    'system_admin': const Color(0xFF0F172A),
     'admin': const Color(0xFFEF4444),
     'lecturer': const Color(0xFF8B5CF6),
     'class_rep': const Color(0xFFF59E0B),
@@ -82,8 +87,9 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
   int get _totalLecturers =>
       _profiles.where((p) => p['role'] == 'lecturer').length;
   int get _totalAdmins => _profiles.where((p) => p['role'] == 'admin').length;
-  int get _totalSuperAdmins =>
-      _profiles.where((p) => p['role'] == 'super_admin').length;
+  int get _totalSystemAdmins => _profiles
+      .where((p) => SystemAdminDashboard.isSystemAdminRole(p['role'] as String?))
+      .length;
 
   int get _newThisWeek {
     final weekAgo = DateTime.now().subtract(const Duration(days: 7));
@@ -107,13 +113,13 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
   }
 
   Future<void> _guardAndLoad() async {
-    final hasAccess = await SuperAdminDashboard.isCurrentUserSuperAdmin();
+    final hasAccess = await SystemAdminDashboard.isCurrentUserSystemAdmin();
     if (!hasAccess) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('You do not have access to Super Admin.'),
+            content: Text('You do not have access to System Admin.'),
             backgroundColor: Color(0xFFEF4444),
           ),
         );
@@ -133,7 +139,10 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
       final profiles = snapshot.docs.map((doc) {
         final data = Map<String, dynamic>.from(doc.data());
         data['id'] = doc.id;
-        data['role'] = (data['role'] as String?) ?? 'student';
+        final role = ((data['role'] as String?) ?? 'student').toLowerCase();
+        data['role'] = SystemAdminDashboard.isSystemAdminRole(role)
+            ? SystemAdminDashboard.systemAdminRole
+            : role;
         data['full_name'] = data['full_name'] ?? 'Unknown user';
         data['username'] = data['username'] ?? '';
         data['email'] = data['email'] ?? '';
@@ -607,6 +616,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
   }
 
   String _formatRole(String role) {
+    if (SystemAdminDashboard.isSystemAdminRole(role)) return 'System Admin';
     return role.split('_').map((word) {
       if (word.isEmpty) return word;
       return word[0].toUpperCase() + word.substring(1);
@@ -615,6 +625,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
 
   IconData _getRoleIcon(String role) {
     switch (role.toLowerCase()) {
+      case 'system_admin':
       case 'super_admin':
         return Icons.shield_rounded;
       case 'admin':
@@ -1252,9 +1263,9 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
                         children: [
                           Expanded(
                             child: _buildRoleStatCard(
-                              'Super Admins',
-                              _totalSuperAdmins.toString(),
-                              _roleColors['super_admin']!,
+                              'System Admins',
+                              _totalSystemAdmins.toString(),
+                              _roleColors['system_admin']!,
                               Icons.shield_rounded,
                             ),
                           ),
@@ -1645,7 +1656,7 @@ class _SuperAdminDashboardState extends State<SuperAdminDashboard>
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         title: const Text(
-          'Super Admin',
+          'System Admin',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [

@@ -5,7 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../services/media_service.dart';
-import 'super_admin_dashboard.dart';
+import 'system_admin_dashboard.dart';
 import 'users_feedback.dart';
 
 class EditProfileScreen extends StatefulWidget {
@@ -35,9 +35,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   String? _pendingAvatarMime;
   bool _removeAvatar = false;
 
-  bool get _isSuperAdmin {
-    if (SuperAdminDashboard.isAllowedEmail(_currentEmail)) return true;
-    return (_currentRole ?? '').toLowerCase() == SuperAdminDashboard.superAdminRole;
+  bool get _isSystemAdmin {
+    if (SystemAdminDashboard.isAllowedEmail(_currentEmail)) return true;
+    return SystemAdminDashboard.isSystemAdminRole(_currentRole);
   }
 
   @override
@@ -494,7 +494,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       ),
                       const SizedBox(height: 32),
 
-                      if (_isSuperAdmin) ...[
+                      if (_isSystemAdmin) ...[
                         SizedBox(
                           width: double.infinity,
                           height: 54,
@@ -703,6 +703,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   Color _getRoleColor(String role) {
     switch (role.toLowerCase()) {
+      case 'system_admin':
+      case 'super_admin':
+        return const Color(0xFF0F172A);
       case 'admin':
         return const Color(0xFFEF4444);
       case 'lecturer':
@@ -717,6 +720,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   IconData _getRoleIcon(String role) {
     switch (role.toLowerCase()) {
+      case 'system_admin':
+      case 'super_admin':
+        return Icons.shield_rounded;
       case 'admin':
         return Icons.admin_panel_settings_rounded;
       case 'lecturer':
@@ -731,8 +737,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   String _formatRole(String role) {
     switch (role.toLowerCase()) {
+      case 'system_admin':
+      case 'super_admin':
+        return 'System Admin';
       case 'class_rep':
         return 'Class Rep';
+      case 'assistant_class_rep':
+        return 'Assistant Class Rep';
       default:
         return role[0].toUpperCase() + role.substring(1);
     }

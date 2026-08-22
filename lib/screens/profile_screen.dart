@@ -7,7 +7,7 @@ import 'class_members.dart';
 import 'course_members.dart';
 import 'downloads_screen.dart';
 import 'notifications_screen.dart';
-import 'super_admin_dashboard.dart';
+import 'system_admin_dashboard.dart';
 import 'help_and_support.dart';
 import 'users_feedback.dart';
 
@@ -38,10 +38,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return role == 'admin';
   }
 
-  bool get _isSuperAdmin {
+  bool get _isSystemAdmin {
     final email = _email ?? AuthService.instance.currentUser?.email;
-    if (SuperAdminDashboard.isAllowedEmail(email)) return true;
-    return (_role ?? '').toLowerCase() == SuperAdminDashboard.superAdminRole;
+    if (SystemAdminDashboard.isAllowedEmail(email)) return true;
+    return SystemAdminDashboard.isSystemAdminRole(_role);
   }
 
   bool get _canOpenClassMembers {
@@ -241,7 +241,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 });
               },
             ),
-            if (_isSuperAdmin) ...[
+            if (_isSystemAdmin) ...[
               const SizedBox(height: 8),
               ListTile(
                 leading: Container(
@@ -373,7 +373,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 },
               ),
             ],
-            if (_isSuperAdmin) ...[
+            if (_isSystemAdmin) ...[
               const SizedBox(height: 8),
               ListTile(
                 leading: Container(
@@ -390,7 +390,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
                 title: const Text(
-                  'Super Admin',
+                  'System Admin',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
@@ -423,7 +423,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const SuperAdminDashboard(),
+                      builder: (context) => const SystemAdminDashboard(),
                     ),
                   );
                 },
@@ -817,6 +817,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Color _getRoleColor(String role) {
     switch (role.toLowerCase()) {
+      case 'system_admin':
       case 'super_admin':
         return const Color(0xFF0F172A);
       case 'admin':
@@ -835,6 +836,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   IconData _getRoleIcon(String role) {
     switch (role.toLowerCase()) {
+      case 'system_admin':
       case 'super_admin':
         return Icons.shield_rounded;
       case 'admin':
@@ -853,8 +855,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   String _formatRole(String role) {
     switch (role.toLowerCase()) {
+      case 'system_admin':
       case 'super_admin':
-        return 'Super Admin';
+        return 'System Admin';
       case 'class_rep':
         return 'Class Rep';
       case 'assistant_class_rep':

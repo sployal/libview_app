@@ -5,7 +5,7 @@ import '../services/auth_service.dart';
 import '../services/course_service.dart';
 import '../services/notification_service.dart';
 import 'create_notification_screen.dart';
-import 'super_admin_dashboard.dart';
+import 'system_admin_dashboard.dart';
 
 class NotificationsScreen extends StatefulWidget {
   const NotificationsScreen({super.key});
@@ -19,7 +19,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   List<Course> _courses = [];
   bool isLoading = true;
   bool canCreateNotifications = false;
-  bool _isSuperAdmin = false;
+  bool _isSystemAdmin = false;
   String? currentUserRole;
   String _courseFilter = 'all';
 
@@ -33,10 +33,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Future<void> _checkUserRole() async {
     try {
       final role = await AuthService.instance.currentRole();
-      final isSuperAdmin =
-          await SuperAdminDashboard.isCurrentUserSuperAdmin();
+      final isSystemAdmin =
+          await SystemAdminDashboard.isCurrentUserSystemAdmin();
       List<Course> courses = [];
-      if (isSuperAdmin) {
+      if (isSystemAdmin) {
         courses = await CourseService.instance.listCourses();
         courses.sort(
           (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
@@ -45,9 +45,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       if (!mounted) return;
       setState(() {
         currentUserRole = role;
-        _isSuperAdmin = isSuperAdmin;
+        _isSystemAdmin = isSystemAdmin;
         _courses = courses;
-        canCreateNotifications = role != 'student' || isSuperAdmin;
+        canCreateNotifications = role != 'student' || isSystemAdmin;
       });
     } catch (e) {
       debugPrint('Error checking user role: $e');
@@ -55,7 +55,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   List<AppNotification> get _visibleNotifications {
-    if (!_isSuperAdmin || _courseFilter == 'all') {
+    if (!_isSystemAdmin || _courseFilter == 'all') {
       return notifications;
     }
     Course? selected;
@@ -482,6 +482,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   Color _getRoleColor(String role) {
     switch (role.toLowerCase()) {
+      case 'system_admin':
       case 'super_admin':
         return const Color(0xFF0F172A);
       case 'admin':
@@ -500,6 +501,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   IconData _getRoleIcon(String role) {
     switch (role.toLowerCase()) {
+      case 'system_admin':
       case 'super_admin':
         return Icons.shield_rounded;
       case 'admin':
@@ -518,8 +520,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   String _formatRole(String role) {
     switch (role.toLowerCase()) {
+      case 'system_admin':
       case 'super_admin':
-        return 'Super Admin';
+        return 'System Admin';
       case 'class_rep':
         return 'Class Rep';
       case 'assistant_class_rep':
@@ -662,7 +665,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             )
           : Column(
               children: [
-                if (_isSuperAdmin) _buildCourseFilterBar(),
+                if (_isSystemAdmin) _buildCourseFilterBar(),
                 Expanded(
                   child: visible.isEmpty
                       ? _buildEmptyState()
@@ -719,7 +722,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           ),
           const SizedBox(height: 24),
           Text(
-            _isSuperAdmin && _courseFilter != 'all'
+            _isSystemAdmin && _courseFilter != 'all'
                 ? 'No notifications for this course'
                 : 'No notifications yet',
             style: const TextStyle(
@@ -730,7 +733,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            _isSuperAdmin && _courseFilter != 'all'
+            _isSystemAdmin && _courseFilter != 'all'
                 ? 'Try All to see campus-wide posts as well'
                 : 'You\'re all caught up!',
             style: TextStyle(
@@ -750,7 +753,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final isOwnNotification = notification.senderId == currentUserId;
     final canDelete = isOwnNotification ||
         currentUserRole == 'admin' ||
-        _isSuperAdmin;
+        _isSystemAdmin;
     final canEdit = isOwnNotification;
 
     return Container(

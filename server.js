@@ -51,7 +51,11 @@ const EDUPAL_FOLDER_ID =
 
 // Semester folders created for additional courses (loaded from Firestore).
 const extraSemesterFolderIds = new Set();
-const SUPER_ADMIN_EMAIL = (process.env.SUPER_ADMIN_EMAIL || 'muigaid91@gmail.com').toLowerCase();
+const SYSTEM_ADMIN_EMAIL = (
+  process.env.SYSTEM_ADMIN_EMAIL ||
+  process.env.SUPER_ADMIN_EMAIL ||
+  'muigaid91@gmail.com'
+).toLowerCase();
 
 const ADMIN_UIDS = new Set(
   (process.env.ADMIN_UIDS || '')
@@ -561,9 +565,9 @@ function requireAdmin(req, res, next) {
   res.status(403).json({ error: 'Admin privileges required for this action' });
 }
 
-function requireSuperAdmin(req, res, next) {
+function requireSystemAdmin(req, res, next) {
   const email = (req.user.email || '').toLowerCase();
-  if (email === SUPER_ADMIN_EMAIL) return next();
+  if (email === SYSTEM_ADMIN_EMAIL) return next();
   if (CONFIG.ADMIN_UIDS.size > 0 && CONFIG.ADMIN_UIDS.has(req.user.uid)) {
     return next();
   }
@@ -574,12 +578,12 @@ function requireSuperAdmin(req, res, next) {
     .get()
     .then((snap) => {
       const role = String(snap.data()?.role || '').toLowerCase();
-      if (role === 'super_admin') return next();
-      return res.status(403).json({ error: 'Super admin privileges required' });
+      if (role === 'system_admin' || role === 'super_admin') return next();
+      return res.status(403).json({ error: 'System admin privileges required' });
     })
     .catch((err) => {
-      console.error('Super admin check failed:', err.message);
-      return res.status(403).json({ error: 'Super admin privileges required' });
+      console.error('System admin check failed:', err.message);
+      return res.status(403).json({ error: 'System admin privileges required' });
     });
 }
 
@@ -739,7 +743,7 @@ app.post('/folders', requireAuth, async (req, res) => {
 
 // --- Create a course folder under Edupal with year/semester subfolders ---
 
-app.post('/course-structure', requireAuth, requireSuperAdmin, async (req, res) => {
+app.post('/course-structure', requireAuth, requireSystemAdmin, async (req, res) => {
   if (!driveIsConfigured()) {
     return res.status(503).json({ error: 'Drive is not configured yet. Complete the OAuth setup first.' });
   }
@@ -763,9 +767,9 @@ app.post('/course-structure', requireAuth, requireSuperAdmin, async (req, res) =
   }
 });
 
-// --- Rename the main course folder under Edupal (super admin) ------------
+// --- Rename the main course folder under Edupal (system admin) ------------
 
-app.patch('/course-folder/:folderId', requireAuth, requireSuperAdmin, async (req, res) => {
+app.patch('/course-folder/:folderId', requireAuth, requireSystemAdmin, async (req, res) => {
   if (!driveIsConfigured()) {
     return res.status(503).json({ error: 'Drive is not configured yet. Complete the OAuth setup first.' });
   }
@@ -794,9 +798,9 @@ app.patch('/course-folder/:folderId', requireAuth, requireSuperAdmin, async (req
   }
 });
 
-// --- Delete the course folder and all nested Drive folders (super admin) --
+// --- Delete the course folder and all nested Drive folders (system admin) --
 
-app.delete('/course-folder/:folderId', requireAuth, requireSuperAdmin, async (req, res) => {
+app.delete('/course-folder/:folderId', requireAuth, requireSystemAdmin, async (req, res) => {
   if (!driveIsConfigured()) {
     return res.status(503).json({ error: 'Drive is not configured yet. Complete the OAuth setup first.' });
   }
@@ -880,7 +884,7 @@ app.delete('/files/:fileId', requireAuth, requireAdmin, async (req, res) => {
 // --- AI chat (NVIDIA Llama vision) --------------------------------------
 
 registerAiRoutes(app, { requireAuth });
-registerMediaRoutes(app, { requireAuth, requireSuperAdmin, upload });
+registerMediaRoutes(app, { requireAuth, requireSystemAdmin, upload });
 
 // --- Fallback error handler --------------------------------------------
 

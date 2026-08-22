@@ -8,6 +8,7 @@ import '../services/auth_service.dart';
 import '../services/course_service.dart';
 import '../services/media_service.dart';
 import '../services/notification_service.dart';
+import 'system_admin_dashboard.dart';
 
 class CreateNotificationScreen extends StatefulWidget {
   const CreateNotificationScreen({super.key});
@@ -71,7 +72,8 @@ class _CreateNotificationScreenState extends State<CreateNotificationScreen> {
   bool get _isClassLeadership =>
       _role == 'class_rep' || _role == 'assistant_class_rep';
 
-  bool get _isSuperAdmin => _role == 'super_admin';
+  bool get _isSystemAdmin =>
+      SystemAdminDashboard.isSystemAdminRole(_role);
 
   Course? get _selectedCourse {
     for (final course in _courses) {
@@ -146,7 +148,7 @@ class _CreateNotificationScreenState extends State<CreateNotificationScreen> {
           ? 'This notification will be visible to your class only'
           : 'This notification will be visible to class $_classLabel';
     }
-    if (_isSuperAdmin && _audience == 'course') {
+    if (_isSystemAdmin && _audience == 'course') {
       final selected = _selectedCourse;
       return selected == null
           ? 'Choose a course to notify its members'
@@ -192,7 +194,7 @@ class _CreateNotificationScreenState extends State<CreateNotificationScreen> {
   Future<void> _createNotification() async {
     if (!_formKey.currentState!.validate()) return;
 
-    if (_isSuperAdmin &&
+    if (_isSystemAdmin &&
         _audience == 'course' &&
         (_selectedCourseId == null || _selectedCourseId!.isEmpty)) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -230,7 +232,7 @@ class _CreateNotificationScreenState extends State<CreateNotificationScreen> {
         audience: _audience,
         imageUrl: imageUrl,
         imagePublicId: imagePublicId,
-        targetCourseId: _isSuperAdmin ? _selectedCourseId : null,
+        targetCourseId: _isSystemAdmin ? _selectedCourseId : null,
       );
 
       if (mounted) {
@@ -386,7 +388,7 @@ class _CreateNotificationScreenState extends State<CreateNotificationScreen> {
                         icon: Icons.school_rounded,
                       ),
                     ],
-                    if (_isSuperAdmin) ...[
+                    if (_isSystemAdmin) ...[
                       const SizedBox(height: 32),
                       const Text(
                         'Send to',

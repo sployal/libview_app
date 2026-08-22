@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import '../screens/super_admin_dashboard.dart';
+import '../screens/system_admin_dashboard.dart';
 import 'auth_service.dart';
 import 'course_service.dart';
 import 'media_service.dart';
@@ -111,8 +111,8 @@ class NotificationService {
         .where((id) => id.isNotEmpty)
         .toSet();
 
-    final seeAll = role == 'super_admin' ||
-        SuperAdminDashboard.isAllowedEmail(user.email);
+    final seeAll = SystemAdminDashboard.isSystemAdminRole(role) ||
+        SystemAdminDashboard.isAllowedEmail(user.email);
 
     return notificationsSnap.docs
         .map((doc) => _fromDoc(doc, readIds.contains(doc.id)))
@@ -175,7 +175,7 @@ class NotificationService {
 
     final isClassLeadership =
         role == 'class_rep' || role == 'assistant_class_rep';
-    final isSuperAdmin = role == 'super_admin';
+    final isSystemAdmin = SystemAdminDashboard.isSystemAdminRole(role);
 
     var resolvedAudience = audience;
     var resolvedPrefix = prefix;
@@ -190,7 +190,7 @@ class NotificationService {
           'Your registration number is needed to send a class or course notification.',
         );
       }
-    } else if (isSuperAdmin && audience == 'course') {
+    } else if (isSystemAdmin && audience == 'course') {
       Course? selected;
       for (final item in courses) {
         if (item.id == (targetCourseId ?? '')) {
