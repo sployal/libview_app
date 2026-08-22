@@ -29,7 +29,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isLoading = true;
   int _downloadsStorageBytes = 0;
   int _downloadedFileCount = 0;
-  DateTime? _lastStorageRefresh;
 
   bool get _isAdmin {
     final role = (_role ?? '').toLowerCase();
@@ -51,7 +50,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     _loadUserData();
+    DownloadService.listVersion.addListener(_loadStorageUsage);
     _loadStorageUsage();
+  }
+
+  @override
+  void dispose() {
+    DownloadService.listVersion.removeListener(_loadStorageUsage);
+    super.dispose();
   }
 
   Future<void> _loadStorageUsage() async {
@@ -439,13 +445,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final now = DateTime.now();
-    if (_lastStorageRefresh == null ||
-        now.difference(_lastStorageRefresh!) > const Duration(seconds: 2)) {
-      _lastStorageRefresh = now;
-      Future.microtask(_loadStorageUsage);
-    }
-
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(

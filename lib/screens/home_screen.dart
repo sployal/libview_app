@@ -62,6 +62,7 @@ class _HomeScreenState extends State<HomeScreen>
     ));
     _slideController.forward();
     WidgetsBinding.instance.addObserver(this);
+    DownloadService.listVersion.addListener(_loadDownloads);
     _loadRecentActivity();
     _loadUnreadNotificationCount();
     _setupNotificationSubscription();
@@ -70,6 +71,7 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    DownloadService.listVersion.removeListener(_loadDownloads);
     _notificationsSub?.cancel();
     _readsSub?.cancel();
     _slideController.dispose();

@@ -16,15 +16,29 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
   @override
   void initState() {
     super.initState();
+    DownloadService.listVersion.addListener(_onDownloadsChanged);
+    _loadDownloads(showSpinner: true);
+  }
+
+  @override
+  void dispose() {
+    DownloadService.listVersion.removeListener(_onDownloadsChanged);
+    super.dispose();
+  }
+
+  void _onDownloadsChanged() {
     _loadDownloads();
   }
 
-  Future<void> _loadDownloads() async {
-    setState(() {
-      isLoading = true;
-    });
+  Future<void> _loadDownloads({bool showSpinner = false}) async {
+    if (showSpinner && mounted) {
+      setState(() {
+        isLoading = true;
+      });
+    }
 
     final loadedDownloads = await DownloadService.getDownloads();
+    if (!mounted) return;
 
     setState(() {
       downloads = loadedDownloads;

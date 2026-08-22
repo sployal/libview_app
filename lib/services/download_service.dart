@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -15,6 +16,13 @@ class DownloadService {
   static const String baseUrl = 'https://www.googleapis.com/drive/v3';
   static const MethodChannel _downloadsChannel =
       MethodChannel('com.example.libview/downloads');
+
+  /// Bumped whenever the tracked download list changes so UI can refresh.
+  static final ValueNotifier<int> listVersion = ValueNotifier(0);
+
+  static void _notifyListChanged() {
+    listVersion.value++;
+  }
 
   static String get apiKey {
     final key = dotenv.env['GOOGLE_DRIVE_DOWNLOAD_API_KEY'] ?? '';
@@ -321,6 +329,7 @@ class DownloadService {
     });
     
     await prefs.setString('downloads', json.encode(downloads));
+    _notifyListChanged();
   }
   
   // Get all downloads
@@ -401,7 +410,11 @@ class DownloadService {
   }
 
   // Delete download
-  static Future<bool> deleteDownload(String filePath, {String? contentUri}) async {
+  static Future<bool> deleteDownload(
+    String filePath, {
+    String? contentUri,
+    bool notify = true,
+  }) async {
     try {
       if (Platform.isAndroid) {
         await _downloadsChannel.invokeMethod<bool>(
@@ -425,6 +438,9 @@ class DownloadService {
       downloads.removeWhere((item) => item['filePath'] == filePath);
       
       await prefs.setString('downloads', json.encode(downloads));
+      if (notify) {
+        _notifyListChanged();
+      }
       return true;
     } catch (e) {
       print('Error deleting download: $e');
@@ -514,11 +530,16 @@ class DownloadService {
     try {
       final downloads = await getDownloads();
       for (final item in downloads) {
-        await deleteDownload(item.filePath, contentUri: item.contentUri);
+        await deleteDownload(
+          item.filePath,
+          contentUri: item.contentUri,
+          notify: false,
+        );
       }
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('downloads');
+      _notifyListChanged();
     } catch (e) {
       print('Error clearing downloads: $e');
     }
