@@ -41,6 +41,12 @@
 			<string>UIInterfaceOrientationLandscapeLeft</string>
 			<string>UIInterfaceOrientationLandscapeRight</string>
 		</array>
+		<key>NSCameraUsageDescription</key>
+		<string>Take a photo of your notes so UniStudy AI can help you study.</string>
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>Choose an image of your notes so UniStudy AI can help you study.</string>
+		<key>NSMicrophoneUsageDescription</key>
+		<string>The camera may request microphone access when recording video.</string>
 		<key>CADisableMinimumFrameDurationOnPhone</key>
 		<true/>
 		<key>UIApplicationSupportsIndirectInputEvents</key>

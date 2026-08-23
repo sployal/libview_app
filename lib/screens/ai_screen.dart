@@ -1,7 +1,12 @@
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:image_cropper/image_cropper.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../services/ai_service.dart';
 
@@ -27,7 +32,34 @@ class _AiScreenState extends State<AiScreen> {
     super.dispose();
   }
 
-  Future<void> _pickImage() async {
+  Future<void> _takePhoto() async {
+    if (_isSending) return;
+
+    if (Platform.isAndroid) {
+      final status = await Permission.camera.request();
+      if (!status.isGranted && !status.isLimited) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Camera permission is needed to take a photo.'),
+            backgroundColor: const Color(0xFFEF4444),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        );
+        return;
+      }
+    }
+
+    final photo = await ImagePicker().pickImage(
+      source: ImageSource.camera,
+      imageQuality: 95,
+    );
+    if (photo == null) return;
+    await _cropAndAttach(photo.path);
+  }
+
+  Future<void> _browseFiles() async {
     if (_isSending) return;
 
     final result = await FilePicker.platform.pickFiles(
@@ -38,8 +70,60 @@ class _AiScreenState extends State<AiScreen> {
     if (result == null || result.files.isEmpty) return;
 
     final file = result.files.first;
-    final bytes = file.bytes;
-    if (bytes == null || bytes.isEmpty) return;
+    var path = file.path;
+    if (path == null || path.isEmpty) {
+      final bytes = file.bytes;
+      if (bytes == null || bytes.isEmpty) return;
+      final dir = await getTemporaryDirectory();
+      path =
+          '${dir.path}/ai_pick_${DateTime.now().millisecondsSinceEpoch}.${file.extension ?? 'jpg'}';
+      await File(path).writeAsBytes(bytes, flush: true);
+    }
+
+    await _cropAndAttach(path);
+  }
+
+  Future<void> _cropAndAttach(String sourcePath) async {
+    CroppedFile? cropped;
+    try {
+      cropped = await ImageCropper().cropImage(
+        sourcePath: sourcePath,
+        compressFormat: ImageCompressFormat.jpg,
+        compressQuality: 90,
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: 'Crop image',
+            toolbarColor: const Color(0xFF6366F1),
+            toolbarWidgetColor: Colors.white,
+            activeControlsWidgetColor: const Color(0xFF6366F1),
+            initAspectRatio: CropAspectRatioPreset.original,
+            lockAspectRatio: false,
+            aspectRatioPresets: const [
+              CropAspectRatioPreset.original,
+              CropAspectRatioPreset.square,
+              CropAspectRatioPreset.ratio4x3,
+              CropAspectRatioPreset.ratio16x9,
+            ],
+          ),
+          IOSUiSettings(
+            title: 'Crop image',
+            aspectRatioPresets: const [
+              CropAspectRatioPreset.original,
+              CropAspectRatioPreset.square,
+              CropAspectRatioPreset.ratio4x3,
+              CropAspectRatioPreset.ratio16x9,
+            ],
+          ),
+        ],
+      );
+    } catch (_) {
+      cropped = null;
+    }
+
+    if (cropped == null) return;
+
+    final bytes = await File(cropped.path).readAsBytes();
+    if (bytes.isEmpty) return;
 
     const maxBytes = 4 * 1024 * 1024;
     if (bytes.length > maxBytes) {
@@ -55,26 +139,11 @@ class _AiScreenState extends State<AiScreen> {
       return;
     }
 
+    if (!mounted) return;
     setState(() {
       _pendingImage = bytes;
-      _pendingImageMime = _mimeFromName(file.name, file.extension);
+      _pendingImageMime = 'image/jpeg';
     });
-  }
-
-  String _mimeFromName(String name, String? extension) {
-    final ext = (extension ?? name.split('.').last).toLowerCase();
-    switch (ext) {
-      case 'png':
-        return 'image/png';
-      case 'gif':
-        return 'image/gif';
-      case 'webp':
-        return 'image/webp';
-      case 'jpg':
-      case 'jpeg':
-      default:
-        return 'image/jpeg';
-    }
   }
 
   Future<void> _send() async {
@@ -195,7 +264,8 @@ class _AiScreenState extends State<AiScreen> {
             accent: accent,
             isDark: isDark,
             pendingImage: _pendingImage,
-            onAttach: _pickImage,
+            onTakePhoto: _takePhoto,
+            onBrowseFiles: _browseFiles,
             onClearImage: () {
               setState(() {
                 _pendingImage = null;
@@ -243,7 +313,7 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Ask a question or attach an image from your notes, slides, or a diagram.',
+              'Ask a question, snap a photo of your notes, or attach an image.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 15,
@@ -383,7 +453,8 @@ class _Composer extends StatelessWidget {
     required this.accent,
     required this.isDark,
     required this.pendingImage,
-    required this.onAttach,
+    required this.onTakePhoto,
+    required this.onBrowseFiles,
     required this.onClearImage,
     required this.onSend,
   });
@@ -393,7 +464,8 @@ class _Composer extends StatelessWidget {
   final Color accent;
   final bool isDark;
   final Uint8List? pendingImage;
-  final VoidCallback onAttach;
+  final VoidCallback onTakePhoto;
+  final VoidCallback onBrowseFiles;
   final VoidCallback onClearImage;
   final VoidCallback onSend;
 
@@ -455,9 +527,9 @@ class _Composer extends StatelessWidget {
             Row(
               children: [
                 IconButton(
-                  tooltip: 'Attach image',
-                  onPressed: isSending ? null : onAttach,
-                  icon: Icon(Icons.image_outlined, color: accent),
+                  tooltip: 'Take photo',
+                  onPressed: isSending ? null : onTakePhoto,
+                  icon: Icon(Icons.photo_camera_outlined, color: accent),
                 ),
                 Expanded(
                   child: TextField(
@@ -469,12 +541,24 @@ class _Composer extends StatelessWidget {
                     onSubmitted: (_) => onSend(),
                     decoration: InputDecoration(
                       hintText: 'Ask a study question…',
+                      prefixIcon: IconButton(
+                        tooltip: 'Browse files',
+                        onPressed: isSending ? null : onBrowseFiles,
+                        icon: Icon(
+                          Icons.content_paste_rounded,
+                          color: accent,
+                        ),
+                      ),
+                      prefixIconConstraints: const BoxConstraints(
+                        minWidth: 44,
+                        minHeight: 44,
+                      ),
                       filled: true,
                       fillColor: isDark
                           ? const Color(0xFF111827)
                           : const Color(0xFFF8FAFC),
                       contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
+                        horizontal: 12,
                         vertical: 12,
                       ),
                       border: OutlineInputBorder(
