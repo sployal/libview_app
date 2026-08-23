@@ -114,23 +114,66 @@ class MainScreen extends StatefulWidget {
   State<MainScreen> createState() => _MainScreenState();
 }
 
+class _NestedNavigatorObserver extends NavigatorObserver {
+  _NestedNavigatorObserver(this.onChanged);
+
+  final VoidCallback onChanged;
+
+  void _notify() => onChanged();
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) => _notify();
+
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) => _notify();
+
+  @override
+  void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) =>
+      _notify();
+
+  @override
+  void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) =>
+      _notify();
+}
+
 class _MainScreenState extends State<MainScreen>
     with TickerProviderStateMixin, WidgetsBindingObserver {
   int _selectedIndex = 0;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
+  final GlobalKey<NavigatorState> _homeNavigatorKey =
+      GlobalKey<NavigatorState>();
+  late final NavigatorObserver _homeNavObserver;
 
-  final List<Widget> _screens = [
-    const HomeScreen(),
-    const SemestersScreen(),
-    const AiScreen(),
-    const DownloadsScreen(),
-    const ProfileScreen(),
-  ];
+  List<Widget> get _screens => [
+        Navigator(
+          key: _homeNavigatorKey,
+          observers: [_homeNavObserver],
+          onGenerateRoute: (settings) {
+            return MaterialPageRoute<void>(
+              settings: settings,
+              builder: (_) => const HomeScreen(),
+            );
+          },
+        ),
+        const SemestersScreen(),
+        const AiScreen(),
+        const DownloadsScreen(),
+        const ProfileScreen(),
+      ];
+
+  bool get _homeNestedCanPop =>
+      _selectedIndex == 0 &&
+      (_homeNavigatorKey.currentState?.canPop() ?? false);
 
   @override
   void initState() {
     super.initState();
+    _homeNavObserver = _NestedNavigatorObserver(() {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() {});
+      });
+    });
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
@@ -169,65 +212,79 @@ class _MainScreenState extends State<MainScreen>
         HapticFeedback.lightImpact();
         return true;
       },
-      child: Scaffold(
-      body: FadeTransition(
-        opacity: _fadeAnimation,
-        child: IndexedStack(
-          index: _selectedIndex,
-          children: _screens,
+      child: PopScope(
+        canPop: !_homeNestedCanPop,
+        onPopInvokedWithResult: (didPop, result) {
+          if (didPop) return;
+          _homeNavigatorKey.currentState?.maybePop();
+        },
+        child: Scaffold(
+          body: FadeTransition(
+            opacity: _fadeAnimation,
+            child: IndexedStack(
+              index: _selectedIndex,
+              children: _screens,
+            ),
+          ),
+          bottomNavigationBar: Container(
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF1F2937) : Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: isDark
+                      ? Colors.black.withOpacity(0.3)
+                      : Colors.black.withOpacity(0.1),
+                  blurRadius: 20,
+                  offset: const Offset(0, -5),
+                ),
+              ],
+            ),
+            child: BottomNavigationBar(
+              currentIndex: _selectedIndex,
+              onTap: (index) {
+                if (index == _selectedIndex && index == 0) {
+                  _homeNavigatorKey.currentState
+                      ?.popUntil((route) => route.isFirst);
+                  return;
+                }
+                setState(() {
+                  _selectedIndex = index;
+                });
+                HapticFeedback.lightImpact();
+              },
+              type: BottomNavigationBarType.fixed,
+              backgroundColor: Colors.transparent,
+              selectedItemColor:
+                  isDark ? const Color(0xFF818CF8) : const Color(0xFF6366F1),
+              unselectedItemColor:
+                  isDark ? const Color(0xFF6B7280) : const Color(0xFF9CA3AF),
+              elevation: 0,
+              items: const [
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.home_rounded),
+                  label: 'Home',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.school_rounded),
+                  label: 'Semesters',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.auto_awesome_rounded),
+                  label: 'AI',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.download_rounded),
+                  label: 'Downloads',
+                ),
+                BottomNavigationBarItem(
+                  icon: Icon(Icons.person_rounded),
+                  label: 'Profile',
+                ),
+              ],
+            ),
+          ),
         ),
       ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1F2937) : Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: isDark 
-                ? Colors.black.withOpacity(0.3)
-                : Colors.black.withOpacity(0.1),
-              blurRadius: 20,
-              offset: const Offset(0, -5),
-            ),
-          ],
-        ),
-        child: BottomNavigationBar(
-          currentIndex: _selectedIndex,
-          onTap: (index) {
-            setState(() {
-              _selectedIndex = index;
-            });
-            HapticFeedback.lightImpact();
-          },
-          type: BottomNavigationBarType.fixed,
-          backgroundColor: Colors.transparent,
-          selectedItemColor: isDark ? const Color(0xFF818CF8) : const Color(0xFF6366F1),
-          unselectedItemColor: isDark ? const Color(0xFF6B7280) : const Color(0xFF9CA3AF),
-          elevation: 0,
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home_rounded),
-              label: 'Home',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.school_rounded),
-              label: 'Semesters',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.auto_awesome_rounded),
-              label: 'AI',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.download_rounded),
-              label: 'Downloads',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person_rounded),
-              label: 'Profile',
-            ),
-          ],
-        ),
-      ),
-    ),
     );
   }
 }
