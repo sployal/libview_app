@@ -252,45 +252,6 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
     }
   }
 
-  Future<void> _clearAllDownloads() async {
-    if (downloads.isEmpty) return;
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Clear All Downloads'),
-        content: const Text('Are you sure you want to delete all downloads?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(
-              foregroundColor: const Color(0xFFEF4444),
-            ),
-            child: const Text('Clear All'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true) {
-      await DownloadService.clearAllDownloads();
-      _loadDownloads();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('All downloads cleared'),
-            backgroundColor: Color(0xFF10B981),
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    }
-  }
-
   Color _getFileColor(String type) {
     switch (type) {
       case 'PDF':
@@ -646,12 +607,6 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
               ),
               onPressed: _toggleFilesView,
             ),
-            if (downloads.isNotEmpty)
-              IconButton(
-                icon: const Icon(Icons.delete_sweep_rounded),
-                onPressed: _clearAllDownloads,
-                tooltip: 'Clear all',
-              ),
             IconButton(
               icon: const Icon(Icons.refresh_rounded),
               onPressed: _loadDownloads,
