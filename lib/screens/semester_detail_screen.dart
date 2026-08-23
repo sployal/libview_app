@@ -372,8 +372,8 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
 
     final originalExtension = _fileExtension(material.name);
     final name = await _promptFolderName(
-      title: 'Edit file',
-      confirmLabel: 'Save',
+      title: 'Rename file',
+      confirmLabel: 'Rename',
       initial: _fileStem(material.name),
       fieldLabel: 'File name',
       helperText: originalExtension.isEmpty
@@ -949,7 +949,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
       onSelected: (value) {
         Future<void>.delayed(const Duration(milliseconds: 150), () {
           if (!mounted) return;
-          if (value == 'edit') {
+          if (value == 'rename') {
             _renameMaterial(file);
           } else if (value == 'delete') {
             _confirmDelete(file);
@@ -958,12 +958,12 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
       },
       itemBuilder: (context) => const [
         PopupMenuItem(
-          value: 'edit',
+          value: 'rename',
           child: Row(
             children: [
-              Icon(Icons.edit_rounded, size: 18),
+              Icon(Icons.drive_file_rename_outline_rounded, size: 18),
               SizedBox(width: 10),
-              Text('Edit file'),
+              Text('Rename file'),
             ],
           ),
         ),
@@ -1683,7 +1683,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                                                   color: Color(0xFF6366F1),
                                                 ),
                                                 onSelected: (value) {
-                                                  if (value == 'edit') {
+                                                  if (value == 'rename') {
                                                     _renameUnitFolder(subject);
                                                   } else if (value == 'delete') {
                                                     _confirmDeleteUnitFolder(subject);
@@ -1691,15 +1691,15 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                                                 },
                                                 itemBuilder: (context) => const [
                                                   PopupMenuItem(
-                                                    value: 'edit',
+                                                    value: 'rename',
                                                     child: Row(
                                                       children: [
                                                         Icon(
-                                                          Icons.edit_rounded,
+                                                          Icons.drive_file_rename_outline_rounded,
                                                           size: 18,
                                                         ),
                                                         SizedBox(width: 10),
-                                                        Text('Edit'),
+                                                        Text('Rename folder'),
                                                       ],
                                                     ),
                                                   ),
