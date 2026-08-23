@@ -693,17 +693,14 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                     ],
                   ),
                 )
-              : _selectionMode
-                  ? (_useLargeIcons
+              : RefreshIndicator(
+                  onRefresh: _selectionMode ? () async {} : _loadDownloads,
+                  notificationPredicate: (_) => !_selectionMode,
+                  color: const Color(0xFF6366F1),
+                  child: _useLargeIcons
                       ? _buildLargeIconsGrid()
-                      : _buildDetailsList())
-                  : RefreshIndicator(
-                      onRefresh: _loadDownloads,
-                      color: const Color(0xFF6366F1),
-                      child: _useLargeIcons
-                          ? _buildLargeIconsGrid()
-                          : _buildDetailsList(),
-                    ),
+                      : _buildDetailsList(),
+                ),
       ),
     );
   }
