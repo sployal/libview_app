@@ -545,7 +545,7 @@ class _Composer extends StatelessWidget {
                         tooltip: 'Browse files',
                         onPressed: isSending ? null : onBrowseFiles,
                         icon: Icon(
-                          Icons.content_paste_rounded,
+                          Icons.attach_file_rounded,
                           color: accent,
                         ),
                       ),
