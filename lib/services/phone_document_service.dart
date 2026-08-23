@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:open_file/open_file.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:share_plus/share_plus.dart';
 
 class PhoneDocument {
   final String name;
@@ -259,5 +260,77 @@ class PhoneDocumentService {
       path: copied,
       sizeBytes: await file.length(),
     );
+  }
+
+  Future<void> shareDocuments(List<PhoneDocument> documents) async {
+    if (documents.isEmpty) return;
+
+    if (Platform.isAndroid) {
+      try {
+        await _channel.invokeMethod<bool>(
+          'shareDocuments',
+          {
+            'items': documents
+                .map(
+                  (document) => {
+                    'uri': document.uri,
+                    'filePath': document.path,
+                    'fileName': document.name,
+                    'mimeType': document.mime,
+                  },
+                )
+                .toList(),
+          },
+        );
+      } on PlatformException catch (e) {
+        throw Exception(e.message ?? 'Could not share these files');
+      }
+      return;
+    }
+
+    final files = <XFile>[];
+    for (final document in documents) {
+      final path = document.path;
+      if (path != null && path.isNotEmpty && File(path).existsSync()) {
+        files.add(XFile(path, mimeType: document.mime, name: document.name));
+      }
+    }
+    if (files.isEmpty) {
+      throw Exception('Could not share these files');
+    }
+    await Share.shareXFiles(
+      files,
+      text: documents.length == 1
+          ? 'Sharing ${documents.first.name}'
+          : 'Sharing ${documents.length} files',
+    );
+  }
+
+  Future<int> deleteDocuments(List<PhoneDocument> documents) async {
+    var deleted = 0;
+    for (final document in documents) {
+      try {
+        if (Platform.isAndroid) {
+          final ok = await _channel.invokeMethod<bool>(
+            'deleteDocument',
+            {
+              'uri': document.uri,
+              'path': document.path,
+            },
+          );
+          if (ok == true) deleted++;
+        } else {
+          final path = document.path;
+          if (path != null && path.isNotEmpty) {
+            final file = File(path);
+            if (await file.exists()) {
+              await file.delete();
+              deleted++;
+            }
+          }
+        }
+      } catch (_) {}
+    }
+    return deleted;
   }
 }

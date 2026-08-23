@@ -75,6 +75,29 @@ class MainActivity : FlutterActivity() {
                             result.error("OPEN_ERROR", e.message, null)
                         }
                     }
+                    "shareDocuments" -> {
+                        val rawItems = ((call.arguments as? Map<*, *>)?.get("items") as? List<*>)
+                            ?.mapNotNull { entry ->
+                                (entry as? Map<*, *>)?.mapKeys { it.key.toString() }
+                                    ?.mapValues { it.value }
+                            }
+                            ?: emptyList()
+                        try {
+                            shareDownloads(rawItems)
+                            result.success(true)
+                        } catch (e: Exception) {
+                            result.error("SHARE_ERROR", e.message, null)
+                        }
+                    }
+                    "deleteDocument" -> {
+                        val uri = call.argument<String>("uri")
+                        val path = call.argument<String>("path")
+                        try {
+                            result.success(deleteDownload(uri, path))
+                        } catch (e: Exception) {
+                            result.error("DELETE_ERROR", e.message, null)
+                        }
+                    }
                     "documentThumbnail" -> {
                         val uri = call.argument<String>("uri")
                         val path = call.argument<String>("path")

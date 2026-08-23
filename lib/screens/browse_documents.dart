@@ -30,6 +30,9 @@ class _BrowseDocumentsScreenState extends State<BrowseDocumentsScreen>
   String _query = '';
   String _kindFilter = 'All';
   String? _openingKey;
+  final Map<String, PhoneDocument> _selected = {};
+
+  bool get _selectionMode => _selected.isNotEmpty;
 
   @override
   void initState() {
@@ -64,7 +67,10 @@ class _BrowseDocumentsScreenState extends State<BrowseDocumentsScreen>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed && !_isLoading && !_isOpening) {
+    if (state == AppLifecycleState.resumed &&
+        !_isLoading &&
+        !_isOpening &&
+        !_selectionMode) {
       _loadDocuments(requestPermission: false);
     }
   }
@@ -86,6 +92,8 @@ class _BrowseDocumentsScreenState extends State<BrowseDocumentsScreen>
         _hasAllFilesAccess = hasAll;
         _documents = documents;
         _isLoading = false;
+        final keys = documents.map((doc) => doc.key).toSet();
+        _selected.removeWhere((key, _) => !keys.contains(key));
       });
     } catch (e) {
       if (!mounted) return;
@@ -109,6 +117,128 @@ class _BrowseDocumentsScreenState extends State<BrowseDocumentsScreen>
           doc.kind.toLowerCase().contains(query) ||
           doc.extension.contains(query);
     }).toList(growable: false);
+  }
+
+  void _clearSelection() {
+    setState(_selected.clear);
+  }
+
+  void _toggleSelected(PhoneDocument document) {
+    final key = document.key;
+    setState(() {
+      if (_selected.containsKey(key)) {
+        _selected.remove(key);
+      } else {
+        _selected[key] = document;
+      }
+    });
+  }
+
+  void _onTap(PhoneDocument document) {
+    if (_isOpening) return;
+    if (_selectionMode) {
+      _toggleSelected(document);
+      return;
+    }
+    _openDocument(document);
+  }
+
+  void _onLongPress(PhoneDocument document) {
+    if (_isOpening) return;
+    _toggleSelected(document);
+  }
+
+  void _selectAll() {
+    final visible = _filtered;
+    setState(() {
+      if (_selected.length == visible.length && visible.isNotEmpty) {
+        _selected.clear();
+        return;
+      }
+      for (final document in visible) {
+        _selected[document.key] = document;
+      }
+    });
+  }
+
+  Future<void> _shareDocuments(List<PhoneDocument> documents) async {
+    if (documents.isEmpty) return;
+    try {
+      await PhoneDocumentService.instance.shareDocuments(documents);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: const Color(0xFFEF4444),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _shareSelected() async {
+    await _shareDocuments(_selected.values.toList());
+  }
+
+  Future<void> _deleteSelected() async {
+    final items = _selected.values.toList();
+    if (items.isEmpty) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(items.length == 1 ? 'Delete file' : 'Delete files'),
+        content: Text(
+          items.length == 1
+              ? 'Are you sure you want to delete "${items.first.name}" from this phone?'
+              : 'Are you sure you want to delete ${items.length} files from this phone?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFFEF4444),
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    final deleted =
+        await PhoneDocumentService.instance.deleteDocuments(items);
+    if (!mounted) return;
+    if (deleted > 0) {
+      _clearSelection();
+      await _loadDocuments(requestPermission: false);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            deleted == 1
+                ? 'Deleted ${items.first.name}'
+                : 'Deleted $deleted files',
+          ),
+          backgroundColor: const Color(0xFF10B981),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not delete these files'),
+          backgroundColor: Color(0xFFEF4444),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   Future<void> _openDocument(PhoneDocument document) async {
@@ -241,10 +371,11 @@ class _BrowseDocumentsScreenState extends State<BrowseDocumentsScreen>
     return timeago.format(DateTime.fromMillisecondsSinceEpoch(modifiedMs));
   }
 
-  BoxDecoration _docCardDecoration() {
+  BoxDecoration _docCardDecoration({bool selected = false}) {
     return BoxDecoration(
-      color: Colors.white,
+      color: selected ? const Color(0xFFEEF2FF) : Colors.white,
       borderRadius: BorderRadius.circular(16),
+      border: selected ? Border.all(color: const Color(0xFF6366F1)) : null,
       boxShadow: [
         BoxShadow(
           color: Colors.black.withValues(alpha: 0.04),
@@ -263,6 +394,7 @@ class _BrowseDocumentsScreenState extends State<BrowseDocumentsScreen>
         final doc = filtered[index];
         final color = _colorFor(doc.kind);
         final opening = _openingKey == doc.key;
+        final selected = _selected.containsKey(doc.key);
         final size = _formatSize(doc.sizeBytes);
         final when = _formatDate(doc.modifiedMs);
         final meta = [
@@ -273,17 +405,20 @@ class _BrowseDocumentsScreenState extends State<BrowseDocumentsScreen>
 
         return Container(
           margin: const EdgeInsets.only(bottom: 10),
-          decoration: _docCardDecoration(),
+          decoration: _docCardDecoration(selected: selected),
           child: ListTile(
-            onTap: _isOpening ? null : () => _openDocument(doc),
+            onTap: _isOpening ? null : () => _onTap(doc),
+            onLongPress: _isOpening ? null : () => _onLongPress(doc),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 14,
               vertical: 6,
             ),
             leading: CircleAvatar(
-              backgroundColor: color.withValues(alpha: 0.12),
-              foregroundColor: color,
-              child: Icon(_iconFor(doc.kind)),
+              backgroundColor: selected
+                  ? const Color(0xFF6366F1)
+                  : color.withValues(alpha: 0.12),
+              foregroundColor: selected ? Colors.white : color,
+              child: Icon(selected ? Icons.check_rounded : _iconFor(doc.kind)),
             ),
             title: Text(
               doc.name,
@@ -306,9 +441,15 @@ class _BrowseDocumentsScreenState extends State<BrowseDocumentsScreen>
                     height: 22,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Icon(
-                    Icons.open_in_new_rounded,
-                    color: Colors.black,
+                : Icon(
+                    selected
+                        ? Icons.check_circle_rounded
+                        : _selectionMode
+                            ? Icons.circle_outlined
+                            : Icons.open_in_new_rounded,
+                    color: selected
+                        ? const Color(0xFF6366F1)
+                        : Colors.black,
                   ),
           ),
         );
@@ -333,13 +474,15 @@ class _BrowseDocumentsScreenState extends State<BrowseDocumentsScreen>
             final doc = filtered[index];
             final color = _colorFor(doc.kind);
             final opening = _openingKey == doc.key;
+            final selected = _selected.containsKey(doc.key);
 
             return Container(
-              decoration: _docCardDecoration(),
+              decoration: _docCardDecoration(selected: selected),
               child: Material(
                 color: Colors.transparent,
                 child: InkWell(
-                  onTap: _isOpening ? null : () => _openDocument(doc),
+                  onTap: _isOpening ? null : () => _onTap(doc),
+                  onLongPress: _isOpening ? null : () => _onLongPress(doc),
                   borderRadius: BorderRadius.circular(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -375,12 +518,18 @@ class _BrowseDocumentsScreenState extends State<BrowseDocumentsScreen>
                                   ),
                                 ),
                               ),
-                            const Positioned(
+                            Positioned(
                               top: 8,
                               right: 8,
                               child: Icon(
-                                Icons.open_in_new_rounded,
-                                color: Colors.black54,
+                                selected
+                                    ? Icons.check_circle_rounded
+                                    : _selectionMode
+                                        ? Icons.circle_outlined
+                                        : Icons.open_in_new_rounded,
+                                color: selected
+                                    ? const Color(0xFF6366F1)
+                                    : Colors.black54,
                               ),
                             ),
                           ],
@@ -414,39 +563,111 @@ class _BrowseDocumentsScreenState extends State<BrowseDocumentsScreen>
   @override
   Widget build(BuildContext context) {
     final filtered = _filtered;
+    final selectedCount = _selected.length;
 
-    return Scaffold(
+    return PopScope(
+      canPop: !_selectionMode,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _clearSelection();
+      },
+      child: Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text(
-          'Browse files',
-          style: TextStyle(
+        leading: _selectionMode
+            ? IconButton(
+                icon: const Icon(Icons.close_rounded),
+                tooltip: 'Cancel',
+                onPressed: _clearSelection,
+              )
+            : null,
+        title: Text(
+          _selectionMode ? '$selectedCount selected' : 'Browse files',
+          style: const TextStyle(
             fontWeight: FontWeight.bold,
             color: Colors.black,
           ),
         ),
         actions: [
-          IconButton(
-            tooltip: _useLargeIcons ? 'Details view' : 'Large icons',
-            icon: Icon(
-              _useLargeIcons
-                  ? Icons.view_list_rounded
-                  : Icons.grid_view_rounded,
+          if (_selectionMode)
+            IconButton(
+              tooltip: selectedCount == filtered.length
+                  ? 'Deselect all'
+                  : 'Select all',
+              icon: Icon(
+                selectedCount == filtered.length && filtered.isNotEmpty
+                    ? Icons.deselect_rounded
+                    : Icons.select_all_rounded,
+              ),
+              onPressed: _selectAll,
+            )
+          else ...[
+            IconButton(
+              tooltip: _useLargeIcons ? 'Details view' : 'Large icons',
+              icon: Icon(
+                _useLargeIcons
+                    ? Icons.view_list_rounded
+                    : Icons.grid_view_rounded,
+              ),
+              onPressed: _toggleFilesView,
             ),
-            onPressed: _toggleFilesView,
-          ),
-          IconButton(
-            tooltip: 'Open from Files',
-            onPressed: _isOpening ? null : _browseWithPicker,
-            icon: const Icon(Icons.folder_open_rounded),
-          ),
-          IconButton(
-            tooltip: 'Refresh',
-            onPressed: _isLoading ? null : () => _loadDocuments(),
-            icon: const Icon(Icons.refresh_rounded),
-          ),
+            IconButton(
+              tooltip: 'Open from Files',
+              onPressed: _isOpening ? null : _browseWithPicker,
+              icon: const Icon(Icons.folder_open_rounded),
+            ),
+            IconButton(
+              tooltip: 'Refresh',
+              onPressed: _isLoading ? null : () => _loadDocuments(),
+              icon: const Icon(Icons.refresh_rounded),
+            ),
+          ],
         ],
       ),
+      bottomNavigationBar: _selectionMode
+          ? SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: _shareSelected,
+                        icon: const Icon(Icons.share_rounded),
+                        label: Text(
+                          selectedCount == 1
+                              ? 'Share'
+                              : 'Share $selectedCount',
+                        ),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF6366F1),
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size.fromHeight(48),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: _deleteSelected,
+                        icon: const Icon(Icons.delete_rounded),
+                        label: Text(
+                          selectedCount == 1
+                              ? 'Delete'
+                              : 'Delete $selectedCount',
+                        ),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFFEF4444),
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size.fromHeight(48),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : null,
       body: Column(
         children: [
           Padding(
@@ -596,7 +817,10 @@ class _BrowseDocumentsScreenState extends State<BrowseDocumentsScreen>
                             onAction: _browseWithPicker,
                           )
                         : RefreshIndicator(
-                            onRefresh: () => _loadDocuments(),
+                            onRefresh: _selectionMode
+                                ? () async {}
+                                : () => _loadDocuments(),
+                            notificationPredicate: (_) => !_selectionMode,
                             child: _useLargeIcons
                                 ? _buildLargeIconsGrid(filtered)
                                 : _buildDetailsList(filtered),
@@ -604,6 +828,7 @@ class _BrowseDocumentsScreenState extends State<BrowseDocumentsScreen>
           ),
         ],
       ),
+    ),
     );
   }
 }
