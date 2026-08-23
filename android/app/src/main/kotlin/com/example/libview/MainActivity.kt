@@ -5,6 +5,7 @@ import android.content.ContentValues
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Color
 import android.graphics.pdf.PdfRenderer
 import android.net.Uri
@@ -583,8 +584,6 @@ class MainActivity : FlutterActivity() {
     ): String? {
         val name = fileName ?: path ?: return null
         val ext = name.substringAfterLast('.', "").lowercase(Locale.US)
-        if (ext != "pdf") return null
-
         val keySource = (path ?: uriString ?: name) + ":$modifiedMs"
         val cacheName = "thumb_${keySource.hashCode().toUInt()}.jpg"
         val dest = File(File(cacheDir, "doc_thumbs"), cacheName)
@@ -593,8 +592,22 @@ class MainActivity : FlutterActivity() {
         }
         dest.parentFile?.mkdirs()
 
+        val bitmap = when (ext) {
+            "pdf" -> renderPdfThumbnail(uriString, path)
+            "jpg", "jpeg", "png", "gif", "webp", "bmp" -> renderImageThumbnail(uriString, path)
+            else -> null
+        } ?: return null
+
+        dest.outputStream().use { output ->
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 80, output)
+        }
+        bitmap.recycle()
+        return if (dest.exists() && dest.length() > 0) dest.absolutePath else null
+    }
+
+    private fun renderPdfThumbnail(uriString: String?, path: String?): Bitmap? {
         val pfd = openDocumentDescriptor(uriString, path) ?: return null
-        pfd.use { descriptor ->
+        return pfd.use { descriptor ->
             PdfRenderer(descriptor).use { renderer ->
                 if (renderer.pageCount < 1) return null
                 renderer.openPage(0).use { page ->
@@ -605,14 +618,50 @@ class MainActivity : FlutterActivity() {
                     val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
                     bitmap.eraseColor(Color.WHITE)
                     page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-                    dest.outputStream().use { output ->
-                        bitmap.compress(Bitmap.CompressFormat.JPEG, 80, output)
-                    }
-                    bitmap.recycle()
+                    bitmap
                 }
             }
         }
-        return if (dest.exists() && dest.length() > 0) dest.absolutePath else null
+    }
+
+    private fun renderImageThumbnail(uriString: String?, path: String?): Bitmap? {
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        decodeImage(uriString, path, bounds)
+        val srcWidth = bounds.outWidth.coerceAtLeast(1)
+        val srcHeight = bounds.outHeight.coerceAtLeast(1)
+        val maxSize = 400
+        var sample = 1
+        while (srcWidth / sample > maxSize * 2 || srcHeight / sample > maxSize * 2) {
+            sample *= 2
+        }
+        val options = BitmapFactory.Options().apply { inSampleSize = sample }
+        val decoded = decodeImage(uriString, path, options) ?: return null
+        val scale = maxSize.toFloat() / maxOf(decoded.width, decoded.height).coerceAtLeast(1)
+        if (scale >= 1f) return decoded
+        val width = (decoded.width * scale).toInt().coerceAtLeast(1)
+        val height = (decoded.height * scale).toInt().coerceAtLeast(1)
+        val scaled = Bitmap.createScaledBitmap(decoded, width, height, true)
+        if (scaled != decoded) decoded.recycle()
+        return scaled
+    }
+
+    private fun decodeImage(
+        uriString: String?,
+        path: String?,
+        options: BitmapFactory.Options,
+    ): Bitmap? {
+        if (!path.isNullOrBlank()) {
+            val file = File(path)
+            if (file.exists()) {
+                return BitmapFactory.decodeFile(file.absolutePath, options)
+            }
+        }
+        if (!uriString.isNullOrBlank()) {
+            return contentResolver.openInputStream(Uri.parse(uriString))?.use { input ->
+                BitmapFactory.decodeStream(input, null, options)
+            }
+        }
+        return null
     }
 
     private fun openDocumentDescriptor(

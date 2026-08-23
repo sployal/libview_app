@@ -1,5 +1,9 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../services/download_service.dart';
+import '../services/phone_document_service.dart';
 import 'package:share_plus/share_plus.dart';
 
 class DownloadsScreen extends StatefulWidget {
@@ -10,14 +14,34 @@ class DownloadsScreen extends StatefulWidget {
 }
 
 class _DownloadsScreenState extends State<DownloadsScreen> {
+  static const _filesViewPrefKey = 'downloads_view_large_icons';
+
   List<DownloadItem> downloads = [];
   bool isLoading = true;
+  bool _useLargeIcons = false;
 
   @override
   void initState() {
     super.initState();
     DownloadService.listVersion.addListener(_onDownloadsChanged);
+    _loadFilesViewPreference();
     _loadDownloads(showSpinner: true);
+  }
+
+  Future<void> _loadFilesViewPreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      _useLargeIcons = prefs.getBool(_filesViewPrefKey) ?? false;
+    });
+  }
+
+  Future<void> _toggleFilesView() async {
+    setState(() {
+      _useLargeIcons = !_useLargeIcons;
+    });
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_filesViewPrefKey, _useLargeIcons);
   }
 
   @override
@@ -208,6 +232,246 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
     }
   }
 
+  BoxDecoration _fileCardDecoration() {
+    return BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.05),
+          blurRadius: 10,
+          offset: const Offset(0, 2),
+        ),
+      ],
+    );
+  }
+
+  Widget _overflowMenu(DownloadItem download) {
+    return PopupMenuButton<String>(
+      tooltip: 'File options',
+      padding: EdgeInsets.zero,
+      icon: const Icon(
+        Icons.more_vert_rounded,
+        color: Color(0xFF9CA3AF),
+      ),
+      onSelected: (value) {
+        switch (value) {
+          case 'open':
+            _openFile(download);
+            break;
+          case 'share':
+            _shareFile(download);
+            break;
+          case 'delete':
+            _deleteDownload(download);
+            break;
+        }
+      },
+      itemBuilder: (context) => [
+        const PopupMenuItem(
+          value: 'open',
+          child: Row(
+            children: [
+              Icon(Icons.open_in_new_rounded, size: 18),
+              SizedBox(width: 12),
+              Text('Open'),
+            ],
+          ),
+        ),
+        const PopupMenuItem(
+          value: 'share',
+          child: Row(
+            children: [
+              Icon(Icons.share_rounded, size: 18, color: Color(0xFF6366F1)),
+              SizedBox(width: 12),
+              Text(
+                'Share',
+                style: TextStyle(color: Color(0xFF6366F1)),
+              ),
+            ],
+          ),
+        ),
+        const PopupMenuItem(
+          value: 'delete',
+          child: Row(
+            children: [
+              Icon(Icons.delete_rounded, size: 18, color: Colors.red),
+              SizedBox(width: 12),
+              Text(
+                'Delete',
+                style: TextStyle(color: Colors.red),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDetailsList() {
+    return ListView.builder(
+      padding: const EdgeInsets.all(20),
+      itemCount: downloads.length,
+      itemBuilder: (context, index) {
+        final download = downloads[index];
+        final fileColor = _getFileColor(download.type);
+        final fileIcon = _getFileIcon(download.type);
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: _fileCardDecoration(),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => _openFile(download),
+              borderRadius: BorderRadius.circular(16),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: fileColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        fileIcon,
+                        color: fileColor,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            download.name,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF1F2937),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${download.subject} • ${DownloadService.formatFileSize(download.size)} • ${DownloadService.formatDate(download.date)}',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              color: Color(0xFF6B7280),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    _overflowMenu(download),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildLargeIconsGrid() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final crossAxisCount = constraints.maxWidth >= 720 ? 3 : 2;
+        return GridView.builder(
+          padding: const EdgeInsets.all(20),
+          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: crossAxisCount,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            childAspectRatio: 0.72,
+          ),
+          itemCount: downloads.length,
+          itemBuilder: (context, index) {
+            final download = downloads[index];
+            final fileColor = _getFileColor(download.type);
+            final fileIcon = _getFileIcon(download.type);
+
+            return Container(
+              decoration: _fileCardDecoration(),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => _openFile(download),
+                  borderRadius: BorderRadius.circular(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Expanded(
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            ClipRRect(
+                              borderRadius: const BorderRadius.vertical(
+                                top: Radius.circular(16),
+                              ),
+                              child: _DownloadPreview(
+                                key: ValueKey(
+                                  '${download.filePath}:${download.contentUri}',
+                                ),
+                                download: download,
+                                color: fileColor,
+                                icon: fileIcon,
+                              ),
+                            ),
+                            Positioned(
+                              top: 0,
+                              right: 0,
+                              child: _overflowMenu(download),
+                            ),
+                          ],
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
+                        child: Column(
+                          children: [
+                            Text(
+                              download.name,
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF1F2937),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              DownloadService.formatFileSize(download.size),
+                              textAlign: TextAlign.center,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF6B7280),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -218,6 +482,15 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
+          IconButton(
+            tooltip: _useLargeIcons ? 'Details view' : 'Large icons',
+            icon: Icon(
+              _useLargeIcons
+                  ? Icons.view_list_rounded
+                  : Icons.grid_view_rounded,
+            ),
+            onPressed: _toggleFilesView,
+          ),
           if (downloads.isNotEmpty)
             IconButton(
               icon: const Icon(Icons.delete_sweep_rounded),
@@ -270,143 +543,96 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
               : RefreshIndicator(
                   onRefresh: _loadDownloads,
                   color: const Color(0xFF6366F1),
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(20),
-                    itemCount: downloads.length,
-                    itemBuilder: (context, index) {
-                      final download = downloads[index];
-                      final fileColor = _getFileColor(download.type);
-                      final fileIcon = _getFileIcon(download.type);
-
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: 10,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () => _openFile(download),
-                            borderRadius: BorderRadius.circular(16),
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 48,
-                                    height: 48,
-                                    decoration: BoxDecoration(
-                                      color: fileColor.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Icon(
-                                      fileIcon,
-                                      color: fileColor,
-                                      size: 24,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          download.name,
-                                          style: const TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w600,
-                                            color: Color(0xFF1F2937),
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          '${download.subject} • ${DownloadService.formatFileSize(download.size)} • ${DownloadService.formatDate(download.date)}',
-                                          style: const TextStyle(
-                                            fontSize: 14,
-                                            color: Color(0xFF6B7280),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  PopupMenuButton<String>(
-                                    icon: const Icon(
-                                      Icons.more_vert_rounded,
-                                      color: Color(0xFF9CA3AF),
-                                    ),
-                                    onSelected: (value) {
-                                      switch (value) {
-                                        case 'open':
-                                          _openFile(download);
-                                          break;
-                                        case 'share':
-                                          _shareFile(download);
-                                          break;
-                                        case 'delete':
-                                          _deleteDownload(download);
-                                          break;
-                                      }
-                                    },
-                                    itemBuilder: (context) => [
-                                      const PopupMenuItem(
-                                        value: 'open',
-                                        child: Row(
-                                          children: [
-                                            Icon(Icons.open_in_new_rounded,
-                                                size: 18),
-                                            SizedBox(width: 12),
-                                            Text('Open'),
-                                          ],
-                                        ),
-                                      ),
-                                      const PopupMenuItem(
-                                        value: 'share',
-                                        child: Row(
-                                          children: [
-                                            Icon(Icons.share_rounded,
-                                                size: 18, color: Color(0xFF6366F1)),
-                                            SizedBox(width: 12),
-                                            Text('Share',
-                                                style: TextStyle(
-                                                    color: Color(0xFF6366F1))),
-                                          ],
-                                        ),
-                                      ),
-                                      const PopupMenuItem(
-                                        value: 'delete',
-                                        child: Row(
-                                          children: [
-                                            Icon(Icons.delete_rounded,
-                                                size: 18, color: Colors.red),
-                                            SizedBox(width: 12),
-                                            Text('Delete',
-                                                style: TextStyle(
-                                                    color: Colors.red)),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
+                  child: _useLargeIcons
+                      ? _buildLargeIconsGrid()
+                      : _buildDetailsList(),
                 ),
+    );
+  }
+}
+
+class _DownloadPreview extends StatefulWidget {
+  final DownloadItem download;
+  final Color color;
+  final IconData icon;
+
+  const _DownloadPreview({
+    super.key,
+    required this.download,
+    required this.color,
+    required this.icon,
+  });
+
+  @override
+  State<_DownloadPreview> createState() => _DownloadPreviewState();
+}
+
+class _DownloadPreviewState extends State<_DownloadPreview> {
+  String? _thumbnailPath;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadThumbnail();
+  }
+
+  @override
+  void didUpdateWidget(covariant _DownloadPreview oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.download.filePath != widget.download.filePath ||
+        oldWidget.download.contentUri != widget.download.contentUri) {
+      _thumbnailPath = null;
+      _loadThumbnail();
+    }
+  }
+
+  Future<void> _loadThumbnail() async {
+    final download = widget.download;
+    final localPath = download.filePath;
+    if (download.type == 'IMG' &&
+        localPath.isNotEmpty &&
+        File(localPath).existsSync()) {
+      if (!mounted) return;
+      setState(() => _thumbnailPath = localPath);
+      return;
+    }
+
+    final path = await PhoneDocumentService.instance.thumbnailPathFor(
+      key: '${download.filePath}:${download.contentUri}:${download.date}',
+      fileName: download.name,
+      path: localPath.isEmpty ? null : localPath,
+      uri: download.contentUri,
+      modifiedMs: DateTime.tryParse(download.date)?.millisecondsSinceEpoch ?? 0,
+    );
+    if (!mounted) return;
+    setState(() => _thumbnailPath = path);
+  }
+
+  Widget _fallback() {
+    return ColoredBox(
+      color: widget.color.withOpacity(0.1),
+      child: Center(
+        child: Icon(
+          widget.icon,
+          color: widget.color,
+          size: 56,
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final path = _thumbnailPath;
+    if (path == null || path.isEmpty) {
+      return _fallback();
+    }
+    return Image.file(
+      File(path),
+      fit: BoxFit.cover,
+      width: double.infinity,
+      height: double.infinity,
+      errorBuilder: (_, __, ___) => _fallback(),
     );
   }
 }

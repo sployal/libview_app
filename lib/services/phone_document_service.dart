@@ -123,24 +123,52 @@ class PhoneDocumentService {
 
   final Map<String, String?> _thumbnailCache = {};
 
-  Future<String?> thumbnailPath(PhoneDocument document) async {
-    final key = document.key;
+  static const _thumbnailExtensions = {
+    'pdf',
+    'jpg',
+    'jpeg',
+    'png',
+    'gif',
+    'webp',
+    'bmp',
+  };
+
+  Future<String?> thumbnailPath(PhoneDocument document) {
+    return thumbnailPathFor(
+      key: document.key,
+      fileName: document.name,
+      path: document.path,
+      uri: document.uri,
+      modifiedMs: document.modifiedMs,
+    );
+  }
+
+  Future<String?> thumbnailPathFor({
+    required String key,
+    required String fileName,
+    String? path,
+    String? uri,
+    int modifiedMs = 0,
+  }) async {
     if (_thumbnailCache.containsKey(key)) {
       return _thumbnailCache[key];
     }
-    if (document.extension != 'pdf' || !Platform.isAndroid) {
+    final ext = fileName.contains('.')
+        ? fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase()
+        : '';
+    if (!Platform.isAndroid || !_thumbnailExtensions.contains(ext)) {
       _thumbnailCache[key] = null;
       return null;
     }
 
     try {
-      final path = await _channel.invokeMethod<String>('documentThumbnail', {
-        'uri': document.uri,
-        'path': document.path,
-        'fileName': document.name,
-        'modifiedMs': document.modifiedMs,
+      final thumb = await _channel.invokeMethod<String>('documentThumbnail', {
+        'uri': uri,
+        'path': path,
+        'fileName': fileName,
+        'modifiedMs': modifiedMs,
       });
-      final resolved = (path == null || path.isEmpty) ? null : path;
+      final resolved = (thumb == null || thumb.isEmpty) ? null : thumb;
       _thumbnailCache[key] = resolved;
       return resolved;
     } catch (_) {
