@@ -370,11 +370,15 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
       return;
     }
 
+    final originalExtension = _fileExtension(material.name);
     final name = await _promptFolderName(
       title: 'Edit file',
       confirmLabel: 'Save',
-      initial: material.name,
+      initial: _fileStem(material.name),
       fieldLabel: 'File name',
+      helperText: originalExtension.isEmpty
+          ? null
+          : 'The $originalExtension extension is kept automatically.',
     );
     if (name == null) return;
 
@@ -473,6 +477,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     required String confirmLabel,
     String initial = '',
     String fieldLabel = 'Folder name',
+    String? helperText,
   }) async {
     final result = await showDialog<String>(
       context: context,
@@ -484,6 +489,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
           confirmLabel: confirmLabel,
           initial: initial,
           fieldLabel: fieldLabel,
+          helperText: helperText,
         );
       },
     );
@@ -491,17 +497,27 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     return result;
   }
 
+  String _fileExtension(String name) {
+    final trimmed = name.trim();
+    final dot = trimmed.lastIndexOf('.');
+    if (dot <= 0 || dot == trimmed.length - 1) return '';
+    final extension = trimmed.substring(dot);
+    final suffix = extension.substring(1);
+    if (suffix.contains(' ') || suffix.length > 8) return '';
+    return extension;
+  }
+
+  String _fileStem(String name) {
+    final trimmed = name.trim();
+    final extension = _fileExtension(trimmed);
+    if (extension.isEmpty) return trimmed;
+    return trimmed.substring(0, trimmed.length - extension.length);
+  }
+
   String _fileNameWithExtension(String nextName, String originalName) {
-    final trimmed = nextName.trim();
-    final originalDot = originalName.lastIndexOf('.');
-    if (originalDot <= 0 || originalDot == originalName.length - 1) {
-      return trimmed;
-    }
-    final extension = originalName.substring(originalDot);
-    if (trimmed.toLowerCase().endsWith(extension.toLowerCase())) {
-      return trimmed;
-    }
-    return '$trimmed$extension';
+    final extension = _fileExtension(originalName);
+    if (extension.isEmpty) return nextName.trim();
+    return '${_fileStem(nextName)}$extension';
   }
 
   Future<void> _createUnitFolder() async {
@@ -1870,12 +1886,14 @@ class _FolderNameDialog extends StatefulWidget {
   final String confirmLabel;
   final String initial;
   final String fieldLabel;
+  final String? helperText;
 
   const _FolderNameDialog({
     required this.title,
     required this.confirmLabel,
     this.initial = '',
     this.fieldLabel = 'Folder name',
+    this.helperText,
   });
 
   @override
@@ -1918,6 +1936,7 @@ class _FolderNameDialogState extends State<_FolderNameDialog> {
         decoration: InputDecoration(
           hintText: 'e.g. CS101 Data Structures',
           labelText: widget.fieldLabel,
+          helperText: widget.helperText,
         ),
         onSubmitted: (_) => _submit(),
       ),
