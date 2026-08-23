@@ -622,16 +622,16 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                 child: Row(
                   children: [
                     Expanded(
-                      child: OutlinedButton.icon(
+                      child: FilledButton.icon(
                         onPressed: _shareSelected,
                         icon: const Icon(Icons.share_rounded),
                         label: Text(
                           selectedCount == 1 ? 'Share' : 'Share $selectedCount',
                         ),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFF6366F1),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF6366F1),
+                          foregroundColor: Colors.white,
                           minimumSize: const Size.fromHeight(48),
-                          side: const BorderSide(color: Color(0xFF6366F1)),
                         ),
                       ),
                     ),
