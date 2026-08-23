@@ -6,12 +6,14 @@ class WebViewScreen extends StatefulWidget {
   final String url;
   final String title;
   final String? subject;
+  final VoidCallback? onBack;
 
   const WebViewScreen({
     super.key,
     required this.url,
     required this.title,
     this.subject,
+    this.onBack,
   });
 
   @override
@@ -246,11 +248,23 @@ class _WebViewScreenState extends State<WebViewScreen> {
     }
   }
 
+  void _handleBack() {
+    if (widget.onBack != null) {
+      widget.onBack!();
+      return;
+    }
+    Navigator.maybePop(context);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: _handleBack,
+        ),
         title: Text(
           widget.title,
           style: const TextStyle(fontWeight: FontWeight.bold),

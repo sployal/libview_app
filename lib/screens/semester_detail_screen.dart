@@ -31,6 +31,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
   String? errorMessage;
   
   Subject? selectedSubject;
+  StudyMaterial? openedMaterial;
   List<StudyMaterial> currentFiles = [];
   bool isLoadingFiles = false;
   
@@ -185,16 +186,15 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
       return;
     }
 
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => WebViewScreen(
-          url: material.downloadUrl!,
-          title: material.name,
-          subject: selectedSubject?.name ?? 'Unknown',
-        ),
-      ),
-    );
+    setState(() {
+      openedMaterial = material;
+    });
+  }
+
+  void _closeWebView() {
+    setState(() {
+      openedMaterial = null;
+    });
   }
 
   // NEW: Extract file ID from Google Drive URL
@@ -795,6 +795,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
 
   void _backToSubjects() {
     setState(() {
+      openedMaterial = null;
       selectedSubject = null;
       currentFiles = [];
       downloadingFiles.clear();
@@ -811,6 +812,10 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
   }
 
   Future<void> _onSystemBack() async {
+    if (openedMaterial != null) {
+      _closeWebView();
+      return;
+    }
     if (selectedSubject != null) {
       _backToSubjects();
       return;
@@ -1194,12 +1199,22 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: widget.onBack == null && selectedSubject == null,
+      canPop: widget.onBack == null && selectedSubject == null && openedMaterial == null,
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
         _onSystemBack();
       },
-      child: selectedSubject != null ? _buildFilesView() : _buildSubjectsView(),
+      child: openedMaterial != null
+          ? WebViewScreen(
+              key: ValueKey(openedMaterial!.id),
+              url: openedMaterial!.downloadUrl!,
+              title: openedMaterial!.name,
+              subject: selectedSubject?.name ?? 'Unknown',
+              onBack: _closeWebView,
+            )
+          : selectedSubject != null
+              ? _buildFilesView()
+              : _buildSubjectsView(),
     );
   }
 
