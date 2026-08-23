@@ -22,6 +22,7 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import java.io.File
 import java.io.FileInputStream
+import java.io.InputStream
 import java.util.Locale
 import kotlin.concurrent.thread
 
@@ -595,6 +596,8 @@ class MainActivity : FlutterActivity() {
         val bitmap = when (ext) {
             "pdf" -> renderPdfThumbnail(uriString, path)
             "jpg", "jpeg", "png", "gif", "webp", "bmp" -> renderImageThumbnail(uriString, path)
+            "docx", "docm", "xlsx", "xlsm", "pptx", "pptm", "ppsx", "ppsm" ->
+                renderOfficeThumbnail(uriString, path, ext)
             else -> null
         } ?: return null
 
@@ -603,6 +606,46 @@ class MainActivity : FlutterActivity() {
         }
         bitmap.recycle()
         return if (dest.exists() && dest.length() > 0) dest.absolutePath else null
+    }
+
+    private fun renderOfficeThumbnail(uriString: String?, path: String?, ext: String): Bitmap? {
+        var temp: File? = null
+        val file = if (!path.isNullOrBlank() && File(path).exists()) {
+            File(path)
+        } else {
+            val input = openDocumentStream(uriString, path) ?: return null
+            val copy = File(cacheDir, "office_thumb_${System.nanoTime()}.tmp")
+            try {
+                input.use { source ->
+                    copy.outputStream().use { source.copyTo(it) }
+                }
+            } catch (_: Exception) {
+                copy.delete()
+                return null
+            }
+            temp = copy
+            copy
+        }
+        return try {
+            OfficeThumbnailRenderer.render(file, ext)
+        } catch (_: Exception) {
+            null
+        } finally {
+            temp?.delete()
+        }
+    }
+
+    private fun openDocumentStream(uriString: String?, path: String?): InputStream? {
+        if (!path.isNullOrBlank()) {
+            val file = File(path)
+            if (file.exists()) {
+                return FileInputStream(file)
+            }
+        }
+        if (!uriString.isNullOrBlank()) {
+            return contentResolver.openInputStream(Uri.parse(uriString))
+        }
+        return null
     }
 
     private fun renderPdfThumbnail(uriString: String?, path: String?): Bitmap? {

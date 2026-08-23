@@ -131,6 +131,14 @@ class PhoneDocumentService {
     'gif',
     'webp',
     'bmp',
+    'docx',
+    'docm',
+    'xlsx',
+    'xlsm',
+    'pptx',
+    'pptm',
+    'ppsx',
+    'ppsm',
   };
 
   Future<String?> thumbnailPath(PhoneDocument document) {
