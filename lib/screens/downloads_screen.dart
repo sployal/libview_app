@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/download_service.dart';
 import '../services/phone_document_service.dart';
-import 'package:share_plus/share_plus.dart';
 
 class DownloadsScreen extends StatefulWidget {
   const DownloadsScreen({super.key});
@@ -17,8 +16,16 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
   static const _filesViewPrefKey = 'downloads_view_large_icons';
 
   List<DownloadItem> downloads = [];
+  final Map<String, DownloadItem> _selected = {};
   bool isLoading = true;
   bool _useLargeIcons = false;
+
+  bool get _selectionMode => _selected.isNotEmpty;
+
+  String _keyFor(DownloadItem item) {
+    if (item.filePath.isNotEmpty) return item.filePath;
+    return item.contentUri ?? item.name;
+  }
 
   @override
   void initState() {
@@ -67,6 +74,47 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
     setState(() {
       downloads = loadedDownloads;
       isLoading = false;
+      final keys = loadedDownloads.map(_keyFor).toSet();
+      _selected.removeWhere((key, _) => !keys.contains(key));
+    });
+  }
+
+  void _clearSelection() {
+    setState(_selected.clear);
+  }
+
+  void _toggleSelected(DownloadItem download) {
+    final key = _keyFor(download);
+    setState(() {
+      if (_selected.containsKey(key)) {
+        _selected.remove(key);
+      } else {
+        _selected[key] = download;
+      }
+    });
+  }
+
+  void _onTap(DownloadItem download) {
+    if (_selectionMode) {
+      _toggleSelected(download);
+      return;
+    }
+    _openFile(download);
+  }
+
+  void _onLongPress(DownloadItem download) {
+    _toggleSelected(download);
+  }
+
+  void _selectAll() {
+    setState(() {
+      if (_selected.length == downloads.length) {
+        _selected.clear();
+        return;
+      }
+      for (final download in downloads) {
+        _selected[_keyFor(download)] = download;
+      }
     });
   }
 
@@ -89,19 +137,17 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
     }
   }
 
-  // NEW: Share file function
-  Future<void> _shareFile(DownloadItem download) async {
+  Future<void> _shareFiles(List<DownloadItem> items) async {
+    if (items.isEmpty) return;
     try {
-      await DownloadService.requestStoragePermission(forOpening: true);
-      await Share.shareXFiles(
-        [XFile(download.contentUri ?? download.filePath)],
-        text: 'Sharing ${download.name}',
-      );
+      await DownloadService.shareDownloads(items);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error sharing file: $e'),
+            content: Text(
+              e.toString().replaceFirst('Exception: ', ''),
+            ),
             backgroundColor: const Color(0xFFEF4444),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
@@ -111,6 +157,12 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
         );
       }
     }
+  }
+
+  Future<void> _shareFile(DownloadItem download) => _shareFiles([download]);
+
+  Future<void> _shareSelected() async {
+    await _shareFiles(_selected.values.toList());
   }
 
   Future<void> _deleteDownload(DownloadItem download) async {
@@ -136,25 +188,66 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
     );
 
     if (confirmed == true) {
-      final success = await DownloadService.deleteDownload(
-        download.filePath,
-        contentUri: download.contentUri,
-      );
-      
-      if (success) {
-        _loadDownloads();
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Deleted ${download.name}'),
-              backgroundColor: const Color(0xFF10B981),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
+      await _deleteItems([download], snackbar: 'Deleted ${download.name}');
+    }
+  }
+
+  Future<void> _deleteSelected() async {
+    final items = _selected.values.toList();
+    if (items.isEmpty) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(items.length == 1 ? 'Delete Download' : 'Delete Downloads'),
+        content: Text(
+          items.length == 1
+              ? 'Are you sure you want to delete "${items.first.name}"?'
+              : 'Are you sure you want to delete ${items.length} files?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFFEF4444),
             ),
-          );
-        }
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      final label = items.length == 1
+          ? 'Deleted ${items.first.name}'
+          : 'Deleted ${items.length} files';
+      await _deleteItems(items, snackbar: label);
+    }
+  }
+
+  Future<void> _deleteItems(
+    List<DownloadItem> items, {
+    required String snackbar,
+  }) async {
+    final deleted = await DownloadService.deleteDownloads(items);
+    if (deleted > 0) {
+      _clearSelection();
+      await _loadDownloads();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(snackbar),
+            backgroundColor: const Color(0xFF10B981),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
       }
     }
   }
@@ -232,10 +325,11 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
     }
   }
 
-  BoxDecoration _fileCardDecoration() {
+  BoxDecoration _fileCardDecoration({bool selected = false}) {
     return BoxDecoration(
-      color: Colors.white,
+      color: selected ? const Color(0xFFEEF2FF) : Colors.white,
       borderRadius: BorderRadius.circular(16),
+      border: selected ? Border.all(color: const Color(0xFF6366F1)) : null,
       boxShadow: [
         BoxShadow(
           color: Colors.black.withOpacity(0.05),
@@ -316,14 +410,16 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
         final download = downloads[index];
         final fileColor = _getFileColor(download.type);
         final fileIcon = _getFileIcon(download.type);
+        final selected = _selected.containsKey(_keyFor(download));
 
         return Container(
           margin: const EdgeInsets.only(bottom: 12),
-          decoration: _fileCardDecoration(),
+          decoration: _fileCardDecoration(selected: selected),
           child: Material(
             color: Colors.transparent,
             child: InkWell(
-              onTap: () => _openFile(download),
+              onTap: () => _onTap(download),
+              onLongPress: () => _onLongPress(download),
               borderRadius: BorderRadius.circular(16),
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -333,12 +429,14 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                       width: 48,
                       height: 48,
                       decoration: BoxDecoration(
-                        color: fileColor.withOpacity(0.1),
+                        color: selected
+                            ? const Color(0xFF6366F1)
+                            : fileColor.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
-                        fileIcon,
-                        color: fileColor,
+                        selected ? Icons.check_rounded : fileIcon,
+                        color: selected ? Colors.white : fileColor,
                         size: 24,
                       ),
                     ),
@@ -368,7 +466,16 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                         ],
                       ),
                     ),
-                    _overflowMenu(download),
+                    if (!_selectionMode) _overflowMenu(download),
+                    if (_selectionMode)
+                      Icon(
+                        selected
+                            ? Icons.check_circle_rounded
+                            : Icons.circle_outlined,
+                        color: selected
+                            ? const Color(0xFF6366F1)
+                            : const Color(0xFF9CA3AF),
+                      ),
                   ],
                 ),
               ),
@@ -396,13 +503,15 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
             final download = downloads[index];
             final fileColor = _getFileColor(download.type);
             final fileIcon = _getFileIcon(download.type);
+            final selected = _selected.containsKey(_keyFor(download));
 
             return Container(
-              decoration: _fileCardDecoration(),
+              decoration: _fileCardDecoration(selected: selected),
               child: Material(
                 color: Colors.transparent,
                 child: InkWell(
-                  onTap: () => _openFile(download),
+                  onTap: () => _onTap(download),
+                  onLongPress: () => _onLongPress(download),
                   borderRadius: BorderRadius.circular(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -427,7 +536,25 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                             Positioned(
                               top: 0,
                               right: 0,
-                              child: _overflowMenu(download),
+                              child: _selectionMode
+                                  ? Padding(
+                                      padding: const EdgeInsets.all(8),
+                                      child: Icon(
+                                        selected
+                                            ? Icons.check_circle_rounded
+                                            : Icons.circle_outlined,
+                                        color: selected
+                                            ? const Color(0xFF6366F1)
+                                            : Colors.white,
+                                        shadows: const [
+                                          Shadow(
+                                            color: Colors.black26,
+                                            blurRadius: 6,
+                                          ),
+                                        ],
+                                      ),
+                                    )
+                                  : _overflowMenu(download),
                             ),
                           ],
                         ),
@@ -474,36 +601,107 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    final selectedCount = _selected.length;
+
+    return PopScope(
+      canPop: !_selectionMode,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _clearSelection();
+      },
+      child: Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text(
-          'Downloads',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        leading: _selectionMode
+            ? IconButton(
+                icon: const Icon(Icons.close_rounded),
+                tooltip: 'Cancel',
+                onPressed: _clearSelection,
+              )
+            : null,
+        title: Text(
+          _selectionMode ? '$selectedCount selected' : 'Downloads',
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
-          IconButton(
-            tooltip: _useLargeIcons ? 'Details view' : 'Large icons',
-            icon: Icon(
-              _useLargeIcons
-                  ? Icons.view_list_rounded
-                  : Icons.grid_view_rounded,
-            ),
-            onPressed: _toggleFilesView,
-          ),
-          if (downloads.isNotEmpty)
+          if (_selectionMode) ...[
             IconButton(
-              icon: const Icon(Icons.delete_sweep_rounded),
-              onPressed: _clearAllDownloads,
-              tooltip: 'Clear all',
+              tooltip: selectedCount == downloads.length
+                  ? 'Deselect all'
+                  : 'Select all',
+              icon: Icon(
+                selectedCount == downloads.length
+                    ? Icons.deselect_rounded
+                    : Icons.select_all_rounded,
+              ),
+              onPressed: _selectAll,
             ),
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            onPressed: _loadDownloads,
-            tooltip: 'Refresh',
-          ),
+          ] else ...[
+            IconButton(
+              tooltip: _useLargeIcons ? 'Details view' : 'Large icons',
+              icon: Icon(
+                _useLargeIcons
+                    ? Icons.view_list_rounded
+                    : Icons.grid_view_rounded,
+              ),
+              onPressed: _toggleFilesView,
+            ),
+            if (downloads.isNotEmpty)
+              IconButton(
+                icon: const Icon(Icons.delete_sweep_rounded),
+                onPressed: _clearAllDownloads,
+                tooltip: 'Clear all',
+              ),
+            IconButton(
+              icon: const Icon(Icons.refresh_rounded),
+              onPressed: _loadDownloads,
+              tooltip: 'Refresh',
+            ),
+          ],
         ],
       ),
+      bottomNavigationBar: _selectionMode
+          ? SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _shareSelected,
+                        icon: const Icon(Icons.share_rounded),
+                        label: Text(
+                          selectedCount == 1 ? 'Share' : 'Share $selectedCount',
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFF6366F1),
+                          minimumSize: const Size.fromHeight(48),
+                          side: const BorderSide(color: Color(0xFF6366F1)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: _deleteSelected,
+                        icon: const Icon(Icons.delete_rounded),
+                        label: Text(
+                          selectedCount == 1
+                              ? 'Delete'
+                              : 'Delete $selectedCount',
+                        ),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFFEF4444),
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size.fromHeight(48),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : null,
       body: isLoading
           ? const Center(
               child: CircularProgressIndicator(
@@ -540,13 +738,18 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                     ],
                   ),
                 )
-              : RefreshIndicator(
-                  onRefresh: _loadDownloads,
-                  color: const Color(0xFF6366F1),
-                  child: _useLargeIcons
+              : _selectionMode
+                  ? (_useLargeIcons
                       ? _buildLargeIconsGrid()
-                      : _buildDetailsList(),
-                ),
+                      : _buildDetailsList())
+                  : RefreshIndicator(
+                      onRefresh: _loadDownloads,
+                      color: const Color(0xFF6366F1),
+                      child: _useLargeIcons
+                          ? _buildLargeIconsGrid()
+                          : _buildDetailsList(),
+                    ),
+      ),
     );
   }
 }

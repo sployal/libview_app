@@ -10,6 +10,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:open_file/open_file.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:share_plus/share_plus.dart';
 
 class DownloadService {
   static final Dio _dio = Dio();
@@ -341,15 +342,33 @@ class DownloadService {
       
       // Filter out files that no longer exist
       final validDownloads = <DownloadItem>[];
+      var metadataChanged = false;
       for (var json in downloads) {
-        final item = DownloadItem.fromJson(json);
-        if (await _downloadExists(item)) {
-          validDownloads.add(item);
+        var item = DownloadItem.fromJson(json);
+        if (!await _downloadExists(item)) {
+          metadataChanged = true;
+          continue;
         }
+        if (Platform.isAndroid &&
+            (item.contentUri == null || item.contentUri!.isEmpty)) {
+          final resolvedUri = await _resolveContentUri(item);
+          if (resolvedUri != null && resolvedUri.isNotEmpty) {
+            item = DownloadItem(
+              name: item.name,
+              subject: item.subject,
+              size: item.size,
+              filePath: item.filePath,
+              contentUri: resolvedUri,
+              date: item.date,
+              type: item.type,
+            );
+            metadataChanged = true;
+          }
+        }
+        validDownloads.add(item);
       }
       
-      // Update the list if files were removed
-      if (validDownloads.length != downloads.length) {
+      if (metadataChanged) {
         await prefs.setString(
           'downloads',
           json.encode(validDownloads.map((e) => e.toJson()).toList()),
@@ -380,6 +399,21 @@ class DownloadService {
     return File(item.filePath).exists();
   }
 
+  static Future<String?> _resolveContentUri(DownloadItem item) async {
+    try {
+      return await _downloadsChannel.invokeMethod<String>(
+        'resolveDownload',
+        {
+          'uri': item.contentUri,
+          'filePath': item.filePath,
+          'fileName': item.name,
+        },
+      );
+    } catch (_) {
+      return null;
+    }
+  }
+
   static Future<void> openDownloadedFile(DownloadItem item) async {
     final hasPermission = await requestStoragePermission(forOpening: true);
     if (!hasPermission) {
@@ -407,6 +441,45 @@ class DownloadService {
     if (result.type != ResultType.done) {
       throw Exception(result.message);
     }
+  }
+
+  static Future<void> shareDownloads(List<DownloadItem> items) async {
+    if (items.isEmpty) return;
+
+    final hasPermission = await requestStoragePermission(forOpening: true);
+    if (!hasPermission) {
+      throw Exception('Storage permission is needed to share this file');
+    }
+
+    if (Platform.isAndroid) {
+      try {
+        await _downloadsChannel.invokeMethod<bool>(
+          'shareDownloads',
+          {
+            'items': items
+                .map(
+                  (item) => {
+                    'uri': item.contentUri,
+                    'filePath': item.filePath,
+                    'fileName': item.name,
+                    'mimeType': _getMimeType(item.name),
+                  },
+                )
+                .toList(),
+          },
+        );
+      } on PlatformException catch (e) {
+        throw Exception(e.message ?? 'Could not share these files');
+      }
+      return;
+    }
+
+    await Share.shareXFiles(
+      items.map((item) => XFile(item.filePath)).toList(),
+      text: items.length == 1
+          ? 'Sharing ${items.first.name}'
+          : 'Sharing ${items.length} files',
+    );
   }
 
   // Delete download
@@ -446,6 +519,22 @@ class DownloadService {
       print('Error deleting download: $e');
       return false;
     }
+  }
+
+  static Future<int> deleteDownloads(List<DownloadItem> items) async {
+    var deleted = 0;
+    for (final item in items) {
+      final success = await deleteDownload(
+        item.filePath,
+        contentUri: item.contentUri,
+        notify: false,
+      );
+      if (success) deleted++;
+    }
+    if (deleted > 0) {
+      _notifyListChanged();
+    }
+    return deleted;
   }
   
   static Future<_SavedDownload> _saveToPublicDownloads({

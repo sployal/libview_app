@@ -98,6 +98,7 @@ class MainActivity : FlutterActivity() {
                     when (call.method) {
                         "saveToDownloads" -> {
                             val sourcePath = call.argument<String>("sourcePath")
+                                ?: call.argument<String>("sourcePath")
                             val fileName = call.argument<String>("fileName")
                             val mimeType = call.argument<String>("mimeType") ?: "application/octet-stream"
                             if (sourcePath.isNullOrBlank() || fileName.isNullOrBlank()) {
@@ -114,7 +115,7 @@ class MainActivity : FlutterActivity() {
                             openDownload(uri, filePath, fileName, mimeType)
                             result.success(true)
                         }
-                        "deleteDownload" -> {
+                        "deleteDownload", "deleteDownload" -> {
                             val uri = call.argument<String>("uri")
                             val filePath = call.argument<String>("filePath")
                             result.success(deleteDownload(uri, filePath))
@@ -124,6 +125,22 @@ class MainActivity : FlutterActivity() {
                             val filePath = call.argument<String>("filePath")
                             val fileName = call.argument<String>("fileName")
                             result.success(downloadExists(uri, filePath, fileName))
+                        }
+                        "shareDownloads" -> {
+                            val rawItems = ((call.arguments as? Map<*, *>)?.get("items") as? List<*>)
+                                ?.mapNotNull { entry ->
+                                    (entry as? Map<*, *>)?.mapKeys { it.key.toString() }
+                                        ?.mapValues { it.value }
+                                }
+                                ?: emptyList()
+                            shareDownloads(rawItems)
+                            result.success(true)
+                        }
+                        "resolveDownload" -> {
+                            val uri = call.argument<String>("uri")
+                            val filePath = call.argument<String>("filePath")
+                            val fileName = call.argument<String>("fileName")
+                            result.success(resolveUri(uri, filePath, fileName)?.toString())
                         }
                         else -> result.notImplemented()
                     }
@@ -203,6 +220,121 @@ class MainActivity : FlutterActivity() {
         startActivity(chooser)
     }
 
+    private fun shareDownloads(rawItems: List<Map<String, Any?>>) {
+        val uris = ArrayList<Uri>()
+        val mimeTypes = LinkedHashSet<String>()
+
+        for (item in rawItems) {
+            val uri = shareableUri(
+                item["uri"] as? String,
+                item["filePath"] as? String,
+                item["fileName"] as? String,
+            ) ?: continue
+            uris.add(uri)
+            mimeTypes.add((item["mimeType"] as? String).orEmpty().ifBlank { "*/*" })
+        }
+
+        if (uris.isEmpty()) {
+            throw Exception("Could not share these files")
+        }
+
+        val shareType = if (mimeTypes.size == 1) mimeTypes.first() else "*/*"
+        val shareIntent = if (uris.size == 1) {
+            Intent(Intent.ACTION_SEND).apply {
+                type = shareType
+                putExtra(Intent.EXTRA_STREAM, uris[0])
+                clipData = android.content.ClipData.newRawUri(uris[0].lastPathSegment, uris[0])
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+        } else {
+            val clip = android.content.ClipData.newRawUri(uris[0].lastPathSegment, uris[0])
+            for (i in 1 until uris.size) {
+                clip.addItem(android.content.ClipData.Item(uris[i]))
+            }
+            Intent(Intent.ACTION_SEND_MULTIPLE).apply {
+                type = shareType
+                putParcelableArrayListExtra(Intent.EXTRA_STREAM, uris)
+                clipData = clip
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+        }
+
+        val matches = packageManager.queryIntentActivities(shareIntent, PackageManager.MATCH_DEFAULT_ONLY)
+        for (info in matches) {
+            for (uri in uris) {
+                grantUriPermission(
+                    info.activityInfo.packageName,
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION,
+                )
+            }
+        }
+
+        val chooser = Intent.createChooser(shareIntent, "Share")
+        chooser.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        chooser.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        startActivity(chooser)
+    }
+
+    private fun shareableUri(uriString: String?, filePath: String?, fileName: String?): Uri? {
+        val cached = copyDownloadToCache(uriString, filePath, fileName) ?: return null
+        return FileProvider.getUriForFile(
+            this,
+            "${applicationContext.packageName}.fileprovider",
+            cached,
+        )
+    }
+
+    private fun copyDownloadToCache(uriString: String?, filePath: String?, fileName: String?): File? {
+        val safeName = (fileName ?: "file").replace(Regex("[\\\\/:*?\"<>|]"), "_")
+        val dest = File(cacheDir, "share_${System.currentTimeMillis()}_$safeName")
+
+        fun copyFromFile(source: File): File? {
+            return try {
+                if (source.exists() && source.canRead() && source.length() > 0) {
+                    source.copyTo(dest, overwrite = true)
+                    dest
+                } else {
+                    null
+                }
+            } catch (_: Exception) {
+                null
+            }
+        }
+
+        fun copyFromUri(uri: Uri): File? {
+            return try {
+                contentResolver.openInputStream(uri)?.use { input ->
+                    dest.outputStream().use { output -> input.copyTo(output) }
+                }
+                if (dest.exists() && dest.length() > 0) dest else null
+            } catch (_: Exception) {
+                dest.delete()
+                null
+            }
+        }
+
+        if (!filePath.isNullOrBlank()) {
+            copyFromFile(File(filePath))?.let { return it }
+        }
+
+        if (!uriString.isNullOrBlank() && uriString.startsWith("content://")) {
+            copyFromUri(Uri.parse(uriString))?.let { return it }
+        }
+
+        resolveMediaStoreUri(fileName, filePath)?.let { uri ->
+            copyFromUri(uri)?.let { return it }
+        }
+
+        if (!fileName.isNullOrBlank()) {
+            val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+            copyFromFile(File(downloadsDir, fileName))?.let { return it }
+        }
+
+        dest.delete()
+        return null
+    }
+
     private fun deleteDownload(uriString: String?, filePath: String?): Boolean {
         var deleted = false
         if (!uriString.isNullOrBlank() && uriString.startsWith("content://")) {
@@ -232,7 +364,7 @@ class MainActivity : FlutterActivity() {
         if (!filePath.isNullOrBlank() && File(filePath).exists()) {
             return true
         }
-        return resolveMediaStoreUri(fileName) != null
+        return resolveMediaStoreUri(fileName, filePath) != null
     }
 
     private fun resolveUri(uriString: String?, filePath: String?, fileName: String?): Uri? {
@@ -243,7 +375,7 @@ class MainActivity : FlutterActivity() {
             }
         }
 
-        resolveMediaStoreUri(fileName)?.let { return it }
+        resolveMediaStoreUri(fileName, filePath)?.let { return it }
 
         if (!filePath.isNullOrBlank()) {
             val file = File(filePath)
@@ -266,26 +398,49 @@ class MainActivity : FlutterActivity() {
         }
     }
 
-    private fun resolveMediaStoreUri(fileName: String?): Uri? {
-        if (fileName.isNullOrBlank() || Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+    private fun resolveMediaStoreUri(fileName: String?, filePath: String? = null): Uri? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
             return null
         }
-        contentResolver.query(
+
+        val collections = listOf(
             MediaStore.Downloads.EXTERNAL_CONTENT_URI,
-            arrayOf(MediaStore.Downloads._ID),
-            "${MediaStore.Downloads.DISPLAY_NAME}=?",
-            arrayOf(fileName),
-            "${MediaStore.Downloads.DATE_ADDED} DESC",
-        )?.use { cursor ->
-            if (cursor.moveToFirst()) {
-                val id = cursor.getLong(0)
-                val uri = ContentUris.withAppendedId(MediaStore.Downloads.EXTERNAL_CONTENT_URI, id)
-                if (canRead(uri)) {
-                    return uri
-                }
+            MediaStore.Files.getContentUri("external"),
+        )
+
+        for (collection in collections) {
+            if (!filePath.isNullOrBlank()) {
+                queryMediaStoreId(collection, "${MediaStore.MediaColumns.DATA}=?", arrayOf(filePath))
+                    ?.let { return it }
+            }
+            if (!fileName.isNullOrBlank()) {
+                queryMediaStoreId(
+                    collection,
+                    "${MediaStore.MediaColumns.DISPLAY_NAME}=?",
+                    arrayOf(fileName),
+                )?.let { return it }
             }
         }
         return null
+    }
+
+    private fun queryMediaStoreId(collection: Uri, selection: String, args: Array<String>): Uri? {
+        return try {
+            contentResolver.query(
+                collection,
+                arrayOf(MediaStore.MediaColumns._ID),
+                selection,
+                args,
+                "${MediaStore.MediaColumns.DATE_ADDED} DESC",
+            )?.use { cursor ->
+                if (!cursor.moveToFirst()) return@use null
+                val id = cursor.getLong(0)
+                val uri = ContentUris.withAppendedId(collection, id)
+                if (canRead(uri)) uri else null
+            }
+        } catch (_: Exception) {
+            null
+        }
     }
 
     @Suppress("DEPRECATION")
