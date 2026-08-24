@@ -1,6 +1,7 @@
 require('dotenv').config();
 
 const path = require('path');
+const https = require('https');
 const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
@@ -653,6 +654,162 @@ const upload = multer({
 // --- Health check -----------------------------------------------------
 
 app.get('/health', (req, res) => res.json({ ok: true, driveConfigured: driveIsConfigured() }));
+
+// --- Weather (OpenWeather; API key stays on the server) ---------------
+
+const OPENWEATHER_API_KEY = process.env.OPENWEATHER_API_KEY || '';
+const DEFAULT_WEATHER_LOCATION = {
+  name: 'Nairobi',
+  country: 'KE',
+  lat: -1.286389,
+  lon: 36.817223,
+};
+const weatherCache = new Map();
+const WEATHER_CACHE_TTL_MS = 5 * 60 * 1000;
+
+function httpsGetJson(url) {
+  return new Promise((resolve, reject) => {
+    https
+      .get(url, (incoming) => {
+        let raw = '';
+        incoming.on('data', (chunk) => {
+          raw += chunk;
+        });
+        incoming.on('end', () => {
+          try {
+            const json = JSON.parse(raw || '{}');
+            if (incoming.statusCode >= 400) {
+              const err = new Error(json.message || `OpenWeather ${incoming.statusCode}`);
+              err.statusCode = incoming.statusCode;
+              return reject(err);
+            }
+            resolve(json);
+          } catch (err) {
+            reject(err);
+          }
+        });
+      })
+      .on('error', reject);
+  });
+}
+
+function cacheGet(key) {
+  const hit = weatherCache.get(key);
+  if (!hit) return null;
+  if (Date.now() - hit.at > WEATHER_CACHE_TTL_MS) {
+    weatherCache.delete(key);
+    return null;
+  }
+  return hit.value;
+}
+
+function cacheSet(key, value) {
+  weatherCache.set(key, { at: Date.now(), value });
+}
+
+function friendlyCondition(weather) {
+  const main = String(weather?.main || '').toLowerCase();
+  const icon = String(weather?.icon || '');
+  const isDay = icon.endsWith('d');
+  if (main === 'clear') return isDay ? 'Sunny' : 'Clear';
+  if (main === 'clouds') return weather?.id === 801 ? 'Partly cloudy' : 'Cloudy';
+  if (main === 'rain') return 'Rainy';
+  if (main === 'drizzle') return 'Drizzle';
+  if (main === 'thunderstorm') return 'Stormy';
+  if (main === 'snow') return 'Snowy';
+  if (main === 'mist' || main === 'fog' || main === 'haze' || main === 'smoke') {
+    return 'Misty';
+  }
+  const description = String(weather?.description || '').trim();
+  if (!description) return 'Unknown';
+  return description.charAt(0).toUpperCase() + description.slice(1);
+}
+
+function requireOpenWeather(_req, res, next) {
+  if (!OPENWEATHER_API_KEY) {
+    return res.status(503).json({
+      error: 'Weather is not configured. Set OPENWEATHER_API_KEY on the server.',
+    });
+  }
+  return next();
+}
+
+app.get('/weather', requireAuth, requireOpenWeather, async (req, res) => {
+  try {
+    let lat = Number.parseFloat(String(req.query.lat || ''));
+    let lon = Number.parseFloat(String(req.query.lon || ''));
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+      lat = DEFAULT_WEATHER_LOCATION.lat;
+      lon = DEFAULT_WEATHER_LOCATION.lon;
+    }
+
+    const cacheKey = `weather:${lat.toFixed(3)},${lon.toFixed(3)}`;
+    const cached = cacheGet(cacheKey);
+    if (cached) return res.json(cached);
+
+    const url =
+      'https://api.openweathermap.org/data/2.5/weather' +
+      `?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lon)}` +
+      `&units=metric&appid=${encodeURIComponent(OPENWEATHER_API_KEY)}`;
+    const data = await httpsGetJson(url);
+    const weather = (data.weather && data.weather[0]) || {};
+    const payload = {
+      city: data.name || DEFAULT_WEATHER_LOCATION.name,
+      country: (data.sys && data.sys.country) || DEFAULT_WEATHER_LOCATION.country,
+      lat: data.coord?.lat ?? lat,
+      lon: data.coord?.lon ?? lon,
+      tempC: Math.round(Number(data.main?.temp ?? 0)),
+      condition: friendlyCondition(weather),
+      icon: weather.icon || '01d',
+    };
+    cacheSet(cacheKey, payload);
+    return res.json(payload);
+  } catch (err) {
+    console.error('Weather fetch failed:', err.message);
+    return res.status(502).json({ error: 'Could not load weather right now.' });
+  }
+});
+
+app.get('/weather/locations', requireAuth, requireOpenWeather, async (req, res) => {
+  try {
+    const query = String(req.query.q || '').trim();
+    if (query.length < 2) {
+      return res.json({
+        locations: [
+          {
+            name: DEFAULT_WEATHER_LOCATION.name,
+            country: DEFAULT_WEATHER_LOCATION.country,
+            state: null,
+            lat: DEFAULT_WEATHER_LOCATION.lat,
+            lon: DEFAULT_WEATHER_LOCATION.lon,
+          },
+        ],
+      });
+    }
+
+    const cacheKey = `geo:${query.toLowerCase()}`;
+    const cached = cacheGet(cacheKey);
+    if (cached) return res.json(cached);
+
+    const url =
+      'https://api.openweathermap.org/geo/1.0/direct' +
+      `?q=${encodeURIComponent(query)}&limit=8&appid=${encodeURIComponent(OPENWEATHER_API_KEY)}`;
+    const results = await httpsGetJson(url);
+    const locations = (Array.isArray(results) ? results : []).map((item) => ({
+      name: item.name,
+      country: item.country || '',
+      state: item.state || null,
+      lat: item.lat,
+      lon: item.lon,
+    }));
+    const payload = { locations };
+    cacheSet(cacheKey, payload);
+    return res.json(payload);
+  } catch (err) {
+    console.error('Weather location search failed:', err.message);
+    return res.status(502).json({ error: 'Could not search locations right now.' });
+  }
+});
 
 // --- Drive account quota + Edupal / course folder usage (system admin) ---
 

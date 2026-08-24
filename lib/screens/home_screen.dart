@@ -9,6 +9,7 @@ import '../services/auth_service.dart';
 import '../services/download_service.dart';
 import '../services/notification_service.dart';
 import '../services/streak_service.dart';
+import '../services/weather_service.dart';
 import 'browse_documents.dart';
 import 'downloads_screen.dart';
 import 'notifications_screen.dart';
@@ -42,6 +43,8 @@ class _HomeScreenState extends State<HomeScreen>
   late DateTime _visibleMonth;
   late DateTime _selectedDay;
   String? _firstName;
+  WeatherSnapshot? _weather;
+  bool _weatherLoading = true;
 
   static const _weekdayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
   static const _monthNames = [
@@ -136,7 +139,62 @@ class _HomeScreenState extends State<HomeScreen>
       _loadDownloads(),
       _recordAndLoadStreak(),
       _loadGreetingName(),
+      _loadWeather(),
     ]);
+  }
+
+  Future<void> _loadWeather() async {
+    try {
+      final weather = await WeatherService.instance.currentWeather();
+      if (!mounted) return;
+      setState(() {
+        _weather = weather;
+        _weatherLoading = false;
+      });
+    } catch (e) {
+      debugPrint('Error loading weather: $e');
+      if (!mounted) return;
+      setState(() {
+        _weatherLoading = false;
+      });
+    }
+  }
+
+  Future<void> _openWeatherLocation() async {
+    HapticFeedback.selectionClick();
+    final selected = await showModalBottomSheet<WeatherPlace>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => const _WeatherLocationSheet(),
+    );
+    if (selected == null || !mounted) return;
+    await WeatherService.instance.saveLocation(
+      city: selected.name,
+      country: selected.country,
+      lat: selected.lat,
+      lon: selected.lon,
+    );
+    setState(() {
+      _weatherLoading = true;
+    });
+    try {
+      final weather = await WeatherService.instance.currentWeather(
+        lat: selected.lat,
+        lon: selected.lon,
+      );
+      if (!mounted) return;
+      setState(() {
+        _weather = weather;
+        _weatherLoading = false;
+      });
+    } catch (e) {
+      debugPrint('Error loading weather: $e');
+      if (!mounted) return;
+      setState(() {
+        _weatherLoading = false;
+      });
+    }
   }
 
   Future<void> _loadGreetingName() async {
@@ -403,47 +461,60 @@ class _HomeScreenState extends State<HomeScreen>
     Color card,
     bool isDark,
   ) {
-    return Row(
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Wrap(
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 8,
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 8,
+                    children: [
+                      Text(
+                        _greetingTitle(),
+                        style: TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.6,
+                          height: 1.15,
+                          color: titleColor,
+                        ),
+                      ),
+                      _GreetingSkyIcon(hour: DateTime.now().hour),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
                   Text(
-                    _greetingTitle(),
+                    _greetingSubtitle(),
                     style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: -0.6,
-                      height: 1.15,
-                      color: titleColor,
+                      fontSize: 15,
+                      height: 1.35,
+                      color: muted,
                     ),
                   ),
-                  _GreetingSkyIcon(hour: DateTime.now().hour),
                 ],
               ),
-              const SizedBox(height: 6),
-              Text(
-                _greetingSubtitle(),
-                style: TextStyle(
-                  fontSize: 15,
-                  height: 1.35,
-                  color: muted,
-                ),
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(width: 12),
+            _NotificationButton(
+              count: unreadNotificationCount,
+              isDark: isDark,
+              onTap: _openNotifications,
+            ),
+          ],
         ),
-        const SizedBox(width: 12),
-        _NotificationButton(
-          count: unreadNotificationCount,
+        const SizedBox(height: 12),
+        _WeatherChip(
+          weather: _weather,
+          loading: _weatherLoading,
           isDark: isDark,
-          onTap: _openNotifications,
+          muted: muted,
+          onTap: _openWeatherLocation,
         ),
       ],
     );
@@ -1091,6 +1162,291 @@ class _HomeScreenState extends State<HomeScreen>
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _WeatherChip extends StatelessWidget {
+  const _WeatherChip({
+    required this.weather,
+    required this.loading,
+    required this.isDark,
+    required this.muted,
+    required this.onTap,
+  });
+
+  final WeatherSnapshot? weather;
+  final bool loading;
+  final bool isDark;
+  final Color muted;
+  final VoidCallback onTap;
+
+  IconData get _icon {
+    final code = weather?.icon ?? '';
+    if (code.startsWith('01')) return Icons.wb_sunny_rounded;
+    if (code.startsWith('02')) return Icons.wb_cloudy_rounded;
+    if (code.startsWith('03') || code.startsWith('04')) {
+      return Icons.cloud_rounded;
+    }
+    if (code.startsWith('09') || code.startsWith('10')) {
+      return Icons.umbrella_rounded;
+    }
+    if (code.startsWith('11')) return Icons.thunderstorm_rounded;
+    if (code.startsWith('13')) return Icons.ac_unit_rounded;
+    if (code.startsWith('50')) return Icons.blur_on_rounded;
+    return Icons.wb_sunny_rounded;
+  }
+
+  Color get _iconColor {
+    final code = weather?.icon ?? '01d';
+    if (code.startsWith('01')) return const Color(0xFFF59E0B);
+    if (code.startsWith('11')) return const Color(0xFF6366F1);
+    if (code.startsWith('09') || code.startsWith('10')) {
+      return const Color(0xFF0EA5E9);
+    }
+    if (code.startsWith('13')) return const Color(0xFF38BDF8);
+    return const Color(0xFF64748B);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final titleColor =
+        isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
+    String label;
+    if (loading && weather == null) {
+      label = 'Loading weather…';
+    } else if (weather == null) {
+      label = 'Weather unavailable · tap to set location';
+    } else {
+      label = '${weather!.condition}  ${weather!.tempC}°C';
+    }
+
+    return Material(
+      color: isDark ? const Color(0xFF1F2937) : Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
+              Icon(_icon, color: _iconColor, size: 22),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      label,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: titleColor,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      weather == null
+                          ? 'Default: Nairobi, Kenya'
+                          : '${weather!.city}, ${weather!.country}',
+                      style: TextStyle(fontSize: 12, color: muted),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(Icons.expand_more_rounded, color: muted),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _WeatherLocationSheet extends StatefulWidget {
+  const _WeatherLocationSheet();
+
+  @override
+  State<_WeatherLocationSheet> createState() => _WeatherLocationSheetState();
+}
+
+class _WeatherLocationSheetState extends State<_WeatherLocationSheet> {
+  final _controller = TextEditingController();
+  Timer? _debounce;
+  List<WeatherPlace> _results = const [];
+  bool _searching = false;
+  String? _error;
+  String _currentLabel = 'Nairobi, KE';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCurrent();
+    _search('');
+  }
+
+  Future<void> _loadCurrent() async {
+    final saved = await WeatherService.instance.savedLocation();
+    if (!mounted) return;
+    setState(() {
+      _currentLabel = '${saved.city}, ${saved.country}';
+    });
+  }
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _onQueryChanged(String value) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 350), () {
+      _search(value);
+    });
+  }
+
+  Future<void> _search(String query) async {
+    setState(() {
+      _searching = true;
+      _error = null;
+    });
+    try {
+      final results = await WeatherService.instance.searchLocations(query);
+      if (!mounted) return;
+      setState(() {
+        _results = results;
+        _searching = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _searching = false;
+        _error = e.toString().replaceFirst('Exception: ', '');
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final sheet = isDark ? const Color(0xFF111827) : Colors.white;
+    final titleColor =
+        isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
+    final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
+    final field = isDark ? const Color(0xFF1F2937) : const Color(0xFFF1F5F9);
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: Container(
+        height: MediaQuery.of(context).size.height * 0.62,
+        decoration: BoxDecoration(
+          color: sheet,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          children: [
+            const SizedBox(height: 10),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: muted.withOpacity(0.4),
+                borderRadius: BorderRadius.circular(99),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Weather location',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: titleColor,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: Icon(Icons.close_rounded, color: muted),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Currently $_currentLabel',
+                  style: TextStyle(fontSize: 13, color: muted),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+              child: TextField(
+                controller: _controller,
+                onChanged: _onQueryChanged,
+                textInputAction: TextInputAction.search,
+                decoration: InputDecoration(
+                  hintText: 'Search a city…',
+                  prefixIcon: const Icon(Icons.search_rounded),
+                  filled: true,
+                  fillColor: field,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+            ),
+            if (_searching)
+              const Padding(
+                padding: EdgeInsets.all(20),
+                child: CircularProgressIndicator(),
+              )
+            else if (_error != null)
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Text(_error!, style: TextStyle(color: muted)),
+              )
+            else
+              Expanded(
+                child: ListView.builder(
+                  itemCount: _results.length,
+                  itemBuilder: (context, index) {
+                    final place = _results[index];
+                    return ListTile(
+                      leading: const Icon(
+                        Icons.location_on_rounded,
+                        color: Color(0xFF6366F1),
+                      ),
+                      title: Text(
+                        place.name,
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: titleColor,
+                        ),
+                      ),
+                      subtitle: Text(
+                        place.subtitle.isEmpty ? place.country : place.subtitle,
+                        style: TextStyle(color: muted),
+                      ),
+                      onTap: () => Navigator.pop(context, place),
+                    );
+                  },
+                ),
+              ),
+            const SizedBox(height: 12),
+          ],
         ),
       ),
     );
