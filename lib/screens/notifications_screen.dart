@@ -6,6 +6,7 @@ import 'package:timeago/timeago.dart' as timeago;
 import '../services/auth_service.dart';
 import '../services/course_service.dart';
 import '../services/notification_service.dart';
+import '../ui/adaptive_layout.dart';
 import 'create_notification_screen.dart';
 import 'system_admin_dashboard.dart';
 
@@ -160,18 +161,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (context) => StatefulBuilder(
-        builder: (context, setModalState) => Container(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-            left: 20,
-            right: 20,
-            top: 12,
-          ),
-          decoration: BoxDecoration(
-            color: sheet,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-          ),
-          child: SingleChildScrollView(
+        builder: (context, setModalState) => Padding(
+          padding: EdgeInsets.only(bottom: _sheetBottomInset(context)),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+            decoration: BoxDecoration(
+              color: sheet,
+              borderRadius: BorderRadius.circular(28),
+            ),
+            child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -306,9 +304,23 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               ],
             ),
           ),
+          ),
         ),
       ),
     );
+  }
+
+  /// Lift sheets above [MainScreen]'s nav when this screen is in a nested
+  /// navigator (Home). From Profile the root route already covers the nav.
+  double _sheetBottomInset(BuildContext sheetContext) {
+    final keyboard = MediaQuery.viewInsetsOf(sheetContext).bottom;
+    final host = context;
+    final nested =
+        Navigator.of(host) != Navigator.of(host, rootNavigator: true);
+    final navClearance = nested
+        ? AdaptiveLayout.bottomClearance(host)
+        : MediaQuery.viewPaddingOf(host).bottom;
+    return keyboard > navClearance ? keyboard : navClearance;
   }
 
   InputDecoration _fieldDecoration(String label, Color muted, bool isDark) {
@@ -1034,14 +1046,16 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.86,
-        ),
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(bottom: _sheetBottomInset(context)),
+        child: Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.86,
+          ),
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
         decoration: BoxDecoration(
           color: sheet,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          borderRadius: BorderRadius.circular(28),
         ),
         child: SingleChildScrollView(
           child: Column(
@@ -1194,6 +1208,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               ),
             ],
           ),
+        ),
         ),
       ),
     );
