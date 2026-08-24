@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../services/ai_conversation_store.dart';
 import '../services/ai_service.dart';
 
 class AiScreen extends StatefulWidget {
@@ -21,9 +22,18 @@ class _AiScreenState extends State<AiScreen> {
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
   final List<ChatMessage> _messages = [];
+  final _store = AiConversationStore.instance;
   Uint8List? _pendingImage;
   String? _pendingImageMime;
   bool _isSending = false;
+  late String _conversationId;
+  String _conversationTitle = 'New conversation';
+
+  @override
+  void initState() {
+    super.initState();
+    _conversationId = _store.newId();
+  }
 
   @override
   void dispose() {
@@ -165,6 +175,7 @@ class _AiScreenState extends State<AiScreen> {
     });
     _controller.clear();
     _scrollToBottom();
+    await _persistConversation();
 
     try {
       final reply = await AiService.instance.sendMessage(_messages);
@@ -172,6 +183,7 @@ class _AiScreenState extends State<AiScreen> {
       setState(() {
         _messages.add(ChatMessage(role: 'assistant', text: reply));
       });
+      await _persistConversation();
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -180,6 +192,12 @@ class _AiScreenState extends State<AiScreen> {
         _pendingImage = image;
         _pendingImageMime = imageMime;
       });
+      if (_messages.isEmpty) {
+        await _store.delete(_conversationId);
+      } else {
+        await _persistConversation();
+      }
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(e.toString().replaceFirst('Exception: ', '')),
@@ -209,12 +227,117 @@ class _AiScreenState extends State<AiScreen> {
     });
   }
 
-  void _clearChat() {
+  Future<void> _persistConversation() async {
+    if (_messages.isEmpty) return;
+    final saved = await _store.save(
+      id: _conversationId,
+      messages: List<ChatMessage>.from(_messages),
+    );
+    if (!mounted) return;
+    setState(() {
+      _conversationTitle = saved.title;
+    });
+  }
+
+  Future<void> _startNewConversation({bool persistCurrent = true}) async {
+    if (_isSending) return;
+    if (persistCurrent && _messages.isNotEmpty) {
+      await _persistConversation();
+    }
+    if (!mounted) return;
     setState(() {
       _messages.clear();
       _pendingImage = null;
       _pendingImageMime = null;
+      _conversationId = _store.newId();
+      _conversationTitle = 'New conversation';
     });
+  }
+
+  Future<void> _openConversation(String id) async {
+    if (_isSending) return;
+    if (_messages.isNotEmpty) {
+      await _persistConversation();
+    }
+    final conversation = await _store.load(id);
+    if (!mounted || conversation == null) return;
+    setState(() {
+      _conversationId = conversation.id;
+      _conversationTitle = conversation.title;
+      _messages
+        ..clear()
+        ..addAll(conversation.messages);
+      _pendingImage = null;
+      _pendingImageMime = null;
+    });
+    _scrollToBottom();
+  }
+
+  Future<void> _deleteConversation(String id) async {
+    await _store.delete(id);
+    if (!mounted) return;
+    if (id == _conversationId) {
+      await _startNewConversation(persistCurrent: false);
+    }
+  }
+
+  Future<void> _confirmDelete(AiConversationSummary item) async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Delete conversation?'),
+          content: Text(
+            '“${item.title}” will be removed from this device. This cannot be undone.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+    if (shouldDelete == true) {
+      await _deleteConversation(item.id);
+    }
+  }
+
+  Future<void> _showHistory() async {
+    if (_isSending) return;
+    if (_messages.isNotEmpty) {
+      await _persistConversation();
+    }
+    if (!mounted) return;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        return _ConversationHistorySheet(
+          currentId: _conversationId,
+          onNew: () {
+            Navigator.pop(sheetContext);
+            _startNewConversation();
+          },
+          onOpen: (id) {
+            Navigator.pop(sheetContext);
+            if (id != _conversationId) {
+              _openConversation(id);
+            }
+          },
+          onDelete: (item) async {
+            await _confirmDelete(item);
+          },
+        );
+      },
+    );
   }
 
   @override
@@ -224,17 +347,34 @@ class _AiScreenState extends State<AiScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Study AI',
-          style: TextStyle(fontWeight: FontWeight.bold),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Study AI',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            Text(
+              _messages.isEmpty ? 'Stored on this device' : _conversationTitle,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w400,
+                color: isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280),
+              ),
+            ),
+          ],
         ),
         actions: [
-          if (_messages.isNotEmpty)
-            IconButton(
-              tooltip: 'Clear chat',
-              onPressed: _isSending ? null : _clearChat,
-              icon: const Icon(Icons.delete_outline_rounded),
-            ),
+          IconButton(
+            tooltip: 'New conversation',
+            onPressed: _isSending ? null : () => _startNewConversation(),
+            icon: const Icon(Icons.add_comment_outlined),
+          ),
+          IconButton(
+            tooltip: 'Conversations',
+            onPressed: _isSending ? null : () => _showHistory(),
+            icon: const Icon(Icons.history_rounded),
+          ),
         ],
       ),
       body: Column(
@@ -280,6 +420,148 @@ class _AiScreenState extends State<AiScreen> {
   }
 }
 
+class _ConversationHistorySheet extends StatefulWidget {
+  const _ConversationHistorySheet({
+    required this.currentId,
+    required this.onNew,
+    required this.onOpen,
+    required this.onDelete,
+  });
+
+  final String currentId;
+  final VoidCallback onNew;
+  final ValueChanged<String> onOpen;
+  final Future<void> Function(AiConversationSummary item) onDelete;
+
+  @override
+  State<_ConversationHistorySheet> createState() =>
+      _ConversationHistorySheetState();
+}
+
+class _ConversationHistorySheetState extends State<_ConversationHistorySheet> {
+  late Future<List<AiConversationSummary>> _future;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = AiConversationStore.instance.list();
+  }
+
+  void _reload() {
+    setState(() {
+      _future = AiConversationStore.instance.list();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return SafeArea(
+      child: SizedBox(
+        height: MediaQuery.of(context).size.height * 0.7,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 12, 8),
+              child: Row(
+                children: [
+                  const Expanded(
+                    child: Text(
+                      'Conversations',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: widget.onNew,
+                    icon: const Icon(Icons.add_comment_outlined),
+                    label: const Text('New'),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+              child: Text(
+                'Chats are stored only on this device. Open an old one, start a new chat, or delete any you no longer need.',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: isDark
+                      ? const Color(0xFF9CA3AF)
+                      : const Color(0xFF6B7280),
+                ),
+              ),
+            ),
+            Expanded(
+              child: FutureBuilder<List<AiConversationSummary>>(
+                future: _future,
+                builder: (context, snapshot) {
+                  final conversations =
+                      snapshot.data ?? const <AiConversationSummary>[];
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  if (conversations.isEmpty) {
+                    return Center(
+                      child: Text(
+                        'No saved conversations yet.',
+                        style: TextStyle(
+                          color: isDark
+                              ? const Color(0xFF9CA3AF)
+                              : const Color(0xFF6B7280),
+                        ),
+                      ),
+                    );
+                  }
+                  return ListView.separated(
+                    itemCount: conversations.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      final item = conversations[index];
+                      final isCurrent = item.id == widget.currentId;
+                      return ListTile(
+                        leading: Icon(
+                          isCurrent
+                              ? Icons.chat_bubble_rounded
+                              : Icons.chat_bubble_outline_rounded,
+                          color: isCurrent ? const Color(0xFF6366F1) : null,
+                        ),
+                        title: Text(
+                          item.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        subtitle: Text(
+                          item.preview,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        selected: isCurrent,
+                        trailing: IconButton(
+                          tooltip: 'Delete conversation',
+                          icon: const Icon(Icons.delete_outline_rounded),
+                          onPressed: () async {
+                            await widget.onDelete(item);
+                            if (mounted) _reload();
+                          },
+                        ),
+                        onTap: () => widget.onOpen(item.id),
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _EmptyState extends StatelessWidget {
   const _EmptyState({required this.accent, required this.isDark});
 
@@ -313,7 +595,7 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Ask a question, snap a photo of your notes, or attach an image.',
+              'Ask a question, snap a photo of your notes, or attach an image. Conversations stay on this device — start a new chat, reopen old ones, or delete any you choose.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 15,
