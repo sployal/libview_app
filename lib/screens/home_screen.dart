@@ -45,6 +45,7 @@ class _HomeScreenState extends State<HomeScreen>
   String? _firstName;
   WeatherSnapshot? _weather;
   bool _weatherLoading = true;
+  String? _weatherPlaceLabel;
 
   static const _weekdayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
   static const _monthNames = [
@@ -145,10 +146,26 @@ class _HomeScreenState extends State<HomeScreen>
 
   Future<void> _loadWeather() async {
     try {
+      final cached = await WeatherService.instance.cachedWeather();
+      if (cached != null && mounted) {
+        setState(() {
+          _weather = cached;
+          _weatherPlaceLabel = '${cached.city}, ${cached.country}';
+        });
+      }
+
+      final saved = await WeatherService.instance.savedLocation();
+      if (mounted) {
+        setState(() {
+          _weatherPlaceLabel = saved.label;
+        });
+      }
+
       final weather = await WeatherService.instance.currentWeather();
       if (!mounted) return;
       setState(() {
         _weather = weather;
+        _weatherPlaceLabel = '${weather.city}, ${weather.country}';
         _weatherLoading = false;
       });
     } catch (e) {
@@ -177,6 +194,7 @@ class _HomeScreenState extends State<HomeScreen>
     );
     setState(() {
       _weatherLoading = true;
+      _weatherPlaceLabel = '${selected.name}, ${selected.country}';
     });
     try {
       final weather = await WeatherService.instance.currentWeather(
@@ -512,6 +530,7 @@ class _HomeScreenState extends State<HomeScreen>
         _WeatherChip(
           weather: _weather,
           loading: _weatherLoading,
+          placeLabel: _weatherPlaceLabel,
           isDark: isDark,
           muted: muted,
           onTap: _openWeatherLocation,
@@ -1172,6 +1191,7 @@ class _WeatherChip extends StatelessWidget {
   const _WeatherChip({
     required this.weather,
     required this.loading,
+    required this.placeLabel,
     required this.isDark,
     required this.muted,
     required this.onTap,
@@ -1179,6 +1199,7 @@ class _WeatherChip extends StatelessWidget {
 
   final WeatherSnapshot? weather;
   final bool loading;
+  final String? placeLabel;
   final bool isDark;
   final Color muted;
   final VoidCallback onTap;
@@ -1249,9 +1270,12 @@ class _WeatherChip extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      weather == null
-                          ? 'Default: Nairobi, Kenya'
-                          : '${weather!.city}, ${weather!.country}',
+                      weather != null
+                          ? '${weather!.city}, ${weather!.country}'
+                          : (placeLabel ??
+                              (loading
+                                  ? 'Loading location…'
+                                  : 'Tap to set location')),
                       style: TextStyle(fontSize: 12, color: muted),
                     ),
                   ],
@@ -1279,7 +1303,7 @@ class _WeatherLocationSheetState extends State<_WeatherLocationSheet> {
   List<WeatherPlace> _results = const [];
   bool _searching = false;
   String? _error;
-  String _currentLabel = 'Nairobi, KE';
+  String _currentLabel = 'Loading saved location…';
 
   @override
   void initState() {

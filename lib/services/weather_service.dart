@@ -1,5 +1,10 @@
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'upload_service.dart';
@@ -22,6 +27,16 @@ class WeatherSnapshot {
   final int tempC;
   final String condition;
   final String icon;
+
+  Map<String, dynamic> toJson() => {
+        'city': city,
+        'country': country,
+        'lat': lat,
+        'lon': lon,
+        'tempC': tempC,
+        'condition': condition,
+        'icon': icon,
+      };
 
   factory WeatherSnapshot.fromJson(Map<String, dynamic> json) {
     return WeatherSnapshot(
@@ -60,6 +75,24 @@ class WeatherPlace {
   }
 }
 
+class SavedWeatherLocation {
+  const SavedWeatherLocation({
+    required this.city,
+    required this.country,
+    required this.lat,
+    required this.lon,
+    required this.isCustom,
+  });
+
+  final String city;
+  final String country;
+  final double lat;
+  final double lon;
+  final bool isCustom;
+
+  String get label => '$city, $country';
+}
+
 class WeatherService {
   WeatherService._();
 
@@ -74,6 +107,7 @@ class WeatherService {
   static const _countryKey = 'weather_country';
   static const _latKey = 'weather_lat';
   static const _lonKey = 'weather_lon';
+  static const _snapshotKey = 'weather_snapshot_json';
 
   final Dio _dio = Dio(
     BaseOptions(
@@ -82,6 +116,11 @@ class WeatherService {
       receiveTimeout: const Duration(seconds: 20),
     ),
   );
+
+  SavedWeatherLocation? _memoryLocation;
+  WeatherSnapshot? _memorySnapshot;
+
+  WeatherSnapshot? get memorySnapshot => _memorySnapshot;
 
   Future<String> _idToken() async {
     final user = FirebaseAuth.instance.currentUser;
@@ -95,15 +134,138 @@ class WeatherService {
     return token;
   }
 
-  Future<({String city, String country, double lat, double lon})>
-      savedLocation() async {
+  String? get _uid => FirebaseAuth.instance.currentUser?.uid;
+
+  SavedWeatherLocation get _defaultLocation => const SavedWeatherLocation(
+        city: defaultCity,
+        country: defaultCountry,
+        lat: defaultLat,
+        lon: defaultLon,
+        isCustom: false,
+      );
+
+  Future<WeatherSnapshot?> cachedWeather() async {
+    if (_memorySnapshot != null) return _memorySnapshot;
     final prefs = await SharedPreferences.getInstance();
-    return (
-      city: prefs.getString(_cityKey) ?? defaultCity,
+    final raw = prefs.getString(_snapshotKey);
+    if (raw == null || raw.isEmpty) return null;
+    try {
+      final json = jsonDecode(raw);
+      if (json is! Map) return null;
+      _memorySnapshot =
+          WeatherSnapshot.fromJson(Map<String, dynamic>.from(json));
+      return _memorySnapshot;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _cacheSnapshot(WeatherSnapshot weather) async {
+    _memorySnapshot = weather;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_snapshotKey, jsonEncode(weather.toJson()));
+  }
+
+  Future<SavedWeatherLocation> savedLocation() async {
+    if (_memoryLocation != null && _memoryLocation!.isCustom) {
+      return _memoryLocation!;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final local = _fromPrefs(prefs);
+    if (local != null) {
+      _memoryLocation = local;
+      unawaited(_syncLocationToFirebaseIfMissing(local));
+      return local;
+    }
+
+    final remote = await _loadLocationFromFirebase();
+    if (remote != null) {
+      await _writePrefs(remote);
+      _memoryLocation = remote;
+      return remote;
+    }
+
+    _memoryLocation = _defaultLocation;
+    return _defaultLocation;
+  }
+
+  SavedWeatherLocation? _fromPrefs(SharedPreferences prefs) {
+    final city = prefs.getString(_cityKey);
+    final lat = prefs.getDouble(_latKey);
+    final lon = prefs.getDouble(_lonKey);
+    if (city == null || city.isEmpty || lat == null || lon == null) {
+      return null;
+    }
+    return SavedWeatherLocation(
+      city: city,
       country: prefs.getString(_countryKey) ?? defaultCountry,
-      lat: prefs.getDouble(_latKey) ?? defaultLat,
-      lon: prefs.getDouble(_lonKey) ?? defaultLon,
+      lat: lat,
+      lon: lon,
+      isCustom: true,
     );
+  }
+
+  Future<void> _syncLocationToFirebaseIfMissing(
+    SavedWeatherLocation local,
+  ) async {
+    final remote = await _loadLocationFromFirebase();
+    if (remote != null) return;
+    try {
+      await _writeFirebase(local);
+    } catch (e) {
+      debugPrint('Error syncing weather location to Firebase: $e');
+    }
+  }
+
+  Future<SavedWeatherLocation?> _loadLocationFromFirebase() async {
+    final uid = _uid;
+    if (uid == null) return null;
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('profiles')
+          .doc(uid)
+          .get();
+      final data = doc.data()?['weather_location'];
+      if (data is! Map) return null;
+      final city = data['city']?.toString().trim() ?? '';
+      final lat = (data['lat'] as num?)?.toDouble();
+      final lon = (data['lon'] as num?)?.toDouble();
+      if (city.isEmpty || lat == null || lon == null) return null;
+      return SavedWeatherLocation(
+        city: city,
+        country: data['country']?.toString() ?? defaultCountry,
+        lat: lat,
+        lon: lon,
+        isCustom: true,
+      );
+    } catch (e) {
+      debugPrint('Error loading weather location from Firebase: $e');
+      return null;
+    }
+  }
+
+  Future<void> _writePrefs(SavedWeatherLocation location) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_cityKey, location.city);
+    await prefs.setString(_countryKey, location.country);
+    await prefs.setDouble(_latKey, location.lat);
+    await prefs.setDouble(_lonKey, location.lon);
+  }
+
+  Future<void> _writeFirebase(SavedWeatherLocation location) async {
+    final uid = _uid;
+    if (uid == null) return;
+    await FirebaseFirestore.instance.collection('profiles').doc(uid).set({
+      'weather_location': {
+        'city': location.city,
+        'country': location.country,
+        'lat': location.lat,
+        'lon': location.lon,
+        'updated_at': FieldValue.serverTimestamp(),
+      },
+      'updated_at': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
   }
 
   Future<void> saveLocation({
@@ -112,11 +274,20 @@ class WeatherService {
     required double lat,
     required double lon,
   }) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_cityKey, city);
-    await prefs.setString(_countryKey, country);
-    await prefs.setDouble(_latKey, lat);
-    await prefs.setDouble(_lonKey, lon);
+    final location = SavedWeatherLocation(
+      city: city,
+      country: country,
+      lat: lat,
+      lon: lon,
+      isCustom: true,
+    );
+    _memoryLocation = location;
+    await _writePrefs(location);
+    try {
+      await _writeFirebase(location);
+    } catch (e) {
+      debugPrint('Error saving weather location to Firebase: $e');
+    }
   }
 
   Future<WeatherSnapshot> currentWeather({
@@ -135,7 +306,20 @@ class WeatherService {
         options: Options(headers: {'Authorization': 'Bearer $token'}),
       );
       final data = Map<String, dynamic>.from(response.data as Map);
-      return WeatherSnapshot.fromJson(data);
+      var weather = WeatherSnapshot.fromJson(data);
+      if (saved.isCustom) {
+        weather = WeatherSnapshot(
+          city: saved.city,
+          country: saved.country,
+          lat: weather.lat,
+          lon: weather.lon,
+          tempC: weather.tempC,
+          condition: weather.condition,
+          icon: weather.icon,
+        );
+      }
+      await _cacheSnapshot(weather);
+      return weather;
     } on DioException catch (e) {
       throw Exception(_dioMessage(e, 'Could not load weather right now.'));
     }
