@@ -1,6 +1,8 @@
 import 'dart:io';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/download_service.dart';
 import '../services/phone_document_service.dart';
@@ -17,8 +19,11 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
 
   List<DownloadItem> downloads = [];
   final Map<String, DownloadItem> _selected = {};
+  final TextEditingController _searchController = TextEditingController();
   bool isLoading = true;
   bool _useLargeIcons = false;
+  String _query = '';
+  String _typeFilter = 'All';
 
   bool get _selectionMode => _selected.isNotEmpty;
 
@@ -44,6 +49,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
   }
 
   Future<void> _toggleFilesView() async {
+    HapticFeedback.selectionClick();
     setState(() {
       _useLargeIcons = !_useLargeIcons;
     });
@@ -54,6 +60,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
   @override
   void dispose() {
     DownloadService.listVersion.removeListener(_onDownloadsChanged);
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -76,14 +83,20 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
       isLoading = false;
       final keys = loadedDownloads.map(_keyFor).toSet();
       _selected.removeWhere((key, _) => !keys.contains(key));
+      if (_typeFilter != 'All' &&
+          !loadedDownloads.any((item) => item.type == _typeFilter)) {
+        _typeFilter = 'All';
+      }
     });
   }
 
   void _clearSelection() {
+    HapticFeedback.selectionClick();
     setState(_selected.clear);
   }
 
   void _toggleSelected(DownloadItem download) {
+    HapticFeedback.selectionClick();
     final key = _keyFor(download);
     setState(() {
       if (_selected.containsKey(key)) {
@@ -99,6 +112,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
       _toggleSelected(download);
       return;
     }
+    HapticFeedback.lightImpact();
     _openFile(download);
   }
 
@@ -106,16 +120,32 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
     _toggleSelected(download);
   }
 
-  void _selectAll() {
+  void _selectAll(List<DownloadItem> items) {
+    HapticFeedback.selectionClick();
     setState(() {
-      if (_selected.length == downloads.length) {
+      if (_selected.length == items.length) {
         _selected.clear();
         return;
       }
-      for (final download in downloads) {
+      for (final download in items) {
         _selected[_keyFor(download)] = download;
       }
     });
+  }
+
+  List<DownloadItem> get _visibleDownloads {
+    final query = _query.trim().toLowerCase();
+    return downloads.where((item) {
+      if (_typeFilter != 'All' && item.type != _typeFilter) return false;
+      if (query.isEmpty) return true;
+      return item.name.toLowerCase().contains(query) ||
+          item.subject.toLowerCase().contains(query);
+    }).toList();
+  }
+
+  List<String> get _typeFilters {
+    final types = downloads.map((item) => item.type).toSet().toList()..sort();
+    return ['All', ...types];
   }
 
   Future<void> _openFile(DownloadItem download) async {
@@ -123,15 +153,9 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
       await DownloadService.openDownloadedFile(download);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString().replaceFirst('Exception: ', '')),
-            backgroundColor: const Color(0xFFEF4444),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
+        _showSnack(
+          e.toString().replaceFirst('Exception: ', ''),
+          isError: true,
         );
       }
     }
@@ -143,17 +167,9 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
       await DownloadService.shareDownloads(items);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              e.toString().replaceFirst('Exception: ', ''),
-            ),
-            backgroundColor: const Color(0xFFEF4444),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
+        _showSnack(
+          e.toString().replaceFirst('Exception: ', ''),
+          isError: true,
         );
       }
     }
@@ -165,29 +181,52 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
     await _shareFiles(_selected.values.toList());
   }
 
-  Future<void> _deleteDownload(DownloadItem download) async {
-    final confirmed = await showDialog<bool>(
+  void _showSnack(String message, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor:
+            isError ? const Color(0xFFEF4444) : const Color(0xFF10B981),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
+  Future<bool> _confirmDelete({
+    required String title,
+    required String message,
+  }) async {
+    final confirmed = await showCupertinoDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Download'),
-        content: Text('Are you sure you want to delete "${download.name}"?'),
+      builder: (context) => CupertinoAlertDialog(
+        title: Text(title),
+        content: Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Text(message),
+        ),
         actions: [
-          TextButton(
+          CupertinoDialogAction(
             onPressed: () => Navigator.pop(context, false),
             child: const Text('Cancel'),
           ),
-          TextButton(
+          CupertinoDialogAction(
+            isDestructiveAction: true,
             onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(
-              foregroundColor: const Color(0xFFEF4444),
-            ),
             child: const Text('Delete'),
           ),
         ],
       ),
     );
+    return confirmed == true;
+  }
 
-    if (confirmed == true) {
+  Future<void> _deleteDownload(DownloadItem download) async {
+    final confirmed = await _confirmDelete(
+      title: 'Delete Download',
+      message: 'Are you sure you want to delete “${download.name}”?',
+    );
+    if (confirmed) {
       await _deleteItems([download], snackbar: 'Deleted ${download.name}');
     }
   }
@@ -196,32 +235,14 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
     final items = _selected.values.toList();
     if (items.isEmpty) return;
 
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(items.length == 1 ? 'Delete Download' : 'Delete Downloads'),
-        content: Text(
-          items.length == 1
-              ? 'Are you sure you want to delete "${items.first.name}"?'
-              : 'Are you sure you want to delete ${items.length} files?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(
-              foregroundColor: const Color(0xFFEF4444),
-            ),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+    final confirmed = await _confirmDelete(
+      title: items.length == 1 ? 'Delete Download' : 'Delete Downloads',
+      message: items.length == 1
+          ? 'Are you sure you want to delete “${items.first.name}”?'
+          : 'Are you sure you want to delete ${items.length} files?',
     );
 
-    if (confirmed == true) {
+    if (confirmed) {
       final label = items.length == 1
           ? 'Deleted ${items.first.name}'
           : 'Deleted ${items.length} files';
@@ -237,18 +258,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
     if (deleted > 0) {
       _clearSelection();
       await _loadDownloads();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(snackbar),
-            backgroundColor: const Color(0xFF10B981),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
-        );
-      }
+      if (mounted) _showSnack(snackbar);
     }
   }
 
@@ -286,29 +296,36 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
     }
   }
 
-  BoxDecoration _fileCardDecoration({bool selected = false}) {
+  BoxDecoration _fileCardDecoration({
+    required bool isDark,
+    bool selected = false,
+  }) {
     return BoxDecoration(
-      color: selected ? const Color(0xFFEEF2FF) : Colors.white,
-      borderRadius: BorderRadius.circular(16),
-      border: selected ? Border.all(color: const Color(0xFF6366F1)) : null,
+      color: selected
+          ? (isDark
+              ? const Color(0xFF312E81).withOpacity(0.45)
+              : const Color(0xFFEEF2FF))
+          : (isDark ? const Color(0xFF1F2937) : Colors.white),
+      borderRadius: BorderRadius.circular(20),
+      border: selected
+          ? Border.all(color: const Color(0xFF6366F1), width: 1.5)
+          : null,
       boxShadow: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.05),
-          blurRadius: 10,
-          offset: const Offset(0, 2),
-        ),
+        if (!isDark)
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
       ],
     );
   }
 
-  Widget _overflowMenu(DownloadItem download) {
+  Widget _overflowMenu(DownloadItem download, Color muted) {
     return PopupMenuButton<String>(
       tooltip: 'File options',
       padding: EdgeInsets.zero,
-      icon: const Icon(
-        Icons.more_vert_rounded,
-        color: Color(0xFF9CA3AF),
-      ),
+      icon: Icon(Icons.more_horiz_rounded, color: muted),
       onSelected: (value) {
         switch (value) {
           case 'open':
@@ -322,8 +339,8 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
             break;
         }
       },
-      itemBuilder: (context) => [
-        const PopupMenuItem(
+      itemBuilder: (context) => const [
+        PopupMenuItem(
           value: 'open',
           child: Row(
             children: [
@@ -333,29 +350,23 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
             ],
           ),
         ),
-        const PopupMenuItem(
+        PopupMenuItem(
           value: 'share',
           child: Row(
             children: [
-              Icon(Icons.share_rounded, size: 18, color: Color(0xFF6366F1)),
+              Icon(Icons.ios_share_rounded, size: 18, color: Color(0xFF6366F1)),
               SizedBox(width: 12),
-              Text(
-                'Share',
-                style: TextStyle(color: Color(0xFF6366F1)),
-              ),
+              Text('Share', style: TextStyle(color: Color(0xFF6366F1))),
             ],
           ),
         ),
-        const PopupMenuItem(
+        PopupMenuItem(
           value: 'delete',
           child: Row(
             children: [
               Icon(Icons.delete_rounded, size: 18, color: Colors.red),
               SizedBox(width: 12),
-              Text(
-                'Delete',
-                style: TextStyle(color: Colors.red),
-              ),
+              Text('Delete', style: TextStyle(color: Colors.red)),
             ],
           ),
         ),
@@ -363,205 +374,56 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
     );
   }
 
-  Widget _buildDetailsList() {
-    return ListView.builder(
-      padding: const EdgeInsets.all(20),
-      itemCount: downloads.length,
-      itemBuilder: (context, index) {
-        final download = downloads[index];
-        final fileColor = _getFileColor(download.type);
-        final fileIcon = _getFileIcon(download.type);
-        final selected = _selected.containsKey(_keyFor(download));
+  DateTime? _parsedDate(DownloadItem item) => DateTime.tryParse(item.date);
 
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          decoration: _fileCardDecoration(selected: selected),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: () => _onTap(download),
-              onLongPress: () => _onLongPress(download),
-              borderRadius: BorderRadius.circular(16),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: selected
-                            ? const Color(0xFF6366F1)
-                            : fileColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        selected ? Icons.check_rounded : fileIcon,
-                        color: selected ? Colors.white : fileColor,
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            download.name,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: Color(0xFF1F2937),
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${download.subject} • ${DownloadService.formatFileSize(download.size)} • ${DownloadService.formatDate(download.date)}',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: Color(0xFF6B7280),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (!_selectionMode) _overflowMenu(download),
-                    if (_selectionMode)
-                      Icon(
-                        selected
-                            ? Icons.check_circle_rounded
-                            : Icons.circle_outlined,
-                        color: selected
-                            ? const Color(0xFF6366F1)
-                            : const Color(0xFF9CA3AF),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
+  List<_DownloadSection> _sectionsFor(List<DownloadItem> items) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final weekAgo = today.subtract(const Duration(days: 7));
 
-  Widget _buildLargeIconsGrid() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final crossAxisCount = constraints.maxWidth >= 720 ? 3 : 2;
-        return GridView.builder(
-          padding: const EdgeInsets.all(20),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: crossAxisCount,
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-            childAspectRatio: 0.72,
-          ),
-          itemCount: downloads.length,
-          itemBuilder: (context, index) {
-            final download = downloads[index];
-            final fileColor = _getFileColor(download.type);
-            final fileIcon = _getFileIcon(download.type);
-            final selected = _selected.containsKey(_keyFor(download));
+    final buckets = <String, List<DownloadItem>>{
+      'Today': [],
+      'Yesterday': [],
+      'This week': [],
+      'Earlier': [],
+    };
 
-            return Container(
-              decoration: _fileCardDecoration(selected: selected),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () => _onTap(download),
-                  onLongPress: () => _onLongPress(download),
-                  borderRadius: BorderRadius.circular(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Expanded(
-                        child: Stack(
-                          fit: StackFit.expand,
-                          children: [
-                            ClipRRect(
-                              borderRadius: const BorderRadius.vertical(
-                                top: Radius.circular(16),
-                              ),
-                              child: _DownloadPreview(
-                                key: ValueKey(
-                                  '${download.filePath}:${download.contentUri}',
-                                ),
-                                download: download,
-                                color: fileColor,
-                                icon: fileIcon,
-                              ),
-                            ),
-                            Positioned(
-                              top: 0,
-                              right: 0,
-                              child: _selectionMode
-                                  ? Padding(
-                                      padding: const EdgeInsets.all(8),
-                                      child: Icon(
-                                        selected
-                                            ? Icons.check_circle_rounded
-                                            : Icons.circle_outlined,
-                                        color: selected
-                                            ? const Color(0xFF6366F1)
-                                            : Colors.white,
-                                        shadows: const [
-                                          Shadow(
-                                            color: Colors.black26,
-                                            blurRadius: 6,
-                                          ),
-                                        ],
-                                      ),
-                                    )
-                                  : _overflowMenu(download),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
-                        child: Column(
-                          children: [
-                            Text(
-                              download.name,
-                              textAlign: TextAlign.center,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF1F2937),
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              DownloadService.formatFileSize(download.size),
-                              textAlign: TextAlign.center,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Color(0xFF6B7280),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
+    for (final item in items) {
+      final parsed = _parsedDate(item);
+      if (parsed == null) {
+        buckets['Earlier']!.add(item);
+        continue;
+      }
+      final day = DateTime(parsed.year, parsed.month, parsed.day);
+      if (day == today) {
+        buckets['Today']!.add(item);
+      } else if (day == yesterday) {
+        buckets['Yesterday']!.add(item);
+      } else if (!day.isBefore(weekAgo)) {
+        buckets['This week']!.add(item);
+      } else {
+        buckets['Earlier']!.add(item);
+      }
+    }
+
+    return buckets.entries
+        .where((entry) => entry.value.isNotEmpty)
+        .map((entry) => _DownloadSection(entry.key, entry.value))
+        .toList();
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final background =
+        isDark ? const Color(0xFF111827) : const Color(0xFFF8FAFC);
+    final titleColor =
+        isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
+    final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
+    final card = isDark ? const Color(0xFF1F2937) : Colors.white;
+    final field = isDark ? const Color(0xFF111827) : const Color(0xFFEEF2F6);
+    final visible = _visibleDownloads;
     final selectedCount = _selected.length;
 
     return PopScope(
@@ -571,136 +433,622 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
         _clearSelection();
       },
       child: Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        leading: _selectionMode
-            ? IconButton(
-                icon: const Icon(Icons.close_rounded),
-                tooltip: 'Cancel',
-                onPressed: _clearSelection,
+        backgroundColor: background,
+        bottomNavigationBar: _selectionMode
+            ? _SelectionBar(
+                isDark: isDark,
+                count: selectedCount,
+                onShare: _shareSelected,
+                onDelete: _deleteSelected,
               )
             : null,
-        title: Text(
-          _selectionMode ? '$selectedCount selected' : 'Downloads',
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        actions: [
-          if (_selectionMode) ...[
-            IconButton(
-              tooltip: selectedCount == downloads.length
-                  ? 'Deselect all'
-                  : 'Select all',
-              icon: Icon(
-                selectedCount == downloads.length
-                    ? Icons.deselect_rounded
-                    : Icons.select_all_rounded,
-              ),
-              onPressed: _selectAll,
-            ),
-          ] else ...[
-            IconButton(
-              tooltip: _useLargeIcons ? 'Details view' : 'Large icons',
-              icon: Icon(
-                _useLargeIcons
-                    ? Icons.view_list_rounded
-                    : Icons.grid_view_rounded,
-              ),
-              onPressed: _toggleFilesView,
-            ),
-            IconButton(
-              icon: const Icon(Icons.refresh_rounded),
-              onPressed: _loadDownloads,
-              tooltip: 'Refresh',
-            ),
-          ],
-        ],
-      ),
-      bottomNavigationBar: _selectionMode
-          ? SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: FilledButton.icon(
-                        onPressed: _shareSelected,
-                        icon: const Icon(Icons.share_rounded),
-                        label: Text(
-                          selectedCount == 1 ? 'Share' : 'Share $selectedCount',
+        body: RefreshIndicator(
+          color: const Color(0xFF6366F1),
+          onRefresh: _selectionMode ? () async {} : _loadDownloads,
+          notificationPredicate: (_) => !_selectionMode,
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
+              SliverAppBar.large(
+                backgroundColor: background,
+                surfaceTintColor: Colors.transparent,
+                pinned: true,
+                leading: _selectionMode
+                    ? IconButton(
+                        icon: const Icon(Icons.close_rounded),
+                        tooltip: 'Cancel',
+                        onPressed: _clearSelection,
+                      )
+                    : null,
+                title: Text(
+                  _selectionMode ? '$selectedCount selected' : 'Downloads',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: titleColor,
+                  ),
+                ),
+                actions: [
+                  if (_selectionMode)
+                    IconButton(
+                      tooltip: selectedCount == visible.length
+                          ? 'Deselect all'
+                          : 'Select all',
+                      icon: Icon(
+                        selectedCount == visible.length
+                            ? Icons.deselect_rounded
+                            : Icons.select_all_rounded,
+                      ),
+                      onPressed: () => _selectAll(visible),
+                    )
+                  else ...[
+                    if (downloads.isNotEmpty)
+                      IconButton(
+                        tooltip:
+                            _useLargeIcons ? 'List view' : 'Large icons',
+                        icon: Icon(
+                          _useLargeIcons
+                              ? Icons.view_list_rounded
+                              : Icons.grid_view_rounded,
                         ),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFF6366F1),
-                          foregroundColor: Colors.white,
-                          minimumSize: const Size.fromHeight(48),
+                        onPressed: _toggleFilesView,
+                      ),
+                    IconButton(
+                      icon: const Icon(Icons.refresh_rounded),
+                      onPressed: _loadDownloads,
+                      tooltip: 'Refresh',
+                    ),
+                  ],
+                ],
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                sliver: SliverToBoxAdapter(
+                  child: _buildIntro(
+                    muted: muted,
+                    card: card,
+                    field: field,
+                    isDark: isDark,
+                  ),
+                ),
+              ),
+              if (isLoading)
+                const SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        Color(0xFF6366F1),
+                      ),
+                    ),
+                  ),
+                )
+              else if (downloads.isEmpty)
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: _EmptyState(muted: muted, titleColor: titleColor),
+                )
+              else if (visible.isEmpty)
+                SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Center(
+                    child: Text(
+                      'No files match your search',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: muted,
+                      ),
+                    ),
+                  ),
+                )
+              else if (_useLargeIcons)
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+                  sliver: SliverLayoutBuilder(
+                    builder: (context, constraints) {
+                      final crossAxisCount =
+                          constraints.crossAxisExtent >= 720 ? 3 : 2;
+                      return SliverGrid(
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: crossAxisCount,
+                          mainAxisSpacing: 12,
+                          crossAxisSpacing: 12,
+                          childAspectRatio: 0.72,
+                        ),
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            return _buildGridTile(
+                              visible[index],
+                              isDark: isDark,
+                              titleColor: titleColor,
+                              muted: muted,
+                            );
+                          },
+                          childCount: visible.length,
+                        ),
+                      );
+                    },
+                  ),
+                )
+              else
+                ..._sectionsFor(visible).expand((section) {
+                  return [
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                      sliver: SliverToBoxAdapter(
+                        child: Text(
+                          section.title.toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.8,
+                            color: muted,
+                          ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: FilledButton.icon(
-                        onPressed: _deleteSelected,
-                        icon: const Icon(Icons.delete_rounded),
-                        label: Text(
-                          selectedCount == 1
-                              ? 'Delete'
-                              : 'Delete $selectedCount',
-                        ),
-                        style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFFEF4444),
-                          foregroundColor: Colors.white,
-                          minimumSize: const Size.fromHeight(48),
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                      sliver: SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: 10),
+                              child: _buildListTile(
+                                section.items[index],
+                                isDark: isDark,
+                                titleColor: titleColor,
+                                muted: muted,
+                              ),
+                            );
+                          },
+                          childCount: section.items.length,
                         ),
                       ),
+                    ),
+                  ];
+                }),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildIntro({
+    required Color muted,
+    required Color card,
+    required Color field,
+    required bool isDark,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          _selectionMode
+              ? 'Tap files to add or remove them from the selection.'
+              : isLoading
+                  ? 'Loading files on this device'
+                  : '${downloads.length} ${downloads.length == 1 ? 'file' : 'files'} saved on this device',
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w500,
+            color: muted,
+          ),
+        ),
+        if (!_selectionMode && downloads.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          TextField(
+            controller: _searchController,
+            onChanged: (value) => setState(() => _query = value),
+            textInputAction: TextInputAction.search,
+            decoration: InputDecoration(
+              hintText: 'Search files',
+              prefixIcon: const Icon(Icons.search_rounded),
+              suffixIcon: _query.isEmpty
+                  ? null
+                  : IconButton(
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () {
+                        _searchController.clear();
+                        setState(() => _query = '');
+                      },
+                    ),
+              filled: true,
+              fillColor: field,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
+          if (_typeFilters.length > 2) ...[
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 36,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: _typeFilters.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemBuilder: (context, index) {
+                  final type = _typeFilters[index];
+                  final selected = type == _typeFilter;
+                  return GestureDetector(
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      setState(() => _typeFilter = type);
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? const Color(0xFF6366F1)
+                            : card,
+                        borderRadius: BorderRadius.circular(20),
+                        border: selected
+                            ? null
+                            : Border.all(
+                                color: isDark
+                                    ? const Color(0xFF374151)
+                                    : const Color(0xFFE5E7EB),
+                              ),
+                      ),
+                      child: Text(
+                        type,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: selected
+                              ? Colors.white
+                              : (isDark
+                                  ? const Color(0xFFE5E7EB)
+                                  : const Color(0xFF374151)),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ],
+      ],
+    );
+  }
+
+  Widget _buildListTile(
+    DownloadItem download, {
+    required bool isDark,
+    required Color titleColor,
+    required Color muted,
+  }) {
+    final fileColor = _getFileColor(download.type);
+    final fileIcon = _getFileIcon(download.type);
+    final selected = _selected.containsKey(_keyFor(download));
+
+    return Container(
+      decoration: _fileCardDecoration(isDark: isDark, selected: selected),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _onTap(download),
+          onLongPress: () => _onLongPress(download),
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? const Color(0xFF6366F1)
+                        : fileColor.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(
+                    selected ? Icons.check_rounded : fileIcon,
+                    color: selected ? Colors.white : fileColor,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        download.name,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: titleColor,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${download.subject} · ${DownloadService.formatFileSize(download.size)} · ${DownloadService.formatDate(download.date)}',
+                        style: TextStyle(fontSize: 13, color: muted),
+                      ),
+                    ],
+                  ),
+                ),
+                if (!_selectionMode) ...[
+                  _overflowMenu(download, muted),
+                  Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 14,
+                    color: muted,
+                  ),
+                ] else
+                  Icon(
+                    selected
+                        ? Icons.check_circle_rounded
+                        : Icons.circle_outlined,
+                    color: selected
+                        ? const Color(0xFF6366F1)
+                        : const Color(0xFF9CA3AF),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGridTile(
+    DownloadItem download, {
+    required bool isDark,
+    required Color titleColor,
+    required Color muted,
+  }) {
+    final fileColor = _getFileColor(download.type);
+    final fileIcon = _getFileIcon(download.type);
+    final selected = _selected.containsKey(_keyFor(download));
+
+    return Container(
+      decoration: _fileCardDecoration(isDark: isDark, selected: selected),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _onTap(download),
+          onLongPress: () => _onLongPress(download),
+          borderRadius: BorderRadius.circular(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    ClipRRect(
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(20),
+                      ),
+                      child: _DownloadPreview(
+                        key: ValueKey(
+                          '${download.filePath}:${download.contentUri}',
+                        ),
+                        download: download,
+                        color: fileColor,
+                        icon: fileIcon,
+                      ),
+                    ),
+                    Positioned(
+                      top: 0,
+                      right: 0,
+                      child: _selectionMode
+                          ? Padding(
+                              padding: const EdgeInsets.all(8),
+                              child: Icon(
+                                selected
+                                    ? Icons.check_circle_rounded
+                                    : Icons.circle_outlined,
+                                color: selected
+                                    ? const Color(0xFF6366F1)
+                                    : Colors.white,
+                                shadows: const [
+                                  Shadow(
+                                    color: Colors.black26,
+                                    blurRadius: 6,
+                                  ),
+                                ],
+                              ),
+                            )
+                          : _overflowMenu(download, muted),
                     ),
                   ],
                 ),
               ),
-            )
-          : null,
-      body: isLoading
-          ? const Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
-              ),
-            )
-          : downloads.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.download_rounded,
-                        size: 64,
-                        color: Colors.grey[400],
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
+                child: Column(
+                  children: [
+                    Text(
+                      download.name,
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: titleColor,
                       ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'No downloads yet',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Downloaded files will appear here',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[500],
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              : RefreshIndicator(
-                  onRefresh: _selectionMode ? () async {} : _loadDownloads,
-                  notificationPredicate: (_) => !_selectionMode,
-                  color: const Color(0xFF6366F1),
-                  child: _useLargeIcons
-                      ? _buildLargeIconsGrid()
-                      : _buildDetailsList(),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      DownloadService.formatFileSize(download.size),
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 12, color: muted),
+                    ),
+                  ],
                 ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DownloadSection {
+  const _DownloadSection(this.title, this.items);
+
+  final String title;
+  final List<DownloadItem> items;
+}
+
+class _SelectionBar extends StatelessWidget {
+  const _SelectionBar({
+    required this.isDark,
+    required this.count,
+    required this.onShare,
+    required this.onDelete,
+  });
+
+  final bool isDark;
+  final int count;
+  final VoidCallback onShare;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    final card = isDark ? const Color(0xFF1F2937) : Colors.white;
+
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+          decoration: BoxDecoration(
+            color: card,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              if (!isDark)
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.06),
+                  blurRadius: 18,
+                  offset: const Offset(0, 8),
+                ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: _barAction(
+                  icon: Icons.ios_share_rounded,
+                  label: count == 1 ? 'Share' : 'Share $count',
+                  color: const Color(0xFF6366F1),
+                  onTap: onShare,
+                ),
+              ),
+              Container(
+                width: 1,
+                height: 28,
+                color: isDark ? const Color(0xFF374151) : const Color(0xFFE5E7EB),
+              ),
+              Expanded(
+                child: _barAction(
+                  icon: Icons.delete_rounded,
+                  label: count == 1 ? 'Delete' : 'Delete $count',
+                  color: const Color(0xFFEF4444),
+                  onTap: onDelete,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _barAction({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyState extends StatelessWidget {
+  const _EmptyState({required this.muted, required this.titleColor});
+
+  final Color muted;
+  final Color titleColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 40),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              color: const Color(0xFF6366F1).withOpacity(0.12),
+              borderRadius: BorderRadius.circular(22),
+            ),
+            child: const Icon(
+              Icons.download_rounded,
+              size: 36,
+              color: Color(0xFF6366F1),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            'No downloads yet',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.4,
+              color: titleColor,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Files you save from a unit will appear here, ready to open offline.',
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 15, height: 1.4, color: muted),
+          ),
+        ],
       ),
     );
   }
