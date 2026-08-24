@@ -6,6 +6,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'firebase_options.dart';
 import 'services/auth_service.dart';
 import 'services/streak_service.dart';
+import 'services/theme_controller.dart';
 import 'screens/home_screen.dart';
 import 'screens/semesters_screen.dart';
 import 'screens/downloads_screen.dart';
@@ -22,6 +23,8 @@ Future<void> main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
+  await ThemeController.instance.load();
+
   runApp(const StudyApp());
 }
 
@@ -30,47 +33,52 @@ class StudyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'UniStudy',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF6366F1),
-          brightness: Brightness.light,
-        ),
-        fontFamily: 'SF Pro Display',
-        useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFFF8FAFC),
-        appBarTheme: const AppBarTheme(
-          elevation: 0,
-          centerTitle: true,
-          backgroundColor: Color(0xFFF8FAFC),
-          foregroundColor: Color(0xFF1F2937),
-          surfaceTintColor: Colors.transparent,
-        ),
-        splashFactory: NoSplash.splashFactory,
-      ),
-      darkTheme: ThemeData(
-        primarySwatch: Colors.blue,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF6366F1),
-          brightness: Brightness.dark,
-        ),
-        fontFamily: 'SF Pro Display',
-        useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFF111827),
-        appBarTheme: const AppBarTheme(
-          elevation: 0,
-          centerTitle: true,
-          backgroundColor: Color(0xFF111827),
-          foregroundColor: Color(0xFFF9FAFB),
-          surfaceTintColor: Colors.transparent,
-        ),
-        splashFactory: NoSplash.splashFactory,
-      ),
-      themeMode: ThemeMode.system,
-      home: const AuthGate(),
+    return ListenableBuilder(
+      listenable: ThemeController.instance,
+      builder: (context, _) {
+        return MaterialApp(
+          title: 'UniStudy',
+          debugShowCheckedModeBanner: false,
+          theme: ThemeData(
+            primarySwatch: Colors.blue,
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: const Color(0xFF6366F1),
+              brightness: Brightness.light,
+            ),
+            fontFamily: 'SF Pro Display',
+            useMaterial3: true,
+            scaffoldBackgroundColor: const Color(0xFFF8FAFC),
+            appBarTheme: const AppBarTheme(
+              elevation: 0,
+              centerTitle: true,
+              backgroundColor: Color(0xFFF8FAFC),
+              foregroundColor: Color(0xFF1F2937),
+              surfaceTintColor: Colors.transparent,
+            ),
+            splashFactory: NoSplash.splashFactory,
+          ),
+          darkTheme: ThemeData(
+            primarySwatch: Colors.blue,
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: const Color(0xFF6366F1),
+              brightness: Brightness.dark,
+            ),
+            fontFamily: 'SF Pro Display',
+            useMaterial3: true,
+            scaffoldBackgroundColor: const Color(0xFF111827),
+            appBarTheme: const AppBarTheme(
+              elevation: 0,
+              centerTitle: true,
+              backgroundColor: Color(0xFF111827),
+              foregroundColor: Color(0xFFF9FAFB),
+              surfaceTintColor: Colors.transparent,
+            ),
+            splashFactory: NoSplash.splashFactory,
+          ),
+          themeMode: ThemeController.instance.mode,
+          home: const AuthGate(),
+        );
+      },
     );
   }
 }
