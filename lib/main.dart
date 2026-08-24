@@ -15,6 +15,7 @@ import 'screens/downloads_screen.dart';
 import 'screens/ai_screen.dart';
 import 'screens/profile_screen.dart';
 import 'login/auth_screen.dart';
+import 'screens/app_update_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -78,7 +79,7 @@ class StudyApp extends StatelessWidget {
             splashFactory: NoSplash.splashFactory,
           ),
           themeMode: ThemeController.instance.mode,
-          home: const AuthGate(),
+          home: const AppUpdateGate(child: AuthGate()),
         );
       },
     );

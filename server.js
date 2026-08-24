@@ -8,7 +8,7 @@ const multer = require('multer');
 const { google } = require('googleapis');
 const { Readable } = require('stream');
 const admin = require('firebase-admin');
-const { registerAiRoutes } = require('./ai_chat');
+const { registerAiRoutes } = require('./ai_chat.js');
 const { registerMediaRoutes } = require('./media server.js');
 
 // =========================================================================
@@ -18,7 +18,8 @@ const { registerMediaRoutes } = require('./media server.js');
 // Engineering Drive layout is derived from the Edupal root only
 // (ROOT_FOLDER_ID or EDUPAL_FOLDER_ID). On startup the server looks for
 // the Engineering course folder and its year/semester subfolders on Drive,
-// creates any that are missing, then writes the IDs to Firestore.
+// creates any that are missing, then writes the IDs to Firestore. It also
+// finds or creates an "updates" folder under the Edupal root for APKs.
 const EDUPAL_FOLDER_ID =
   process.env.EDUPAL_FOLDER_ID || process.env.ROOT_FOLDER_ID || '';
 const SYSTEM_ADMIN_EMAIL = (
@@ -81,12 +82,14 @@ async function syncEngineeringCourseToFirestore() {
   }
 
   const structure = await ensureCourseStructure('Engineering', 5);
+  const updatesFolderId = await ensureUpdatesFolder();
   const payload = {
     name: 'Engineering',
     years: 5,
     sample_admission_number: 'EB24/46271/20',
     admission_prefix: 'EB24',
     drive_folder_id: structure.courseFolderId,
+    updatesFolderId,
     semesters: structure.semesters,
     updated_at: admin.firestore.FieldValue.serverTimestamp(),
   };
@@ -96,6 +99,7 @@ async function syncEngineeringCourseToFirestore() {
     {
       edupalFolderId: CONFIG.EDUPAL_FOLDER_ID,
       engineeringCourseFolderId: structure.courseFolderId,
+      updatesFolderId,
       semesterFolderIds: Object.fromEntries(
         Object.entries(structure.semesters).map(([key, value]) => [key, value.folderId])
       ),
@@ -104,6 +108,18 @@ async function syncEngineeringCourseToFirestore() {
     { merge: true }
   );
   console.log('Synced Engineering Drive folder IDs to Firestore (courses/engineering).');
+}
+
+async function ensureUpdatesFolder() {
+  const edupalId = await resolveEdupalFolderId();
+  const rootFolders = await listChildFolders(edupalId);
+  const folder = await findOrCreateNamedFolder('updates', edupalId, rootFolders);
+  if (folder.created) {
+    console.log(`Created Drive folder "updates" under Edupal root (${folder.id}).`);
+  } else {
+    console.log(`Using existing Drive folder "updates" (${folder.id}).`);
+  }
+  return folder.id;
 }
 
 async function loadSemesterIdsFromFirestore() {
