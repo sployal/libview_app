@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -227,6 +229,9 @@ class _MainScreenState extends State<MainScreen>
           _homeNavigatorKey.currentState?.maybePop();
         },
         child: Scaffold(
+          extendBody: true,
+          backgroundColor:
+              isDark ? const Color(0xFF111827) : const Color(0xFFF8FAFC),
           body: FadeTransition(
             opacity: _fadeAnimation,
             child: IndexedStack(
@@ -234,63 +239,176 @@ class _MainScreenState extends State<MainScreen>
               children: _screens,
             ),
           ),
-          bottomNavigationBar: Container(
+          bottomNavigationBar: _AppBottomNav(
+            selectedIndex: _selectedIndex,
+            isDark: isDark,
+            onTap: (index) {
+              if (index == _selectedIndex && index == 0) {
+                _homeNavigatorKey.currentState
+                    ?.popUntil((route) => route.isFirst);
+                return;
+              }
+              setState(() {
+                _selectedIndex = index;
+              });
+              HapticFeedback.lightImpact();
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AppBottomNav extends StatelessWidget {
+  const _AppBottomNav({
+    required this.selectedIndex,
+    required this.isDark,
+    required this.onTap,
+  });
+
+  final int selectedIndex;
+  final bool isDark;
+  final ValueChanged<int> onTap;
+
+  static const _items = [
+    (Icons.home_rounded, Icons.home_outlined, 'Home'),
+    (Icons.school_rounded, Icons.school_outlined, 'Semesters'),
+    (Icons.auto_awesome_rounded, Icons.auto_awesome_outlined, 'AI'),
+    (Icons.download_rounded, Icons.download_outlined, 'Downloads'),
+    (Icons.person_rounded, Icons.person_outline_rounded, 'Profile'),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    const accent = Color(0xFF6366F1);
+    final surface = isDark ? const Color(0xFF1F2937) : Colors.white;
+    const unselected = Color(0xFF9CA3AF);
+
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        boxShadow: [
+          BoxShadow(
+            color: accent.withOpacity(isDark ? 0.18 : 0.12),
+            blurRadius: 28,
+            offset: const Offset(0, -8),
+          ),
+          BoxShadow(
+            color: Colors.black.withOpacity(isDark ? 0.35 : 0.08),
+            blurRadius: 18,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          child: DecoratedBox(
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1F2937) : Colors.white,
-              boxShadow: [
-                BoxShadow(
+              border: Border(
+                top: BorderSide(
                   color: isDark
-                      ? Colors.black.withOpacity(0.3)
-                      : Colors.black.withOpacity(0.1),
-                  blurRadius: 20,
-                  offset: const Offset(0, -5),
+                      ? Colors.white.withOpacity(0.08)
+                      : accent.withOpacity(0.16),
                 ),
-              ],
+              ),
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Color.alphaBlend(
+                    accent.withOpacity(isDark ? 0.16 : 0.10),
+                    surface.withOpacity(isDark ? 0.88 : 0.94),
+                  ),
+                  surface.withOpacity(isDark ? 0.90 : 0.96),
+                ],
+              ),
             ),
-            child: BottomNavigationBar(
-              currentIndex: _selectedIndex,
-              onTap: (index) {
-                if (index == _selectedIndex && index == 0) {
-                  _homeNavigatorKey.currentState
-                      ?.popUntil((route) => route.isFirst);
-                  return;
-                }
-                setState(() {
-                  _selectedIndex = index;
-                });
-                HapticFeedback.lightImpact();
-              },
-              type: BottomNavigationBarType.fixed,
-              backgroundColor: Colors.transparent,
-              selectedItemColor:
-                  isDark ? const Color(0xFF818CF8) : const Color(0xFF6366F1),
-              unselectedItemColor:
-                  isDark ? const Color(0xFF6B7280) : const Color(0xFF9CA3AF),
-              elevation: 0,
-              items: const [
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.home_rounded),
-                  label: 'Home',
+            child: SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(8, 10, 8, 8),
+                child: Row(
+                  children: [
+                    for (var i = 0; i < _items.length; i++)
+                      Expanded(
+                        child: _NavItem(
+                          icon: selectedIndex == i
+                              ? _items[i].$1
+                              : _items[i].$2,
+                          label: _items[i].$3,
+                          selected: selectedIndex == i,
+                          accent: accent,
+                          unselected: unselected,
+                          onTap: () => onTap(i),
+                        ),
+                      ),
+                  ],
                 ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.school_rounded),
-                  label: 'Semesters',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.auto_awesome_rounded),
-                  label: 'AI',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.download_rounded),
-                  label: 'Downloads',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.person_rounded),
-                  label: 'Profile',
-                ),
-              ],
+              ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NavItem extends StatelessWidget {
+  const _NavItem({
+    required this.icon,
+    required this.label,
+    required this.selected,
+    required this.accent,
+    required this.unselected,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final bool selected;
+  final Color accent;
+  final Color unselected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = selected ? accent : unselected;
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? accent.withOpacity(0.12) : Colors.transparent,
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedScale(
+              scale: selected ? 1.08 : 1,
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              child: Icon(icon, color: color, size: 24),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                color: color,
+              ),
+            ),
+          ],
         ),
       ),
     );
