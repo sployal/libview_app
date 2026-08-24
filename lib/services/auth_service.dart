@@ -132,6 +132,10 @@ class AuthService {
     );
   }
 
+  Future<void> sendPasswordResetEmail(String email) async {
+    await _auth.sendPasswordResetEmail(email: email);
+  }
+
   /// Returns null if the user cancelled the Google account picker.
   Future<UserCredential?> signInWithGoogle() async {
     final googleUser = await _googleSignIn.signIn();
@@ -169,6 +173,8 @@ class AuthService {
         return 'This email is already registered. Please log in with your password.';
       case 'too-many-requests':
         return 'Too many attempts. Please try again later.';
+      case 'missing-email':
+        return 'Please enter your email address.';
       default:
         return error.message ?? 'Authentication failed. Please try again.';
     }

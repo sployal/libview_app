@@ -275,6 +275,169 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     }
   }
 
+  Future<void> _forgotPassword() async {
+    if (!await NoInternetScreen.ensureOnline(context)) return;
+    if (!mounted) return;
+
+    final emailController = TextEditingController(
+      text: _emailController.text.trim(),
+    );
+    final formKey = GlobalKey<FormState>();
+    var sending = false;
+
+    try {
+      final sent = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) {
+          final isDark = Theme.of(dialogContext).brightness == Brightness.dark;
+          return StatefulBuilder(
+            builder: (context, setDialogState) {
+              return AlertDialog(
+                backgroundColor:
+                    isDark ? const Color(0xFF1C1C1E) : Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                title: Text(
+                  'Reset password',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.4,
+                    color: isDark ? Colors.white : const Color(0xFF1C1C1E),
+                  ),
+                ),
+                content: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Enter the email for your account and we will send you a reset link.',
+                        style: TextStyle(
+                          fontSize: 15,
+                          color: Color(0xFF8E8E93),
+                          height: 1.35,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: emailController,
+                        enabled: !sending,
+                        keyboardType: TextInputType.emailAddress,
+                        autofocus: emailController.text.isEmpty,
+                        cursorColor: _accent,
+                        style: TextStyle(
+                          color: isDark ? Colors.white : const Color(0xFF1C1C1E),
+                          fontSize: 17,
+                        ),
+                        validator: (value) {
+                          if (value == null || value.trim().isEmpty) {
+                            return 'Please enter your email';
+                          }
+                          if (!value.contains('@')) {
+                            return 'Please enter a valid email';
+                          }
+                          return null;
+                        },
+                        decoration: InputDecoration(
+                          hintText: 'name@university.edu',
+                          filled: true,
+                          fillColor: isDark
+                              ? const Color(0xFF2C2C2E)
+                              : const Color(0xFFF2F2F7),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: sending
+                        ? null
+                        : () => Navigator.of(dialogContext).pop(false),
+                    child: const Text(
+                      'Cancel',
+                      style: TextStyle(color: Color(0xFF8E8E93)),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: sending
+                        ? null
+                        : () async {
+                            if (!formKey.currentState!.validate()) return;
+                            setDialogState(() => sending = true);
+                            try {
+                              await AuthService.instance.sendPasswordResetEmail(
+                                emailController.text.trim(),
+                              );
+                              if (dialogContext.mounted) {
+                                Navigator.of(dialogContext).pop(true);
+                              }
+                            } on FirebaseAuthException catch (error) {
+                              if (error.code == 'user-not-found') {
+                                if (dialogContext.mounted) {
+                                  Navigator.of(dialogContext).pop(true);
+                                }
+                                return;
+                              }
+                              setDialogState(() => sending = false);
+                              if (mounted) {
+                                _showSnackBar(
+                                  AuthService.instance.authErrorMessage(error),
+                                );
+                              }
+                            } catch (error) {
+                              setDialogState(() => sending = false);
+                              if (mounted) {
+                                _showSnackBar('Unexpected error: $error');
+                              }
+                            }
+                          },
+                    child: sending
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(_accent),
+                            ),
+                          )
+                        : const Text(
+                            'Send link',
+                            style: TextStyle(
+                              color: _accent,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                  ),
+                ],
+              );
+            },
+          );
+        },
+      );
+
+      if (sent == true && mounted) {
+        _emailController.text = emailController.text.trim();
+        _showSnackBar(
+          'If an account exists for that email, a reset link is on its way.',
+          success: true,
+        );
+      }
+    } finally {
+      emailController.dispose();
+    }
+  }
+
   Future<void> _signInWithGoogle() async {
     if (!await NoInternetScreen.ensureOnline(context)) return;
     if (!mounted) return;
@@ -578,7 +741,27 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                 return null;
               },
             ),
-            const SizedBox(height: 22),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton(
+                onPressed: _isLoading ? null : _forgotPassword,
+                style: TextButton.styleFrom(
+                  foregroundColor: _accent,
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Text(
+                  'Forgot password?',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -0.2,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
             _buildPrimaryButton(
               label: 'Continue',
               onPressed: _isLoading ? null : _signIn,
