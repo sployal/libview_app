@@ -1,7 +1,9 @@
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/auth_service.dart';
@@ -66,13 +68,24 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard>
   ];
 
   final Map<String, Color> _roleColors = {
-    'system_admin': const Color(0xFF0F172A),
+    'system_admin': const Color(0xFF6366F1),
     'admin': const Color(0xFFEF4444),
     'lecturer': const Color(0xFF8B5CF6),
     'class_rep': const Color(0xFFF59E0B),
-    'assistant_class_rep': const Color(0xFF06B6D4),
+    'assistant_class_rep': const Color(0xFF0EA5E9),
     'student': const Color(0xFF10B981),
   };
+
+  bool get _isDark => Theme.of(context).brightness == Brightness.dark;
+  Color get _bg =>
+      _isDark ? const Color(0xFF111827) : const Color(0xFFF8FAFC);
+  Color get _card => _isDark ? const Color(0xFF1F2937) : Colors.white;
+  Color get _titleColor =>
+      _isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
+  Color get _muted =>
+      _isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
+  Color get _chip =>
+      _isDark ? const Color(0xFF374151) : const Color(0xFFF1F5F9);
 
   int get _totalUsers =>
       _profiles.where((p) => _userRoles.contains(p['role'])).length;
@@ -103,6 +116,9 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() {
+      if (mounted) setState(() {});
+    });
     _guardAndLoad();
   }
 
@@ -252,7 +268,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard>
         const SnackBar(
           content: Row(
             children: [
-              Icon(Icons.check_circle, color: Colors.white),
+              Icon(CupertinoIcons.checkmark_circle_fill, color: Colors.white),
               SizedBox(width: 12),
               Text('Role updated successfully'),
             ],
@@ -284,112 +300,36 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard>
       return;
     }
 
-    showDialog(
+    showCupertinoModalPopup<void>(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        title: const Text(
-          'Change User Role',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              user['full_name'].toString(),
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Colors.black,
-              ),
-            ),
-            if ((user['email'] as String).isNotEmpty)
-              Text(
-                user['email'].toString(),
-                style: const TextStyle(fontSize: 14, color: Colors.black87),
-              ),
-            const SizedBox(height: 20),
-            const Text(
-              'Select new role:',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 12),
-            ..._allRoles.map((role) {
-              final isCurrentRole = user['role'] == role;
-              return Container(
-                margin: const EdgeInsets.only(bottom: 8),
-                child: InkWell(
-                  onTap: isCurrentRole
-                      ? null
-                      : () {
-                          Navigator.pop(context);
-                          _updateUserRole(user['id'], role);
-                        },
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: _roleColors[role]!.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: isCurrentRole
-                            ? _roleColors[role]!
-                            : _roleColors[role]!.withValues(alpha: 0.3),
-                        width: isCurrentRole ? 2 : 1,
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          _getRoleIcon(role),
-                          color: _roleColors[role],
-                          size: 20,
-                        ),
-                        const SizedBox(width: 12),
-                        Text(
-                          _formatRole(role),
-                          style: TextStyle(
-                            color: _roleColors[role],
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const Spacer(),
-                        if (isCurrentRole)
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: _roleColors[role],
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: const Text(
-                              'Current',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            }),
-          ],
+      builder: (context) => CupertinoActionSheet(
+        title: const Text('Change Role'),
+        message: Text(
+          (user['email'] as String).isNotEmpty
+              ? '${user['full_name']}\n${user['email']}'
+              : user['full_name'].toString(),
         ),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
+          for (final role in _allRoles)
+            CupertinoActionSheetAction(
+              onPressed: () {
+                Navigator.pop(context);
+                if (user['role'] != role) {
+                  _updateUserRole(user['id'], role);
+                }
+              },
+              child: Text(
+                user['role'] == role
+                    ? '${_formatRole(role)} (Current)'
+                    : _formatRole(role),
+              ),
+            ),
         ],
+        cancelButton: CupertinoActionSheetAction(
+          isDefaultAction: true,
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
       ),
     );
   }
@@ -401,125 +341,109 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard>
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         height: MediaQuery.of(context).size.height * 0.75,
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        decoration: BoxDecoration(
+          color: _bg,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
         ),
         child: Column(
           children: [
             Container(
-              margin: const EdgeInsets.only(top: 12),
-              width: 40,
-              height: 4,
+              margin: const EdgeInsets.only(top: 8),
+              width: 36,
+              height: 5,
               decoration: BoxDecoration(
-                color: Colors.grey[300],
-                borderRadius: BorderRadius.circular(2),
+                color: _chip,
+                borderRadius: BorderRadius.circular(3),
               ),
             ),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Center(
-                      child: Column(
-                        children: [
-                          _buildAvatar(user, radius: 50),
-                          const SizedBox(height: 16),
-                          Text(
-                            user['full_name'].toString(),
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black,
-                            ),
-                          ),
-                          if ((user['username'] as String).isNotEmpty)
-                            Text(
-                              '@${user['username']}',
-                              style: const TextStyle(
-                                fontSize: 16,
-                                color: Colors.black87,
-                              ),
-                            ),
-                        ],
+                    _buildAvatar(user, radius: 44),
+                    const SizedBox(height: 14),
+                    Text(
+                      user['full_name'].toString(),
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.5,
+                        color: _titleColor,
                       ),
                     ),
-                    const SizedBox(height: 32),
-                    _buildDetailRow(
-                      'Email',
-                      (user['email'] as String).isEmpty
-                          ? 'Not stored'
-                          : user['email'].toString(),
-                      Icons.email_rounded,
-                    ),
-                    const SizedBox(height: 16),
-                    _buildDetailRow(
-                      'Registration Number',
-                      (user['registration_number'] as String).isEmpty
-                          ? 'N/A'
-                          : user['registration_number'].toString(),
-                      Icons.badge_rounded,
-                    ),
-                    const SizedBox(height: 16),
-                    _buildDetailRow(
-                      'Course',
-                      _courseForProfile(user)?.name ?? 'Unassigned',
-                      Icons.menu_book_rounded,
-                    ),
-                    const SizedBox(height: 16),
-                    _buildDetailRow(
-                      'Role',
-                      _formatRole(user['role'].toString()),
-                      _getRoleIcon(user['role'].toString()),
-                      valueColor: _roleColors[user['role']],
-                    ),
-                    const SizedBox(height: 16),
-                    _buildDetailRow(
-                      'Member Since',
-                      _formatDate(user['created_at']),
-                      Icons.calendar_today_rounded,
-                    ),
-                    const SizedBox(height: 32),
+                    if ((user['username'] as String).isNotEmpty)
+                      Text(
+                        '@${user['username']}',
+                        style: TextStyle(fontSize: 16, color: _muted),
+                      ),
+                    const SizedBox(height: 24),
+                    _groupedCard([
+                      _buildDetailRow(
+                        'Email',
+                        (user['email'] as String).isEmpty
+                            ? 'Not stored'
+                            : user['email'].toString(),
+                        CupertinoIcons.mail_solid,
+                      ),
+                      _buildDetailRow(
+                        'Registration',
+                        (user['registration_number'] as String).isEmpty
+                            ? 'N/A'
+                            : user['registration_number'].toString(),
+                        CupertinoIcons.number,
+                      ),
+                      _buildDetailRow(
+                        'Course',
+                        _courseForProfile(user)?.name ?? 'Unassigned',
+                        CupertinoIcons.book_fill,
+                      ),
+                      _buildDetailRow(
+                        'Role',
+                        _formatRole(user['role'].toString()),
+                        _getRoleIcon(user['role'].toString()),
+                        valueColor: _roleColors[user['role']],
+                      ),
+                      _buildDetailRow(
+                        'Member Since',
+                        _formatDate(user['created_at']),
+                        CupertinoIcons.calendar,
+                        showDivider: false,
+                      ),
+                    ]),
+                    const SizedBox(height: 22),
                     if (_isCurrentUser(user))
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF1F5F9),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Text(
-                          'You cannot change your own role.',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Color(0xFF64748B),
-                            fontWeight: FontWeight.w600,
+                      _groupedCard([
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
+                          child: Text(
+                            'You cannot change your own role.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: _muted,
+                              fontWeight: FontWeight.w500,
+                            ),
                           ),
                         ),
-                      )
+                      ])
                     else
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed: () {
+                      _groupedCard([
+                        _settingsRow(
+                          icon: CupertinoIcons.pencil,
+                          iconColor: const Color(0xFF6366F1),
+                          title: 'Change Role',
+                          titleColor: const Color(0xFF6366F1),
+                          onTap: () {
                             Navigator.pop(context);
                             _showRoleChangeDialog(user);
                           },
-                          icon: const Icon(Icons.edit_rounded),
-                          label: const Text('Change Role'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF6366F1),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
                         ),
-                      ),
+                      ]),
                   ],
                 ),
               ),
@@ -564,47 +488,151 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard>
     );
   }
 
-  Widget _buildDetailRow(String label, String value, IconData icon,
-      {Color? valueColor}) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, size: 20, color: const Color(0xFF6366F1)),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: const TextStyle(fontSize: 12, color: Colors.black54),
-                ),
-                const SizedBox(height: 2),
-                Text(
+  Widget _buildDetailRow(
+    String label,
+    String value,
+    IconData icon, {
+    Color? valueColor,
+    bool showDivider = true,
+  }) {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+          child: Row(
+            children: [
+              _glyph(icon, const Color(0xFF6366F1)),
+              const SizedBox(width: 12),
+              Text(
+                label,
+                style: TextStyle(fontSize: 17, color: _titleColor),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
                   value,
+                  textAlign: TextAlign.right,
                   style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: valueColor ?? Colors.black,
+                    fontSize: 17,
+                    color: valueColor ?? _muted,
                   ),
                 ),
-              ],
+              ),
+            ],
+          ),
+        ),
+        if (showDivider) _hairline(),
+      ],
+    );
+  }
+
+  Widget _groupedCard(List<Widget> children) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: ColoredBox(
+        color: _card,
+        child: Column(children: children),
+      ),
+    );
+  }
+
+  Widget _sectionLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      child: Text(
+        text.toUpperCase(),
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+          letterSpacing: 0.4,
+          color: _muted,
+        ),
+      ),
+    );
+  }
+
+  Widget _glyph(IconData icon, Color color) {
+    return Container(
+      width: 30,
+      height: 30,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: _isDark ? 0.2 : 0.12),
+        borderRadius: BorderRadius.circular(7),
+      ),
+      child: Icon(icon, color: color, size: 17),
+    );
+  }
+
+  Widget _hairline({double indent = 54}) {
+    return Padding(
+      padding: EdgeInsets.only(left: indent),
+      child: Divider(height: 0.5, thickness: 0.5, color: _chip),
+    );
+  }
+
+  Widget _settingsRow({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    String? subtitle,
+    Color? titleColor,
+    Widget? trailing,
+    bool showChevron = true,
+    bool showDivider = false,
+    VoidCallback? onTap,
+  }) {
+    return Column(
+      children: [
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: onTap == null
+                ? null
+                : () {
+                    HapticFeedback.selectionClick();
+                    onTap();
+                  },
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+              child: Row(
+                children: [
+                  _glyph(icon, iconColor),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: TextStyle(
+                            fontSize: 17,
+                            color: titleColor ?? _titleColor,
+                          ),
+                        ),
+                        if (subtitle != null) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            subtitle,
+                            style: TextStyle(fontSize: 13, color: _muted),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  if (trailing != null) trailing,
+                  if (showChevron)
+                    Icon(
+                      CupertinoIcons.chevron_forward,
+                      size: 16,
+                      color: _muted,
+                    ),
+                ],
+              ),
             ),
           ),
-        ],
-      ),
+        ),
+        if (showDivider) _hairline(),
+      ],
     );
   }
 
@@ -627,18 +655,18 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard>
     switch (role.toLowerCase()) {
       case 'system_admin':
       case 'super_admin':
-        return Icons.shield_rounded;
+        return CupertinoIcons.shield_lefthalf_fill;
       case 'admin':
-        return Icons.admin_panel_settings_rounded;
+        return CupertinoIcons.checkmark_seal_fill;
       case 'lecturer':
-        return Icons.school_rounded;
+        return CupertinoIcons.book_fill;
       case 'class_rep':
-        return Icons.people_rounded;
+        return CupertinoIcons.person_2_fill;
       case 'assistant_class_rep':
-        return Icons.group_outlined;
+        return CupertinoIcons.person_2;
       case 'student':
       default:
-        return Icons.person_rounded;
+        return CupertinoIcons.person_fill;
     }
   }
 
@@ -720,12 +748,16 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard>
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
+              backgroundColor: _card,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
               ),
-              title: const Text(
+              title: Text(
                 'Delete course',
-                style: TextStyle(fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: _titleColor,
+                ),
               ),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -733,7 +765,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard>
                 children: [
                   Text(
                     'This will remove "${course.name}" from the database and permanently delete its Drive folder, including year / semester folders and files inside it.',
-                    style: const TextStyle(color: Color(0xFF1F2937)),
+                    style: TextStyle(color: _muted),
                   ),
                   const SizedBox(height: 16),
                   CheckboxListTile(
@@ -790,7 +822,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard>
       barrierDismissible: false,
       builder: (context) => const Center(
         child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF0F172A)),
+          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
         ),
       ),
     );
@@ -830,169 +862,91 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard>
     }
   }
 
-  Widget _buildAddCourseButton({bool onDark = false}) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton.icon(
-        onPressed: _openCourseAddition,
-        icon: const Icon(Icons.add_rounded),
-        label: const Text(
-          'Add Course',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-        ),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: onDark ? Colors.white : const Color(0xFF0F172A),
-          foregroundColor: onDark ? const Color(0xFF0F172A) : Colors.white,
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+  Widget _buildAddCourseButton() {
+    return _settingsRow(
+      icon: CupertinoIcons.add,
+      iconColor: const Color(0xFF6366F1),
+      title: 'Add Course',
+      showDivider: true,
+      onTap: _openCourseAddition,
+    );
+  }
+
+  void _showCourseActions(Course course) {
+    HapticFeedback.selectionClick();
+    showCupertinoModalPopup<void>(
+      context: context,
+      builder: (context) => CupertinoActionSheet(
+        title: Text(course.name),
+        actions: [
+          CupertinoActionSheetAction(
+            onPressed: () {
+              Navigator.pop(context);
+              _openCourseAddition(course: course);
+            },
+            child: const Text('Edit Course'),
           ),
+          CupertinoActionSheetAction(
+            isDestructiveAction: true,
+            onPressed: () {
+              Navigator.pop(context);
+              _showDeleteCourseDialog(course);
+            },
+            child: const Text('Delete Course'),
+          ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          isDefaultAction: true,
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
         ),
       ),
     );
   }
 
-  Widget _buildCourseCard(Course course) {
+  Widget _buildCourseCard(Course course, {required bool showDivider}) {
     final semesterCount = course.semesters.length;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  course.name,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFF0F172A),
-                  ),
-                ),
-              ),
-              if (course.id != 'engineering' &&
-                  course.name.toLowerCase() != 'engineering')
-                PopupMenuButton<String>(
-                  tooltip: 'Course options',
-                  padding: EdgeInsets.zero,
-                  constraints:
-                      const BoxConstraints(minWidth: 32, minHeight: 32),
-                  icon: const Icon(
-                    Icons.more_vert_rounded,
-                    color: Color(0xFF0F172A),
-                  ),
-                  onSelected: (value) {
-                    if (value == 'edit') {
-                      _openCourseAddition(course: course);
-                    } else if (value == 'delete') {
-                      _showDeleteCourseDialog(course);
-                    }
-                  },
-                  itemBuilder: (context) => const [
-                    PopupMenuItem(
-                      value: 'edit',
-                      child: Row(
-                        children: [
-                          Icon(Icons.edit_rounded, size: 18),
-                          SizedBox(width: 10),
-                          Text('Edit course'),
-                        ],
-                      ),
-                    ),
-                    PopupMenuItem(
-                      value: 'delete',
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.delete_rounded,
-                            size: 18,
-                            color: Color(0xFFEF4444),
-                          ),
-                          SizedBox(width: 10),
-                          Text(
-                            'Delete course',
-                            style: TextStyle(color: Color(0xFFEF4444)),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            '${course.years} ${course.years == 1 ? 'year' : 'years'}  •  $semesterCount semester folders',
-            style: const TextStyle(
-              fontSize: 12,
-              color: Color(0xFF475569),
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            'Admission: ${course.admissionPrefix.isEmpty ? (course.sampleAdmissionNumber.isEmpty ? '—' : course.sampleAdmissionNumber) : course.admissionPrefix}',
-            style: const TextStyle(
-              fontSize: 12,
-              color: Color(0xFF475569),
-            ),
-          ),
-        ],
-      ),
+    final canManage = course.id != 'engineering' &&
+        course.name.toLowerCase() != 'engineering';
+    return _settingsRow(
+      icon: CupertinoIcons.book_fill,
+      iconColor: const Color(0xFF6366F1),
+      title: course.name,
+      subtitle:
+          '${course.years} ${course.years == 1 ? 'year' : 'years'} • $semesterCount semester folders • ${course.admissionPrefix.isEmpty ? (course.sampleAdmissionNumber.isEmpty ? '—' : course.sampleAdmissionNumber) : course.admissionPrefix}',
+      showChevron: canManage,
+      showDivider: showDivider,
+      onTap: canManage ? () => _showCourseActions(course) : null,
     );
   }
 
   Widget _buildAvailableCourses() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Available courses',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            color: Colors.white.withValues(alpha: 0.95),
+    if (_isLoadingCourses) {
+      return _groupedCard([
+        const Padding(
+          padding: EdgeInsets.symmetric(vertical: 18),
+          child: Center(child: CupertinoActivityIndicator()),
+        ),
+      ]);
+    }
+    if (_courses.isEmpty) {
+      return _groupedCard([
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Text(
+            'No courses yet. Add one to create Drive folders.',
+            style: TextStyle(color: _muted, fontSize: 15),
           ),
         ),
-        const SizedBox(height: 10),
-        if (_isLoadingCourses)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
-            child: Center(
-              child: SizedBox(
-                width: 22,
-                height: 22,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                ),
-              ),
-            ),
-          )
-        else if (_courses.isEmpty)
-          Text(
-            'No courses yet. Add one to create Drive folders.',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.7),
-              fontSize: 13,
-            ),
-          )
-        else
-          Column(
-            children: [
-              for (var i = 0; i < _courses.length; i++) ...[
-                _buildCourseCard(_courses[i]),
-                if (i < _courses.length - 1) const SizedBox(height: 8),
-              ],
-            ],
-          ),
-      ],
-    );
+      ]);
+    }
+    return _groupedCard([
+      for (var i = 0; i < _courses.length; i++)
+        _buildCourseCard(
+          _courses[i],
+          showDivider: i < _courses.length - 1,
+        ),
+    ]);
   }
 
   static const _googleAuthUrl = 'https://edupal-backend.onrender.com/auth/google';
@@ -1049,315 +1003,169 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard>
   }
 
   Widget _buildTokenRefreshSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Token refresh',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            color: Colors.white.withValues(alpha: 0.95),
-          ),
-        ),
-        const SizedBox(height: 10),
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton.icon(
-            onPressed: _openRefreshTokenInChrome,
-            icon: const Icon(Icons.refresh_rounded),
-            label: const Text(
-              'Refresh token',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: const Color(0xFF0F172A),
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-          ),
-        ),
-      ],
+    return _settingsRow(
+      icon: CupertinoIcons.refresh,
+      iconColor: const Color(0xFF6366F1),
+      title: 'Refresh Token',
+      subtitle: 'Open Google sign-in in Chrome',
+      showChevron: true,
+      onTap: _openRefreshTokenInChrome,
     );
   }
 
   Widget _buildStatisticsSection() {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeInOut,
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF0F172A), Color(0xFF334155)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF0F172A).withValues(alpha: 0.25),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.shield_rounded,
-                  color: Colors.white,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Expanded(
-                child: Text(
-                  'Overview',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              IconButton(
-                onPressed: () {
-                  setState(() {
-                    _isStatsExpanded = !_isStatsExpanded;
-                  });
-                },
-                icon: AnimatedRotation(
-                  turns: _isStatsExpanded ? 0 : 0.5,
-                  duration: const Duration(milliseconds: 300),
-                  child: const Icon(
-                    Icons.keyboard_arrow_up_rounded,
-                    color: Colors.white,
-                    size: 28,
-                  ),
-                ),
-                style: IconButton.styleFrom(
-                  backgroundColor: Colors.white.withValues(alpha: 0.2),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _buildAddCourseButton(onDark: true),
-          const SizedBox(height: 20),
+          _sectionLabel('Management'),
+          _groupedCard([
+            _buildAddCourseButton(),
+            _buildTokenRefreshSection(),
+          ]),
+          const SizedBox(height: 18),
+          _sectionLabel('Courses'),
           _buildAvailableCourses(),
-          const SizedBox(height: 20),
-          _buildTokenRefreshSection(),
-          AnimatedSize(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-            child: _isStatsExpanded
-                ? Column(
+          const SizedBox(height: 18),
+          _sectionLabel('Overview'),
+          _groupedCard([
+            _settingsRow(
+              icon: CupertinoIcons.chart_bar_alt_fill,
+              iconColor: const Color(0xFF6366F1),
+              title: 'Statistics',
+              subtitle: _newThisWeek > 0
+                  ? '+$_newThisWeek new this week'
+                  : 'People on the platform',
+              showChevron: false,
+              trailing: Icon(
+                _isStatsExpanded
+                    ? CupertinoIcons.chevron_up
+                    : CupertinoIcons.chevron_down,
+                size: 16,
+                color: _muted,
+              ),
+              onTap: () {
+                setState(() => _isStatsExpanded = !_isStatsExpanded);
+              },
+            ),
+            if (_isStatsExpanded) ...[
+              _hairline(),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                child: IntrinsicHeight(
+                  child: Row(
                     children: [
-                      const SizedBox(height: 20),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildMainStatCard(
-                              'Users',
-                              _totalUsers.toString(),
-                              Icons.people_rounded,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _buildMainStatCard(
-                              'Staff',
-                              _totalStaff.toString(),
-                              Icons.badge_rounded,
-                            ),
-                          ),
-                        ],
+                      _statCell(
+                        '$_totalUsers',
+                        'Users',
+                        CupertinoIcons.person_2_fill,
                       ),
-                      if (_newThisWeek > 0) ...[
-                        const SizedBox(height: 12),
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text(
-                            '+$_newThisWeek new this week',
-                            style: const TextStyle(
-                              color: Color(0xFF86EFAC),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ],
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildRoleStatCard(
-                              'Students',
-                              _totalStudents.toString(),
-                              _roleColors['student']!,
-                              Icons.person_rounded,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _buildRoleStatCard(
-                              'Class Reps',
-                              _totalClassReps.toString(),
-                              _roleColors['class_rep']!,
-                              Icons.people_rounded,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildRoleStatCard(
-                              'Asst. Class Reps',
-                              _totalAssistantClassReps.toString(),
-                              _roleColors['assistant_class_rep']!,
-                              Icons.group_outlined,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          const Expanded(child: SizedBox()),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildRoleStatCard(
-                              'Lecturers',
-                              _totalLecturers.toString(),
-                              _roleColors['lecturer']!,
-                              Icons.school_rounded,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _buildRoleStatCard(
-                              'Admins',
-                              _totalAdmins.toString(),
-                              _roleColors['admin']!,
-                              Icons.admin_panel_settings_rounded,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildRoleStatCard(
-                              'System Admins',
-                              _totalSystemAdmins.toString(),
-                              _roleColors['system_admin']!,
-                              Icons.shield_rounded,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          const Expanded(child: SizedBox()),
-                        ],
+                      VerticalDivider(width: 1, thickness: 0.5, color: _chip),
+                      _statCell(
+                        '$_totalStaff',
+                        'Staff',
+                        CupertinoIcons.briefcase_fill,
                       ),
                     ],
-                  )
-                : const SizedBox.shrink(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMainStatCard(String label, String value, IconData icon) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: const Color(0xFF0F172A), size: 24),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: Colors.black,
-            ),
-          ),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 13,
-              color: Colors.black54,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRoleStatCard(
-      String label, String value, Color color, IconData icon) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
-                child: Icon(icon, color: color, size: 20),
               ),
-              const Spacer(),
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: color,
-                ),
+              _hairline(),
+              _countRow(
+                'Students',
+                '$_totalStudents',
+                _roleColors['student']!,
+                _getRoleIcon('student'),
+                showDivider: true,
+              ),
+              _countRow(
+                'Class Reps',
+                '$_totalClassReps',
+                _roleColors['class_rep']!,
+                _getRoleIcon('class_rep'),
+                showDivider: true,
+              ),
+              _countRow(
+                'Asst. Class Reps',
+                '$_totalAssistantClassReps',
+                _roleColors['assistant_class_rep']!,
+                _getRoleIcon('assistant_class_rep'),
+                showDivider: true,
+              ),
+              _countRow(
+                'Lecturers',
+                '$_totalLecturers',
+                _roleColors['lecturer']!,
+                _getRoleIcon('lecturer'),
+                showDivider: true,
+              ),
+              _countRow(
+                'Admins',
+                '$_totalAdmins',
+                _roleColors['admin']!,
+                _getRoleIcon('admin'),
+                showDivider: true,
+              ),
+              _countRow(
+                'System Admins',
+                '$_totalSystemAdmins',
+                _roleColors['system_admin']!,
+                _getRoleIcon('system_admin'),
               ),
             ],
+          ]),
+        ],
+      ),
+    );
+  }
+
+  Widget _statCell(String value, String label, IconData icon) {
+    return Expanded(
+      child: Column(
+        children: [
+          Icon(icon, size: 18, color: const Color(0xFF6366F1)),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.4,
+              color: _titleColor,
+            ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 2),
           Text(
             label,
-            style: const TextStyle(
-              fontSize: 12,
-              color: Colors.black54,
-              fontWeight: FontWeight.w500,
-            ),
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: _muted),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _countRow(
+    String label,
+    String value,
+    Color color,
+    IconData icon, {
+    bool showDivider = false,
+  }) {
+    return _settingsRow(
+      icon: icon,
+      iconColor: color,
+      title: label,
+      trailing: Text(
+        value,
+        style: TextStyle(
+          fontSize: 17,
+          fontWeight: FontWeight.w600,
+          color: color,
+        ),
+      ),
+      showChevron: false,
+      showDivider: showDivider,
     );
   }
 
@@ -1376,10 +1184,9 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard>
             : _staffRoleFilter == value);
     return Padding(
       padding: const EdgeInsets.only(right: 8),
-      child: FilterChip(
-        label: Text(label),
-        selected: isSelected,
-        onSelected: (_) {
+      child: GestureDetector(
+        onTap: () {
+          HapticFeedback.selectionClick();
           setState(() {
             if (isCourseFilter) {
               if (isUserTab) {
@@ -1395,20 +1202,34 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard>
             _filterLists();
           });
         },
-        backgroundColor: Colors.white,
-        selectedColor: const Color(0xFF6366F1).withValues(alpha: 0.2),
-        labelStyle: TextStyle(
-          color: isSelected ? const Color(0xFF6366F1) : const Color(0xFF6B7280),
-          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-        ),
-        side: BorderSide(
-          color: isSelected ? const Color(0xFF6366F1) : const Color(0xFFE5E7EB),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? const Color(0xFF6366F1).withValues(alpha: _isDark ? 0.22 : 0.12)
+                : _chip,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: isSelected
+                  ? const Color(0xFF6366F1)
+                  : (_isDark ? const Color(0xFF374151) : const Color(0xFFE5E7EB)),
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              color: isSelected ? const Color(0xFF6366F1) : _muted,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+            ),
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildUserCard(Map<String, dynamic> user) {
+  Widget _buildUserCard(Map<String, dynamic> user, {required bool showDivider}) {
     final role = user['role'].toString();
     final roleColor = _roleColors[role] ?? const Color(0xFF6366F1);
     final email = user['email'].toString();
@@ -1416,82 +1237,65 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard>
     final course = _courseForProfile(user);
     final registration = user['registration_number']?.toString() ?? '';
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.all(16),
-        leading: _buildAvatar(user),
-        title: Text(
-          user['full_name'].toString(),
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-            color: Colors.black,
-          ),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _showUserDetails(user),
+        child: Column(
           children: [
-            const SizedBox(height: 4),
-            Text(
-              email.isNotEmpty
-                  ? email
-                  : (username.isNotEmpty ? '@$username' : 'No email'),
-              style: const TextStyle(color: Colors.black87),
-            ),
-            if (course != null || registration.isNotEmpty) ...[
-              const SizedBox(height: 4),
-              Text(
-                course != null
-                    ? (registration.isNotEmpty
-                        ? '${course.name} · $registration'
-                        : course.name)
-                    : registration,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: Color(0xFF64748B),
-                ),
-              ),
-            ],
-            const SizedBox(height: 6),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: roleColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: roleColor.withValues(alpha: 0.3)),
-              ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               child: Row(
-                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(_getRoleIcon(role), size: 14, color: roleColor),
-                  const SizedBox(width: 4),
+                  _buildAvatar(user, radius: 22),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          user['full_name'].toString(),
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w600,
+                            color: _titleColor,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          email.isNotEmpty
+                              ? email
+                              : (username.isNotEmpty ? '@$username' : 'No email'),
+                          style: TextStyle(fontSize: 13, color: _muted),
+                        ),
+                        if (course != null || registration.isNotEmpty)
+                          Text(
+                            course != null
+                                ? (registration.isNotEmpty
+                                    ? '${course.name} · $registration'
+                                    : course.name)
+                                : registration,
+                            style: TextStyle(fontSize: 12, color: _muted),
+                          ),
+                      ],
+                    ),
+                  ),
                   Text(
                     _formatRole(role),
                     style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
                       color: roleColor,
                     ),
                   ),
+                  const SizedBox(width: 6),
+                  Icon(CupertinoIcons.chevron_forward, size: 16, color: _muted),
                 ],
               ),
             ),
+            if (showDivider) _hairline(indent: 72),
           ],
         ),
-        trailing: const Icon(Icons.chevron_right_rounded),
-        onTap: () => _showUserDetails(user),
       ),
     );
   }
@@ -1501,13 +1305,13 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard>
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.people_outline_rounded, size: 80, color: Colors.grey[300]),
+          Icon(CupertinoIcons.person_2, size: 48, color: _muted),
           const SizedBox(height: 16),
           Text(
             message,
             style: TextStyle(
               fontSize: 18,
-              color: Colors.grey[600],
+              color: _muted,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -1523,11 +1327,11 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard>
   }) {
     return Container(
       padding: const EdgeInsets.all(16),
-      color: Colors.white,
+      color: _bg,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          TextField(
+          CupertinoSearchTextField(
             onChanged: (value) {
               setState(() {
                 if (isUserTab) {
@@ -1538,24 +1342,20 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard>
                 _filterLists();
               });
             },
-            decoration: InputDecoration(
-              hintText: searchHint,
-              prefixIcon: const Icon(Icons.search_rounded),
-              filled: true,
-              fillColor: const Color(0xFFF8FAFC),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: BorderSide.none,
-              ),
-            ),
+            placeholder: searchHint,
+            backgroundColor: _card,
+            style: TextStyle(color: _titleColor, fontSize: 17),
+            placeholderStyle: TextStyle(color: _muted, fontSize: 17),
+            prefixIcon: Icon(CupertinoIcons.search, color: _muted, size: 18),
+            itemColor: _muted,
           ),
           const SizedBox(height: 12),
-          const Text(
+          Text(
             'Role',
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: Color(0xFF64748B),
+              color: _muted,
             ),
           ),
           const SizedBox(height: 8),
@@ -1573,12 +1373,12 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard>
           ),
           if (_courses.isNotEmpty) ...[
             const SizedBox(height: 12),
-            const Text(
+            Text(
               'Course',
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
-                color: Color(0xFF64748B),
+                color: _muted,
               ),
             ),
             const SizedBox(height: 8),
@@ -1620,7 +1420,9 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard>
     // overflowing the search/filter header.
     return CustomScrollView(
       key: PageStorageKey<String>(isUserTab ? 'users-tab' : 'staff-tab'),
-      physics: const AlwaysScrollableScrollPhysics(),
+      physics: const BouncingScrollPhysics(
+        parent: AlwaysScrollableScrollPhysics(),
+      ),
       slivers: [
         SliverToBoxAdapter(
           child: _buildFilterHeader(
@@ -1638,12 +1440,15 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard>
           )
         else
           SliverPadding(
-            padding: const EdgeInsets.all(16),
-            sliver: SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) => _buildUserCard(items[index]),
-                childCount: items.length,
-              ),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+            sliver: SliverToBoxAdapter(
+              child: _groupedCard([
+                for (var i = 0; i < items.length; i++)
+                  _buildUserCard(
+                    items[i],
+                    showDivider: i < items.length - 1,
+                  ),
+              ]),
             ),
           ),
       ],
@@ -1653,65 +1458,113 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        title: const Text(
-          'System Admin',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        actions: [
-          IconButton(
-            tooltip: 'Add Course',
-            icon: const Icon(Icons.add_rounded),
-            onPressed: _openCourseAddition,
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            onPressed: () {
-              _loadProfiles();
-              _loadCourses();
-            },
-          ),
-        ],
-        bottom: TabBar(
-          controller: _tabController,
-          labelColor: const Color(0xFF0F172A),
-          unselectedLabelColor: const Color(0xFF6B7280),
-          indicatorColor: const Color(0xFF0F172A),
-          tabs: [
-            Tab(text: 'Users ($_totalUsers)'),
-            Tab(text: 'Staff ($_totalStaff)'),
-          ],
-        ),
-      ),
+      backgroundColor: _bg,
       body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF0F172A)),
+          ? Center(
+              child: CupertinoActivityIndicator(
+                color: _isDark ? const Color(0xFFF9FAFB) : const Color(0xFF6B7280),
               ),
             )
           : NestedScrollView(
               headerSliverBuilder: (context, innerBoxIsScrolled) {
                 return [
+                  SliverAppBar.large(
+                    backgroundColor: _bg,
+                    surfaceTintColor: Colors.transparent,
+                    foregroundColor: _titleColor,
+                    title: const Text(
+                      'System Admin',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    actions: [
+                      CupertinoButton(
+                        padding: const EdgeInsets.only(right: 4),
+                        onPressed: _openCourseAddition,
+                        child: const Text(
+                          'Add',
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF6366F1),
+                          ),
+                        ),
+                      ),
+                      CupertinoButton(
+                        padding: const EdgeInsets.only(right: 8),
+                        onPressed: () {
+                          HapticFeedback.selectionClick();
+                          _loadProfiles();
+                          _loadCourses();
+                        },
+                        child: const Icon(
+                          CupertinoIcons.refresh,
+                          color: Color(0xFF6366F1),
+                        ),
+                      ),
+                    ],
+                  ),
                   SliverToBoxAdapter(child: _buildStatisticsSection()),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                      child: CupertinoSlidingSegmentedControl<int>(
+                        groupValue: _tabController.index,
+                        backgroundColor: _chip,
+                        thumbColor: _card,
+                        children: {
+                          0: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: Text(
+                              'Users ($_totalUsers)',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: _titleColor,
+                              ),
+                            ),
+                          ),
+                          1: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: Text(
+                              'Staff ($_totalStaff)',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: _titleColor,
+                              ),
+                            ),
+                          ),
+                        },
+                        onValueChanged: (value) {
+                          if (value == null) return;
+                          HapticFeedback.selectionClick();
+                          _tabController.animateTo(value);
+                          setState(() {});
+                        },
+                      ),
+                    ),
+                  ),
                 ];
               },
-              body: TabBarView(
-                controller: _tabController,
-                children: [
-                  _buildListTab(
-                    isUserTab: true,
-                    items: _filteredUsers,
-                    searchHint: 'Search users...',
-                    roles: _userRoles,
-                  ),
-                  _buildListTab(
-                    isUserTab: false,
-                    items: _filteredStaff,
-                    searchHint: 'Search staff...',
-                    roles: _staffRoles,
-                  ),
-                ],
+              body: ColoredBox(
+                color: _bg,
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildListTab(
+                      isUserTab: true,
+                      items: _filteredUsers,
+                      searchHint: 'Search users',
+                      roles: _userRoles,
+                    ),
+                    _buildListTab(
+                      isUserTab: false,
+                      items: _filteredStaff,
+                      searchHint: 'Search staff',
+                      roles: _staffRoles,
+                    ),
+                  ],
+                ),
               ),
             ),
     );
