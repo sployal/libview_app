@@ -44,12 +44,13 @@ SliverAppBar compactSliverAppBar({
   Widget? leading,
   List<Widget>? actions,
   bool automaticallyImplyLeading = false,
+  double toolbarHeight = 52,
 }) {
   return SliverAppBar(
     pinned: true,
     floating: true,
     snap: true,
-    toolbarHeight: 52,
+    toolbarHeight: toolbarHeight,
     titleSpacing: leading == null ? 16 : 4,
     automaticallyImplyLeading: automaticallyImplyLeading,
     centerTitle: false,

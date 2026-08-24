@@ -242,7 +242,6 @@ class _SemestersScreenState extends State<SemestersScreen> {
     final subtitleColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
     final pagePad = AdaptiveLayout.pagePadding(context);
     final bottomPad = AdaptiveLayout.bottomClearance(context);
-    final tablet = AdaptiveLayout.isTablet(context);
 
     return Scaffold(
       backgroundColor: background,
@@ -266,8 +265,7 @@ class _SemestersScreenState extends State<SemestersScreen> {
                     title: Text(
                       'Semesters',
                       style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: tablet ? 22 : 20,
+                        fontWeight: FontWeight.bold,
                         color: titleColor,
                       ),
                     ),
