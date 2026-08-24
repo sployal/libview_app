@@ -359,10 +359,6 @@ class _HomeScreenState extends State<HomeScreen>
                     delegate: SliverChildListDelegate([
                       _buildHeader(titleColor, muted, card, isDark),
                       const SizedBox(height: 20),
-                      if (recentDownloads.isNotEmpty) ...[
-                        _buildContinueCard(isDark),
-                        const SizedBox(height: 16),
-                      ],
                       _buildTodayCard(isDark, card, titleColor, muted),
                       const SizedBox(height: 16),
                       const _StudyFocusCard(),
@@ -414,15 +410,22 @@ class _HomeScreenState extends State<HomeScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                _greetingTitle(),
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: -0.6,
-                  height: 1.15,
-                  color: titleColor,
-                ),
+              Wrap(
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                children: [
+                  Text(
+                    _greetingTitle(),
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: -0.6,
+                      height: 1.15,
+                      color: titleColor,
+                    ),
+                  ),
+                  _GreetingSkyIcon(hour: DateTime.now().hour),
+                ],
               ),
               const SizedBox(height: 6),
               Text(
@@ -443,83 +446,6 @@ class _HomeScreenState extends State<HomeScreen>
           onTap: _openNotifications,
         ),
       ],
-    );
-  }
-
-  Widget _buildContinueCard(bool isDark) {
-    final download = recentDownloads.first;
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () => _openFile(download),
-        borderRadius: BorderRadius.circular(22),
-        child: Ink(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(22),
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.18),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Icon(_fileIcon(download.type), color: Colors.white),
-                ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Continue',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white.withOpacity(0.8),
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        download.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
-                      ),
-                      Text(
-                        '${download.subject} · ${_timeAgo(download)}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.white.withOpacity(0.82),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Icon(
-                  Icons.play_arrow_rounded,
-                  color: Colors.white,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 
@@ -1167,6 +1093,66 @@ class _HomeScreenState extends State<HomeScreen>
           ),
         ),
       ),
+    );
+  }
+}
+
+class _GreetingSkyIcon extends StatefulWidget {
+  const _GreetingSkyIcon({required this.hour});
+
+  final int hour;
+
+  @override
+  State<_GreetingSkyIcon> createState() => _GreetingSkyIconState();
+}
+
+class _GreetingSkyIconState extends State<_GreetingSkyIcon>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  bool get _isDay => widget.hour < 17;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: Duration(seconds: _isDay ? 12 : 5),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        if (_isDay) {
+          return Transform.rotate(
+            angle: _controller.value * 2 * math.pi,
+            child: Icon(
+              Icons.wb_sunny_rounded,
+              size: 28,
+              color: widget.hour < 12
+                  ? const Color(0xFFFBBF24)
+                  : const Color(0xFFF97316),
+            ),
+          );
+        }
+        return Transform.translate(
+          offset: Offset(0, math.sin(_controller.value * 2 * math.pi) * 1.6),
+          child: Icon(
+            Icons.nightlight_round,
+            size: 26,
+            color: const Color(0xFFA5B4FC),
+          ),
+        );
+      },
     );
   }
 }
