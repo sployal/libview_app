@@ -71,7 +71,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
   ];
 
   final Map<String, Color> _roleColors = {
-    'system_admin': const Color(0xFF6366F1),
+    'system_admin': const Color(0xFFF472B6),
     'admin': const Color(0xFFEF4444),
     'lecturer': const Color(0xFF8B5CF6),
     'class_rep': const Color(0xFFF59E0B),

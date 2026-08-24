@@ -705,7 +705,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     switch (role.toLowerCase()) {
       case 'system_admin':
       case 'super_admin':
-        return const Color(0xFF0F172A);
+        return const Color(0xFFF472B6);
       case 'admin':
         return const Color(0xFFEF4444);
       case 'lecturer':

@@ -407,7 +407,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     switch (role.toLowerCase()) {
       case 'system_admin':
       case 'super_admin':
-        return const Color(0xFF0F172A);
+        return const Color(0xFFF472B6);
       case 'admin':
         return const Color(0xFFEF4444);
       case 'lecturer':
@@ -592,9 +592,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         Text(
                           'Notifications',
                           style: TextStyle(
-                            fontSize: 34,
+                            fontSize: 24,
                             fontWeight: FontWeight.w800,
-                            letterSpacing: -0.8,
+                            letterSpacing: -0.4,
                             color: titleColor,
                             height: 1.1,
                           ),

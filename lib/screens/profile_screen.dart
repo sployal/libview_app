@@ -1013,7 +1013,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     switch (role.toLowerCase()) {
       case 'system_admin':
       case 'super_admin':
-        return const Color(0xFF6366F1);
+        return const Color(0xFFF472B6);
       case 'admin':
         return const Color(0xFFEF4444);
       case 'lecturer':
