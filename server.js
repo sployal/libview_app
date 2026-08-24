@@ -14,43 +14,12 @@ const { registerMediaRoutes } = require('./media server.js');
 // config
 // =========================================================================
 
-// Engineering Drive layout comes from .env (see .env.example):
-//   ROOT_FOLDER_ID or EDUPAL_FOLDER_ID
-//   SEMESTER_FOLDER_IDS  — comma-separated, year1_sem1 … year5_sem2
-// On startup those IDs are written to Firestore (`courses/engineering`).
-const ENGINEERING_SEMESTER_KEYS = [
-  'year1_sem1',
-  'year1_sem2',
-  'year2_sem1',
-  'year2_sem2',
-  'year3_sem1',
-  'year3_sem2',
-  'year4_sem1',
-  'year4_sem2',
-  'year5_sem1',
-  'year5_sem2',
-];
-
-function parseEngineeringSemesterFolderIds() {
-  const fromEnv = (process.env.SEMESTER_FOLDER_IDS || '')
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
-
-  const map = {};
-  ENGINEERING_SEMESTER_KEYS.forEach((key, index) => {
-    if (fromEnv[index]) map[key] = fromEnv[index];
-  });
-  return map;
-}
-
-const ENGINEERING_SEMESTER_FOLDER_IDS = parseEngineeringSemesterFolderIds();
-const SEMESTER_FOLDER_IDS = new Set(Object.values(ENGINEERING_SEMESTER_FOLDER_IDS));
+// Engineering Drive layout is derived from the Edupal root only
+// (ROOT_FOLDER_ID or EDUPAL_FOLDER_ID). On startup the server looks for
+// the Engineering course folder and its year/semester subfolders on Drive,
+// creates any that are missing, then writes the IDs to Firestore.
 const EDUPAL_FOLDER_ID =
   process.env.EDUPAL_FOLDER_ID || process.env.ROOT_FOLDER_ID || '';
-
-// Semester folders created for additional courses (loaded from Firestore).
-const extraSemesterFolderIds = new Set();
 const SYSTEM_ADMIN_EMAIL = (
   process.env.SYSTEM_ADMIN_EMAIL ||
   process.env.SUPER_ADMIN_EMAIL ||
@@ -83,8 +52,6 @@ const CONFIG = {
   FIREBASE_SA_KEY_PATH: process.env.FIREBASE_SA_KEY_PATH || './secrets/firebase-service-account.json',
   MAX_UPLOAD_BYTES: parseInt(process.env.MAX_UPLOAD_BYTES || `${20 * 1024 * 1024}`, 10),
   EDUPAL_FOLDER_ID,
-  ENGINEERING_SEMESTER_FOLDER_IDS,
-  SEMESTER_FOLDER_IDS,
   ADMIN_UIDS,
 };
 
@@ -100,73 +67,37 @@ const firestore = admin.firestore();
 
 const extraSemesterIds = new Set();
 
-function engineeringFolderConfigIsComplete() {
-  if (!CONFIG.EDUPAL_FOLDER_ID) return false;
-  return ENGINEERING_SEMESTER_KEYS.every((key) => CONFIG.ENGINEERING_SEMESTER_FOLDER_IDS[key]);
-}
-
-function engineeringSemesterPayload() {
-  const semesters = {};
-  ENGINEERING_SEMESTER_KEYS.forEach((key) => {
-    const match = /^year(\d+)_sem(\d+)$/.exec(key);
-    const year = match ? match[1] : '?';
-    const sem = match ? match[2] : '?';
-    semesters[key] = {
-      folderId: CONFIG.ENGINEERING_SEMESTER_FOLDER_IDS[key],
-      name: `Year ${year} - Semester ${sem}`,
-      driveName: `year ${year} sem ${sem}`,
-    };
-  });
-  return semesters;
-}
-
-async function resolveEngineeringCourseFolderId() {
-  if (process.env.ENGINEERING_COURSE_FOLDER_ID) {
-    return process.env.ENGINEERING_COURSE_FOLDER_ID;
-  }
-  if (!driveIsConfigured()) return '';
-
-  const semesterId = CONFIG.ENGINEERING_SEMESTER_FOLDER_IDS.year1_sem1;
-  try {
-    const semester = await drive.files.get({
-      fileId: semesterId,
-      fields: 'parents',
-      supportsAllDrives: true,
-    });
-    return (semester.data.parents || [])[0] || '';
-  } catch (err) {
-    console.error('Could not resolve Engineering course folder from Drive:', err.message);
-    return '';
-  }
-}
-
 async function syncEngineeringCourseToFirestore() {
-  if (!engineeringFolderConfigIsComplete()) {
+  if (!CONFIG.EDUPAL_FOLDER_ID) {
     console.warn(
-      'Skipping Engineering Drive sync: set ROOT_FOLDER_ID (or EDUPAL_FOLDER_ID) and SEMESTER_FOLDER_IDS ' +
-        '(10 comma-separated IDs, year1_sem1 … year5_sem2) in .env.'
+      'Skipping Engineering Drive sync: set ROOT_FOLDER_ID (or EDUPAL_FOLDER_ID) in .env.'
     );
     return;
   }
+  if (!driveIsConfigured()) {
+    console.warn('Skipping Engineering Drive sync: Drive OAuth is not configured yet.');
+    return;
+  }
 
-  const semesters = engineeringSemesterPayload();
-  const courseFolderId = await resolveEngineeringCourseFolderId();
+  const structure = await ensureCourseStructure('Engineering', 5);
   const payload = {
     name: 'Engineering',
     years: 5,
     sample_admission_number: 'EB24/46271/20',
     admission_prefix: 'EB24',
-    semesters,
+    drive_folder_id: structure.courseFolderId,
+    semesters: structure.semesters,
     updated_at: admin.firestore.FieldValue.serverTimestamp(),
   };
-  if (courseFolderId) payload.drive_folder_id = courseFolderId;
 
   await firestore.collection('courses').doc('engineering').set(payload, { merge: true });
   await firestore.collection('config').doc('googleDriveFolders').set(
     {
       edupalFolderId: CONFIG.EDUPAL_FOLDER_ID,
-      engineeringCourseFolderId: courseFolderId || null,
-      semesterFolderIds: CONFIG.ENGINEERING_SEMESTER_FOLDER_IDS,
+      engineeringCourseFolderId: structure.courseFolderId,
+      semesterFolderIds: Object.fromEntries(
+        Object.entries(structure.semesters).map(([key, value]) => [key, value.folderId])
+      ),
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     },
     { merge: true }
@@ -308,8 +239,7 @@ async function uploadFile({ fileName, buffer, folderId, uploadedBy, mimeType }) 
 }
 
 function isSemesterFolder(folderId) {
-  return typeof folderId === 'string' &&
-    (CONFIG.SEMESTER_FOLDER_IDS.has(folderId) || extraSemesterIds.has(folderId));
+  return typeof folderId === 'string' && extraSemesterIds.has(folderId);
 }
 
 // New unit folders are created directly under a semester folder.
@@ -335,52 +265,62 @@ async function createFolder(folderName, parentFolderId, { cacheAsSubject = true 
   return res.data;
 }
 
-async function resolveEdupalFolderId() {
-  if (CONFIG.EDUPAL_FOLDER_ID) {
-    return CONFIG.EDUPAL_FOLDER_ID;
-  }
-
-  const semesterId = [...CONFIG.SEMESTER_FOLDER_IDS][0];
-  if (!semesterId) {
-    throw new Error('No known semester folder to locate Edupal from');
-  }
-
-  const semester = await drive.files.get({
-    fileId: semesterId,
-    fields: 'parents',
-    supportsAllDrives: true,
-  });
-  const courseFolderId = (semester.data.parents || [])[0];
-  if (!courseFolderId) {
-    throw new Error('Could not find the Engineering course folder');
-  }
-
-  const courseFolder = await drive.files.get({
-    fileId: courseFolderId,
-    fields: 'parents',
-    supportsAllDrives: true,
-  });
-  const edupalId = (courseFolder.data.parents || [])[0];
-  if (!edupalId) {
-    throw new Error('Could not find the Edupal Drive folder');
-  }
-  return edupalId;
+function normalizeFolderName(name) {
+  return String(name || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
 }
 
-async function createCourseStructure(courseName, years) {
-  const edupalId = await resolveEdupalFolderId();
-  const courseFolder = await createFolder(courseName, edupalId, {
-    cacheAsSubject: false,
-  });
+async function listChildFolders(parentId) {
+  const folders = [];
+  let pageToken;
+  do {
+    const res = await drive.files.list({
+      q: `'${parentId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
+      fields: 'nextPageToken, files(id, name)',
+      pageSize: 100,
+      pageToken,
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true,
+    });
+    folders.push(...(res.data.files || []));
+    pageToken = res.data.nextPageToken;
+  } while (pageToken);
+  return folders;
+}
 
+async function findOrCreateNamedFolder(name, parentId, existingFolders) {
+  const wanted = normalizeFolderName(name);
+  const existing = existingFolders.find((folder) => normalizeFolderName(folder.name) === wanted);
+  if (existing) {
+    return { id: existing.id, name: existing.name, created: false };
+  }
+
+  const created = await createFolder(name, parentId, { cacheAsSubject: false });
+  existingFolders.push(created);
+  return { id: created.id, name: created.name, created: true };
+}
+
+async function resolveEdupalFolderId() {
+  if (!CONFIG.EDUPAL_FOLDER_ID) {
+    throw new Error('ROOT_FOLDER_ID (or EDUPAL_FOLDER_ID) is not set');
+  }
+  return CONFIG.EDUPAL_FOLDER_ID;
+}
+
+async function ensureCourseStructure(courseName, years) {
+  const edupalId = await resolveEdupalFolderId();
+  const rootFolders = await listChildFolders(edupalId);
+  const courseFolder = await findOrCreateNamedFolder(courseName, edupalId, rootFolders);
+
+  const semesterFolders = await listChildFolders(courseFolder.id);
   const semesters = {};
   for (let year = 1; year <= years; year += 1) {
     for (let sem = 1; sem <= 2; sem += 1) {
       const key = `year${year}_sem${sem}`;
       const driveName = `year ${year} sem ${sem}`;
-      const folder = await createFolder(driveName, courseFolder.id, {
-        cacheAsSubject: false,
-      });
+      const folder = await findOrCreateNamedFolder(driveName, courseFolder.id, semesterFolders);
       rememberSemesterFolderId(folder.id);
       semesters[key] = {
         folderId: folder.id,
@@ -395,6 +335,10 @@ async function createCourseStructure(courseName, years) {
     courseFolderName: courseFolder.name,
     semesters,
   };
+}
+
+async function createCourseStructure(courseName, years) {
+  return ensureCourseStructure(courseName, years);
 }
 
 async function isCourseFolderUnderEdupal(folderId) {
@@ -667,6 +611,13 @@ app.get('/auth/google/callback', async (req, res) => {
     // right away too, without waiting for a restart.
     oauth2Client.setCredentials(tokens);
     driveReady = true;
+
+    try {
+      await syncEngineeringCourseToFirestore();
+      await loadSemesterIdsFromFirestore();
+    } catch (err) {
+      console.error('Failed to sync Engineering Drive folders after OAuth:', err.message);
+    }
 
     console.log('Google Drive OAuth refresh token saved to Firestore (config/googleDriveOAuth).');
 
