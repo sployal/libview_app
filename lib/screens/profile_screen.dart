@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../services/auth_service.dart';
 import '../services/download_service.dart';
 import '../services/theme_controller.dart';
+import '../ui/adaptive_layout.dart';
 import 'class_members.dart';
 import 'course_members.dart';
 import 'downloads_screen.dart';
@@ -200,6 +201,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final chevron =
         isDark ? const Color(0xFF6B7280) : const Color(0xFF9CA3AF);
     const accent = Color(0xFF6366F1);
+    final pagePad = AdaptiveLayout.pagePadding(context);
+    final bottomPad = AdaptiveLayout.bottomClearance(context);
+    final tablet = AdaptiveLayout.isTablet(context);
 
     return Scaffold(
       backgroundColor: background,
@@ -218,13 +222,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   parent: BouncingScrollPhysics(),
                 ),
                 slivers: [
-                  SliverAppBar.large(
+                  compactSliverAppBar(
                     backgroundColor: background,
-                    surfaceTintColor: Colors.transparent,
                     foregroundColor: primaryText,
-                    title: const Text(
+                    title: Text(
                       'Profile',
-                      style: TextStyle(fontWeight: FontWeight.w700),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: tablet ? 22 : 20,
+                      ),
                     ),
                     actions: [
                       CupertinoButton(
@@ -233,7 +239,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         child: const Text(
                           'Edit',
                           style: TextStyle(
-                            fontSize: 17,
+                            fontSize: 16,
                             fontWeight: FontWeight.w600,
                             color: Color(0xFF6366F1),
                           ),
@@ -242,7 +248,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ],
                   ),
                   SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 40),
+                    padding: pagePad.copyWith(top: 4, bottom: bottomPad),
                     sliver: SliverList(
                       delegate: SliverChildListDelegate([
                         _profileHero(
@@ -251,7 +257,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           secondaryText: secondaryText,
                           isDark: isDark,
                         ),
-                        const SizedBox(height: 22),
+                        const SizedBox(height: 16),
                         _sectionLabel('Library', secondaryText),
                         _groupedCard(
                           color: card,
@@ -263,7 +269,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 22),
+                        const SizedBox(height: 16),
                         _sectionLabel('Preferences', secondaryText),
                         _groupedCard(
                           color: card,
@@ -294,7 +300,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 22),
+                        const SizedBox(height: 16),
                         _sectionLabel('Storage', secondaryText),
                         _groupedCard(
                           color: card,
@@ -314,7 +320,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ],
                         ),
                         if (_hasAccountTools) ...[
-                          const SizedBox(height: 22),
+                          const SizedBox(height: 16),
                           _sectionLabel('Account tools', secondaryText),
                           _groupedCard(
                             color: card,
@@ -405,7 +411,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ],
                           ),
                         ],
-                        const SizedBox(height: 22),
+                        const SizedBox(height: 16),
                         _sectionLabel('Support', secondaryText),
                         _groupedCard(
                           color: card,
@@ -438,7 +444,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 22),
+                        const SizedBox(height: 16),
                         _groupedCard(
                           color: card,
                           children: [
@@ -471,9 +477,115 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required Color secondaryText,
     required bool isDark,
   }) {
+    final tablet = AdaptiveLayout.isTablet(context);
+    final avatarRadius = tablet ? 42.0 : 32.0;
+    final identity = Column(
+      crossAxisAlignment:
+          tablet ? CrossAxisAlignment.start : CrossAxisAlignment.center,
+      children: [
+        Text(
+          _fullName ?? 'User Name',
+          textAlign: tablet ? TextAlign.start : TextAlign.center,
+          style: TextStyle(
+            fontSize: tablet ? 26 : 22,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.6,
+            color: primaryText,
+          ),
+        ),
+        if (_username != null && _username!.trim().isNotEmpty) ...[
+          const SizedBox(height: 2),
+          Text(
+            '@$_username',
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.w500,
+              color: secondaryText,
+            ),
+          ),
+        ],
+        const SizedBox(height: 2),
+        Text(
+          _email ?? 'email@example.com',
+          style: TextStyle(
+            fontSize: 14,
+            color: secondaryText,
+          ),
+        ),
+        if (_registrationNumber != null || _role != null) ...[
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            alignment:
+                tablet ? WrapAlignment.start : WrapAlignment.center,
+            children: [
+              if (_registrationNumber != null)
+                _pill(
+                  icon: CupertinoIcons.tag_fill,
+                  label: _registrationNumber!,
+                  color: const Color(0xFF6366F1),
+                  isDark: isDark,
+                ),
+              if (_role != null)
+                _pill(
+                  icon: _getRoleIcon(_role!),
+                  label: _formatRole(_role!),
+                  color: _getRoleColor(_role!),
+                  isDark: isDark,
+                ),
+            ],
+          ),
+        ],
+      ],
+    );
+
+    final avatar = Container(
+      padding: const EdgeInsets.all(3),
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+        ),
+      ),
+      child: Container(
+        padding: const EdgeInsets.all(3),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: card,
+        ),
+        child: _avatarUrl != null && _avatarUrl!.isNotEmpty
+            ? CircleAvatar(
+                radius: avatarRadius,
+                backgroundImage: NetworkImage(_avatarUrl!),
+                backgroundColor:
+                    isDark ? const Color(0xFF374151) : const Color(0xFFF1F5F9),
+              )
+            : CircleAvatar(
+                radius: avatarRadius,
+                backgroundColor: const Color(0xFF6366F1),
+                child: Text(
+                  _getInitials(_fullName ?? 'User'),
+                  style: TextStyle(
+                    fontSize: tablet ? 26 : 22,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+      ),
+    );
+
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 28, 20, 24),
+      padding: EdgeInsets.fromLTRB(
+        tablet ? 24 : 16,
+        tablet ? 20 : 14,
+        tablet ? 24 : 16,
+        tablet ? 20 : 14,
+      ),
       decoration: BoxDecoration(
         color: card,
         borderRadius: BorderRadius.circular(20),
@@ -486,101 +598,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
         ],
       ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(3),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: const [Color(0xFF6366F1), Color(0xFF8B5CF6)],
-              ),
-            ),
-            child: Container(
-              padding: const EdgeInsets.all(3),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: card,
-              ),
-              child: _avatarUrl != null && _avatarUrl!.isNotEmpty
-                  ? CircleAvatar(
-                      radius: 44,
-                      backgroundImage: NetworkImage(_avatarUrl!),
-                      backgroundColor:
-                          isDark ? const Color(0xFF374151) : const Color(0xFFF1F5F9),
-                    )
-                  : CircleAvatar(
-                      radius: 44,
-                      backgroundColor: const Color(0xFF6366F1),
-                      child: Text(
-                        _getInitials(_fullName ?? 'User'),
-                        style: const TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            _fullName ?? 'User Name',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.w700,
-              letterSpacing: -0.6,
-              color: primaryText,
-            ),
-          ),
-          if (_username != null && _username!.trim().isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text(
-              '@$_username',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: secondaryText,
-              ),
-            ),
-          ],
-          const SizedBox(height: 4),
-          Text(
-            _email ?? 'email@example.com',
-            style: TextStyle(
-              fontSize: 15,
-              color: secondaryText,
-            ),
-          ),
-          if (_registrationNumber != null || _role != null) ...[
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              alignment: WrapAlignment.center,
+      child: tablet
+          ? Row(
               children: [
-                if (_registrationNumber != null)
-                  _pill(
-                    icon: CupertinoIcons.tag_fill,
-                    label: _registrationNumber!,
-                    color: const Color(0xFF6366F1),
-                    isDark: isDark,
-                  ),
-                if (_role != null)
-                  _pill(
-                    icon: _getRoleIcon(_role!),
-                    label: _formatRole(_role!),
-                    color: _getRoleColor(_role!),
-                    isDark: isDark,
-                  ),
+                avatar,
+                const SizedBox(width: 20),
+                Expanded(child: identity),
+              ],
+            )
+          : Column(
+              children: [
+                avatar,
+                const SizedBox(height: 12),
+                identity,
               ],
             ),
-          ],
-        ],
-      ),
     );
   }
 
@@ -616,7 +648,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _sectionLabel(String text, Color color) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      padding: const EdgeInsets.fromLTRB(4, 0, 4, 6),
       child: Text(
         text.toUpperCase(),
         style: TextStyle(
@@ -658,21 +690,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required Color secondaryText,
     required Color separator,
   }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 16),
-      child: IntrinsicHeight(
+    final cells = [
+      _statCell('$_downloadedFileCount', 'Downloads', primaryText, secondaryText),
+      _statCell('$_uniqueSubjectsCount', 'Subjects', primaryText, secondaryText),
+      _statCell('$_pdfCount', 'PDFs', primaryText, secondaryText),
+      _statCell('$_thisWeekDownloadCount', 'This week', primaryText, secondaryText),
+    ];
+
+    Widget row(List<Widget> items) {
+      return IntrinsicHeight(
         child: Row(
           children: [
-            _statCell('$_downloadedFileCount', 'Downloads', primaryText, secondaryText),
-            VerticalDivider(width: 1, thickness: 0.5, color: separator),
-            _statCell('$_uniqueSubjectsCount', 'Subjects', primaryText, secondaryText),
-            VerticalDivider(width: 1, thickness: 0.5, color: separator),
-            _statCell('$_pdfCount', 'PDFs', primaryText, secondaryText),
-            VerticalDivider(width: 1, thickness: 0.5, color: separator),
-            _statCell('$_thisWeekDownloadCount', 'This week', primaryText, secondaryText),
+            for (var i = 0; i < items.length; i++) ...[
+              if (i > 0)
+                VerticalDivider(width: 1, thickness: 0.5, color: separator),
+              items[i],
+            ],
           ],
         ),
-      ),
+      );
+    }
+
+    final tablet = AdaptiveLayout.isTablet(context);
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: tablet
+          ? row(cells)
+          : Column(
+              children: [
+                row(cells.sublist(0, 2)),
+                Divider(height: 1, thickness: 0.5, color: separator),
+                row(cells.sublist(2)),
+              ],
+            ),
     );
   }
 

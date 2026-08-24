@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/course_service.dart';
 import '../services/google_drive_service.dart';
+import '../ui/adaptive_layout.dart';
 import 'semester_detail_screen.dart';
 
 class SemestersScreen extends StatefulWidget {
@@ -239,6 +240,9 @@ class _SemestersScreenState extends State<SemestersScreen> {
     final background = isDark ? const Color(0xFF111827) : const Color(0xFFF8FAFC);
     final titleColor = isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
     final subtitleColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
+    final pagePad = AdaptiveLayout.pagePadding(context);
+    final bottomPad = AdaptiveLayout.bottomClearance(context);
+    final tablet = AdaptiveLayout.isTablet(context);
 
     return Scaffold(
       backgroundColor: background,
@@ -256,10 +260,17 @@ class _SemestersScreenState extends State<SemestersScreen> {
               child: CustomScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 slivers: [
-                  SliverAppBar.large(
+                  compactSliverAppBar(
                     backgroundColor: background,
-                    surfaceTintColor: Colors.transparent,
-                    pinned: true,
+                    foregroundColor: titleColor,
+                    title: Text(
+                      'Semesters',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: tablet ? 22 : 20,
+                        color: titleColor,
+                      ),
+                    ),
                     actions: [
                       IconButton(
                         icon: const Icon(Icons.refresh_rounded),
@@ -267,16 +278,9 @@ class _SemestersScreenState extends State<SemestersScreen> {
                         tooltip: 'Refresh',
                       ),
                     ],
-                    title: Text(
-                      'Semesters',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        color: titleColor,
-                      ),
-                    ),
                   ),
                   SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
+                    padding: pagePad.copyWith(top: 4, bottom: bottomPad),
                     sliver: SliverList(
                       delegate: SliverChildListDelegate([
                         Text(
@@ -287,7 +291,7 @@ class _SemestersScreenState extends State<SemestersScreen> {
                             color: subtitleColor,
                           ),
                         ),
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 12),
                         _OverviewStrip(
                           isDark: isDark,
                           years: _course.years,
@@ -640,18 +644,19 @@ class _SemesterPair extends StatelessWidget {
     final semesters = year['semesters'] as List;
     final yearLabel = '${year['year']}';
 
-    return Column(
-      children: List.generate(semesters.length, (index) {
-        final semester = semesters[index] as Map;
-        final key = semester['key'] as String;
-        final config = folderIds[key];
-        final ready = isReady(config);
-        final unitCount = unitCounts[key];
-        final isFirst = index == 0;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final sideBySide =
+            AdaptiveLayout.isTablet(context) && constraints.maxWidth >= 560;
+        final cards = List.generate(semesters.length, (index) {
+          final semester = semesters[index] as Map;
+          final key = semester['key'] as String;
+          final config = folderIds[key];
+          final ready = isReady(config);
+          final unitCount = unitCounts[key];
+          final isFirst = index == 0;
 
-        return Padding(
-          padding: EdgeInsets.only(bottom: index == semesters.length - 1 ? 0 : 12),
-          child: _SemesterCard(
+          return _SemesterCard(
             name: '${semester['name']}',
             subtitle: isFirst
                 ? 'Opening term · lectures, notes, and labs'
@@ -673,9 +678,33 @@ class _SemesterPair extends StatelessWidget {
                       semesterKey: key,
                       yearLabel: yearLabel,
                     ),
-          ),
+          );
+        });
+
+        if (sideBySide) {
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (var i = 0; i < cards.length; i++) ...[
+                if (i > 0) const SizedBox(width: 12),
+                Expanded(child: cards[i]),
+              ],
+            ],
+          );
+        }
+
+        return Column(
+          children: [
+            for (var i = 0; i < cards.length; i++)
+              Padding(
+                padding: EdgeInsets.only(
+                  bottom: i == cards.length - 1 ? 0 : 12,
+                ),
+                child: cards[i],
+              ),
+          ],
         );
-      }),
+      },
     );
   }
 }

@@ -7,6 +7,7 @@ import '../services/google_drive_service.dart';
 import '../services/download_service.dart';
 import '../services/phone_document_service.dart';
 import '../services/upload_service.dart';
+import '../ui/adaptive_layout.dart';
 import 'phone_pdf.dart';
 import 'web_view_screen.dart';
 
@@ -1051,7 +1052,10 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
 
   Widget _buildDetailsFileList() {
     return ListView.builder(
-      padding: const EdgeInsets.all(20),
+      padding: AdaptiveLayout.pagePadding(context).copyWith(
+        top: 12,
+        bottom: AdaptiveLayout.bottomClearance(context),
+      ),
       itemCount: currentFiles.length,
       itemBuilder: (context, index) {
         final file = currentFiles[index];
@@ -1155,9 +1159,12 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
   Widget _buildLargeIconsGrid() {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final crossAxisCount = constraints.maxWidth >= 720 ? 3 : 2;
+        final crossAxisCount = AdaptiveLayout.gridCount(constraints.maxWidth);
         return GridView.builder(
-          padding: const EdgeInsets.all(20),
+          padding: AdaptiveLayout.pagePadding(context).copyWith(
+        top: 12,
+        bottom: AdaptiveLayout.bottomClearance(context),
+      ),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: crossAxisCount,
             mainAxisSpacing: 12,
@@ -1294,6 +1301,9 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
+        toolbarHeight: 52,
+        centerTitle: false,
+        titleSpacing: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: _backToSubjects,
@@ -1449,10 +1459,12 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     final titleColor =
         isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
     final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
-    final card = isDark ? const Color(0xFF1F2937) : Colors.white;
     final field = isDark ? const Color(0xFF111827) : const Color(0xFFEEF2F6);
     final visible = _visibleUnits;
     final totalFiles = _totalUnitFiles;
+    final pagePad = AdaptiveLayout.pagePadding(context);
+    final bottomPad = AdaptiveLayout.bottomClearance(context);
+    final tablet = AdaptiveLayout.isTablet(context);
 
     return Scaffold(
       backgroundColor: background,
@@ -1483,10 +1495,9 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
-            SliverAppBar.large(
+            compactSliverAppBar(
               backgroundColor: background,
-              surfaceTintColor: Colors.transparent,
-              pinned: true,
+              foregroundColor: titleColor,
               leading: IconButton(
                 icon: const Icon(Icons.arrow_back_rounded),
                 onPressed: _leaveSemester,
@@ -1495,6 +1506,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                 widget.semesterName,
                 style: TextStyle(
                   fontWeight: FontWeight.w700,
+                  fontSize: tablet ? 22 : 18,
                   color: titleColor,
                 ),
               ),
@@ -1517,7 +1529,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
               ],
             ),
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+              padding: pagePad.copyWith(top: 4, bottom: 8),
               sliver: SliverToBoxAdapter(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -1527,56 +1539,13 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                           ? 'Loading units'
                           : '${subjects.length} ${subjects.length == 1 ? 'unit' : 'units'}  ·  $totalFiles ${totalFiles == 1 ? 'file' : 'files'}',
                       style: TextStyle(
-                        fontSize: 15,
+                        fontSize: 13,
                         fontWeight: FontWeight.w500,
                         color: muted,
                       ),
                     ),
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: card,
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          if (!isDark)
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.04),
-                              blurRadius: 18,
-                              offset: const Offset(0, 8),
-                            ),
-                        ],
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 44,
-                            height: 44,
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF6366F1).withOpacity(0.12),
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            child: const Icon(
-                              Icons.auto_stories_rounded,
-                              color: Color(0xFF6366F1),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              'Open a unit to browse notes, slides, and files.',
-                              style: TextStyle(
-                                fontSize: 14,
-                                height: 1.35,
-                                color: muted,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                     if (subjects.isNotEmpty) ...[
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 10),
                       TextField(
                         controller: _unitSearchController,
                         onChanged: (value) {
@@ -1601,19 +1570,20 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                                 ),
                           filled: true,
                           fillColor: field,
+                          isDense: true,
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16,
-                            vertical: 12,
+                            vertical: 10,
                           ),
                           border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(14),
                             borderSide: BorderSide.none,
                           ),
                         ),
                       ),
                     ],
                     if (errorMessage != null) ...[
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 10),
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
@@ -1696,38 +1666,47 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
               )
             else if (_unitsAsGrid)
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
-                sliver: SliverGrid(
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    mainAxisSpacing: 12,
-                    crossAxisSpacing: 12,
-                    childAspectRatio: 0.86,
-                  ),
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
-                      final subject = visible[index];
-                      return _UnitFolderTile(
-                        subject: subject,
-                        isDark: isDark,
-                        compact: false,
-                        menu: _unitFolderMenu(subject),
-                        onTap: () => _openUnit(subject),
-                      );
-                    },
-                    childCount: visible.length,
-                  ),
+                padding: pagePad.copyWith(top: 8, bottom: bottomPad),
+                sliver: SliverLayoutBuilder(
+                  builder: (context, constraints) {
+                    final crossAxisCount =
+                        AdaptiveLayout.gridCount(constraints.crossAxisExtent);
+                    return SliverGrid(
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: crossAxisCount,
+                        mainAxisSpacing: 12,
+                        crossAxisSpacing: 12,
+                        childAspectRatio: tablet ? 1.05 : 0.86,
+                      ),
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          final subject = visible[index];
+                          return _UnitFolderTile(
+                            subject: subject,
+                            isDark: isDark,
+                            compact: false,
+                            menu: _unitFolderMenu(subject),
+                            onTap: () => _openUnit(subject),
+                          );
+                        },
+                        childCount: visible.length,
+                      ),
+                    );
+                  },
                 ),
               )
             else
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
-                sliver: SliverList(
-                  delegate: SliverChildBuilderDelegate(
-                    (context, index) {
+                padding: pagePad.copyWith(top: 8, bottom: bottomPad),
+                sliver: SliverLayoutBuilder(
+                  builder: (context, constraints) {
+                    final columns = AdaptiveLayout.listColumns(
+                      constraints.crossAxisExtent,
+                    );
+                    Widget tile(int index, {required bool tight}) {
                       final subject = visible[index];
                       return Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
+                        padding: EdgeInsets.only(bottom: tight ? 0 : 10),
                         child: _UnitFolderTile(
                           subject: subject,
                           isDark: isDark,
@@ -1736,9 +1715,30 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                           onTap: () => _openUnit(subject),
                         ),
                       );
-                    },
-                    childCount: visible.length,
-                  ),
+                    }
+
+                    if (columns == 1) {
+                      return SliverList(
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) => tile(index, tight: false),
+                          childCount: visible.length,
+                        ),
+                      );
+                    }
+
+                    return SliverGrid(
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: columns,
+                        mainAxisSpacing: 12,
+                        crossAxisSpacing: 12,
+                        mainAxisExtent: 78,
+                      ),
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) => tile(index, tight: true),
+                        childCount: visible.length,
+                      ),
+                    );
+                  },
                 ),
               ),
           ],

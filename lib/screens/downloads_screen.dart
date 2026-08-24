@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/download_service.dart';
 import '../services/phone_document_service.dart';
+import '../ui/adaptive_layout.dart';
 
 class DownloadsScreen extends StatefulWidget {
   const DownloadsScreen({super.key});
@@ -425,6 +426,9 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
     final field = isDark ? const Color(0xFF111827) : const Color(0xFFEEF2F6);
     final visible = _visibleDownloads;
     final selectedCount = _selected.length;
+    final pagePad = AdaptiveLayout.pagePadding(context);
+    final bottomPad = AdaptiveLayout.bottomClearance(context);
+    final sections = _sectionsFor(visible);
 
     return PopScope(
       canPop: !_selectionMode,
@@ -449,10 +453,9 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
           child: CustomScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
-              SliverAppBar.large(
+              compactSliverAppBar(
                 backgroundColor: background,
-                surfaceTintColor: Colors.transparent,
-                pinned: true,
+                foregroundColor: titleColor,
                 leading: _selectionMode
                     ? IconButton(
                         icon: const Icon(Icons.close_rounded),
@@ -464,6 +467,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                   _selectionMode ? '$selectedCount selected' : 'Downloads',
                   style: TextStyle(
                     fontWeight: FontWeight.w700,
+                    fontSize: AdaptiveLayout.isTablet(context) ? 22 : 20,
                     color: titleColor,
                   ),
                 ),
@@ -501,7 +505,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                 ],
               ),
               SliverPadding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                padding: pagePad.copyWith(top: 4, bottom: 8),
                 sliver: SliverToBoxAdapter(
                   child: _buildIntro(
                     muted: muted,
@@ -543,11 +547,11 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                 )
               else if (_useLargeIcons)
                 SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+                  padding: pagePad.copyWith(top: 8, bottom: bottomPad),
                   sliver: SliverLayoutBuilder(
                     builder: (context, constraints) {
                       final crossAxisCount =
-                          constraints.crossAxisExtent >= 720 ? 3 : 2;
+                          AdaptiveLayout.gridCount(constraints.crossAxisExtent);
                       return SliverGrid(
                         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: crossAxisCount,
@@ -571,10 +575,12 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                   ),
                 )
               else
-                ..._sectionsFor(visible).expand((section) {
+                ...sections.asMap().entries.expand((entry) {
+                  final section = entry.value;
+                  final isLast = entry.key == sections.length - 1;
                   return [
                     SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                      padding: pagePad.copyWith(top: 12, bottom: 6),
                       sliver: SliverToBoxAdapter(
                         child: Text(
                           section.title.toUpperCase(),
@@ -588,12 +594,18 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                       ),
                     ),
                     SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-                      sliver: SliverList(
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) {
+                      padding: pagePad.copyWith(
+                        top: 0,
+                        bottom: isLast ? bottomPad : 8,
+                      ),
+                      sliver: SliverLayoutBuilder(
+                        builder: (context, constraints) {
+                          final columns = AdaptiveLayout.listColumns(
+                            constraints.crossAxisExtent,
+                          );
+                          Widget tile(int index, {required bool tight}) {
                             return Padding(
-                              padding: const EdgeInsets.only(bottom: 10),
+                              padding: EdgeInsets.only(bottom: tight ? 0 : 10),
                               child: _buildListTile(
                                 section.items[index],
                                 isDark: isDark,
@@ -601,9 +613,32 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                                 muted: muted,
                               ),
                             );
-                          },
-                          childCount: section.items.length,
-                        ),
+                          }
+
+                          if (columns == 1) {
+                            return SliverList(
+                              delegate: SliverChildBuilderDelegate(
+                                (context, index) =>
+                                    tile(index, tight: false),
+                                childCount: section.items.length,
+                              ),
+                            );
+                          }
+
+                          return SliverGrid(
+                            gridDelegate:
+                                SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: columns,
+                              mainAxisSpacing: 12,
+                              crossAxisSpacing: 12,
+                              mainAxisExtent: 80,
+                            ),
+                            delegate: SliverChildBuilderDelegate(
+                              (context, index) => tile(index, tight: true),
+                              childCount: section.items.length,
+                            ),
+                          );
+                        },
                       ),
                     ),
                   ];
@@ -631,13 +666,13 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                   ? 'Loading files on this device'
                   : '${downloads.length} ${downloads.length == 1 ? 'file' : 'files'} saved on this device',
           style: TextStyle(
-            fontSize: 15,
+            fontSize: 13,
             fontWeight: FontWeight.w500,
             color: muted,
           ),
         ),
         if (!_selectionMode && downloads.isNotEmpty) ...[
-          const SizedBox(height: 16),
+          const SizedBox(height: 10),
           TextField(
             controller: _searchController,
             onChanged: (value) => setState(() => _query = value),
@@ -656,9 +691,10 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                     ),
               filled: true,
               fillColor: field,
+              isDense: true,
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
-                vertical: 12,
+                vertical: 10,
               ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
