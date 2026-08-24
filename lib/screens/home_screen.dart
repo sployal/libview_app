@@ -9,6 +9,7 @@ import '../services/auth_service.dart';
 import '../services/download_service.dart';
 import '../services/notification_service.dart';
 import '../services/streak_service.dart';
+import '../services/todo_service.dart';
 import '../services/weather_service.dart';
 import 'browse_documents.dart';
 import 'downloads_screen.dart';
@@ -43,6 +44,8 @@ class _HomeScreenState extends State<HomeScreen>
 
   late DateTime _visibleMonth;
   late DateTime _selectedDay;
+  final _todoController = TextEditingController();
+  final _todoFocus = FocusNode();
   String? _firstName;
   WeatherSnapshot? _weather;
   bool _weatherLoading = true;
@@ -87,6 +90,8 @@ class _HomeScreenState extends State<HomeScreen>
     _slideController.forward();
     WidgetsBinding.instance.addObserver(this);
     DownloadService.listVersion.addListener(_loadDownloads);
+    TodoService.instance.addListener(_onTodosChanged);
+    _loadTodos();
     _loadRecentActivity();
     _loadUnreadNotificationCount();
     _setupNotificationSubscription();
@@ -96,10 +101,21 @@ class _HomeScreenState extends State<HomeScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     DownloadService.listVersion.removeListener(_loadDownloads);
+    TodoService.instance.removeListener(_onTodosChanged);
+    _todoController.dispose();
+    _todoFocus.dispose();
     _notificationsSub?.cancel();
     _readsSub?.cancel();
     _slideController.dispose();
     super.dispose();
+  }
+
+  void _onTodosChanged() {
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _loadTodos() async {
+    await TodoService.instance.load();
   }
 
   @override
@@ -458,6 +474,10 @@ class _HomeScreenState extends State<HomeScreen>
                       _sectionLabel('Calendar', muted),
                       const SizedBox(height: 12),
                       _buildCalendar(isDark, card, titleColor, muted),
+                      const SizedBox(height: 28),
+                      _sectionLabel('To-do', muted),
+                      const SizedBox(height: 12),
+                      _buildTodoCard(isDark, card, titleColor, muted),
                     ]),
                   ),
                 ),
@@ -1095,6 +1115,8 @@ class _HomeScreenState extends State<HomeScreen>
                 _legendDot(const Color(0xFF6366F1), 'Today', filled: true),
                 const SizedBox(width: 16),
                 _legendDot(const Color(0xFFF97316), 'Streak', filled: false),
+                const SizedBox(width: 16),
+                _legendDot(const Color(0xFF10B981), 'Tasks', filled: true),
               ],
             ),
           ),
@@ -1139,6 +1161,8 @@ class _HomeScreenState extends State<HomeScreen>
     final isStreak = _isStreakDay(date) && !isToday;
     final isWeekend = date.weekday == DateTime.saturday ||
         date.weekday == DateTime.sunday;
+    final hasOpenTodos = TodoService.instance.hasOpenTodos(date);
+    final hasTodos = TodoService.instance.hasTodos(date);
 
     Color textColor = isWeekend ? muted : titleColor;
     if (isToday || isSelected) textColor = Colors.white;
@@ -1164,6 +1188,17 @@ class _HomeScreenState extends State<HomeScreen>
       decoration = const BoxDecoration(shape: BoxShape.circle);
     }
 
+    Color? dotColor;
+    if (hasTodos) {
+      if (isToday || isSelected) {
+        dotColor = Colors.white;
+      } else if (hasOpenTodos) {
+        dotColor = const Color(0xFF10B981);
+      } else {
+        dotColor = const Color(0xFF94A3B8);
+      }
+    }
+
     return GestureDetector(
       onTap: () {
         HapticFeedback.selectionClick();
@@ -1178,20 +1213,406 @@ class _HomeScreenState extends State<HomeScreen>
             height: 36,
             decoration: decoration,
             alignment: Alignment.center,
-            child: Text(
-              '${date.day}',
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: isToday || isSelected || isStreak
-                    ? FontWeight.w700
-                    : FontWeight.w500,
-                color: textColor,
-              ),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Padding(
+                  padding: EdgeInsets.only(bottom: dotColor != null ? 4 : 0),
+                  child: Text(
+                    '${date.day}',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: isToday || isSelected || isStreak
+                          ? FontWeight.w700
+                          : FontWeight.w500,
+                      color: textColor,
+                    ),
+                  ),
+                ),
+                if (dotColor != null)
+                  Positioned(
+                    bottom: 3,
+                    child: Container(
+                      width: 5,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: dotColor,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
         ),
       ),
     );
+  }
+
+  Widget _buildTodoCard(
+    bool isDark,
+    Color card,
+    Color titleColor,
+    Color muted,
+  ) {
+    final todos = TodoService.instance.forDate(_selectedDay);
+    final doneCount = todos.where((todo) => todo.done).length;
+    final progress = todos.isEmpty ? 0.0 : doneCount / todos.length;
+    final isToday = _isSameDay(_selectedDay, _today);
+    final dayLabel = isToday
+        ? 'Today'
+        : '${_monthNames[_selectedDay.month - 1]} ${_selectedDay.day}';
+
+    return Container(
+      decoration: BoxDecoration(
+        color: card,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          if (!isDark)
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 18, 16, 0),
+            child: Row(
+              children: [
+                Container(
+                  width: 42,
+                  height: 42,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+                    ),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Icon(
+                    Icons.check_rounded,
+                    color: Colors.white,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Tasks for $dayLabel',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: titleColor,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        todos.isEmpty
+                            ? 'Nothing planned yet'
+                            : '$doneCount of ${todos.length} done',
+                        style: TextStyle(fontSize: 12, color: muted),
+                      ),
+                    ],
+                  ),
+                ),
+                if (todos.isNotEmpty)
+                  SizedBox(
+                    width: 40,
+                    height: 40,
+                    child: CustomPaint(
+                      painter: _TodoProgressPainter(
+                        progress: progress,
+                        trackColor: isDark
+                            ? const Color(0xFF374151)
+                            : const Color(0xFFEEF2FF),
+                        progressColor: progress >= 1
+                            ? const Color(0xFF10B981)
+                            : const Color(0xFF6366F1),
+                      ),
+                      child: Center(
+                        child: Text(
+                          progress >= 1
+                              ? '✓'
+                              : '${(progress * 100).round()}',
+                          style: TextStyle(
+                            fontSize: progress >= 1 ? 14 : 11,
+                            fontWeight: FontWeight.w800,
+                            color: progress >= 1
+                                ? const Color(0xFF10B981)
+                                : titleColor,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          if (todos.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 14, 20, 4),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(99),
+                child: LinearProgressIndicator(
+                  value: progress,
+                  minHeight: 6,
+                  backgroundColor: isDark
+                      ? const Color(0xFF374151)
+                      : const Color(0xFFEEF2FF),
+                  valueColor: AlwaysStoppedAnimation(
+                    progress >= 1
+                        ? const Color(0xFF10B981)
+                        : const Color(0xFF6366F1),
+                  ),
+                ),
+              ),
+            ),
+          if (todos.isEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 22, 20, 8),
+              child: Column(
+                children: [
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? const Color(0xFF111827)
+                          : const Color(0xFFEEF2FF),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.auto_awesome_rounded,
+                      color: isDark
+                          ? const Color(0xFFA5B4FC)
+                          : const Color(0xFF6366F1),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Clear the day, one task at a time',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: titleColor,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Tap a date above, then add what you want to finish.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 12, height: 1.35, color: muted),
+                  ),
+                ],
+              ),
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+              child: Column(
+                children: [
+                  for (final todo in todos)
+                    _buildTodoRow(todo, isDark, titleColor, muted),
+                ],
+              ),
+            ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _todoController,
+                    focusNode: _todoFocus,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) => _addTodo(),
+                    style: TextStyle(fontSize: 14, color: titleColor),
+                    decoration: InputDecoration(
+                      hintText: 'Add a task…',
+                      hintStyle: TextStyle(color: muted, fontSize: 14),
+                      filled: true,
+                      fillColor: isDark
+                          ? const Color(0xFF111827)
+                          : const Color(0xFFF1F5F9),
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Material(
+                  color: const Color(0xFF6366F1),
+                  borderRadius: BorderRadius.circular(14),
+                  child: InkWell(
+                    onTap: _addTodo,
+                    borderRadius: BorderRadius.circular(14),
+                    child: const SizedBox(
+                      width: 44,
+                      height: 44,
+                      child: Icon(
+                        Icons.add_rounded,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTodoRow(
+    StudyTodo todo,
+    bool isDark,
+    Color titleColor,
+    Color muted,
+  ) {
+    return Dismissible(
+      key: ValueKey(todo.id),
+      direction: DismissDirection.endToStart,
+      onDismissed: (_) => TodoService.instance.remove(todo.id),
+      background: Container(
+        margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+        padding: const EdgeInsets.only(right: 16),
+        alignment: Alignment.centerRight,
+        decoration: BoxDecoration(
+          color: const Color(0xFFEF4444).withOpacity(0.14),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: const Icon(
+          Icons.delete_outline_rounded,
+          color: Color(0xFFEF4444),
+        ),
+      ),
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.selectionClick();
+          TodoService.instance.toggle(todo.id);
+        },
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                width: 22,
+                height: 22,
+                decoration: BoxDecoration(
+                  color: todo.done
+                      ? const Color(0xFF10B981)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(7),
+                  border: Border.all(
+                    color: todo.done
+                        ? const Color(0xFF10B981)
+                        : (isDark
+                            ? const Color(0xFF4B5563)
+                            : const Color(0xFFCBD5E1)),
+                    width: 1.8,
+                  ),
+                ),
+                child: todo.done
+                    ? const Icon(
+                        Icons.check_rounded,
+                        size: 14,
+                        color: Colors.white,
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: AnimatedDefaultTextStyle(
+                  duration: const Duration(milliseconds: 180),
+                  style: TextStyle(
+                    fontSize: 14,
+                    height: 1.3,
+                    fontWeight: FontWeight.w500,
+                    color: todo.done ? muted : titleColor,
+                    decoration: todo.done
+                        ? TextDecoration.lineThrough
+                        : TextDecoration.none,
+                    decorationColor: muted,
+                  ),
+                  child: Text(todo.title),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _addTodo() async {
+    final title = _todoController.text;
+    if (title.trim().isEmpty) return;
+    HapticFeedback.lightImpact();
+    await TodoService.instance.add(_selectedDay, title);
+    _todoController.clear();
+    _todoFocus.requestFocus();
+  }
+}
+
+class _TodoProgressPainter extends CustomPainter {
+  _TodoProgressPainter({
+    required this.progress,
+    required this.trackColor,
+    required this.progressColor,
+  });
+
+  final double progress;
+  final Color trackColor;
+  final Color progressColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = (math.min(size.width, size.height) / 2) - 3;
+    final track = Paint()
+      ..color = trackColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.5
+      ..strokeCap = StrokeCap.round;
+    final fill = Paint()
+      ..color = progressColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.5
+      ..strokeCap = StrokeCap.round;
+    canvas.drawCircle(center, radius, track);
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      -math.pi / 2,
+      2 * math.pi * progress.clamp(0.0, 1.0),
+      false,
+      fill,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _TodoProgressPainter oldDelegate) {
+    return oldDelegate.progress != progress ||
+        oldDelegate.trackColor != trackColor ||
+        oldDelegate.progressColor != progressColor;
   }
 }
 
