@@ -36,11 +36,10 @@ class SystemAdminDashboard extends StatefulWidget {
   State<SystemAdminDashboard> createState() => _SystemAdminDashboardState();
 }
 
-class _SystemAdminDashboardState extends State<SystemAdminDashboard>
-    with SingleTickerProviderStateMixin {
+class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
   final _firestore = FirebaseFirestore.instance;
 
-  late final TabController _tabController;
+  int _peopleTab = 0;
 
   List<Map<String, dynamic>> _profiles = [];
   List<Map<String, dynamic>> _filteredUsers = [];
@@ -115,17 +114,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-    _tabController.addListener(() {
-      if (mounted) setState(() {});
-    });
     _guardAndLoad();
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
   }
 
   Future<void> _guardAndLoad() async {
@@ -527,12 +516,12 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard>
   }
 
   Widget _groupedCard(List<Widget> children) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: ColoredBox(
+    return DecoratedBox(
+      decoration: BoxDecoration(
         color: _card,
-        child: Column(children: children),
+        borderRadius: BorderRadius.circular(12),
       ),
+      child: Column(children: children),
     );
   }
 
@@ -1325,13 +1314,13 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard>
     required String searchHint,
     required List<String> roles,
   }) {
-    return Container(
+    return Padding(
       padding: const EdgeInsets.all(16),
-      color: _bg,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           CupertinoSearchTextField(
+            key: ValueKey(isUserTab ? 'user-search' : 'staff-search'),
             onChanged: (value) {
               setState(() {
                 if (isUserTab) {
@@ -1409,47 +1398,74 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard>
     );
   }
 
-  Widget _buildListTab({
-    required bool isUserTab,
-    required List<Map<String, dynamic>> items,
-    required String searchHint,
-    required List<String> roles,
-  }) {
-    // CustomScrollView (not Column+Expanded) so NestedScrollView can give the
-    // body near-zero height while Overview still fills the viewport without
-    // overflowing the search/filter header.
-    return CustomScrollView(
-      key: PageStorageKey<String>(isUserTab ? 'users-tab' : 'staff-tab'),
-      physics: const BouncingScrollPhysics(
-        parent: AlwaysScrollableScrollPhysics(),
-      ),
-      slivers: [
-        SliverToBoxAdapter(
-          child: _buildFilterHeader(
-            isUserTab: isUserTab,
-            searchHint: searchHint,
-            roles: roles,
+  Widget _buildPeopleTabs() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      child: CupertinoSlidingSegmentedControl<int>(
+        groupValue: _peopleTab,
+        backgroundColor: _chip,
+        thumbColor: _card,
+        children: {
+          0: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Text(
+              'Users ($_totalUsers)',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: _titleColor,
+              ),
+            ),
           ),
+          1: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Text(
+              'Staff ($_totalStaff)',
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: _titleColor,
+              ),
+            ),
+          ),
+        },
+        onValueChanged: (value) {
+          if (value == null) return;
+          HapticFeedback.selectionClick();
+          setState(() => _peopleTab = value);
+        },
+      ),
+    );
+  }
+
+  Widget _buildPeopleSection() {
+    final isUserTab = _peopleTab == 0;
+    final items = isUserTab ? _filteredUsers : _filteredStaff;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _buildFilterHeader(
+          isUserTab: isUserTab,
+          searchHint: isUserTab ? 'Search users' : 'Search staff',
+          roles: isUserTab ? _userRoles : _staffRoles,
         ),
         if (items.isEmpty)
-          SliverFillRemaining(
-            hasScrollBody: false,
+          SizedBox(
+            height: 220,
             child: _buildEmptyState(
               isUserTab ? 'No users found' : 'No staff found',
             ),
           )
         else
-          SliverPadding(
+          Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
-            sliver: SliverToBoxAdapter(
-              child: _groupedCard([
-                for (var i = 0; i < items.length; i++)
-                  _buildUserCard(
-                    items[i],
-                    showDivider: i < items.length - 1,
-                  ),
-              ]),
-            ),
+            child: _groupedCard([
+              for (var i = 0; i < items.length; i++)
+                _buildUserCard(
+                  items[i],
+                  showDivider: i < items.length - 1,
+                ),
+            ]),
           ),
       ],
     );
@@ -1465,107 +1481,68 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard>
                 color: _isDark ? const Color(0xFFF9FAFB) : const Color(0xFF6B7280),
               ),
             )
-          : NestedScrollView(
-              headerSliverBuilder: (context, innerBoxIsScrolled) {
-                return [
-                  SliverAppBar.large(
-                    backgroundColor: _bg,
-                    surfaceTintColor: Colors.transparent,
-                    foregroundColor: _titleColor,
-                    title: const Text(
-                      'System Admin',
-                      style: TextStyle(fontWeight: FontWeight.w700),
-                    ),
-                    actions: [
-                      CupertinoButton(
-                        padding: const EdgeInsets.only(right: 4),
-                        onPressed: _openCourseAddition,
-                        child: const Text(
-                          'Add',
-                          style: TextStyle(
-                            fontSize: 17,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF6366F1),
-                          ),
-                        ),
-                      ),
-                      CupertinoButton(
-                        padding: const EdgeInsets.only(right: 8),
-                        onPressed: () {
-                          HapticFeedback.selectionClick();
-                          _loadProfiles();
-                          _loadCourses();
-                        },
-                        child: const Icon(
-                          CupertinoIcons.refresh,
+          : CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                SliverAppBar(
+                  pinned: true,
+                  floating: false,
+                  snap: false,
+                  toolbarHeight: 52,
+                  automaticallyImplyLeading: true,
+                  centerTitle: false,
+                  backgroundColor: _bg,
+                  foregroundColor: _titleColor,
+                  surfaceTintColor: Colors.transparent,
+                  shadowColor: Colors.transparent,
+                  elevation: 0,
+                  scrolledUnderElevation: 0,
+                  forceElevated: false,
+                  title: const Text(
+                    'System Admin',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  actions: [
+                    CupertinoButton(
+                      padding: const EdgeInsets.only(right: 4),
+                      onPressed: _openCourseAddition,
+                      child: const Text(
+                        'Add',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
                           color: Color(0xFF6366F1),
                         ),
                       ),
-                    ],
-                  ),
-                  SliverToBoxAdapter(child: _buildStatisticsSection()),
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                      child: CupertinoSlidingSegmentedControl<int>(
-                        groupValue: _tabController.index,
-                        backgroundColor: _chip,
-                        thumbColor: _card,
-                        children: {
-                          0: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            child: Text(
-                              'Users ($_totalUsers)',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: _titleColor,
-                              ),
-                            ),
-                          ),
-                          1: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            child: Text(
-                              'Staff ($_totalStaff)',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: _titleColor,
-                              ),
-                            ),
-                          ),
-                        },
-                        onValueChanged: (value) {
-                          if (value == null) return;
-                          HapticFeedback.selectionClick();
-                          _tabController.animateTo(value);
-                          setState(() {});
-                        },
+                    ),
+                    CupertinoButton(
+                      padding: const EdgeInsets.only(right: 8),
+                      onPressed: () {
+                        HapticFeedback.selectionClick();
+                        _loadProfiles();
+                        _loadCourses();
+                      },
+                      child: const Icon(
+                        CupertinoIcons.refresh,
+                        color: Color(0xFF6366F1),
                       ),
-                    ),
-                  ),
-                ];
-              },
-              body: ColoredBox(
-                color: _bg,
-                child: TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _buildListTab(
-                      isUserTab: true,
-                      items: _filteredUsers,
-                      searchHint: 'Search users',
-                      roles: _userRoles,
-                    ),
-                    _buildListTab(
-                      isUserTab: false,
-                      items: _filteredStaff,
-                      searchHint: 'Search staff',
-                      roles: _staffRoles,
                     ),
                   ],
                 ),
-              ),
+                SliverToBoxAdapter(
+                  child: ColoredBox(
+                    color: _bg,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _buildStatisticsSection(),
+                        _buildPeopleTabs(),
+                        _buildPeopleSection(),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
     );
   }
