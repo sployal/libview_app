@@ -31,7 +31,7 @@ class _AiScreenState extends State<AiScreen> {
   String _conversationTitle = 'New conversation';
   List<AiConversationSummary> _conversations = const [];
   bool _loadingHistory = true;
-  bool _sidebarOpen = true;
+  bool _sidebarOpen = false;
 
   @override
   void initState() {
