@@ -329,7 +329,7 @@ class _AppBottomNav extends StatelessWidget {
             child: SafeArea(
               top: false,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(8, 10, 8, 8),
+                padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
                 child: Row(
                   children: [
                     for (var i = 0; i < _items.length; i++)
@@ -383,7 +383,7 @@ class _NavItem extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 220),
         curve: Curves.easeOutCubic,
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: 4),
         decoration: BoxDecoration(
           color: selected ? accent.withOpacity(0.12) : Colors.transparent,
           borderRadius: BorderRadius.circular(18),
