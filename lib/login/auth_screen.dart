@@ -279,163 +279,23 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     if (!await NoInternetScreen.ensureOnline(context)) return;
     if (!mounted) return;
 
-    final emailController = TextEditingController(
-      text: _emailController.text.trim(),
-    );
-    final formKey = GlobalKey<FormState>();
-    var sending = false;
-
-    try {
-      final sent = await showDialog<bool>(
-        context: context,
-        builder: (dialogContext) {
-          final isDark = Theme.of(dialogContext).brightness == Brightness.dark;
-          return StatefulBuilder(
-            builder: (context, setDialogState) {
-              return AlertDialog(
-                backgroundColor:
-                    isDark ? const Color(0xFF1C1C1E) : Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                title: Text(
-                  'Reset password',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.4,
-                    color: isDark ? Colors.white : const Color(0xFF1C1C1E),
-                  ),
-                ),
-                content: Form(
-                  key: formKey,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Enter the email for your account and we will send you a reset link.',
-                        style: TextStyle(
-                          fontSize: 15,
-                          color: Color(0xFF8E8E93),
-                          height: 1.35,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: emailController,
-                        enabled: !sending,
-                        keyboardType: TextInputType.emailAddress,
-                        autofocus: emailController.text.isEmpty,
-                        cursorColor: _accent,
-                        style: TextStyle(
-                          color: isDark ? Colors.white : const Color(0xFF1C1C1E),
-                          fontSize: 17,
-                        ),
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Please enter your email';
-                          }
-                          if (!value.contains('@')) {
-                            return 'Please enter a valid email';
-                          }
-                          return null;
-                        },
-                        decoration: InputDecoration(
-                          hintText: 'name@university.edu',
-                          filled: true,
-                          fillColor: isDark
-                              ? const Color(0xFF2C2C2E)
-                              : const Color(0xFFF2F2F7),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            borderSide: BorderSide.none,
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 12,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: sending
-                        ? null
-                        : () => Navigator.of(dialogContext).pop(false),
-                    child: const Text(
-                      'Cancel',
-                      style: TextStyle(color: Color(0xFF8E8E93)),
-                    ),
-                  ),
-                  TextButton(
-                    onPressed: sending
-                        ? null
-                        : () async {
-                            if (!formKey.currentState!.validate()) return;
-                            setDialogState(() => sending = true);
-                            try {
-                              await AuthService.instance.sendPasswordResetEmail(
-                                emailController.text.trim(),
-                              );
-                              if (dialogContext.mounted) {
-                                Navigator.of(dialogContext).pop(true);
-                              }
-                            } on FirebaseAuthException catch (error) {
-                              if (error.code == 'user-not-found') {
-                                if (dialogContext.mounted) {
-                                  Navigator.of(dialogContext).pop(true);
-                                }
-                                return;
-                              }
-                              setDialogState(() => sending = false);
-                              if (mounted) {
-                                _showSnackBar(
-                                  AuthService.instance.authErrorMessage(error),
-                                );
-                              }
-                            } catch (error) {
-                              setDialogState(() => sending = false);
-                              if (mounted) {
-                                _showSnackBar('Unexpected error: $error');
-                              }
-                            }
-                          },
-                    child: sending
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(_accent),
-                            ),
-                          )
-                        : const Text(
-                            'Send link',
-                            style: TextStyle(
-                              color: _accent,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                  ),
-                ],
-              );
-            },
-          );
+    final result = await showDialog<_ResetPasswordResult>(
+      context: context,
+      builder: (dialogContext) => _ResetPasswordDialog(
+        initialEmail: _emailController.text.trim(),
+        onAuthError: (message) {
+          if (mounted) _showSnackBar(message);
         },
-      );
+      ),
+    );
 
-      if (sent == true && mounted) {
-        _emailController.text = emailController.text.trim();
-        _showSnackBar(
-          'If an account exists for that email, a reset link is on its way.',
-          success: true,
-        );
-      }
-    } finally {
-      emailController.dispose();
-    }
+    if (result == null || !mounted) return;
+
+    _emailController.text = result.email;
+    _showSnackBar(
+      'If an account exists for that email, a reset link is on its way.',
+      success: true,
+    );
   }
 
   Future<void> _signInWithGoogle() async {
@@ -1167,6 +1027,172 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
           ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ResetPasswordResult {
+  const _ResetPasswordResult(this.email);
+  final String email;
+}
+
+class _ResetPasswordDialog extends StatefulWidget {
+  const _ResetPasswordDialog({
+    required this.initialEmail,
+    required this.onAuthError,
+  });
+
+  final String initialEmail;
+  final ValueChanged<String> onAuthError;
+
+  @override
+  State<_ResetPasswordDialog> createState() => _ResetPasswordDialogState();
+}
+
+class _ResetPasswordDialogState extends State<_ResetPasswordDialog> {
+  late final TextEditingController _emailController;
+  final _formKey = GlobalKey<FormState>();
+  var _sending = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _emailController = TextEditingController(text: widget.initialEmail);
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _sendLink() async {
+    if (!_formKey.currentState!.validate() || _sending) return;
+
+    setState(() => _sending = true);
+    try {
+      await AuthService.instance.sendPasswordResetEmail(
+        _emailController.text.trim(),
+      );
+      if (!mounted) return;
+      Navigator.of(context).pop(
+        _ResetPasswordResult(_emailController.text.trim()),
+      );
+    } on FirebaseAuthException catch (error) {
+      if (error.code == 'user-not-found') {
+        if (!mounted) return;
+        Navigator.of(context).pop(
+          _ResetPasswordResult(_emailController.text.trim()),
+        );
+        return;
+      }
+      if (!mounted) return;
+      setState(() => _sending = false);
+      widget.onAuthError(AuthService.instance.authErrorMessage(error));
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _sending = false);
+      widget.onAuthError('Unexpected error: $error');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return AlertDialog(
+      backgroundColor: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      title: Text(
+        'Reset password',
+        style: TextStyle(
+          fontWeight: FontWeight.w700,
+          letterSpacing: -0.4,
+          color: isDark ? Colors.white : const Color(0xFF1C1C1E),
+        ),
+      ),
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Enter the email for your account and we will send you a reset link.',
+              style: TextStyle(
+                fontSize: 15,
+                color: Color(0xFF8E8E93),
+                height: 1.35,
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _emailController,
+              enabled: !_sending,
+              keyboardType: TextInputType.emailAddress,
+              autofocus: widget.initialEmail.isEmpty,
+              cursorColor: _AuthScreenState._accent,
+              style: TextStyle(
+                color: isDark ? Colors.white : const Color(0xFF1C1C1E),
+                fontSize: 17,
+              ),
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Please enter your email';
+                }
+                if (!value.contains('@')) {
+                  return 'Please enter a valid email';
+                }
+                return null;
+              },
+              decoration: InputDecoration(
+                hintText: 'name@university.edu',
+                filled: true,
+                fillColor: isDark
+                    ? const Color(0xFF2C2C2E)
+                    : const Color(0xFFF2F2F7),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _sending ? null : () => Navigator.of(context).pop(),
+          child: const Text(
+            'Cancel',
+            style: TextStyle(color: Color(0xFF8E8E93)),
+          ),
+        ),
+        TextButton(
+          onPressed: _sending ? null : _sendLink,
+          child: _sending
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      _AuthScreenState._accent,
+                    ),
+                  ),
+                )
+              : const Text(
+                  'Send link',
+                  style: TextStyle(
+                    color: _AuthScreenState._accent,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
         ),
       ],
     );
