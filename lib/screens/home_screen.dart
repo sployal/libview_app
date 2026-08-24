@@ -46,6 +46,9 @@ class _HomeScreenState extends State<HomeScreen>
   late DateTime _selectedDay;
   final _todoController = TextEditingController();
   final _todoFocus = FocusNode();
+  final _editTodoController = TextEditingController();
+  final _editTodoFocus = FocusNode();
+  String? _editingTodoId;
   String? _firstName;
   WeatherSnapshot? _weather;
   bool _weatherLoading = true;
@@ -104,6 +107,8 @@ class _HomeScreenState extends State<HomeScreen>
     TodoService.instance.removeListener(_onTodosChanged);
     _todoController.dispose();
     _todoFocus.dispose();
+    _editTodoController.dispose();
+    _editTodoFocus.dispose();
     _notificationsSub?.cancel();
     _readsSub?.cancel();
     _slideController.dispose();
@@ -1202,7 +1207,10 @@ class _HomeScreenState extends State<HomeScreen>
     return GestureDetector(
       onTap: () {
         HapticFeedback.selectionClick();
-        setState(() => _selectedDay = date);
+        setState(() {
+          _selectedDay = date;
+          _editingTodoId = null;
+        });
       },
       child: SizedBox(
         height: 44,
@@ -1486,9 +1494,11 @@ class _HomeScreenState extends State<HomeScreen>
     Color titleColor,
     Color muted,
   ) {
+    final isEditing = _editingTodoId == todo.id;
     return Dismissible(
       key: ValueKey(todo.id),
-      direction: DismissDirection.endToStart,
+      direction:
+          isEditing ? DismissDirection.none : DismissDirection.endToStart,
       onDismissed: (_) => TodoService.instance.remove(todo.id),
       background: Container(
         margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
@@ -1503,17 +1513,18 @@ class _HomeScreenState extends State<HomeScreen>
           color: Color(0xFFEF4444),
         ),
       ),
-      child: InkWell(
-        onTap: () {
-          HapticFeedback.selectionClick();
-          TodoService.instance.toggle(todo.id);
-        },
-        borderRadius: BorderRadius.circular(14),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          child: Row(
-            children: [
-              AnimatedContainer(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        child: Row(
+          children: [
+            GestureDetector(
+              onTap: isEditing
+                  ? null
+                  : () {
+                      HapticFeedback.selectionClick();
+                      TodoService.instance.toggle(todo.id);
+                    },
+              child: AnimatedContainer(
                 duration: const Duration(milliseconds: 180),
                 width: 22,
                 height: 22,
@@ -1539,28 +1550,109 @@ class _HomeScreenState extends State<HomeScreen>
                       )
                     : null,
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: AnimatedDefaultTextStyle(
-                  duration: const Duration(milliseconds: 180),
-                  style: TextStyle(
-                    fontSize: 14,
-                    height: 1.3,
-                    fontWeight: FontWeight.w500,
-                    color: todo.done ? muted : titleColor,
-                    decoration: todo.done
-                        ? TextDecoration.lineThrough
-                        : TextDecoration.none,
-                    decorationColor: muted,
-                  ),
-                  child: Text(todo.title),
-                ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: isEditing
+                  ? TextField(
+                      controller: _editTodoController,
+                      focusNode: _editTodoFocus,
+                      autofocus: true,
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) => _saveEditedTodo(),
+                      style: TextStyle(
+                        fontSize: 14,
+                        height: 1.3,
+                        fontWeight: FontWeight.w500,
+                        color: titleColor,
+                      ),
+                      decoration: InputDecoration(
+                        isDense: true,
+                        filled: true,
+                        fillColor: isDark
+                            ? const Color(0xFF111827)
+                            : const Color(0xFFF1F5F9),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    )
+                  : GestureDetector(
+                      onTap: () => _startEditingTodo(todo),
+                      child: AnimatedDefaultTextStyle(
+                        duration: const Duration(milliseconds: 180),
+                        style: TextStyle(
+                          fontSize: 14,
+                          height: 1.3,
+                          fontWeight: FontWeight.w500,
+                          color: todo.done ? muted : titleColor,
+                          decoration: todo.done
+                              ? TextDecoration.lineThrough
+                              : TextDecoration.none,
+                          decorationColor: muted,
+                        ),
+                        child: Text(todo.title),
+                      ),
+                    ),
+            ),
+            const SizedBox(width: 4),
+            IconButton(
+              visualDensity: VisualDensity.compact,
+              tooltip: isEditing ? 'Save' : 'Edit',
+              onPressed: () {
+                if (isEditing) {
+                  _saveEditedTodo();
+                } else {
+                  _startEditingTodo(todo);
+                }
+              },
+              icon: Icon(
+                isEditing ? Icons.check_rounded : Icons.edit_outlined,
+                size: 18,
+                color: isEditing ? const Color(0xFF6366F1) : muted,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
+  }
+
+  Future<void> _startEditingTodo(StudyTodo todo) async {
+    if (_editingTodoId != null && _editingTodoId != todo.id) {
+      await _saveEditedTodo();
+    }
+    HapticFeedback.selectionClick();
+    setState(() {
+      _editingTodoId = todo.id;
+      _editTodoController.text = todo.title;
+      _editTodoController.selection = TextSelection(
+        baseOffset: 0,
+        extentOffset: todo.title.length,
+      );
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _editTodoFocus.requestFocus();
+    });
+  }
+
+  Future<void> _saveEditedTodo() async {
+    final id = _editingTodoId;
+    if (id == null) return;
+    final title = _editTodoController.text.trim();
+    if (title.isEmpty) {
+      setState(() => _editingTodoId = null);
+      return;
+    }
+    HapticFeedback.lightImpact();
+    await TodoService.instance.updateTitle(id, title);
+    if (!mounted) return;
+    setState(() => _editingTodoId = null);
   }
 
   Future<void> _addTodo() async {

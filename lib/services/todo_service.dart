@@ -137,6 +137,16 @@ class TodoService extends ChangeNotifier {
     await _persist();
   }
 
+  Future<void> updateTitle(String id, String title) async {
+    final trimmed = title.trim();
+    if (trimmed.isEmpty) return;
+    final index = _items.indexWhere((item) => item.id == id);
+    if (index < 0) return;
+    if (_items[index].title == trimmed) return;
+    _items[index] = _items[index].copyWith(title: trimmed);
+    await _persist();
+  }
+
   Future<void> remove(String id) async {
     _items.removeWhere((item) => item.id == id);
     await _persist();
