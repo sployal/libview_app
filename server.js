@@ -309,6 +309,107 @@ async function resolveEdupalFolderId() {
   return CONFIG.EDUPAL_FOLDER_ID;
 }
 
+const FOLDER_MIME = 'application/vnd.google-apps.folder';
+const STORAGE_CACHE_TTL_MS = 5 * 60 * 1000;
+let storageCache = { at: 0, data: null };
+
+async function listDirectChildren(parentId) {
+  const files = [];
+  let pageToken;
+  do {
+    const res = await drive.files.list({
+      q: `'${parentId}' in parents and trashed = false`,
+      fields: 'nextPageToken, files(id, name, mimeType, size)',
+      pageSize: 1000,
+      pageToken,
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true,
+    });
+    files.push(...(res.data.files || []));
+    pageToken = res.data.nextPageToken;
+  } while (pageToken);
+  return files;
+}
+
+async function sumFolderBytes(folderId) {
+  const children = await listDirectChildren(folderId);
+  let bytes = 0;
+  const subfolders = [];
+  for (const file of children) {
+    if (file.mimeType === FOLDER_MIME) {
+      subfolders.push(file.id);
+    } else {
+      bytes += Number(file.size || 0);
+    }
+  }
+  for (const id of subfolders) {
+    bytes += await sumFolderBytes(id);
+  }
+  return bytes;
+}
+
+async function collectDriveStorage() {
+  const about = await drive.about.get({
+    fields: 'user(displayName,emailAddress),storageQuota',
+  });
+  const quota = about.data.storageQuota || {};
+  const limit = quota.limit != null && quota.limit !== '' ? Number(quota.limit) : null;
+  const usage = Number(quota.usage || 0);
+  const usageInDrive = Number(quota.usageInDrive || 0);
+
+  let root = null;
+  let courses = [];
+  let otherAccountBytes = usage;
+
+  if (CONFIG.EDUPAL_FOLDER_ID) {
+    const rootId = await resolveEdupalFolderId();
+    const rootMeta = await drive.files.get({
+      fileId: rootId,
+      fields: 'id, name',
+      supportsAllDrives: true,
+    });
+    const children = await listDirectChildren(rootId);
+    let rootLooseBytes = 0;
+    courses = [];
+    for (const file of children) {
+      if (file.mimeType === FOLDER_MIME) {
+        const bytes = await sumFolderBytes(file.id);
+        courses.push({
+          folderId: file.id,
+          name: file.name,
+          bytes,
+        });
+      } else {
+        rootLooseBytes += Number(file.size || 0);
+      }
+    }
+    courses.sort((a, b) => b.bytes - a.bytes || a.name.localeCompare(b.name));
+    const coursesBytes = courses.reduce((sum, course) => sum + course.bytes, 0);
+    const rootBytes = coursesBytes + rootLooseBytes;
+    otherAccountBytes = Math.max(0, usage - rootBytes);
+    root = {
+      folderId: rootId,
+      name: rootMeta.data.name || 'Edupal',
+      bytes: rootBytes,
+      otherBytes: rootLooseBytes,
+    };
+  }
+
+  return {
+    account: {
+      email: about.data.user?.emailAddress || '',
+      displayName: about.data.user?.displayName || '',
+      limitBytes: Number.isFinite(limit) ? limit : null,
+      usageBytes: usage,
+      usageInDriveBytes: usageInDrive,
+    },
+    root,
+    courses,
+    otherAccountBytes,
+    computedAt: new Date().toISOString(),
+  };
+}
+
 async function ensureCourseStructure(courseName, years) {
   const edupalId = await resolveEdupalFolderId();
   const rootFolders = await listChildFolders(edupalId);
@@ -552,6 +653,34 @@ const upload = multer({
 // --- Health check -----------------------------------------------------
 
 app.get('/health', (req, res) => res.json({ ok: true, driveConfigured: driveIsConfigured() }));
+
+// --- Drive account quota + Edupal / course folder usage (system admin) ---
+
+app.get('/drive-storage', requireAuth, requireSystemAdmin, async (req, res) => {
+  if (!driveIsConfigured()) {
+    return res.status(503).json({
+      error: 'Drive is not configured yet. Complete the OAuth setup first.',
+    });
+  }
+
+  try {
+    const refresh = req.query.refresh === '1' || req.query.refresh === 'true';
+    if (
+      !refresh &&
+      storageCache.data &&
+      Date.now() - storageCache.at < STORAGE_CACHE_TTL_MS
+    ) {
+      return res.json({ ...storageCache.data, cached: true });
+    }
+
+    const data = await collectDriveStorage();
+    storageCache = { at: Date.now(), data };
+    res.json({ ...data, cached: false });
+  } catch (e) {
+    console.error('Drive storage query failed:', e);
+    res.status(500).json({ error: e.message || 'Failed to load Drive storage' });
+  }
+});
 
 // --- One-time OAuth2 setup routes ---------------------------------------
 //

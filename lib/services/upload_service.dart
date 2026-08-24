@@ -168,6 +168,37 @@ class UploadService {
     }
   }
 
+  Future<DriveStorageSnapshot> fetchDriveStorage({bool refresh = false}) async {
+    final token = await _idToken();
+
+    try {
+      final response = await _dio.get(
+        '/drive-storage',
+        queryParameters: refresh ? {'refresh': '1'} : null,
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+          receiveTimeout: const Duration(minutes: 3),
+        ),
+      );
+
+      final data = response.data;
+      if (data is Map<String, dynamic>) {
+        return DriveStorageSnapshot.fromJson(data);
+      }
+      if (data is Map) {
+        return DriveStorageSnapshot.fromJson(Map<String, dynamic>.from(data));
+      }
+      throw UploadException('Unexpected response from server');
+    } on DioException catch (e) {
+      throw UploadException(
+        _messageFromDio(e, action: 'storage'),
+        statusCode: e.response?.statusCode,
+      );
+    }
+  }
+
   Future<CourseStructureResult> createCourseStructure({
     required String courseName,
     required int years,
@@ -443,6 +474,9 @@ class UploadService {
         if (action == 'delete') {
           return 'You do not have permission to delete this file.';
         }
+        if (action == 'storage') {
+          return 'You do not have permission to view Drive storage.';
+        }
         if (action == 'rename' || action == 'folder' || action == 'course') {
           return 'You do not have permission to rename this item.';
         }
@@ -468,7 +502,10 @@ class UploadService {
       if (action == 'delete') {
         return 'Delete timed out. The server may be waking up — try again.';
       }
-      if (action == 'rename' || action == 'folder' || action == 'course') {
+      if (action == 'rename' ||
+          action == 'folder' ||
+          action == 'course' ||
+          action == 'storage') {
         return 'Request timed out. The server may be waking up — try again.';
       }
       return 'Upload timed out. The server may be waking up — try again.';
@@ -490,8 +527,103 @@ class UploadService {
     if (action == 'course') {
       return 'Could not update the course Drive folders. Please try again.';
     }
+    if (action == 'storage') {
+      return 'Could not load Drive storage. Please try again.';
+    }
     return 'Upload failed. Please try again.';
   }
+}
+
+class DriveCourseUsage {
+  final String folderId;
+  final String name;
+  final int bytes;
+
+  DriveCourseUsage({
+    required this.folderId,
+    required this.name,
+    required this.bytes,
+  });
+
+  factory DriveCourseUsage.fromJson(Map<String, dynamic> json) {
+    return DriveCourseUsage(
+      folderId: json['folderId']?.toString() ?? json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? 'Course',
+      bytes: _parseByteCount(json['bytes']),
+    );
+  }
+}
+
+class DriveStorageSnapshot {
+  final String accountEmail;
+  final String accountName;
+  final int? limitBytes;
+  final int usageBytes;
+  final String? rootName;
+  final int rootBytes;
+  final int rootOtherBytes;
+  final int otherAccountBytes;
+  final List<DriveCourseUsage> courses;
+  final bool cached;
+
+  DriveStorageSnapshot({
+    required this.accountEmail,
+    required this.accountName,
+    required this.limitBytes,
+    required this.usageBytes,
+    required this.rootName,
+    required this.rootBytes,
+    required this.rootOtherBytes,
+    required this.otherAccountBytes,
+    required this.courses,
+    required this.cached,
+  });
+
+  factory DriveStorageSnapshot.fromJson(Map<String, dynamic> json) {
+    final account = json['account'] is Map
+        ? Map<String, dynamic>.from(json['account'] as Map)
+        : <String, dynamic>{};
+    final root = json['root'] is Map
+        ? Map<String, dynamic>.from(json['root'] as Map)
+        : null;
+    final courses = <DriveCourseUsage>[];
+    final rawCourses = json['courses'];
+    if (rawCourses is List) {
+      for (final item in rawCourses) {
+        if (item is Map) {
+          courses.add(
+            DriveCourseUsage.fromJson(Map<String, dynamic>.from(item)),
+          );
+        }
+      }
+    }
+
+    return DriveStorageSnapshot(
+      accountEmail: account['email']?.toString() ?? '',
+      accountName: account['displayName']?.toString() ?? '',
+      limitBytes: _parseOptionalByteCount(account['limitBytes']),
+      usageBytes: _parseByteCount(account['usageBytes']),
+      rootName: root?['name']?.toString(),
+      rootBytes: _parseByteCount(root?['bytes']),
+      rootOtherBytes: _parseByteCount(root?['otherBytes']),
+      otherAccountBytes: _parseByteCount(json['otherAccountBytes']),
+      courses: courses,
+      cached: json['cached'] == true,
+    );
+  }
+}
+
+int _parseByteCount(dynamic value) {
+  if (value is int) return value;
+  if (value is num) return value.round();
+  return int.tryParse(value?.toString() ?? '') ?? 0;
+}
+
+int? _parseOptionalByteCount(dynamic value) {
+  if (value == null) return null;
+  if (value is int) return value;
+  if (value is num) return value.round();
+  return int.tryParse(value.toString());
 }
 
 class CourseSemesterFolder {

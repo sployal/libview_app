@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../services/auth_service.dart';
 import '../services/course_service.dart';
+import '../services/upload_service.dart';
 import 'course_addition.dart';
 
 class SystemAdminDashboard extends StatefulWidget {
@@ -47,7 +48,10 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
   List<Course> _courses = [];
   bool _isLoading = true;
   bool _isLoadingCourses = true;
+  bool _isLoadingStorage = true;
   bool _isStatsExpanded = true;
+  DriveStorageSnapshot? _storage;
+  String? _storageError;
   String _userSearchQuery = '';
   String _staffSearchQuery = '';
   String _userRoleFilter = 'all';
@@ -134,6 +138,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
     }
     await _loadProfiles();
     await _loadCourses();
+    await _loadStorage();
   }
 
   Future<void> _loadProfiles() async {
@@ -716,6 +721,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
     );
     if (saved == true && mounted) {
       await _loadCourses();
+      await _loadStorage(refresh: true);
     }
   }
 
@@ -835,6 +841,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
         ),
       );
       await _loadCourses();
+      await _loadStorage(refresh: true);
       if (deleteAssociatedUsers) {
         await _loadProfiles();
       }
@@ -991,6 +998,284 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
     }
   }
 
+  static const _storagePalette = [
+    Color(0xFF6366F1),
+    Color(0xFF10B981),
+    Color(0xFFF59E0B),
+    Color(0xFFEF4444),
+    Color(0xFF0EA5E9),
+    Color(0xFF8B5CF6),
+    Color(0xFFEC4899),
+    Color(0xFF14B8A6),
+  ];
+
+  Future<void> _loadStorage({bool refresh = false}) async {
+    setState(() {
+      _isLoadingStorage = true;
+      _storageError = null;
+    });
+    try {
+      final storage = await UploadService.instance.fetchDriveStorage(
+        refresh: refresh,
+      );
+      if (!mounted) return;
+      setState(() {
+        _storage = storage;
+        _isLoadingStorage = false;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _storageError = error.toString();
+        _isLoadingStorage = false;
+      });
+    }
+  }
+
+  String _formatBytes(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    const units = ['KB', 'MB', 'GB', 'TB'];
+    var value = bytes / 1024;
+    var unit = 0;
+    while (value >= 1024 && unit < units.length - 1) {
+      value /= 1024;
+      unit += 1;
+    }
+    final digits = value >= 10 ? 0 : 1;
+    return '${value.toStringAsFixed(digits)} ${units[unit]}';
+  }
+
+  Color _storageColorForIndex(int index) =>
+      _storagePalette[index % _storagePalette.length];
+
+  Widget _buildStorageBar(List<_StorageSegment> segments) {
+    final total = segments.fold<int>(0, (sum, item) => sum + item.bytes);
+    if (total <= 0) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(7),
+        child: Container(
+          height: 14,
+          color: _isDark ? const Color(0xFF374151) : const Color(0xFFE2E8F0),
+        ),
+      );
+    }
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(7),
+      child: SizedBox(
+        height: 14,
+        child: Row(
+          children: [
+            for (final segment in segments)
+              if (segment.bytes > 0)
+                Expanded(
+                  flex: (segment.bytes / total * 10000).round().clamp(1, 10000),
+                  child: ColoredBox(color: segment.color),
+                ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _storageLegendRow({
+    required Color color,
+    required String label,
+    required int bytes,
+    required int total,
+    bool showDivider = true,
+  }) {
+    final percent = total <= 0 ? 0.0 : (bytes / total) * 100;
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Row(
+            children: [
+              Container(
+                width: 10,
+                height: 10,
+                decoration: BoxDecoration(
+                  color: color,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: _titleColor,
+                  ),
+                ),
+              ),
+              Text(
+                '${_formatBytes(bytes)}${total > 0 ? '  ${percent.toStringAsFixed(percent >= 10 ? 0 : 1)}%' : ''}',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: _muted,
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (showDivider) _hairline(indent: 36),
+      ],
+    );
+  }
+
+  Widget _buildStorageSection() {
+    if (_isLoadingStorage && _storage == null) {
+      return _groupedCard([
+        const Padding(
+          padding: EdgeInsets.symmetric(vertical: 22),
+          child: Center(child: CupertinoActivityIndicator()),
+        ),
+      ]);
+    }
+
+    if (_storageError != null && _storage == null) {
+      return _groupedCard([
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          child: Text(
+            _storageError!,
+            style: TextStyle(color: _muted, fontSize: 15),
+          ),
+        ),
+        _settingsRow(
+          icon: CupertinoIcons.refresh,
+          iconColor: const Color(0xFF6366F1),
+          title: 'Retry',
+          showChevron: true,
+          onTap: () => _loadStorage(refresh: true),
+        ),
+      ]);
+    }
+
+    final storage = _storage;
+    if (storage == null) {
+      return _groupedCard([
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Text(
+            'Drive storage is not available yet.',
+            style: TextStyle(color: _muted, fontSize: 15),
+          ),
+        ),
+      ]);
+    }
+
+    final limit = storage.limitBytes;
+    final barTotal = limit != null && limit > 0 ? limit : storage.usageBytes;
+    final freeBytes =
+        limit != null && limit > storage.usageBytes ? limit - storage.usageBytes : 0;
+    final otherEdupalColor =
+        _isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final otherDriveColor =
+        _isDark ? const Color(0xFF6B7280) : const Color(0xFF94A3B8);
+    final freeColor =
+        _isDark ? const Color(0xFF374151) : const Color(0xFFE2E8F0);
+
+    final segments = <_StorageSegment>[
+      for (var i = 0; i < storage.courses.length; i++)
+        _StorageSegment(
+          label: storage.courses[i].name,
+          bytes: storage.courses[i].bytes,
+          color: _storageColorForIndex(i),
+        ),
+      if (storage.rootOtherBytes > 0)
+        _StorageSegment(
+          label: 'Other in ${storage.rootName ?? 'root'}',
+          bytes: storage.rootOtherBytes,
+          color: otherEdupalColor,
+        ),
+      if (storage.otherAccountBytes > 0)
+        _StorageSegment(
+          label: 'Rest of Drive',
+          bytes: storage.otherAccountBytes,
+          color: otherDriveColor,
+        ),
+      if (freeBytes > 0)
+        _StorageSegment(
+          label: 'Free',
+          bytes: freeBytes,
+          color: freeColor,
+        ),
+    ];
+
+    final usedLabel = limit != null
+        ? '${_formatBytes(storage.usageBytes)} of ${_formatBytes(limit)} used'
+        : '${_formatBytes(storage.usageBytes)} used';
+    final rootLabel = storage.rootName == null
+        ? 'Root folder not configured'
+        : '${storage.rootName}: ${_formatBytes(storage.rootBytes)}';
+
+    return _groupedCard([
+      _settingsRow(
+        icon: CupertinoIcons.chart_pie_fill,
+        iconColor: const Color(0xFF6366F1),
+        title: storage.accountEmail.isEmpty
+            ? 'Google Drive'
+            : storage.accountEmail,
+        subtitle: rootLabel,
+        showChevron: false,
+        trailing: _isLoadingStorage
+            ? const CupertinoActivityIndicator()
+            : Icon(CupertinoIcons.refresh, size: 16, color: _muted),
+        onTap: () => _loadStorage(refresh: true),
+      ),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+        child: Text(
+          usedLabel,
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: _titleColor,
+          ),
+        ),
+      ),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+        child: _buildStorageBar(segments),
+      ),
+      _hairline(indent: 16),
+      for (var i = 0; i < storage.courses.length; i++)
+        _storageLegendRow(
+          color: _storageColorForIndex(i),
+          label: storage.courses[i].name,
+          bytes: storage.courses[i].bytes,
+          total: barTotal,
+          showDivider: true,
+        ),
+      if (storage.rootOtherBytes > 0)
+        _storageLegendRow(
+          color: otherEdupalColor,
+          label: 'Other in ${storage.rootName ?? 'root'}',
+          bytes: storage.rootOtherBytes,
+          total: barTotal,
+        ),
+      if (storage.otherAccountBytes > 0)
+        _storageLegendRow(
+          color: otherDriveColor,
+          label: 'Rest of Drive',
+          bytes: storage.otherAccountBytes,
+          total: barTotal,
+        ),
+      _storageLegendRow(
+        color: freeColor,
+        label: limit == null ? 'Unlimited remaining' : 'Free',
+        bytes: freeBytes,
+        total: barTotal,
+        showDivider: false,
+      ),
+    ]);
+  }
+
   Widget _buildTokenRefreshSection() {
     return _settingsRow(
       icon: CupertinoIcons.refresh,
@@ -1016,6 +1301,9 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
           const SizedBox(height: 18),
           _sectionLabel('Courses'),
           _buildAvailableCourses(),
+          const SizedBox(height: 18),
+          _sectionLabel('Storage'),
+          _buildStorageSection(),
           const SizedBox(height: 18),
           _sectionLabel('Overview'),
           _groupedCard([
@@ -1521,6 +1809,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
                         HapticFeedback.selectionClick();
                         _loadProfiles();
                         _loadCourses();
+                        _loadStorage(refresh: true);
                       },
                       child: const Icon(
                         CupertinoIcons.refresh,
@@ -1546,4 +1835,16 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
             ),
     );
   }
+}
+
+class _StorageSegment {
+  final String label;
+  final int bytes;
+  final Color color;
+
+  const _StorageSegment({
+    required this.label,
+    required this.bytes,
+    required this.color,
+  });
 }
