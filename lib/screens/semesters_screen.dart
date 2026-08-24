@@ -145,11 +145,6 @@ class _SemestersScreenState extends State<SemestersScreen> {
     return _unitCounts.values.fold(0, (sum, count) => sum + count);
   }
 
-  int get _suggestedSemesterIndex {
-    final month = DateTime.now().month;
-    return month >= 7 ? 1 : 0;
-  }
-
   void _selectYear(int index) {
     if (index == _selectedYearIndex) return;
     HapticFeedback.selectionClick();
@@ -341,7 +336,6 @@ class _SemestersScreenState extends State<SemestersScreen> {
                             isDark: isDark,
                             unitCounts: _unitCounts,
                             isLoadingCounts: _isLoadingCounts,
-                            suggestedSemesterIndex: _suggestedSemesterIndex,
                             folderIds: _semesterFolderIds,
                             isReady: _isSemesterReady,
                             onOpen: _openSemester,
@@ -623,7 +617,6 @@ class _SemesterPair extends StatelessWidget {
     required this.isDark,
     required this.unitCounts,
     required this.isLoadingCounts,
-    required this.suggestedSemesterIndex,
     required this.folderIds,
     required this.isReady,
     required this.onOpen,
@@ -634,7 +627,6 @@ class _SemesterPair extends StatelessWidget {
   final bool isDark;
   final Map<String, int> unitCounts;
   final bool isLoadingCounts;
-  final int suggestedSemesterIndex;
   final Map<String, Map<String, String>> folderIds;
   final bool Function(Map<String, String>?) isReady;
   final void Function(
@@ -663,12 +655,11 @@ class _SemesterPair extends StatelessWidget {
             name: '${semester['name']}',
             subtitle: isFirst
                 ? 'Opening term · lectures, notes, and labs'
-                : 'Second term · exams and remaining units',
+                : 'Second term · lectures, notes, and labs',
             unitsLabel: isLoadingCounts && unitCount == null
                 ? 'Counting units…'
                 : '${unitCount ?? 0} ${(unitCount ?? 0) == 1 ? 'unit' : 'units'}',
             ready: ready,
-            suggested: index == suggestedSemesterIndex,
             isDark: isDark,
             accent: accent,
             icon: isFirst ? Icons.wb_sunny_rounded : Icons.nights_stay_rounded,
@@ -695,7 +686,6 @@ class _SemesterCard extends StatelessWidget {
     required this.subtitle,
     required this.unitsLabel,
     required this.ready,
-    required this.suggested,
     required this.isDark,
     required this.accent,
     required this.icon,
@@ -707,7 +697,6 @@ class _SemesterCard extends StatelessWidget {
   final String subtitle;
   final String unitsLabel;
   final bool ready;
-  final bool suggested;
   final bool isDark;
   final Color accent;
   final IconData icon;
@@ -730,9 +719,7 @@ class _SemesterCard extends StatelessWidget {
             color: card,
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
-              color: suggested
-                  ? accent.withOpacity(0.45)
-                  : (isDark ? const Color(0xFF374151) : const Color(0xFFF1F5F9)),
+              color: isDark ? const Color(0xFF374151) : const Color(0xFFF1F5F9),
             ),
             boxShadow: [
               if (!isDark)
@@ -761,41 +748,13 @@ class _SemesterCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              name,
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w700,
-                                color: title,
-                              ),
-                            ),
-                          ),
-                          if (suggested) ...[
-                            const SizedBox(width: 8),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 3,
-                              ),
-                              decoration: BoxDecoration(
-                                color: accent.withOpacity(0.12),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                'NOW',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: 0.6,
-                                  color: accent,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ],
+                      Text(
+                        name,
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                          color: title,
+                        ),
                       ),
                       const SizedBox(height: 4),
                       Text(
