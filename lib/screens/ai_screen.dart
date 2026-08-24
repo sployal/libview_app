@@ -313,7 +313,7 @@ class _AiScreenState extends State<AiScreen> {
         return AlertDialog(
           title: const Text('Delete conversation?'),
           content: Text(
-            '“${item.title}” will be removed from this device. This cannot be undone.',
+            '“${item.title}” will be permanently deleted. This cannot be undone.',
           ),
           actions: [
             TextButton(
@@ -428,7 +428,7 @@ class _AiScreenState extends State<AiScreen> {
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
             Text(
-              _messages.isEmpty ? 'Stored on this device' : _conversationTitle,
+              _messages.isEmpty ? 'Ask a study question' : _conversationTitle,
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w400,
