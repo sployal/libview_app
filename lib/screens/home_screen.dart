@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
 import '../services/auth_service.dart';
 import '../services/download_service.dart';
 import '../services/notification_service.dart';
@@ -27,7 +29,7 @@ class _HomeScreenState extends State<HomeScreen>
     with TickerProviderStateMixin, WidgetsBindingObserver {
   late AnimationController _slideController;
   late Animation<Offset> _slideAnimation;
-  
+
   List<DownloadItem> recentDownloads = [];
   int totalDownloads = 0;
   bool _downloadsLoaded = false;
@@ -41,6 +43,22 @@ class _HomeScreenState extends State<HomeScreen>
   late DateTime _selectedDay;
   String? _firstName;
 
+  static const _weekdayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+  static const _monthNames = [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -51,11 +69,11 @@ class _HomeScreenState extends State<HomeScreen>
     currentStreak = cachedStreak.currentStreak;
     longestStreak = cachedStreak.longestStreak;
     _slideController = AnimationController(
-      duration: const Duration(milliseconds: 600),
+      duration: const Duration(milliseconds: 520),
       vsync: this,
     );
     _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.3),
+      begin: const Offset(0, 0.06),
       end: Offset.zero,
     ).animate(CurvedAnimation(
       parent: _slideController,
@@ -147,17 +165,17 @@ class _HomeScreenState extends State<HomeScreen>
     final hour = DateTime.now().hour;
     final name = _firstName;
     if (hour < 12) {
-      return name == null ? 'Good morning ☀️' : 'Good morning, $name ☀️';
+      return name == null ? 'Good morning' : 'Good morning, $name';
     }
     if (hour < 17) {
-      return name == null ? 'Good afternoon 👋' : 'Good afternoon, $name 👋';
+      return name == null ? 'Good afternoon' : 'Good afternoon, $name';
     }
-    return name == null ? 'Good evening 🌙' : 'Good evening, $name 🌙';
+    return name == null ? 'Good evening' : 'Good evening, $name';
   }
 
   String _greetingSubtitle() {
     if (currentStreak > 0) {
-      return 'You\'re on a $currentStreak-day streak. Keep going.';
+      return 'Day $currentStreak of your study streak.';
     }
     return 'Open a file or start a focus session to begin.';
   }
@@ -181,19 +199,6 @@ class _HomeScreenState extends State<HomeScreen>
     });
   }
 
-  String _getStreakEmoji(int streak) {
-    return streak == 0 ? '📚' : '🔥';
-  }
-
-  String _getStreakMessage(int streak) {
-    if (streak == 0) return 'Start your streak today!';
-    if (streak == 1) return 'Great start! Keep it up!';
-    if (streak < 7) return 'You\'re on fire!';
-    if (streak < 14) return 'Amazing dedication!';
-    if (streak < 30) return 'Unstoppable!';
-    return 'Legendary streak!';
-  }
-
   Future<void> _openFile(DownloadItem download) async {
     try {
       await DownloadService.openDownloadedFile(download);
@@ -205,7 +210,7 @@ class _HomeScreenState extends State<HomeScreen>
             backgroundColor: const Color(0xFFEF4444),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
             ),
           ),
         );
@@ -213,7 +218,7 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
-  Color _getFileColor(String type) {
+  Color _fileColor(String type) {
     switch (type) {
       case 'PDF':
         return const Color(0xFFEF4444);
@@ -230,7 +235,7 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
-  IconData _getFileIcon(String type) {
+  IconData _fileIcon(String type) {
     switch (type) {
       case 'PDF':
         return Icons.picture_as_pdf_rounded;
@@ -247,622 +252,33 @@ class _HomeScreenState extends State<HomeScreen>
     }
   }
 
-  String _getTimeAgo(DownloadItem download) {
+  String _timeAgo(DownloadItem download) {
     try {
       final date = DateTime.parse(download.date);
       final now = DateTime.now();
       final difference = now.difference(date);
-
       if (difference.inDays > 0) {
-        return '${difference.inDays} ${difference.inDays == 1 ? 'day' : 'days'} ago';
-      } else if (difference.inHours > 0) {
-        return '${difference.inHours} ${difference.inHours == 1 ? 'hour' : 'hours'} ago';
-      } else if (difference.inMinutes > 0) {
-        return '${difference.inMinutes} ${difference.inMinutes == 1 ? 'minute' : 'minutes'} ago';
-      } else {
-        return 'Just now';
+        return '${difference.inDays}d ago';
       }
-    } catch (e) {
+      if (difference.inHours > 0) {
+        return '${difference.inHours}h ago';
+      }
+      if (difference.inMinutes > 0) {
+        return '${difference.inMinutes}m ago';
+      }
+      return 'Just now';
+    } catch (_) {
       return download.date;
     }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      body: SafeArea(
-        child: SlideTransition(
-          position: _slideAnimation,
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Header with notification icon
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _greetingTitle(),
-                              style: const TextStyle(
-                                fontSize: 26,
-                                fontWeight: FontWeight.bold,
-                                color: Color(0xFF1F2937),
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              _greetingSubtitle(),
-                              style: const TextStyle(
-                                fontSize: 15,
-                                color: Color(0xFF6B7280),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      // Notification Icon with Badge
-                      Stack(
-                        children: [
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.05),
-                                  blurRadius: 10,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: IconButton(
-                              icon: const Icon(
-                                Icons.notifications_rounded,
-                                color: Color(0xFF6366F1),
-                                size: 28,
-                              ),
-                              onPressed: () async {
-                                await Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (ctx) => const NotificationsScreen(),
-                                  ),
-                                );
-                                // Reload unread count when returning
-                                _loadUnreadNotificationCount();
-                              },
-                            ),
-                          ),
-                          if (unreadNotificationCount > 0)
-                            Positioned(
-                              right: 8,
-                              top: 8,
-                              child: Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: const BoxDecoration(
-                                  color: Color(0xFFEF4444),
-                                  shape: BoxShape.circle,
-                                ),
-                                constraints: const BoxConstraints(
-                                  minWidth: 18,
-                                  minHeight: 18,
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    unreadNotificationCount > 99
-                                        ? '99+'
-                                        : unreadNotificationCount.toString(),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-                  _buildStreakTracker(),
-                  const SizedBox(height: 20),
-                  const _StudyFocusCard(),
-                  const SizedBox(height: 20),
-                  _buildQuickStats(),
-                  const SizedBox(height: 30),
-                  _buildRecentActivity(),
-                  const SizedBox(height: 30),
-                  _buildQuickActions(),
-                  const SizedBox(height: 30),
-                  _buildCalendar(),
-                  const SizedBox(height: 12),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStreakTracker() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: currentStreak > 0
-              ? [const Color(0xFFFF6B6B), const Color(0xFFFF8E53)]
-              : [const Color(0xFF94A3B8), const Color(0xFF64748B)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: (currentStreak > 0
-                    ? const Color(0xFFFF6B6B)
-                    : const Color(0xFF94A3B8))
-                .withOpacity(0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  _getStreakEmoji(currentStreak),
-                  style: const TextStyle(fontSize: 28, height: 1),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '$currentStreak',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    height: 1,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 20),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Study Streak',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  _getStreakMessage(currentStreak),
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.9),
-                    fontSize: 14,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.emoji_events_rounded,
-                      color: Colors.white.withOpacity(0.8),
-                      size: 16,
-                    ),
-                    const SizedBox(width: 6),
-                    Text(
-                      'Best: $longestStreak ${longestStreak == 1 ? 'day' : 'days'}',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.8),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuickStats() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF6366F1).withOpacity(0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Your Progress',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: _buildStatItem(
-                  'Downloaded',
-                  totalDownloads.toString(),
-                  Icons.download_rounded,
-                ),
-              ),
-              Container(
-                height: 40,
-                width: 1,
-                color: Colors.white.withOpacity(0.3),
-              ),
-              Expanded(
-                child: _buildStatItem(
-                  'Recent',
-                  recentDownloads.length.toString(),
-                  Icons.history_rounded,
-                ),
-              ),
-              Container(
-                height: 40,
-                width: 1,
-                color: Colors.white.withOpacity(0.3),
-              ),
-              Expanded(
-                child: _buildStatItem(
-                  'Available',
-                  totalDownloads.toString(),
-                  Icons.folder_rounded,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatItem(String label, String value, IconData icon) {
-    return Column(
-      children: [
-        Icon(icon, color: Colors.white, size: 24),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.white.withOpacity(0.8),
-            fontSize: 12,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildRecentActivity() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              'Recent Activity',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF1F2937),
-              ),
-            ),
-            if (recentDownloads.isNotEmpty)
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (ctx) => const DownloadsScreen(),
-                    ),
-                  );
-                },
-                child: const Text(
-                  'View All',
-                  style: TextStyle(
-                    color: Color(0xFF6366F1),
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        if (!_downloadsLoaded)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 24),
-            child: Center(
-              child: SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  valueColor: AlwaysStoppedAnimation<Color>(
-                    Color(0xFF6366F1),
-                  ),
-                ),
-              ),
-            ),
-          )
-        else if (recentDownloads.isEmpty)
-          Container(
-            padding: const EdgeInsets.all(40),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Center(
-              child: Column(
-                children: [
-                  Icon(
-                    Icons.download_rounded,
-                    size: 48,
-                    color: Colors.grey[400],
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'No recent activity',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey[600],
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Downloaded files will appear here',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[500],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          )
-        else
-          ...recentDownloads.map((download) => _buildActivityItem(download)),
-      ],
-    );
-  }
-
-  Widget _buildActivityItem(DownloadItem download) {
-    final fileColor = _getFileColor(download.type);
-    final fileIcon = _getFileIcon(download.type);
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => _openFile(download),
-          borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: fileColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    fileIcon,
-                    color: fileColor,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        download.name,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF1F2937),
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        '${download.subject} • ${_getTimeAgo(download)}',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Color(0xFF6B7280),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: fileColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    download.type,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: fileColor,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQuickActions() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Quick Actions',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF1F2937),
-          ),
-        ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: _buildActionCard(
-                'View Downloads',
-                Icons.download_rounded,
-                const Color(0xFF10B981),
-                () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (ctx) => const DownloadsScreen(),
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildActionCard(
-                'Browse Files',
-                Icons.folder_rounded,
-                const Color(0xFF6366F1),
-                () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (ctx) => const BrowseDocumentsScreen(),
-                    ),
-                  );
-                },
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _buildActionCard(
-                'Ask AI',
-                Icons.auto_awesome_rounded,
-                const Color(0xFF8B5CF6),
-                () {
-                  const SwitchMainTabNotification(2).dispatch(context);
-                },
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  static const _weekdayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-  static const _monthNames = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ];
-
-  bool _isSameDay(DateTime a, DateTime b) {
-    return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
   DateTime get _today {
     final now = DateTime.now();
     return DateTime(now.year, now.month, now.day);
+  }
+
+  bool _isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
   }
 
   bool _isStreakDay(DateTime day) {
@@ -873,6 +289,7 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   void _changeMonth(int delta) {
+    HapticFeedback.selectionClick();
     setState(() {
       _visibleMonth = DateTime(
         _visibleMonth.year,
@@ -908,7 +325,643 @@ class _HomeScreenState extends State<HomeScreen>
     return label;
   }
 
-  Widget _buildCalendar() {
+  Future<void> _openNotifications() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const NotificationsScreen()),
+    );
+    _loadUnreadNotificationCount();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final background =
+        isDark ? const Color(0xFF111827) : const Color(0xFFF8FAFC);
+    final titleColor =
+        isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
+    final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
+    final card = isDark ? const Color(0xFF1F2937) : Colors.white;
+
+    return Scaffold(
+      backgroundColor: background,
+      body: SafeArea(
+        child: SlideTransition(
+          position: _slideAnimation,
+          child: RefreshIndicator(
+            color: const Color(0xFF6366F1),
+            onRefresh: _loadRecentActivity,
+            child: CustomScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
+                  sliver: SliverList(
+                    delegate: SliverChildListDelegate([
+                      _buildHeader(titleColor, muted, card, isDark),
+                      const SizedBox(height: 20),
+                      if (recentDownloads.isNotEmpty) ...[
+                        _buildContinueCard(isDark),
+                        const SizedBox(height: 16),
+                      ],
+                      _buildTodayCard(isDark, card, titleColor, muted),
+                      const SizedBox(height: 16),
+                      const _StudyFocusCard(),
+                      const SizedBox(height: 28),
+                      _sectionLabel('Shortcuts', muted),
+                      const SizedBox(height: 12),
+                      _buildShortcuts(isDark, card, titleColor, muted),
+                      const SizedBox(height: 28),
+                      _buildRecentsHeader(titleColor, muted),
+                      const SizedBox(height: 12),
+                      _buildRecents(isDark, card, titleColor, muted),
+                      const SizedBox(height: 28),
+                      _sectionLabel('Calendar', muted),
+                      const SizedBox(height: 12),
+                      _buildCalendar(isDark, card, titleColor, muted),
+                    ]),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _sectionLabel(String text, Color muted) {
+    return Text(
+      text.toUpperCase(),
+      style: TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w700,
+        letterSpacing: 0.8,
+        color: muted,
+      ),
+    );
+  }
+
+  Widget _buildHeader(
+    Color titleColor,
+    Color muted,
+    Color card,
+    bool isDark,
+  ) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _greetingTitle(),
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.6,
+                  height: 1.15,
+                  color: titleColor,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                _greetingSubtitle(),
+                style: TextStyle(
+                  fontSize: 15,
+                  height: 1.35,
+                  color: muted,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        _NotificationButton(
+          count: unreadNotificationCount,
+          isDark: isDark,
+          onTap: _openNotifications,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildContinueCard(bool isDark) {
+    final download = recentDownloads.first;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _openFile(download),
+        borderRadius: BorderRadius.circular(22),
+        child: Ink(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(22),
+            gradient: const LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.18),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(_fileIcon(download.type), color: Colors.white),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Continue',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white.withOpacity(0.8),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        download.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
+                      ),
+                      Text(
+                        '${download.subject} · ${_timeAgo(download)}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.white.withOpacity(0.82),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(
+                  Icons.play_arrow_rounded,
+                  color: Colors.white,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTodayCard(
+    bool isDark,
+    Color card,
+    Color titleColor,
+    Color muted,
+  ) {
+    final weekGoal = 7;
+    final weekProgress = (currentStreak % weekGoal) / weekGoal;
+    final ringValue = currentStreak == 0 ? 0.0 : (weekProgress == 0 ? 1.0 : weekProgress);
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: card,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          if (!isDark)
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              SizedBox(
+                width: 86,
+                height: 86,
+                child: CustomPaint(
+                  painter: _StreakRingPainter(
+                    progress: ringValue,
+                    trackColor: isDark
+                        ? const Color(0xFF374151)
+                        : const Color(0xFFEEF2FF),
+                    progressColor: currentStreak > 0
+                        ? const Color(0xFFF97316)
+                        : const Color(0xFF94A3B8),
+                  ),
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          currentStreak > 0 ? '🔥' : '📚',
+                          style: const TextStyle(fontSize: 18, height: 1),
+                        ),
+                        Text(
+                          '$currentStreak',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                            color: titleColor,
+                            height: 1.1,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 18),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      currentStreak > 0 ? 'On a streak' : 'Start a streak',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: titleColor,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      currentStreak > 0
+                          ? 'Best run is $longestStreak ${longestStreak == 1 ? 'day' : 'days'}.'
+                          : 'Open the app daily to build a habit.',
+                      style: TextStyle(fontSize: 13, height: 1.35, color: muted),
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        _MiniStat(
+                          label: 'Files',
+                          value: _downloadsLoaded ? '$totalDownloads' : '—',
+                          color: const Color(0xFF6366F1),
+                        ),
+                        const SizedBox(width: 18),
+                        _MiniStat(
+                          label: 'Best',
+                          value: '$longestStreak',
+                          color: const Color(0xFFF59E0B),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: List.generate(7, (index) {
+              final day = _today.subtract(Duration(days: 6 - index));
+              final active = _isStreakDay(day);
+              final isToday = _isSameDay(day, _today);
+              return Expanded(
+                child: Column(
+                  children: [
+                    Text(
+                      _weekdayLabels[day.weekday % 7],
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: muted,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: active
+                            ? const Color(0xFFF97316)
+                            : (isDark
+                                ? const Color(0xFF374151)
+                                : const Color(0xFFF1F5F9)),
+                        border: isToday && !active
+                            ? Border.all(
+                                color: const Color(0xFF6366F1),
+                                width: 1.5,
+                              )
+                            : null,
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        '${day.day}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: active
+                              ? Colors.white
+                              : (isDark
+                                  ? const Color(0xFFE5E7EB)
+                                  : const Color(0xFF334155)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildShortcuts(
+    bool isDark,
+    Color card,
+    Color titleColor,
+    Color muted,
+  ) {
+    final items = [
+      _Shortcut(
+        title: 'Units',
+        subtitle: 'Years & semesters',
+        icon: Icons.school_rounded,
+        color: const Color(0xFF6366F1),
+        onTap: () {
+          HapticFeedback.lightImpact();
+          const SwitchMainTabNotification(1).dispatch(context);
+        },
+      ),
+      _Shortcut(
+        title: 'Downloads',
+        subtitle: '$totalDownloads saved',
+        icon: Icons.download_rounded,
+        color: const Color(0xFF10B981),
+        onTap: () {
+          HapticFeedback.lightImpact();
+          const SwitchMainTabNotification(3).dispatch(context);
+        },
+      ),
+      _Shortcut(
+        title: 'Files',
+        subtitle: 'On this phone',
+        icon: Icons.folder_rounded,
+        color: const Color(0xFF0EA5E9),
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const BrowseDocumentsScreen()),
+          );
+        },
+      ),
+      _Shortcut(
+        title: 'Ask AI',
+        subtitle: 'Study help',
+        icon: Icons.auto_awesome_rounded,
+        color: const Color(0xFF8B5CF6),
+        onTap: () {
+          HapticFeedback.lightImpact();
+          const SwitchMainTabNotification(2).dispatch(context);
+        },
+      ),
+    ];
+
+    return GridView.count(
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      mainAxisSpacing: 10,
+      crossAxisSpacing: 10,
+      childAspectRatio: 1.55,
+      children: items
+          .map(
+            (item) => Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: item.onTap,
+                borderRadius: BorderRadius.circular(20),
+                child: Ink(
+                  decoration: BoxDecoration(
+                    color: card,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      if (!isDark)
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.04),
+                          blurRadius: 14,
+                          offset: const Offset(0, 6),
+                        ),
+                    ],
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: item.color.withOpacity(isDark ? 0.2 : 0.12),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Icon(item.icon, color: item.color, size: 20),
+                        ),
+                        const Spacer(),
+                        Text(
+                          item.title,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: titleColor,
+                          ),
+                        ),
+                        Text(
+                          item.subtitle,
+                          style: TextStyle(fontSize: 12, color: muted),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          )
+          .toList(),
+    );
+  }
+
+  Widget _buildRecentsHeader(Color titleColor, Color muted) {
+    return Row(
+      children: [
+        Expanded(child: _sectionLabel('Recents', muted)),
+        if (recentDownloads.isNotEmpty)
+          GestureDetector(
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const DownloadsScreen()),
+              );
+            },
+            child: const Text(
+              'See all',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: Color(0xFF6366F1),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildRecents(
+    bool isDark,
+    Color card,
+    Color titleColor,
+    Color muted,
+  ) {
+    if (!_downloadsLoaded) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 28),
+        child: Center(
+          child: SizedBox(
+            width: 22,
+            height: 22,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.4,
+              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (recentDownloads.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
+        decoration: BoxDecoration(
+          color: card,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Column(
+          children: [
+            Icon(Icons.downloading_rounded, size: 36, color: muted),
+            const SizedBox(height: 10),
+            Text(
+              'Nothing downloaded yet',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                color: titleColor,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Files you save will show up here.',
+              style: TextStyle(fontSize: 13, color: muted),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: card,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        children: [
+          for (var i = 0; i < recentDownloads.length; i++) ...[
+            if (i > 0)
+              Divider(
+                height: 1,
+                indent: 72,
+                color: isDark
+                    ? const Color(0xFF374151)
+                    : const Color(0xFFF1F5F9),
+              ),
+            _buildRecentRow(recentDownloads[i], titleColor, muted),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecentRow(
+    DownloadItem download,
+    Color titleColor,
+    Color muted,
+  ) {
+    final color = _fileColor(download.type);
+    return InkWell(
+      onTap: () => _openFile(download),
+      borderRadius: BorderRadius.circular(16),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        child: Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(_fileIcon(download.type), color: color, size: 22),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    download.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: titleColor,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${download.subject} · ${_timeAgo(download)}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 13, color: muted),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: muted),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCalendar(
+    bool isDark,
+    Color card,
+    Color titleColor,
+    Color muted,
+  ) {
     final year = _visibleMonth.year;
     final month = _visibleMonth.month;
     final daysInMonth = DateTime(year, month + 1, 0).day;
@@ -916,163 +969,122 @@ class _HomeScreenState extends State<HomeScreen>
     final cellCount = leadingEmpty + daysInMonth;
     final rowCount = ((cellCount + 6) ~/ 7);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Calendar',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF1F2937),
-          ),
-        ),
-        const SizedBox(height: 16),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 16,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
-              Container(
-                padding: const EdgeInsets.fromLTRB(8, 14, 8, 14),
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.vertical(
-                    top: Radius.circular(20),
-                  ),
+    return Container(
+      decoration: BoxDecoration(
+        color: card,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          if (!isDark)
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 10, 8, 4),
+            child: Row(
+              children: [
+                IconButton(
+                  onPressed: () => _changeMonth(-1),
+                  icon: Icon(Icons.chevron_left_rounded, color: muted),
                 ),
-                child: Row(
-                  children: [
-                    IconButton(
-                      onPressed: () => _changeMonth(-1),
-                      icon: const Icon(
-                        Icons.chevron_left_rounded,
-                        color: Colors.white,
-                        size: 28,
-                      ),
-                    ),
-                    Expanded(
-                      child: Column(
-                        children: [
-                          Text(
-                            '${_monthNames[month - 1]} $year',
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            _selectedDayCaption(),
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.85),
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: () => _changeMonth(1),
-                      icon: const Icon(
-                        Icons.chevron_right_rounded,
-                        color: Colors.white,
-                        size: 28,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 16, 12, 8),
-                child: Row(
-                  children: _weekdayLabels
-                      .map(
-                        (label) => Expanded(
-                          child: Text(
-                            label,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF9CA3AF),
-                              letterSpacing: 0.6,
-                            ),
-                          ),
+                Expanded(
+                  child: Column(
+                    children: [
+                      Text(
+                        '${_monthNames[month - 1]} $year',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                          color: titleColor,
                         ),
-                      )
-                      .toList(),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _selectedDayCaption(),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 12, color: muted),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-                child: Column(
-                  children: List.generate(rowCount, (row) {
-                    return Row(
-                      children: List.generate(7, (col) {
-                        final index = row * 7 + col;
-                        final dayNumber = index - leadingEmpty + 1;
-                        if (dayNumber < 1 || dayNumber > daysInMonth) {
-                          return const Expanded(child: SizedBox(height: 44));
-                        }
-                        final date = DateTime(year, month, dayNumber);
-                        return Expanded(child: _buildCalendarDay(date));
-                      }),
+                IconButton(
+                  onPressed: () => _changeMonth(1),
+                  icon: Icon(Icons.chevron_right_rounded, color: muted),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+            child: Row(
+              children: _weekdayLabels
+                  .map(
+                    (label) => Expanded(
+                      child: Text(
+                        label,
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: muted,
+                          letterSpacing: 0.4,
+                        ),
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+            child: Column(
+              children: List.generate(rowCount, (row) {
+                return Row(
+                  children: List.generate(7, (col) {
+                    final index = row * 7 + col;
+                    final dayNumber = index - leadingEmpty + 1;
+                    if (dayNumber < 1 || dayNumber > daysInMonth) {
+                      return const Expanded(child: SizedBox(height: 44));
+                    }
+                    return Expanded(
+                      child: _buildCalendarDay(
+                        DateTime(year, month, dayNumber),
+                        isDark,
+                        titleColor,
+                        muted,
+                      ),
                     );
                   }),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 4, 20, 18),
-                child: Row(
-                  children: [
-                    _buildCalendarLegend(
-                      color: const Color(0xFF6366F1),
-                      label: 'Today',
-                      filled: true,
-                    ),
-                    const SizedBox(width: 16),
-                    _buildCalendarLegend(
-                      color: const Color(0xFFFF6B6B),
-                      label: 'Study streak',
-                      filled: false,
-                    ),
-                  ],
-                ),
-              ),
-            ],
+                );
+              }),
+            ),
           ),
-        ),
-      ],
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+            child: Row(
+              children: [
+                _legendDot(const Color(0xFF6366F1), 'Today', filled: true),
+                const SizedBox(width: 16),
+                _legendDot(const Color(0xFFF97316), 'Streak', filled: false),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildCalendarLegend({
-    required Color color,
-    required String label,
-    required bool filled,
-  }) {
+  Widget _legendDot(Color color, String label, {required bool filled}) {
     return Row(
       children: [
         Container(
-          width: 10,
-          height: 10,
+          width: 8,
+          height: 8,
           decoration: BoxDecoration(
             color: filled ? color : color.withOpacity(0.18),
             shape: BoxShape.circle,
@@ -1092,44 +1104,36 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildCalendarDay(DateTime date) {
+  Widget _buildCalendarDay(
+    DateTime date,
+    bool isDark,
+    Color titleColor,
+    Color muted,
+  ) {
     final isToday = _isSameDay(date, _today);
     final isSelected = _isSameDay(date, _selectedDay);
     final isStreak = _isStreakDay(date) && !isToday;
     final isWeekend = date.weekday == DateTime.saturday ||
         date.weekday == DateTime.sunday;
 
-    Color textColor = isWeekend
-        ? const Color(0xFF9CA3AF)
-        : const Color(0xFF1F2937);
+    Color textColor = isWeekend ? muted : titleColor;
     if (isToday || isSelected) textColor = Colors.white;
-    if (isStreak && !isSelected) textColor = const Color(0xFFFF6B6B);
+    if (isStreak && !isSelected) textColor = const Color(0xFFF97316);
 
     BoxDecoration decoration;
     if (isToday) {
-      decoration = BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+      decoration = const BoxDecoration(
+        color: Color(0xFF6366F1),
         shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF6366F1).withOpacity(0.4),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
-          ),
-        ],
       );
     } else if (isSelected) {
-      decoration = const BoxDecoration(
-        color: Color(0xFF1F2937),
+      decoration = BoxDecoration(
+        color: isDark ? const Color(0xFF4B5563) : const Color(0xFF1F2937),
         shape: BoxShape.circle,
       );
     } else if (isStreak) {
       decoration = BoxDecoration(
-        color: const Color(0xFFFF6B6B).withOpacity(0.12),
+        color: const Color(0xFFF97316).withOpacity(0.12),
         shape: BoxShape.circle,
       );
     } else {
@@ -1138,9 +1142,8 @@ class _HomeScreenState extends State<HomeScreen>
 
     return GestureDetector(
       onTap: () {
-        setState(() {
-          _selectedDay = date;
-        });
+        HapticFeedback.selectionClick();
+        setState(() => _selectedDay = date);
       },
       child: SizedBox(
         height: 44,
@@ -1166,53 +1169,161 @@ class _HomeScreenState extends State<HomeScreen>
       ),
     );
   }
+}
 
-  Widget _buildActionCard(
-    String title,
-    IconData icon,
-    Color color,
-    VoidCallback onTap,
-  ) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 2),
+class _NotificationButton extends StatelessWidget {
+  const _NotificationButton({
+    required this.count,
+    required this.isDark,
+    required this.onTap,
+  });
+
+  final int count;
+  final bool isDark;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Material(
+          color: isDark ? const Color(0xFF1F2937) : Colors.white,
+          shape: const CircleBorder(),
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: onTap,
+            child: const SizedBox(
+              width: 44,
+              height: 44,
+              child: Icon(
+                Icons.notifications_rounded,
+                color: Color(0xFF6366F1),
+              ),
             ),
-          ],
+          ),
         ),
-        child: Column(
-          children: [
-            Container(
-              width: 48,
-              height: 48,
+        if (count > 0)
+          Positioned(
+            right: -2,
+            top: -2,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(14),
+                color: const Color(0xFFEF4444),
+                borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, color: color, size: 24),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              title,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: Color(0xFF1F2937),
+              constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+              child: Text(
+                count > 99 ? '99+' : '$count',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                ),
               ),
             ),
-          ],
-        ),
-      ),
+          ),
+      ],
     );
+  }
+}
+
+class _MiniStat extends StatelessWidget {
+  const _MiniStat({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  final String label;
+  final String value;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            color: color,
+          ),
+        ),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            color: Color(0xFF9CA3AF),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _Shortcut {
+  const _Shortcut({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+}
+
+class _StreakRingPainter extends CustomPainter {
+  _StreakRingPainter({
+    required this.progress,
+    required this.trackColor,
+    required this.progressColor,
+  });
+
+  final double progress;
+  final Color trackColor;
+  final Color progressColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = (math.min(size.width, size.height) / 2) - 6;
+    final track = Paint()
+      ..color = trackColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 8
+      ..strokeCap = StrokeCap.round;
+    final arc = Paint()
+      ..color = progressColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 8
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawCircle(center, radius, track);
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      -math.pi / 2,
+      2 * math.pi * progress.clamp(0.0, 1.0),
+      false,
+      arc,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _StreakRingPainter oldDelegate) {
+    return oldDelegate.progress != progress ||
+        oldDelegate.progressColor != progressColor ||
+        oldDelegate.trackColor != trackColor;
   }
 }
 
@@ -1283,7 +1394,7 @@ class _StudyFocusCardState extends State<_StudyFocusCard> {
             backgroundColor: const Color(0xFF10B981),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
             ),
           ),
         );
@@ -1304,21 +1415,28 @@ class _StudyFocusCardState extends State<_StudyFocusCard> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final card = isDark ? const Color(0xFF1F2937) : Colors.white;
+    final title = isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
+    final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF0EA5E9), Color(0xFF6366F1)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+        color: card,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: _running
+              ? const Color(0xFF6366F1).withOpacity(0.45)
+              : (isDark ? const Color(0xFF374151) : const Color(0xFFF1F5F9)),
         ),
-        borderRadius: BorderRadius.circular(20),
         boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF0EA5E9).withOpacity(0.28),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
+          if (!isDark)
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
+            ),
         ],
       ),
       child: Column(
@@ -1330,46 +1448,43 @@ class _StudyFocusCardState extends State<_StudyFocusCard> {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.18),
+                  color: const Color(0xFF6366F1).withOpacity(0.12),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(
                   Icons.timer_rounded,
-                  color: Colors.white,
+                  color: Color(0xFF6366F1),
                 ),
               ),
               const SizedBox(width: 12),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Focus session',
+                      'Focus',
                       style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+                        color: title,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w700,
                       ),
                     ),
                     Text(
                       'A quiet timer for reading and revision',
-                      style: TextStyle(
-                        color: Color(0xE6FFFFFF),
-                        fontSize: 13,
-                      ),
+                      style: TextStyle(color: muted, fontSize: 13),
                     ),
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 16),
           Row(
             children: [
               Text(
                 _timeLabel,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: title,
                   fontSize: 36,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 1,
@@ -1379,18 +1494,17 @@ class _StudyFocusCardState extends State<_StudyFocusCard> {
               if (_running || _remainingSeconds != _minutes * 60)
                 IconButton(
                   onPressed: _reset,
-                  icon: const Icon(Icons.refresh_rounded, color: Colors.white),
+                  icon: Icon(Icons.refresh_rounded, color: muted),
                 ),
-              const SizedBox(width: 4),
               GestureDetector(
                 onTap: _toggle,
                 child: Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 18,
+                    horizontal: 16,
                     vertical: 10,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: const Color(0xFF6366F1),
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Row(
@@ -1399,13 +1513,13 @@ class _StudyFocusCardState extends State<_StudyFocusCard> {
                         _running
                             ? Icons.pause_rounded
                             : Icons.play_arrow_rounded,
-                        color: const Color(0xFF6366F1),
+                        color: Colors.white,
                       ),
                       const SizedBox(width: 4),
                       Text(
                         _running ? 'Pause' : 'Start',
                         style: const TextStyle(
-                          color: Color(0xFF6366F1),
+                          color: Colors.white,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -1415,17 +1529,21 @@ class _StudyFocusCardState extends State<_StudyFocusCard> {
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: LinearProgressIndicator(
               value: _progress,
-              minHeight: 7,
-              backgroundColor: Colors.white.withOpacity(0.22),
-              valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+              minHeight: 6,
+              backgroundColor: isDark
+                  ? const Color(0xFF374151)
+                  : const Color(0xFFEEF2FF),
+              valueColor: const AlwaysStoppedAnimation<Color>(
+                Color(0xFF6366F1),
+              ),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           Row(
             children: _presets.map((minutes) {
               final selected = _minutes == minutes;
@@ -1441,16 +1559,16 @@ class _StudyFocusCardState extends State<_StudyFocusCard> {
                     ),
                     decoration: BoxDecoration(
                       color: selected
-                          ? Colors.white
-                          : Colors.white.withOpacity(0.16),
+                          ? const Color(0xFF6366F1)
+                          : (isDark
+                              ? const Color(0xFF111827)
+                              : const Color(0xFFF1F5F9)),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(
                       '$minutes min',
                       style: TextStyle(
-                        color: selected
-                            ? const Color(0xFF4F46E5)
-                            : Colors.white,
+                        color: selected ? Colors.white : muted,
                         fontWeight: FontWeight.w700,
                         fontSize: 13,
                       ),
