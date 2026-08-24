@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
 import '../screens/no_internet_screen.dart';
+
 class AuthScreen extends StatefulWidget {
-  const AuthScreen({super.key});
+  const AuthScreen({super.key, this.needsProfileCompletion = false});
+
+  /// Signed in with Google (or another provider) but missing name / reg number.
+  final bool needsProfileCompletion;
 
   @override
   State<AuthScreen> createState() => _AuthScreenState();
@@ -29,12 +33,26 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    if (widget.needsProfileCompletion) {
+      _tabController.index = 1;
+      _prefillGoogleProfileFields();
+    }
 
     AuthService.instance.authStateChanges.listen((user) {
       if (user != null) {
         debugPrint('User signed in successfully');
       }
-    });  }
+    });
+  }
+
+  void _prefillGoogleProfileFields() {
+    final user = AuthService.instance.currentUser;
+    _emailController.text = user?.email ?? '';
+    final displayName = user?.displayName?.trim() ?? '';
+    if (displayName.isNotEmpty) {
+      _fullNameController.text = displayName;
+    }
+  }
 
   @override
   void dispose() {
@@ -71,7 +89,12 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
 
       // Check if registration number already exists
       final regNumberTaken = await AuthService.instance
-          .isRegistrationNumberTaken(normalizedRegNumber);
+          .isRegistrationNumberTaken(
+            normalizedRegNumber,
+            excludeUid: widget.needsProfileCompletion
+                ? AuthService.instance.currentUser?.uid
+                : null,
+          );
 
       if (regNumberTaken) {
         if (mounted) {
@@ -100,6 +123,14 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
         return;
       }
 
+      if (widget.needsProfileCompletion) {
+        await AuthService.instance.completeStudentProfile(
+          fullName: _fullNameController.text.trim(),
+          registrationNumber: normalizedRegNumber,
+        );
+        return;
+      }
+
       // Sign up user with Firebase
       await AuthService.instance.signUp(
         email: _emailController.text.trim(),
@@ -109,35 +140,15 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
       );
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: const Row(
-                children: [
-                  Icon(Icons.check_circle, color: Colors.white),
-                  SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'Account created successfully!',
-                      style: TextStyle(fontWeight: FontWeight.w500),
-                    ),
-                  ),
-                ],
-              ),
-              backgroundColor: const Color(0xFF10B981),
-              behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              margin: const EdgeInsets.all(16),
-              duration: const Duration(seconds: 5),
-            ),
-          );
-          
-          // Switch to login tab and clear form
-          _tabController.animateTo(0);
-          _fullNameController.clear();
-          _registrationNumberController.clear();
-          _confirmPasswordController.clear();
-          _emailController.clear();
-          _passwordController.clear();
+        _showSnackBar('Account created successfully!', success: true);
+
+        // Switch to login tab and clear form
+        _tabController.animateTo(0);
+        _fullNameController.clear();
+        _registrationNumberController.clear();
+        _confirmPasswordController.clear();
+        _emailController.clear();
+        _passwordController.clear();
       }
     } on FirebaseAuthException catch (error) {
       if (mounted) {
@@ -257,6 +268,72 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     }
   }
 
+  Future<void> _signInWithGoogle() async {
+    if (!await NoInternetScreen.ensureOnline(context)) return;
+    if (!mounted) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      await AuthService.instance.signInWithGoogle();
+    } on FirebaseAuthException catch (error) {
+      if (mounted) {
+        _showSnackBar(AuthService.instance.authErrorMessage(error));
+      }
+    } catch (error) {
+      final message = error.toString();
+      if (message.contains('sign_in_canceled') ||
+          message.contains('sign_in_cancelled')) {
+        return;
+      }
+      if (mounted) {
+        _showSnackBar('Unexpected error: $error');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<void> _cancelGoogleProfileSetup() async {
+    setState(() => _isLoading = true);
+    try {
+      await AuthService.instance.signOut();
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  void _showSnackBar(String message, {bool success = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              success ? Icons.check_circle : Icons.error_outline,
+              color: Colors.white,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: const TextStyle(fontWeight: FontWeight.w500),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor:
+            success ? const Color(0xFF10B981) : const Color(0xFFEF4444),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        margin: const EdgeInsets.all(16),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -367,63 +444,76 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                   ),
                   child: Column(
                     children: [
-                      // Tab Bar
-                      Container(
-                        margin: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF1F5F9),
-                          borderRadius: BorderRadius.circular(15),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: 10,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: TabBar(
-                          controller: _tabController,
-                          indicator: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [
-                                Color(0xFF6366F1),
-                                Color(0xFF8B5CF6),
-                              ],
-                            ),
+                      if (!widget.needsProfileCompletion)
+                        Container(
+                          margin: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F5F9),
                             borderRadius: BorderRadius.circular(15),
                             boxShadow: [
                               BoxShadow(
-                                color: const Color(0xFF6366F1).withOpacity(0.3),
-                                blurRadius: 8,
-                                offset: const Offset(0, 4),
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 10,
+                                offset: const Offset(0, 2),
                               ),
                             ],
                           ),
-                          labelColor: Colors.white,
-                          unselectedLabelColor: const Color(0xFF64748B),
-                          labelStyle: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                          child: TabBar(
+                            controller: _tabController,
+                            indicator: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [
+                                  Color(0xFF6366F1),
+                                  Color(0xFF8B5CF6),
+                                ],
+                              ),
+                              borderRadius: BorderRadius.circular(15),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF6366F1).withOpacity(0.3),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            labelColor: Colors.white,
+                            unselectedLabelColor: const Color(0xFF64748B),
+                            labelStyle: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                            labelPadding: const EdgeInsets.symmetric(horizontal: 24),
+                            indicatorSize: TabBarIndicatorSize.tab,
+                            dividerColor: Colors.transparent,
+                            tabs: const [
+                              Tab(text: 'Login'),
+                              Tab(text: 'Sign Up'),
+                            ],
                           ),
-                          labelPadding: const EdgeInsets.symmetric(horizontal: 24),
-                          indicatorSize: TabBarIndicatorSize.tab,
-                          dividerColor: Colors.transparent,
-                          tabs: const [
-                            Tab(text: 'Login'),
-                            Tab(text: 'Sign Up'),
-                          ],
+                        )
+                      else
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: TextButton.icon(
+                              onPressed: _isLoading ? null : _cancelGoogleProfileSetup,
+                              icon: const Icon(Icons.arrow_back_rounded),
+                              label: const Text('Use a different account'),
+                            ),
+                          ),
                         ),
-                      ),
 
-                      // Tab Views
                       Expanded(
-                        child: TabBarView(
-                          controller: _tabController,
-                          children: [
-                            _buildLoginForm(),
-                            _buildSignUpForm(),
-                          ],
-                        ),
+                        child: widget.needsProfileCompletion
+                            ? _buildSignUpForm()
+                            : TabBarView(
+                                controller: _tabController,
+                                children: [
+                                  _buildLoginForm(),
+                                  _buildSignUpForm(),
+                                ],
+                              ),
                       ),
                     ],
                   ),
@@ -554,6 +644,46 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                       ),
               ),
             ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(child: Divider(color: Colors.grey[300])),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Text(
+                    'or',
+                    style: TextStyle(color: Colors.grey[500], fontSize: 13),
+                  ),
+                ),
+                Expanded(child: Divider(color: Colors.grey[300])),
+              ],
+            ),
+            const SizedBox(height: 20),
+            OutlinedButton(
+              onPressed: _isLoading ? null : _signInWithGoogle,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF1F2937),
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                side: const BorderSide(color: Color(0xFFE5E7EB)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _GoogleGMark(),
+                  SizedBox(width: 12),
+                  Text(
+                    'Log in with Google',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
         ),
       ),
@@ -578,7 +708,9 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
             ),
             const SizedBox(height: 8),
             Text(
-              'Join us and start your academic journey',
+              widget.needsProfileCompletion
+                  ? 'Finish signing up with your Google account'
+                  : 'Join us and start your academic journey',
               style: TextStyle(
                 fontSize: 14,
                 color: Colors.grey[600],
@@ -634,9 +766,12 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
             _buildTextField(
               controller: _emailController,
               label: 'Email',
-              hint: 'your.email@example.com',
+              hint: widget.needsProfileCompletion
+                  ? 'Signed in with Google'
+                  : 'your.email@example.com',
               icon: Icons.email_rounded,
               keyboardType: TextInputType.emailAddress,
+              enabled: !widget.needsProfileCompletion,
               validator: (value) {
                 if (value == null || value.isEmpty) {
                   return 'Please enter your email';
@@ -647,62 +782,64 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                 return null;
               },
             ),
-            const SizedBox(height: 16),
+            if (!widget.needsProfileCompletion) ...[
+              const SizedBox(height: 16),
 
-            // Password Field
-            _buildTextField(
-              controller: _passwordController,
-              label: 'Password',
-              hint: '••••••••',
-              icon: Icons.lock_rounded,
-              obscureText: _obscurePassword,
-              suffixIcon: IconButton(
-                icon: Icon(
-                  _obscurePassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
-                  color: const Color(0xFF9CA3AF),
+              // Password Field
+              _buildTextField(
+                controller: _passwordController,
+                label: 'Password',
+                hint: '••••••••',
+                icon: Icons.lock_rounded,
+                obscureText: _obscurePassword,
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _obscurePassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                    color: const Color(0xFF9CA3AF),
+                  ),
+                  onPressed: () {
+                    setState(() => _obscurePassword = !_obscurePassword);
+                  },
                 ),
-                onPressed: () {
-                  setState(() => _obscurePassword = !_obscurePassword);
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please enter a password';
+                  }
+                  if (value.length < 6) {
+                    return 'Password must be at least 6 characters';
+                  }
+                  return null;
                 },
               ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter a password';
-                }
-                if (value.length < 6) {
-                  return 'Password must be at least 6 characters';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
+              const SizedBox(height: 16),
 
-            // Confirm Password Field
-            _buildTextField(
-              controller: _confirmPasswordController,
-              label: 'Confirm Password',
-              hint: '••••••••',
-              icon: Icons.lock_rounded,
-              obscureText: _obscureConfirmPassword,
-              suffixIcon: IconButton(
-                icon: Icon(
-                  _obscureConfirmPassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
-                  color: const Color(0xFF9CA3AF),
+              // Confirm Password Field
+              _buildTextField(
+                controller: _confirmPasswordController,
+                label: 'Confirm Password',
+                hint: '••••••••',
+                icon: Icons.lock_rounded,
+                obscureText: _obscureConfirmPassword,
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _obscureConfirmPassword ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                    color: const Color(0xFF9CA3AF),
+                  ),
+                  onPressed: () {
+                    setState(() => _obscureConfirmPassword = !_obscureConfirmPassword);
+                  },
                 ),
-                onPressed: () {
-                  setState(() => _obscureConfirmPassword = !_obscureConfirmPassword);
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'Please confirm your password';
+                  }
+                  if (value != _passwordController.text) {
+                    return 'Passwords do not match';
+                  }
+                  return null;
                 },
               ),
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please confirm your password';
-                }
-                if (value != _passwordController.text) {
-                  return 'Passwords do not match';
-                }
-                return null;
-              },
-            ),
+            ],
             const SizedBox(height: 24),
 
             // Sign Up Button
@@ -744,9 +881,11 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                           valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                         ),
                       )
-                    : const Text(
-                        'Sign Up',
-                        style: TextStyle(
+                    : Text(
+                        widget.needsProfileCompletion
+                            ? 'Complete Sign Up'
+                            : 'Sign Up',
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
@@ -768,6 +907,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     Widget? suffixIcon,
     TextInputType? keyboardType,
     String? Function(String?)? validator,
+    bool enabled = true,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -780,6 +920,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
             color: Color(0xFF374151),
             letterSpacing: 0.3,
           ),
+
         ),
         const SizedBox(height: 10),
         Container(
@@ -795,6 +936,8 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
           ),
           child: TextFormField(
             controller: controller,
+            enabled: enabled,
+            readOnly: !enabled,
             obscureText: obscureText,
             keyboardType: keyboardType,
             validator: validator,
@@ -845,6 +988,22 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
           ),
         ),
       ],
+    );
+  }
+}
+
+class _GoogleGMark extends StatelessWidget {
+  const _GoogleGMark();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Text(
+      'G',
+      style: TextStyle(
+        fontSize: 20,
+        fontWeight: FontWeight.w700,
+        color: Color(0xFF4285F4),
+      ),
     );
   }
 }

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'firebase_options.dart';
 import 'services/auth_service.dart';
@@ -107,12 +108,29 @@ class AuthGate extends StatelessWidget {
 
         final user = snapshot.data;
 
-        // If user is logged in, show main screen
         if (user != null) {
-          return const MainScreen();
+          return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+            stream: AuthService.instance.profileDocStream(user.uid),
+            builder: (context, profileSnapshot) {
+              if (profileSnapshot.connectionState == ConnectionState.waiting &&
+                  !profileSnapshot.hasData) {
+                return const Scaffold(
+                  body: Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                );
+              }
+
+              final profileData = profileSnapshot.data?.data();
+              if (!AuthService.instance.isProfileDataComplete(profileData)) {
+                return const AuthScreen(needsProfileCompletion: true);
+              }
+
+              return const MainScreen();
+            },
+          );
         }
 
-        // Otherwise show auth screen
         return const AuthScreen();
       },
     );
