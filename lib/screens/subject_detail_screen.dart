@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/google_drive_service.dart';
 import '../services/upload_service.dart';
+import 'no_internet_screen.dart';
 
 class SubjectDetailScreen extends StatefulWidget {
   final String subjectName;
@@ -34,6 +35,11 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
   void initState() {
     super.initState();
     _loadMaterials();
+  }
+
+  Future<void> _refreshMaterials() async {
+    if (!await NoInternetScreen.ensureOnline(context)) return;
+    await _loadMaterials();
   }
 
   Future<void> _loadMaterials() async {
@@ -252,7 +258,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
-            onPressed: _loadMaterials,
+            onPressed: _refreshMaterials,
           ),
           IconButton(
             icon: const Icon(Icons.search_rounded),
@@ -398,7 +404,7 @@ class _SubjectDetailScreenState extends State<SubjectDetailScreen> {
                     ),
                   )
                 : RefreshIndicator(
-                    onRefresh: _loadMaterials,
+                    onRefresh: _refreshMaterials,
                     child: materials.isEmpty
                         ? const Center(
                             child: Column(

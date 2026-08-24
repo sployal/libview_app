@@ -8,6 +8,7 @@ import '../services/download_service.dart';
 import '../services/phone_document_service.dart';
 import '../services/upload_service.dart';
 import '../ui/adaptive_layout.dart';
+import 'no_internet_screen.dart';
 import 'phone_pdf.dart';
 import 'web_view_screen.dart';
 
@@ -121,6 +122,11 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     });
   }
 
+  Future<void> _refreshSubjects() async {
+    if (!await NoInternetScreen.ensureOnline(context)) return;
+    await _loadSubjects();
+  }
+
   Future<void> _loadSubjects() async {
     setState(() {
       isLoading = true;
@@ -184,6 +190,9 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
       return;
     }
 
+    if (!await NoInternetScreen.ensureOnline(context)) return;
+    if (!mounted) return;
+
     setState(() {
       selectedSubject = subject;
       isLoadingFiles = true;
@@ -215,7 +224,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     }
   }
 
-  void _openFileInWebView(StudyMaterial material) {
+  Future<void> _openFileInWebView(StudyMaterial material) async {
     if (material.downloadUrl == null || material.downloadUrl!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -226,6 +235,9 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
       );
       return;
     }
+
+    if (!await NoInternetScreen.ensureOnline(context)) return;
+    if (!mounted) return;
 
     setState(() {
       openedMaterial = material;
@@ -289,6 +301,9 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
       );
       return;
     }
+
+    if (!await NoInternetScreen.ensureOnline(context)) return;
+    if (!mounted) return;
 
     // Extract file ID from URL
     final fileId = _extractFileId(material.downloadUrl!);
@@ -729,6 +744,8 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
       return;
     }
     if (isUploading) return;
+    if (!await NoInternetScreen.ensureOnline(context)) return;
+    if (!mounted) return;
 
     final source = await _showUploadSourceSheet();
     if (source == null || !mounted) return;
@@ -1491,7 +1508,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
           : null,
       body: RefreshIndicator(
         color: const Color(0xFF6366F1),
-        onRefresh: _loadSubjects,
+        onRefresh: _refreshSubjects,
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
@@ -1523,7 +1540,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                   ),
                 IconButton(
                   icon: const Icon(Icons.refresh_rounded),
-                  onPressed: _isMutatingFolder ? null : _loadSubjects,
+                  onPressed: _isMutatingFolder ? null : _refreshSubjects,
                   tooltip: 'Refresh',
                 ),
               ],

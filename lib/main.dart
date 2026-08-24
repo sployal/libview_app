@@ -14,6 +14,7 @@ import 'screens/semesters_screen.dart';
 import 'screens/downloads_screen.dart';
 import 'screens/ai_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/no_internet_screen.dart';
 import 'login/auth_screen.dart';
 import 'screens/app_update_screen.dart';
 
@@ -211,16 +212,31 @@ class _MainScreenState extends State<MainScreen>
     super.dispose();
   }
 
+  Future<void> _selectTab(int index) async {
+    if (index == _selectedIndex && index == 0) {
+      _homeNavigatorKey.currentState?.popUntil((route) => route.isFirst);
+      return;
+    }
+
+    const onlineRequiredTabs = {1, 2};
+    if (onlineRequiredTabs.contains(index) && index != _selectedIndex) {
+      if (!await NoInternetScreen.ensureOnline(context)) return;
+    }
+    if (!mounted) return;
+
+    setState(() {
+      _selectedIndex = index;
+    });
+    HapticFeedback.lightImpact();
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     
     return NotificationListener<SwitchMainTabNotification>(
       onNotification: (notification) {
-        setState(() {
-          _selectedIndex = notification.index;
-        });
-        HapticFeedback.lightImpact();
+        _selectTab(notification.index);
         return true;
       },
       child: PopScope(
@@ -243,17 +259,7 @@ class _MainScreenState extends State<MainScreen>
           bottomNavigationBar: _AppBottomNav(
             selectedIndex: _selectedIndex,
             isDark: isDark,
-            onTap: (index) {
-              if (index == _selectedIndex && index == 0) {
-                _homeNavigatorKey.currentState
-                    ?.popUntil((route) => route.isFirst);
-                return;
-              }
-              setState(() {
-                _selectedIndex = index;
-              });
-              HapticFeedback.lightImpact();
-            },
+            onTap: _selectTab,
           ),
         ),
       ),

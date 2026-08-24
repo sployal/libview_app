@@ -11,6 +11,7 @@ import 'package:permission_handler/permission_handler.dart';
 import '../services/ai_conversation_store.dart';
 import '../services/ai_service.dart';
 import '../ui/adaptive_layout.dart';
+import 'no_internet_screen.dart';
 
 class AiScreen extends StatefulWidget {
   const AiScreen({super.key});
@@ -181,6 +182,8 @@ class _AiScreenState extends State<AiScreen> {
     final image = _pendingImage;
     final imageMime = _pendingImageMime;
     if ((text.isEmpty && image == null) || _isSending) return;
+    if (!await NoInternetScreen.ensureOnline(context)) return;
+    if (!mounted) return;
 
     setState(() {
       _messages.add(ChatMessage(

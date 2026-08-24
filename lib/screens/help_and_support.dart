@@ -4,6 +4,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../services/support_service.dart';
+import 'no_internet_screen.dart';
 
 class HelpAndSupportScreen extends StatefulWidget {
   const HelpAndSupportScreen({super.key});
@@ -79,6 +80,8 @@ class _HelpAndSupportScreenState extends State<HelpAndSupportScreen> {
 
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate() || _isSubmitting) return;
+    if (!await NoInternetScreen.ensureOnline(context)) return;
+    if (!mounted) return;
 
     setState(() => _isSubmitting = true);
 

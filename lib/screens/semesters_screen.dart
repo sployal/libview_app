@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/course_service.dart';
 import '../services/google_drive_service.dart';
 import '../ui/adaptive_layout.dart';
+import 'no_internet_screen.dart';
 import 'semester_detail_screen.dart';
 
 class SemestersScreen extends StatefulWidget {
@@ -72,6 +73,11 @@ class _SemestersScreenState extends State<SemestersScreen> {
       _lastSemesterName = name;
       _lastSemesterYear = yearLabel;
     });
+  }
+
+  Future<void> _refreshCourse() async {
+    if (!await NoInternetScreen.ensureOnline(context)) return;
+    await _loadCourse();
   }
 
   Future<void> _loadCourse() async {
@@ -155,11 +161,11 @@ class _SemestersScreenState extends State<SemestersScreen> {
     _saveSelectedYear(index);
   }
 
-  void _openSemester(
+  Future<void> _openSemester(
     Map<String, String> semesterConfig, {
     String? semesterKey,
     String? yearLabel,
-  }) {
+  }) async {
     if (!_isSemesterReady(semesterConfig)) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -173,6 +179,9 @@ class _SemestersScreenState extends State<SemestersScreen> {
       );
       return;
     }
+
+    if (!await NoInternetScreen.ensureOnline(context)) return;
+    if (!mounted) return;
 
     HapticFeedback.lightImpact();
     if (semesterKey != null && yearLabel != null) {
@@ -255,7 +264,7 @@ class _SemestersScreenState extends State<SemestersScreen> {
             )
           : RefreshIndicator(
               color: const Color(0xFF6366F1),
-              onRefresh: _loadCourse,
+              onRefresh: _refreshCourse,
               child: CustomScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 slivers: [
@@ -272,7 +281,7 @@ class _SemestersScreenState extends State<SemestersScreen> {
                     actions: [
                       IconButton(
                         icon: const Icon(Icons.refresh_rounded),
-                        onPressed: _isLoadingCounts ? null : _loadCourse,
+                        onPressed: _isLoadingCounts ? null : _refreshCourse,
                         tooltip: 'Refresh',
                       ),
                     ],

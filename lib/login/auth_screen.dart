@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
+import '../screens/no_internet_screen.dart';
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
 
@@ -59,6 +60,8 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
 
   Future<void> _signUp() async {
     if (!_signUpFormKey.currentState!.validate()) return;
+    if (!await NoInternetScreen.ensureOnline(context)) return;
+    if (!mounted) return;
 
     setState(() => _isLoading = true);
 
@@ -191,6 +194,8 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
 
   Future<void> _signIn() async {
     if (!_loginFormKey.currentState!.validate()) return;
+    if (!await NoInternetScreen.ensureOnline(context)) return;
+    if (!mounted) return;
 
     setState(() => _isLoading = true);
 

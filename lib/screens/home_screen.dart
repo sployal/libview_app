@@ -12,6 +12,7 @@ import '../services/streak_service.dart';
 import '../services/weather_service.dart';
 import 'browse_documents.dart';
 import 'downloads_screen.dart';
+import 'no_internet_screen.dart';
 import 'notifications_screen.dart';
 
 class SwitchMainTabNotification extends Notification {
@@ -402,10 +403,17 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _openNotifications() async {
+    if (!await NoInternetScreen.ensureOnline(context)) return;
+    if (!mounted) return;
     await Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const NotificationsScreen()),
     );
     _loadUnreadNotificationCount();
+  }
+
+  Future<void> _refreshHome() async {
+    if (!await NoInternetScreen.ensureOnline(context)) return;
+    await _loadRecentActivity();
   }
 
   @override
@@ -425,7 +433,7 @@ class _HomeScreenState extends State<HomeScreen>
           position: _slideAnimation,
           child: RefreshIndicator(
             color: const Color(0xFF6366F1),
-            onRefresh: _loadRecentActivity,
+            onRefresh: _refreshHome,
             child: CustomScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               slivers: [

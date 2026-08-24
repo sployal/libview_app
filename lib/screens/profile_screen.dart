@@ -12,6 +12,7 @@ import 'course_members.dart';
 import 'downloads_screen.dart';
 import 'edit_profile.dart';
 import 'help_and_support.dart';
+import 'no_internet_screen.dart';
 import 'notifications_screen.dart';
 import 'system_admin_dashboard.dart';
 import 'users_feedback.dart';
@@ -138,7 +139,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Future<void> _refreshProfile() async {
+    if (!await NoInternetScreen.ensureOnline(context)) return;
+    await _loadUserData();
+  }
+
+  Future<void> _openOnlinePage(Widget page) async {
+    if (!await NoInternetScreen.ensureOnline(context)) return;
+    if (!mounted) return;
+    await Navigator.push(context, MaterialPageRoute(builder: (_) => page));
+  }
+
   Future<void> _openEditProfile() async {
+    if (!await NoInternetScreen.ensureOnline(context)) return;
+    if (!mounted) return;
     final result = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
@@ -216,7 +230,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           : RefreshIndicator(
               color: accent,
               backgroundColor: card,
-              onRefresh: _loadUserData,
+              onRefresh: _refreshProfile,
               child: CustomScrollView(
                 physics: const AlwaysScrollableScrollPhysics(
                   parent: BouncingScrollPhysics(),
@@ -284,13 +298,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               separator: separator,
                               onTap: () {
                                 HapticFeedback.selectionClick();
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        const NotificationsScreen(),
-                                  ),
-                                );
+                                _openOnlinePage(const NotificationsScreen());
                               },
                             ),
                             _appearanceRow(
@@ -338,13 +346,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                       _isSystemAdmin,
                                   separator: separator,
                                   onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) =>
-                                            const CourseMembersScreen(),
-                                      ),
-                                    );
+                                    _openOnlinePage(const CourseMembersScreen());
                                   },
                                 ),
                               if (_canOpenClassMembers)
@@ -359,13 +361,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   showDivider: _isSystemAdmin,
                                   separator: separator,
                                   onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) =>
-                                            const ClassMembersScreen(),
-                                      ),
-                                    );
+                                    _openOnlinePage(const ClassMembersScreen());
                                   },
                                 ),
                               if (_isSystemAdmin)
@@ -380,13 +376,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   showDivider: true,
                                   separator: separator,
                                   onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) =>
-                                            const UsersFeedbackScreen(),
-                                      ),
-                                    );
+                                    _openOnlinePage(const UsersFeedbackScreen());
                                   },
                                 ),
                               if (_isSystemAdmin)
@@ -399,13 +389,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   primaryText: primaryText,
                                   secondaryText: secondaryText,
                                   onTap: () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) =>
-                                            const SystemAdminDashboard(),
-                                      ),
-                                    );
+                                    _openOnlinePage(const SystemAdminDashboard());
                                   },
                                 ),
                             ],
@@ -425,13 +409,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               showDivider: true,
                               separator: separator,
                               onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        const HelpAndSupportScreen(),
-                                  ),
-                                );
+                                _openOnlinePage(const HelpAndSupportScreen());
                               },
                             ),
                             _settingsRow(

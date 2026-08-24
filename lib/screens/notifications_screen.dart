@@ -8,6 +8,7 @@ import '../services/course_service.dart';
 import '../services/notification_service.dart';
 import '../ui/adaptive_layout.dart';
 import 'create_notification_screen.dart';
+import 'no_internet_screen.dart';
 import 'system_admin_dashboard.dart';
 
 class NotificationsScreen extends StatefulWidget {
@@ -77,6 +78,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     return notifications
         .where((item) => NotificationService.matchesCourse(item, course))
         .toList();
+  }
+
+  Future<void> _refreshNotifications() async {
+    if (!await NoInternetScreen.ensureOnline(context)) return;
+    await _loadNotifications();
   }
 
   Future<void> _loadNotifications() async {
@@ -525,7 +531,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             )
           : RefreshIndicator(
               color: _accent,
-              onRefresh: _loadNotifications,
+              onRefresh: _refreshNotifications,
               child: CustomScrollView(
               physics: const AlwaysScrollableScrollPhysics(
                 parent: BouncingScrollPhysics(),
@@ -566,6 +572,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     if (canCreateNotifications)
                       IconButton(
                         onPressed: () async {
+                          if (!await NoInternetScreen.ensureOnline(context)) {
+                            return;
+                          }
+                          if (!mounted) return;
                           await Navigator.of(context).push(
                             MaterialPageRoute(
                               builder: (ctx) =>
