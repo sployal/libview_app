@@ -1274,6 +1274,22 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     );
   }
 
+  /// Parent [MainScreen] uses [Scaffold.extendBody], and nested Scaffolds
+  /// ignore [MediaQuery] padding for FAB placement (they use keyboard
+  /// [viewInsets] instead). Offset the FAB so it sits above the app nav.
+  double get _fabNavLift {
+    return MediaQuery.viewPaddingOf(context).bottom +
+        kBottomNavigationBarHeight +
+        28;
+  }
+
+  Widget _fabAboveNav(Widget fab) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: _fabNavLift),
+      child: fab,
+    );
+  }
+
   Widget _buildFilesView() {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -1322,21 +1338,24 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
       floatingActionButton: _isLiveFolder &&
               _canManageFolders &&
               selectedSubject!.folderId.isNotEmpty
-          ? FloatingActionButton.extended(
-              onPressed: isUploading ? null : _pickAndUploadFile,
-              backgroundColor: const Color(0xFF6366F1),
-              foregroundColor: Colors.white,
-              icon: isUploading
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    )
-                  : const Icon(Icons.upload_file_rounded),
-              label: Text(isUploading ? 'Uploading...' : 'Upload file'),
+          ? _fabAboveNav(
+              FloatingActionButton.extended(
+                onPressed: isUploading ? null : _pickAndUploadFile,
+                backgroundColor: const Color(0xFF6366F1),
+                foregroundColor: Colors.white,
+                icon: isUploading
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : const Icon(Icons.upload_file_rounded),
+                label: Text(isUploading ? 'Uploading...' : 'Upload file'),
+              ),
             )
           : null,
       body: Column(
@@ -1438,21 +1457,24 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     return Scaffold(
       backgroundColor: background,
       floatingActionButton: _isLiveFolder && _canManageFolders
-          ? FloatingActionButton.extended(
-              onPressed: _isMutatingFolder ? null : _createUnitFolder,
-              backgroundColor: const Color(0xFF6366F1),
-              foregroundColor: Colors.white,
-              icon: _isMutatingFolder
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    )
-                  : const Icon(Icons.create_new_folder_rounded),
-              label: Text(_isMutatingFolder ? 'Working...' : 'New folder'),
+          ? _fabAboveNav(
+              FloatingActionButton.extended(
+                onPressed: _isMutatingFolder ? null : _createUnitFolder,
+                backgroundColor: const Color(0xFF6366F1),
+                foregroundColor: Colors.white,
+                icon: _isMutatingFolder
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : const Icon(Icons.create_new_folder_rounded),
+                label: Text(_isMutatingFolder ? 'Working...' : 'New folder'),
+              ),
             )
           : null,
       body: RefreshIndicator(
