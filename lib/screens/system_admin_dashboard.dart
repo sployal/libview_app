@@ -141,8 +141,10 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
     await _loadStorage();
   }
 
-  Future<void> _loadProfiles() async {
-    setState(() => _isLoading = true);
+  Future<void> _loadProfiles({bool silent = false}) async {
+    if (!silent && mounted) {
+      setState(() => _isLoading = true);
+    }
 
     try {
       final snapshot = await _firestore.collection('profiles').get();
@@ -175,6 +177,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
+      if (silent) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error loading profiles: $e'),
@@ -258,6 +261,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
       });
 
       if (!mounted) return;
+      _applyLocalRoleChange(userId, newRole);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Row(
@@ -271,7 +275,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
           behavior: SnackBarBehavior.floating,
         ),
       );
-      _loadProfiles();
+      _loadProfiles(silent: true);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -281,6 +285,30 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
         ),
       );
     }
+  }
+
+  void _applyLocalRoleChange(String userId, String newRole) {
+    final normalized = SystemAdminDashboard.isSystemAdminRole(newRole)
+        ? SystemAdminDashboard.systemAdminRole
+        : newRole.toLowerCase();
+    final movedToStaff = _staffRoles.contains(normalized);
+
+    setState(() {
+      final index = _profiles.indexWhere((p) => p['id'] == userId);
+      if (index != -1) {
+        _profiles[index]['role'] = normalized;
+      }
+
+      _peopleTab = movedToStaff ? 1 : 0;
+      if (movedToStaff) {
+        if (_staffRoleFilter != 'all' && _staffRoleFilter != normalized) {
+          _staffRoleFilter = 'all';
+        }
+      } else if (_userRoleFilter != 'all' && _userRoleFilter != normalized) {
+        _userRoleFilter = 'all';
+      }
+      _filterLists();
+    });
   }
 
   void _showRoleChangeDialog(Map<String, dynamic> user) {
