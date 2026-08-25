@@ -675,10 +675,10 @@ app.get('/health', (req, res) => res.json({ ok: true, driveConfigured: driveIsCo
 
 const OPENWEATHER_API_KEY = process.env.OPENWEATHER_API_KEY || '';
 const DEFAULT_WEATHER_LOCATION = {
-  name: 'Nairobi',
+  name: 'Chuka',
   country: 'KE',
-  lat: -1.286389,
-  lon: 36.817223,
+  lat: -0.3335,
+  lon: 37.6469,
 };
 const weatherCache = new Map();
 const WEATHER_CACHE_TTL_MS = 5 * 60 * 1000;

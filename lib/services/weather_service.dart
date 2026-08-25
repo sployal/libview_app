@@ -98,10 +98,14 @@ class WeatherService {
 
   static final WeatherService instance = WeatherService._();
 
-  static const defaultCity = 'Nairobi';
+  static const defaultCity = 'Chuka';
   static const defaultCountry = 'KE';
-  static const defaultLat = -1.286389;
-  static const defaultLon = 36.817223;
+  static const defaultLat = -0.3335;
+  static const defaultLon = 37.6469;
+
+  static const _legacyDefaultCity = 'Nairobi';
+  static const _legacyDefaultLat = -1.286389;
+  static const _legacyDefaultLon = 36.817223;
 
   static const _cityKey = 'weather_city';
   static const _countryKey = 'weather_country';
@@ -154,6 +158,11 @@ class WeatherService {
       if (json is! Map) return null;
       _memorySnapshot =
           WeatherSnapshot.fromJson(Map<String, dynamic>.from(json));
+      if (_isLegacySnapshot(_memorySnapshot!)) {
+        _memorySnapshot = null;
+        await prefs.remove(_snapshotKey);
+        return null;
+      }
       return _memorySnapshot;
     } catch (_) {
       return null;
@@ -173,14 +182,14 @@ class WeatherService {
 
     final prefs = await SharedPreferences.getInstance();
     final local = _fromPrefs(prefs);
-    if (local != null) {
+    if (local != null && !_isLegacyAppDefault(local)) {
       _memoryLocation = local;
       unawaited(_syncLocationToFirebaseIfMissing(local));
       return local;
     }
 
     final remote = await _loadLocationFromFirebase();
-    if (remote != null) {
+    if (remote != null && !_isLegacyAppDefault(remote)) {
       await _writePrefs(remote);
       _memoryLocation = remote;
       return remote;
@@ -188,6 +197,32 @@ class WeatherService {
 
     _memoryLocation = _defaultLocation;
     return _defaultLocation;
+  }
+
+  bool _isLegacyAppDefault(SavedWeatherLocation location) {
+    return _isLegacyCoords(
+      city: location.city,
+      lat: location.lat,
+      lon: location.lon,
+    );
+  }
+
+  bool _isLegacySnapshot(WeatherSnapshot snapshot) {
+    return _isLegacyCoords(
+      city: snapshot.city,
+      lat: snapshot.lat,
+      lon: snapshot.lon,
+    );
+  }
+
+  bool _isLegacyCoords({
+    required String city,
+    required double lat,
+    required double lon,
+  }) {
+    return city.trim().toLowerCase() == _legacyDefaultCity.toLowerCase() &&
+        (lat - _legacyDefaultLat).abs() < 0.02 &&
+        (lon - _legacyDefaultLon).abs() < 0.02;
   }
 
   SavedWeatherLocation? _fromPrefs(SharedPreferences prefs) {
