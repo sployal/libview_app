@@ -18,6 +18,7 @@ import 'screens/profile_screen.dart';
 import 'screens/no_internet_screen.dart';
 import 'login/auth_screen.dart';
 import 'screens/app_update_screen.dart';
+import 'screens/suspend_account.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -122,6 +123,11 @@ class AuthGate extends StatelessWidget {
               }
 
               final profileData = profileSnapshot.data?.data();
+              if (AuthService.isAccountSuspended(profileData)) {
+                return SuspendedAccountScreen(
+                  message: AuthService.suspensionMessageFor(profileData),
+                );
+              }
               if (!AuthService.instance.isProfileDataComplete(profileData)) {
                 return const AuthScreen(needsProfileCompletion: true);
               }

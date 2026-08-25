@@ -45,6 +45,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
   List<Map<String, dynamic>> _profiles = [];
   List<Map<String, dynamic>> _filteredUsers = [];
   List<Map<String, dynamic>> _filteredStaff = [];
+  List<Map<String, dynamic>> _filteredSuspended = [];
   List<Course> _courses = [];
   bool _isLoading = true;
   bool _isLoadingCourses = true;
@@ -54,6 +55,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
   String? _storageError;
   String _userSearchQuery = '';
   String _staffSearchQuery = '';
+  String _suspendedSearchQuery = '';
   String _userRoleFilter = 'all';
   String _staffRoleFilter = 'all';
   String _userCourseFilter = 'all';
@@ -109,6 +111,8 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
   int get _totalSystemAdmins => _profiles
       .where((p) => SystemAdminDashboard.isSystemAdminRole(p['role'] as String?))
       .length;
+  int get _totalSuspended =>
+      _profiles.where((p) => p['suspended'] == true).length;
 
   int get _newThisWeek {
     final weekAgo = DateTime.now().subtract(const Duration(days: 7));
@@ -164,6 +168,8 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
         data['email'] = data['email'] ?? '';
         data['registration_number'] = data['registration_number'] ?? '';
         data['avatar_url'] = data['avatar_url'] ?? '';
+        data['suspended'] = data['suspended'] == true;
+        data['suspension_message'] = data['suspension_message'] ?? '';
         return data;
       }).toList()
         ..sort((a, b) {
@@ -208,6 +214,11 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
       }
       if (!_matchesCourseFilter(user, _staffCourseFilter)) return false;
       return _matchesSearch(user, _staffSearchQuery);
+    }).toList();
+
+    _filteredSuspended = _profiles.where((user) {
+      if (user['suspended'] != true) return false;
+      return _matchesSearch(user, _suspendedSearchQuery);
     }).toList();
   }
 
@@ -313,6 +324,110 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
       }
       _filterLists();
     });
+  }
+
+  bool _canSuspend(Map<String, dynamic> user) {
+    if (_isCurrentUser(user)) return false;
+    if (SystemAdminDashboard.isAllowedEmail(user['email'] as String?)) {
+      return false;
+    }
+    return true;
+  }
+
+  Future<void> _suspendUser(Map<String, dynamic> user) async {
+    if (!_canSuspend(user)) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You cannot suspend this account.'),
+          backgroundColor: Color(0xFFEF4444),
+        ),
+      );
+      return;
+    }
+
+    final message = await _promptRestrictionMessage(
+      initial: AuthService.defaultSuspensionMessage,
+      title: 'Suspend account',
+      description:
+          'This person will see this message and cannot use the app until you restore the account.',
+      hintText: AuthService.defaultSuspensionMessage,
+    );
+    if (message == null || !mounted) return;
+
+    try {
+      await AuthService.instance.suspendAccount(
+        userId: user['id'].toString(),
+        message: message,
+      );
+      if (!mounted) return;
+      setState(() {
+        final index = _profiles.indexWhere((p) => p['id'] == user['id']);
+        if (index != -1) {
+          _profiles[index]['suspended'] = true;
+          _profiles[index]['suspension_message'] = message;
+        }
+        _peopleTab = 2;
+        _filterLists();
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              Icon(CupertinoIcons.pause_circle_fill, color: Colors.white),
+              SizedBox(width: 12),
+              Text('Account suspended'),
+            ],
+          ),
+          backgroundColor: Color(0xFFEF4444),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not suspend account: $e'),
+          backgroundColor: const Color(0xFFEF4444),
+        ),
+      );
+    }
+  }
+
+  Future<void> _unsuspendUser(Map<String, dynamic> user) async {
+    try {
+      await AuthService.instance.unsuspendAccount(user['id'].toString());
+      if (!mounted) return;
+      setState(() {
+        final index = _profiles.indexWhere((p) => p['id'] == user['id']);
+        if (index != -1) {
+          _profiles[index]['suspended'] = false;
+          _profiles[index]['suspension_message'] = '';
+        }
+        _filterLists();
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              Icon(CupertinoIcons.checkmark_circle_fill, color: Colors.white),
+              SizedBox(width: 12),
+              Text('Account restored'),
+            ],
+          ),
+          backgroundColor: Color(0xFF10B981),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not restore account: $e'),
+          backgroundColor: const Color(0xFFEF4444),
+        ),
+      );
+    }
   }
 
   void _showRoleChangeDialog(Map<String, dynamic> user) {
@@ -421,6 +536,22 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
                         valueColor: _roleColors[user['role']],
                       ),
                       _buildDetailRow(
+                        'Status',
+                        user['suspended'] == true ? 'Suspended' : 'Active',
+                        user['suspended'] == true
+                            ? CupertinoIcons.pause_circle_fill
+                            : CupertinoIcons.checkmark_seal_fill,
+                        valueColor: user['suspended'] == true
+                            ? const Color(0xFFEF4444)
+                            : const Color(0xFF10B981),
+                      ),
+                      if (user['suspended'] == true)
+                        _buildDetailRow(
+                          'Message',
+                          AuthService.suspensionMessageFor(user),
+                          CupertinoIcons.chat_bubble_text_fill,
+                        ),
+                      _buildDetailRow(
                         'Member Since',
                         _formatDate(user['created_at']),
                         CupertinoIcons.calendar,
@@ -436,7 +567,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
                             vertical: 14,
                           ),
                           child: Text(
-                            'You cannot change your own role.',
+                            'You cannot change or suspend your own account.',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: _muted,
@@ -452,11 +583,49 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
                           iconColor: const Color(0xFF6366F1),
                           title: 'Change Role',
                           titleColor: const Color(0xFF6366F1),
+                          showDivider: true,
                           onTap: () {
                             Navigator.pop(context);
                             _showRoleChangeDialog(user);
                           },
                         ),
+                        if (user['suspended'] == true)
+                          _settingsRow(
+                            icon: CupertinoIcons.play_circle_fill,
+                            iconColor: const Color(0xFF10B981),
+                            title: 'Restore Account',
+                            titleColor: const Color(0xFF10B981),
+                            onTap: () {
+                              Navigator.pop(context);
+                              _unsuspendUser(user);
+                            },
+                          )
+                        else if (_canSuspend(user))
+                          _settingsRow(
+                            icon: CupertinoIcons.pause_circle_fill,
+                            iconColor: const Color(0xFFEF4444),
+                            title: 'Suspend Account',
+                            titleColor: const Color(0xFFEF4444),
+                            onTap: () {
+                              Navigator.pop(context);
+                              _suspendUser(user);
+                            },
+                          )
+                        else
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 14,
+                            ),
+                            child: Text(
+                              'This account cannot be suspended.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: _muted,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
                       ]),
                   ],
                 ),
@@ -1283,6 +1452,9 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
   Future<String?> _promptRestrictionMessage({
     required String initial,
     String title = 'Block new accounts',
+    String description =
+        'People who try to sign up will see this message.',
+    String? hintText,
   }) async {
     final controller = TextEditingController(text: initial);
     try {
@@ -1305,7 +1477,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'People who try to sign up will see this message.',
+                  description,
                   style: TextStyle(fontSize: 14, color: _muted, height: 1.35),
                 ),
                 const SizedBox(height: 12),
@@ -1314,7 +1486,8 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
                   maxLines: 4,
                   autofocus: true,
                   decoration: InputDecoration(
-                    hintText: AuthService.defaultSignupRestrictionMessage,
+                    hintText: hintText ??
+                        AuthService.defaultSignupRestrictionMessage,
                     filled: true,
                     fillColor: _chip,
                     border: OutlineInputBorder(
@@ -1913,6 +2086,18 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
                                 : registration,
                             style: TextStyle(fontSize: 12, color: _muted),
                           ),
+                        if (user['suspended'] == true)
+                          const Padding(
+                            padding: EdgeInsets.only(top: 4),
+                            child: Text(
+                              'Suspended',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFFEF4444),
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                   ),
@@ -1967,10 +2152,16 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           CupertinoSearchTextField(
-            key: ValueKey(isUserTab ? 'user-search' : 'staff-search'),
+            key: ValueKey(
+              isUserTab
+                  ? 'user-search'
+                  : (_peopleTab == 2 ? 'suspended-search' : 'staff-search'),
+            ),
             onChanged: (value) {
               setState(() {
-                if (isUserTab) {
+                if (_peopleTab == 2) {
+                  _suspendedSearchQuery = value;
+                } else if (isUserTab) {
                   _userSearchQuery = value;
                 } else {
                   _staffSearchQuery = value;
@@ -1985,6 +2176,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
             prefixIcon: Icon(CupertinoIcons.search, color: _muted, size: 18),
             itemColor: _muted,
           ),
+          if (_peopleTab != 2) ...[
           const SizedBox(height: 12),
           Text(
             'Role',
@@ -2040,12 +2232,30 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
               ),
             ),
           ],
+          ],
         ],
       ),
     );
   }
 
   Widget _buildPeopleTabs() {
+    Widget label(String text) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            text,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: _titleColor,
+            ),
+          ),
+        ),
+      );
+    }
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       child: CupertinoSlidingSegmentedControl<int>(
@@ -2053,28 +2263,9 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
         backgroundColor: _chip,
         thumbColor: _card,
         children: {
-          0: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Text(
-              'Users ($_totalUsers)',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: _titleColor,
-              ),
-            ),
-          ),
-          1: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Text(
-              'Staff ($_totalStaff)',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: _titleColor,
-              ),
-            ),
-          ),
+          0: label('Users ($_totalUsers)'),
+          1: label('Staff ($_totalStaff)'),
+          2: label('Suspended ($_totalSuspended)'),
         },
         onValueChanged: (value) {
           if (value == null) return;
@@ -2086,21 +2277,28 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
   }
 
   Widget _buildPeopleSection() {
+    final isSuspendedTab = _peopleTab == 2;
     final isUserTab = _peopleTab == 0;
-    final items = isUserTab ? _filteredUsers : _filteredStaff;
+    final items = isSuspendedTab
+        ? _filteredSuspended
+        : (isUserTab ? _filteredUsers : _filteredStaff);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _buildFilterHeader(
           isUserTab: isUserTab,
-          searchHint: isUserTab ? 'Search users' : 'Search staff',
+          searchHint: isSuspendedTab
+              ? 'Search suspended accounts'
+              : (isUserTab ? 'Search users' : 'Search staff'),
           roles: isUserTab ? _userRoles : _staffRoles,
         ),
         if (items.isEmpty)
           SizedBox(
             height: 220,
             child: _buildEmptyState(
-              isUserTab ? 'No users found' : 'No staff found',
+              isSuspendedTab
+                  ? 'No suspended accounts'
+                  : (isUserTab ? 'No users found' : 'No staff found'),
             ),
           )
         else

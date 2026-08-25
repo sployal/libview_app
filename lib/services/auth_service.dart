@@ -20,6 +20,9 @@ class AuthService {
   static const defaultSignupRestrictionMessage =
       'New account creation is currently closed. Please contact the system administrator.';
 
+  static const defaultSuspensionMessage =
+      'Your account has been suspended. Please contact the system administrator.';
+
   /// Web OAuth client ID from google-services.json (needed so Android returns an idToken).
   static const String _googleServerClientId =
       '494545154949-blol1a78c2j59m4keve80opihqn67m5b.apps.googleusercontent.com';
@@ -44,6 +47,40 @@ class AuthService {
     final name = (data['full_name'] as String?)?.trim() ?? '';
     final registration = (data['registration_number'] as String?)?.trim() ?? '';
     return name.isNotEmpty && registration.isNotEmpty;
+  }
+
+  static bool isAccountSuspended(Map<String, dynamic>? data) {
+    return data?['suspended'] == true;
+  }
+
+  static String suspensionMessageFor(Map<String, dynamic>? data) {
+    final message = (data?['suspension_message'] as String?)?.trim() ?? '';
+    return message.isEmpty ? defaultSuspensionMessage : message;
+  }
+
+  Future<void> suspendAccount({
+    required String userId,
+    required String message,
+  }) async {
+    final trimmed = message.trim();
+    await _firestore.collection('profiles').doc(userId).update({
+      'suspended': true,
+      'suspension_message':
+          trimmed.isEmpty ? defaultSuspensionMessage : trimmed,
+      'suspended_at': FieldValue.serverTimestamp(),
+      'suspended_by': currentUser?.email,
+      'updated_at': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> unsuspendAccount(String userId) async {
+    await _firestore.collection('profiles').doc(userId).update({
+      'suspended': false,
+      'suspension_message': FieldValue.delete(),
+      'suspended_at': FieldValue.delete(),
+      'suspended_by': FieldValue.delete(),
+      'updated_at': FieldValue.serverTimestamp(),
+    });
   }
 
   Future<String> currentRole() async {
