@@ -1502,7 +1502,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                         ),
                       )
                     : const Icon(Icons.create_new_folder_rounded),
-                label: Text(_isMutatingFolder ? 'Working...' : 'New folder'),
+                label: Text(_isMutatingFolder ? 'Working...' : 'New unit'),
               ),
             )
           : null,
@@ -1876,7 +1876,7 @@ class _UnitsEmptyState extends StatelessWidget {
                   backgroundColor: const Color(0xFF6366F1),
                 ),
                 icon: const Icon(Icons.create_new_folder_rounded),
-                label: const Text('New folder'),
+                label: const Text('New unit'),
               ),
             ],
           ],
