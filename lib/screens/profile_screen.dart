@@ -165,23 +165,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _signOut() async {
-    final shouldSignOut = await showCupertinoDialog<bool>(
-      context: context,
-      builder: (context) => CupertinoAlertDialog(
-        title: const Text('Sign Out'),
-        content: const Text('Are you sure you want to sign out?'),
-        actions: [
-          CupertinoDialogAction(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+    final shouldSignOut = await _showThemedDialog<bool>(
+      title: 'Sign Out',
+      content: 'Are you sure you want to sign out?',
+      actions: (dialogContext) => [
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext, false),
+          child: const Text(
+            'Cancel',
+            style: TextStyle(color: Color(0xFF8E8E93)),
           ),
-          CupertinoDialogAction(
-            isDestructiveAction: true,
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Sign Out'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext, true),
+          child: const Text(
+            'Sign Out',
+            style: TextStyle(
+              color: Color(0xFFEF4444),
+              fontWeight: FontWeight.w600,
+            ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
 
     if (shouldSignOut == true) {
@@ -1048,52 +1053,92 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ? '1 downloaded file'
         : '$_downloadedFileCount downloaded files';
 
-    await showCupertinoDialog<void>(
-      context: context,
-      builder: (context) {
-        return CupertinoAlertDialog(
-          title: const Text('Storage Usage'),
-          content: Text('This app is using $sizeLabel for $fileLabel.'),
-          actions: [
-            CupertinoDialogAction(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Close'),
+    await _showThemedDialog<void>(
+      title: 'Storage Usage',
+      content: 'This app is using $sizeLabel for $fileLabel.',
+      actions: (dialogContext) => [
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext),
+          child: const Text(
+            'Close',
+            style: TextStyle(color: Color(0xFF8E8E93)),
+          ),
+        ),
+        TextButton(
+          onPressed: () {
+            Navigator.pop(dialogContext);
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const DownloadsScreen(),
+              ),
+            ).then((_) => _loadStorageUsage());
+          },
+          child: const Text(
+            'View Downloads',
+            style: TextStyle(
+              color: Color(0xFF6366F1),
+              fontWeight: FontWeight.w600,
             ),
-            CupertinoDialogAction(
-              onPressed: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const DownloadsScreen(),
-                  ),
-                ).then((_) => _loadStorageUsage());
-              },
-              child: const Text('View Downloads'),
-            ),
-          ],
-        );
-      },
+          ),
+        ),
+      ],
     );
   }
 
   void _showAboutDialog() {
-    showCupertinoDialog(
-      context: context,
-      builder: (context) => CupertinoAlertDialog(
-        title: const Text('Edupal'),
-        content: const Padding(
-          padding: EdgeInsets.only(top: 8),
-          child: Text(
-            'Version 4.36\n\nYour Academic Companion. Edupal helps you organize and access your study materials seamlessly. Created and maintained by David Muigai.',
+    _showThemedDialog<void>(
+      title: 'Edupal',
+      content:
+          'Version 4.36\n\nYour Academic Companion. Edupal helps you organize and access your study materials seamlessly. Created and maintained by David Muigai.',
+      actions: (dialogContext) => [
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext),
+          child: const Text(
+            'Close',
+            style: TextStyle(
+              color: Color(0xFF6366F1),
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
-        actions: [
-          CupertinoDialogAction(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
+      ],
+    );
+  }
+
+  Future<T?> _showThemedDialog<T>({
+    required String title,
+    required String content,
+    required List<Widget> Function(BuildContext dialogContext) actions,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final card = isDark ? const Color(0xFF1F2937) : Colors.white;
+    final titleColor =
+        isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
+    final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
+
+    return showDialog<T>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: card,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: Text(
+          title,
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.4,
+            color: titleColor,
           ),
-        ],
+        ),
+        content: Text(
+          content,
+          style: TextStyle(
+            fontSize: 15,
+            color: muted,
+            height: 1.35,
+          ),
+        ),
+        actions: actions(dialogContext),
       ),
     );
   }

@@ -322,37 +322,25 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
       return;
     }
 
-    showCupertinoModalPopup<void>(
-      context: context,
-      builder: (context) => CupertinoActionSheet(
-        title: const Text('Change Role'),
-        message: Text(
-          (user['email'] as String).isNotEmpty
-              ? '${user['full_name']}\n${user['email']}'
-              : user['full_name'].toString(),
-        ),
-        actions: [
-          for (final role in _allRoles)
-            CupertinoActionSheetAction(
-              onPressed: () {
-                Navigator.pop(context);
-                if (user['role'] != role) {
-                  _updateUserRole(user['id'], role);
-                }
-              },
-              child: Text(
-                user['role'] == role
-                    ? '${_formatRole(role)} (Current)'
-                    : _formatRole(role),
-              ),
-            ),
-        ],
-        cancelButton: CupertinoActionSheetAction(
-          isDefaultAction: true,
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
-        ),
-      ),
+    _showThemedActionSheet(
+      title: 'Change Role',
+      message: (user['email'] as String).isNotEmpty
+          ? '${user['full_name']}\n${user['email']}'
+          : user['full_name'].toString(),
+      actions: [
+        for (final role in _allRoles)
+          _ThemedSheetAction(
+            label: user['role'] == role
+                ? '${_formatRole(role)} (Current)'
+                : _formatRole(role),
+            color: _roleColors[role] ?? const Color(0xFF6366F1),
+            onTap: () {
+              if (user['role'] != role) {
+                _updateUserRole(user['id'], role);
+              }
+            },
+          ),
+      ],
     );
   }
 
@@ -773,12 +761,13 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
             return AlertDialog(
               backgroundColor: _card,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(18),
               ),
               title: Text(
                 'Delete course',
                 style: TextStyle(
-                  fontWeight: FontWeight.bold,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.4,
                   color: _titleColor,
                 ),
               ),
@@ -788,7 +777,11 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
                 children: [
                   Text(
                     'This will remove "${course.name}" from the database and permanently delete its Drive folder, including year / semester folders and files inside it.',
-                    style: TextStyle(color: _muted),
+                    style: TextStyle(
+                      fontSize: 15,
+                      color: _muted,
+                      height: 1.35,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   CheckboxListTile(
@@ -796,13 +789,20 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
                     contentPadding: EdgeInsets.zero,
                     controlAffinity: ListTileControlAffinity.leading,
                     activeColor: const Color(0xFFEF4444),
+                    checkColor: Colors.white,
+                    side: BorderSide(color: _muted),
                     title: Text(
                       associated.isEmpty
                           ? 'Also delete users linked to this course'
                           : 'Also delete ${associated.length} user${associated.length == 1 ? '' : 's'} linked to this course',
+                      style: TextStyle(
+                        color: _titleColor,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                    subtitle: const Text(
+                    subtitle: Text(
                       'Matches profiles whose admission number belongs to this course.',
+                      style: TextStyle(color: _muted, fontSize: 13),
                     ),
                     onChanged: (value) {
                       setDialogState(() {
@@ -815,15 +815,20 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context, false),
-                  child: const Text('Cancel'),
-                ),
-                ElevatedButton(
-                  onPressed: () => Navigator.pop(context, true),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFEF4444),
-                    foregroundColor: Colors.white,
+                  child: const Text(
+                    'Cancel',
+                    style: TextStyle(color: Color(0xFF8E8E93)),
                   ),
-                  child: const Text('Delete'),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(context, true),
+                  child: const Text(
+                    'Delete',
+                    style: TextStyle(
+                      color: Color(0xFFEF4444),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ],
             );
@@ -843,9 +848,16 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
+      builder: (context) => Center(
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: _card,
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: const CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
+          ),
         ),
       ),
     );
@@ -898,33 +910,152 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
 
   void _showCourseActions(Course course) {
     HapticFeedback.selectionClick();
-    showCupertinoModalPopup<void>(
-      context: context,
-      builder: (context) => CupertinoActionSheet(
-        title: Text(course.name),
-        actions: [
-          CupertinoActionSheetAction(
-            onPressed: () {
-              Navigator.pop(context);
-              _openCourseAddition(course: course);
-            },
-            child: const Text('Edit Course'),
-          ),
-          CupertinoActionSheetAction(
-            isDestructiveAction: true,
-            onPressed: () {
-              Navigator.pop(context);
-              _showDeleteCourseDialog(course);
-            },
-            child: const Text('Delete Course'),
-          ),
-        ],
-        cancelButton: CupertinoActionSheetAction(
-          isDefaultAction: true,
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
+    _showThemedActionSheet(
+      title: course.name,
+      actions: [
+        _ThemedSheetAction(
+          label: 'Edit Course',
+          color: const Color(0xFF6366F1),
+          onTap: () => _openCourseAddition(course: course),
         ),
-      ),
+        _ThemedSheetAction(
+          label: 'Delete Course',
+          color: const Color(0xFFEF4444),
+          onTap: () => _showDeleteCourseDialog(course),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _showThemedActionSheet({
+    required String title,
+    String? message,
+    required List<_ThemedSheetAction> actions,
+  }) {
+    return showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return Padding(
+          padding: EdgeInsets.only(
+            left: 12,
+            right: 12,
+            bottom: MediaQuery.of(sheetContext).padding.bottom + 12,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(sheetContext).size.height * 0.7,
+                ),
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: _card,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const SizedBox(height: 10),
+                        Container(
+                          width: 36,
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: _chip,
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                          child: Column(
+                            children: [
+                              Text(
+                                title,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: -0.4,
+                                  color: _titleColor,
+                                ),
+                              ),
+                              if (message != null) ...[
+                                const SizedBox(height: 6),
+                                Text(
+                                  message,
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: _muted,
+                                    height: 1.35,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                        for (var i = 0; i < actions.length; i++) ...[
+                          if (i == 0)
+                            Divider(height: 1, color: _chip)
+                          else
+                            Divider(height: 1, indent: 16, endIndent: 16, color: _chip),
+                          InkWell(
+                            onTap: () {
+                              Navigator.pop(sheetContext);
+                              actions[i].onTap();
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 16,
+                              ),
+                              child: Center(
+                                child: Text(
+                                  actions[i].label,
+                                  style: TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w600,
+                                    color: actions[i].color,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Material(
+                color: _card,
+                borderRadius: BorderRadius.circular(16),
+                child: InkWell(
+                  onTap: () => Navigator.pop(sheetContext),
+                  borderRadius: BorderRadius.circular(16),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: Center(
+                      child: Text(
+                        'Cancel',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                          color: _titleColor,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -1863,6 +1994,18 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
             ),
     );
   }
+}
+
+class _ThemedSheetAction {
+  final String label;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _ThemedSheetAction({
+    required this.label,
+    required this.color,
+    required this.onTap,
+  });
 }
 
 class _StorageSegment {
