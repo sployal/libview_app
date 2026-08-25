@@ -5,7 +5,6 @@ import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 
 import '../services/download_service.dart';
 import '../services/phone_document_service.dart';
-import '../ui/adaptive_layout.dart';
 
 class DocumentReaderScreen extends StatefulWidget {
   final String fileName;
@@ -145,7 +144,8 @@ class _DocumentReaderScreenState extends State<DocumentReaderScreen> {
     final nested =
         Navigator.of(context) != Navigator.of(context, rootNavigator: true);
     final bottomInset = nested
-        ? AdaptiveLayout.bottomClearance(context)
+        ? kBottomNavigationBarHeight +
+            MediaQuery.viewPaddingOf(context).bottom
         : MediaQuery.viewPaddingOf(context).bottom;
 
     return Scaffold(
