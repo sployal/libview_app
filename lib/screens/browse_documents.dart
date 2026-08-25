@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 import '../services/phone_document_service.dart';
+import 'document_reader.dart';
 
 class BrowseDocumentsScreen extends StatefulWidget {
   const BrowseDocumentsScreen({super.key});
@@ -250,7 +251,14 @@ class _BrowseDocumentsScreenState extends State<BrowseDocumentsScreen>
     });
 
     try {
-      await PhoneDocumentService.instance.openDocument(document);
+      await DocumentReaderScreen.open(
+        context,
+        fileName: document.name,
+        path: document.path,
+        uri: document.uri,
+        openExternally: () =>
+            PhoneDocumentService.instance.openDocument(document),
+      );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

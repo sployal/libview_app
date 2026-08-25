@@ -12,6 +12,7 @@ import '../services/streak_service.dart';
 import '../services/todo_service.dart';
 import '../services/weather_service.dart';
 import 'browse_documents.dart';
+import 'document_reader.dart';
 import 'downloads_screen.dart';
 import 'no_internet_screen.dart';
 import 'notifications_screen.dart';
@@ -299,7 +300,13 @@ class _HomeScreenState extends State<HomeScreen>
 
   Future<void> _openFile(DownloadItem download) async {
     try {
-      await DownloadService.openDownloadedFile(download);
+      await DocumentReaderScreen.open(
+        context,
+        fileName: download.name,
+        path: download.filePath,
+        uri: download.contentUri,
+        openExternally: () => DownloadService.openDownloadedFile(download),
+      );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -211,6 +211,42 @@ class PhoneDocumentService {
     }
   }
 
+  /// Returns a path Flutter widgets can read. Copies from a content URI when needed.
+  Future<String> copyToReadablePath({
+    required String fileName,
+    String? path,
+    String? uri,
+  }) async {
+    if (path != null && path.isNotEmpty) {
+      final file = File(path);
+      if (await file.exists()) {
+        try {
+          final handle = await file.open();
+          await handle.close();
+          return path;
+        } catch (_) {}
+      }
+    }
+
+    if (!Platform.isAndroid) {
+      throw Exception('Could not open this document');
+    }
+
+    try {
+      final copied = await _channel.invokeMethod<String>('copyDocument', {
+        'uri': uri,
+        'path': path,
+        'fileName': fileName,
+      });
+      if (copied == null || copied.isEmpty) {
+        throw Exception('Could not open this document');
+      }
+      return copied;
+    } on PlatformException catch (e) {
+      throw Exception(e.message ?? 'Could not open this document');
+    }
+  }
+
   Future<void> openPath(String path, {String? fileName}) async {
     if (path.isEmpty || !File(path).existsSync()) {
       throw Exception('Could not open this document');

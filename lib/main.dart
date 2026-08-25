@@ -173,37 +173,69 @@ class _MainScreenState extends State<MainScreen>
   late Animation<double> _fadeAnimation;
   final GlobalKey<NavigatorState> _homeNavigatorKey =
       GlobalKey<NavigatorState>();
+  final GlobalKey<NavigatorState> _downloadsNavigatorKey =
+      GlobalKey<NavigatorState>();
   late final NavigatorObserver _homeNavObserver;
+  late final NavigatorObserver _downloadsNavObserver;
+
+  Navigator _tabNavigator({
+    required GlobalKey<NavigatorState> key,
+    required NavigatorObserver observer,
+    required Widget home,
+  }) {
+    return Navigator(
+      key: key,
+      observers: [observer],
+      onGenerateRoute: (settings) {
+        return MaterialPageRoute<void>(
+          settings: settings,
+          builder: (_) => home,
+        );
+      },
+    );
+  }
 
   List<Widget> get _screens => [
-        Navigator(
+        _tabNavigator(
           key: _homeNavigatorKey,
-          observers: [_homeNavObserver],
-          onGenerateRoute: (settings) {
-            return MaterialPageRoute<void>(
-              settings: settings,
-              builder: (_) => const HomeScreen(),
-            );
-          },
+          observer: _homeNavObserver,
+          home: const HomeScreen(),
         ),
         const SemestersScreen(),
         const AiScreen(),
-        const DownloadsScreen(),
+        _tabNavigator(
+          key: _downloadsNavigatorKey,
+          observer: _downloadsNavObserver,
+          home: const DownloadsScreen(),
+        ),
         const ProfileScreen(),
       ];
 
-  bool get _homeNestedCanPop =>
-      _selectedIndex == 0 &&
-      (_homeNavigatorKey.currentState?.canPop() ?? false);
+  GlobalKey<NavigatorState>? get _activeNestedKey {
+    switch (_selectedIndex) {
+      case 0:
+        return _homeNavigatorKey;
+      case 3:
+        return _downloadsNavigatorKey;
+      default:
+        return null;
+    }
+  }
+
+  bool get _nestedCanPop =>
+      _activeNestedKey?.currentState?.canPop() ?? false;
 
   @override
   void initState() {
     super.initState();
-    _homeNavObserver = _NestedNavigatorObserver(() {
+    void refreshNav() {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) setState(() {});
       });
-    });
+    }
+
+    _homeNavObserver = _NestedNavigatorObserver(refreshNav);
+    _downloadsNavObserver = _NestedNavigatorObserver(refreshNav);
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
@@ -231,8 +263,8 @@ class _MainScreenState extends State<MainScreen>
   }
 
   Future<void> _selectTab(int index) async {
-    if (index == _selectedIndex && index == 0) {
-      _homeNavigatorKey.currentState?.popUntil((route) => route.isFirst);
+    if (index == _selectedIndex) {
+      _activeNestedKey?.currentState?.popUntil((route) => route.isFirst);
       return;
     }
 
@@ -258,10 +290,10 @@ class _MainScreenState extends State<MainScreen>
         return true;
       },
       child: PopScope(
-        canPop: !_homeNestedCanPop,
+        canPop: !_nestedCanPop,
         onPopInvokedWithResult: (didPop, result) {
           if (didPop) return;
-          _homeNavigatorKey.currentState?.maybePop();
+          _activeNestedKey?.currentState?.maybePop();
         },
         child: Scaffold(
           extendBody: true,

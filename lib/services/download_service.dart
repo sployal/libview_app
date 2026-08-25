@@ -654,6 +654,11 @@ class DownloadService {
       case 'png':
       case 'gif':
       case 'bmp':
+      case 'webp':
+      case 'heic':
+      case 'heif':
+      case 'tif':
+      case 'tiff':
         return 'IMG';
       default:
         return 'FILE';

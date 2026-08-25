@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/download_service.dart';
 import '../services/phone_document_service.dart';
 import '../ui/adaptive_layout.dart';
+import 'document_reader.dart';
 
 class DownloadsScreen extends StatefulWidget {
   const DownloadsScreen({super.key});
@@ -151,7 +152,13 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
 
   Future<void> _openFile(DownloadItem download) async {
     try {
-      await DownloadService.openDownloadedFile(download);
+      await DocumentReaderScreen.open(
+        context,
+        fileName: download.name,
+        path: download.filePath,
+        uri: download.contentUri,
+        openExternally: () => DownloadService.openDownloadedFile(download),
+      );
     } catch (e) {
       if (mounted) {
         _showSnack(
