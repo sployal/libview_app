@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../services/app_update_service.dart';
 import '../services/auth_service.dart';
 import '../services/download_service.dart';
 import '../services/theme_controller.dart';
@@ -1086,11 +1087,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  void _showAboutDialog() {
-    _showThemedDialog<void>(
+  Future<void> _showAboutDialog() async {
+    final versionLabel =
+        await AppUpdateService.loadCurrentApkLabel() ?? 'Unknown version';
+    if (!mounted) return;
+    await _showThemedDialog<void>(
       title: 'Edupal',
       content:
-          'Version 4.36\n\nYour Academic Companion. Edupal helps you organize and access your study materials seamlessly. Created and maintained by David Muigai.',
+          '$versionLabel\n\nYour Academic Companion. Edupal helps you organize and access your study materials seamlessly. Created and maintained by David Muigai.',
       actions: (dialogContext) => [
         TextButton(
           onPressed: () => Navigator.pop(dialogContext),
