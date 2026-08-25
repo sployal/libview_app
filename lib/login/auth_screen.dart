@@ -44,6 +44,9 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     if (widget.needsProfileCompletion) {
       _tabController.index = 1;
       _prefillGoogleProfileFields();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _blockIncompleteNewAccountIfRestricted();
+      });
     }
 
     AuthService.instance.authStateChanges.listen((user) {
@@ -84,10 +87,43 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     return regExp.hasMatch(trimmed);
   }
 
+  Future<bool> _ensureSignupAllowed({bool showPopup = true}) async {
+    final settings =
+        await AuthService.instance.fetchAccountCreationSettings();
+    if (settings.allowNewAccounts) return true;
+    if (showPopup && mounted) {
+      await _showSignupRestrictedDialog(settings.restrictionMessage);
+    }
+    return false;
+  }
+
+  Future<void> _blockIncompleteNewAccountIfRestricted() async {
+    final user = AuthService.instance.currentUser;
+    if (user == null) return;
+    final hasProfile = await AuthService.instance.profileExists(user.uid);
+    if (hasProfile) return;
+    final allowed = await _ensureSignupAllowed();
+    if (allowed || !mounted) return;
+    await AuthService.instance.signOut();
+  }
+
+  Future<void> _onAuthTabChanged(int? value) async {
+    if (value == null || _isLoading) return;
+    HapticFeedback.selectionClick();
+    if (value == 1) {
+      final allowed = await _ensureSignupAllowed();
+      if (!allowed || !mounted) return;
+    }
+    _tabController.animateTo(value);
+  }
+
   Future<void> _signUp() async {
     if (!_signUpFormKey.currentState!.validate()) return;
     if (!await NoInternetScreen.ensureOnline(context)) return;
     if (!mounted) return;
+    if (!widget.needsProfileCompletion && !await _ensureSignupAllowed()) {
+      return;
+    }
 
     setState(() => _isLoading = true);
 
@@ -173,26 +209,32 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
       }
     } on FirebaseAuthException catch (error) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error_outline, color: Colors.white),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    AuthService.instance.authErrorMessage(error),
-                    style: const TextStyle(fontWeight: FontWeight.w500),
+        if (error.code == 'operation-not-allowed') {
+          await _showSignupRestrictedDialog(
+            error.message ?? AuthService.defaultSignupRestrictionMessage,
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.white),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      AuthService.instance.authErrorMessage(error),
+                      style: const TextStyle(fontWeight: FontWeight.w500),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
+              backgroundColor: const Color(0xFFEF4444),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              margin: const EdgeInsets.all(16),
             ),
-            backgroundColor: const Color(0xFFEF4444),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            margin: const EdgeInsets.all(16),
-          ),
-        );
+          );
+        }
       }
     } catch (error) {
       if (mounted) {
@@ -322,7 +364,13 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
       await AuthService.instance.signInWithGoogle();
     } on FirebaseAuthException catch (error) {
       if (mounted) {
-        _showSnackBar(AuthService.instance.authErrorMessage(error));
+        if (error.code == 'operation-not-allowed') {
+          await _showSignupRestrictedDialog(
+            error.message ?? AuthService.defaultSignupRestrictionMessage,
+          );
+        } else {
+          _showSnackBar(AuthService.instance.authErrorMessage(error));
+        }
       }
     } catch (error) {
       final message = error.toString();
@@ -349,6 +397,47 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  Future<void> _showSignupRestrictedDialog(String message) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+          title: Text(
+            'Sign up unavailable',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.4,
+              color: isDark ? Colors.white : const Color(0xFF1C1C1E),
+            ),
+          ),
+          content: Text(
+            message,
+            style: const TextStyle(
+              fontSize: 15,
+              color: Color(0xFF8E8E93),
+              height: 1.35,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text(
+                'OK',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: _accent,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<void> _showCourseNotRegisteredDialog() {
@@ -557,11 +646,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                                   ),
                                 ),
                               },
-                              onValueChanged: (value) {
-                                if (value == null || _isLoading) return;
-                                HapticFeedback.selectionClick();
-                                _tabController.animateTo(value);
-                              },
+                              onValueChanged: _onAuthTabChanged,
                             ),
                           ),
                         )
@@ -587,6 +672,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                             ? _buildSignUpForm()
                             : TabBarView(
                                 controller: _tabController,
+                                physics: const NeverScrollableScrollPhysics(),
                                 children: [
                                   _buildLoginForm(),
                                   _buildSignUpForm(),

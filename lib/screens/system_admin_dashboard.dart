@@ -58,6 +58,9 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
   String _staffRoleFilter = 'all';
   String _userCourseFilter = 'all';
   String _staffCourseFilter = 'all';
+  bool _allowNewAccounts = true;
+  String _restrictionMessage = AuthService.defaultSignupRestrictionMessage;
+  bool _savingAccountPolicy = false;
 
   static const _userRoles = ['student', 'class_rep', 'assistant_class_rep'];
   static const _staffRoles = ['lecturer', 'admin', 'system_admin'];
@@ -139,6 +142,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
     await _loadProfiles();
     await _loadCourses();
     await _loadStorage();
+    await _loadAccountCreationSettings();
   }
 
   Future<void> _loadProfiles({bool silent = false}) async {
@@ -623,6 +627,8 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
                           const SizedBox(height: 2),
                           Text(
                             subtitle,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                             style: TextStyle(fontSize: 13, color: _muted),
                           ),
                         ],
@@ -1191,6 +1197,167 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
     }
   }
 
+  Future<void> _loadAccountCreationSettings() async {
+    final settings = await AuthService.instance.fetchAccountCreationSettings();
+    if (!mounted) return;
+    setState(() {
+      _allowNewAccounts = settings.allowNewAccounts;
+      _restrictionMessage = settings.restrictionMessage;
+    });
+  }
+
+  Future<void> _saveAccountCreationSettings({
+    required bool allowNewAccounts,
+    required String restrictionMessage,
+  }) async {
+    setState(() => _savingAccountPolicy = true);
+    try {
+      await AuthService.instance.saveAccountCreationSettings(
+        allowNewAccounts: allowNewAccounts,
+        restrictionMessage: restrictionMessage,
+      );
+      if (!mounted) return;
+      setState(() {
+        _allowNewAccounts = allowNewAccounts;
+        _restrictionMessage = restrictionMessage.trim().isEmpty
+            ? AuthService.defaultSignupRestrictionMessage
+            : restrictionMessage.trim();
+        _savingAccountPolicy = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            allowNewAccounts
+                ? 'New account creation is allowed'
+                : 'New account creation is blocked',
+          ),
+          backgroundColor: const Color(0xFF10B981),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _savingAccountPolicy = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not save account setting: $e'),
+          backgroundColor: const Color(0xFFEF4444),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _onAllowNewAccountsChanged(bool allow) async {
+    if (_savingAccountPolicy) return;
+    if (allow) {
+      await _saveAccountCreationSettings(
+        allowNewAccounts: true,
+        restrictionMessage: _restrictionMessage,
+      );
+      return;
+    }
+
+    final message = await _promptRestrictionMessage(
+      initial: _restrictionMessage,
+    );
+    if (message == null || !mounted) return;
+    await _saveAccountCreationSettings(
+      allowNewAccounts: false,
+      restrictionMessage: message,
+    );
+  }
+
+  Future<void> _editRestrictionMessage() async {
+    final message = await _promptRestrictionMessage(
+      initial: _restrictionMessage,
+      title: 'Restriction message',
+    );
+    if (message == null || !mounted) return;
+    await _saveAccountCreationSettings(
+      allowNewAccounts: _allowNewAccounts,
+      restrictionMessage: message,
+    );
+  }
+
+  Future<String?> _promptRestrictionMessage({
+    required String initial,
+    String title = 'Block new accounts',
+  }) async {
+    final controller = TextEditingController(text: initial);
+    try {
+      return await showDialog<String>(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            backgroundColor: _card,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+            title: Text(
+              title,
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.4,
+                color: _titleColor,
+              ),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'People who try to sign up will see this message.',
+                  style: TextStyle(fontSize: 14, color: _muted, height: 1.35),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: controller,
+                  maxLines: 4,
+                  autofocus: true,
+                  decoration: InputDecoration(
+                    hintText: AuthService.defaultSignupRestrictionMessage,
+                    filled: true,
+                    fillColor: _chip,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: Text('Cancel', style: TextStyle(color: _muted)),
+              ),
+              TextButton(
+                onPressed: () {
+                  final value = controller.text.trim();
+                  Navigator.of(dialogContext).pop(
+                    value.isEmpty
+                        ? AuthService.defaultSignupRestrictionMessage
+                        : value,
+                  );
+                },
+                child: const Text(
+                  'Save',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF6366F1),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      );
+    } finally {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        controller.dispose();
+      });
+    }
+  }
+
   String _formatBytes(int bytes) {
     if (bytes < 1024) return '$bytes B';
     const units = ['KB', 'MB', 'GB', 'TB'];
@@ -1452,6 +1619,39 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          _sectionLabel('Access'),
+          _groupedCard([
+            _settingsRow(
+              icon: CupertinoIcons.person_badge_plus,
+              iconColor: const Color(0xFF10B981),
+              title: 'New account creation',
+              subtitle: _allowNewAccounts
+                  ? 'Anyone can sign up'
+                  : 'Sign up is blocked',
+              showChevron: false,
+              showDivider: !_allowNewAccounts,
+              trailing: _savingAccountPolicy
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : CupertinoSwitch(
+                      value: _allowNewAccounts,
+                      activeTrackColor: const Color(0xFF10B981),
+                      onChanged: _onAllowNewAccountsChanged,
+                    ),
+            ),
+            if (!_allowNewAccounts)
+              _settingsRow(
+                icon: CupertinoIcons.chat_bubble_text,
+                iconColor: const Color(0xFFF59E0B),
+                title: 'Restriction message',
+                subtitle: _restrictionMessage,
+                onTap: _editRestrictionMessage,
+              ),
+          ]),
+          const SizedBox(height: 18),
           _sectionLabel('Management'),
           _groupedCard([
             _buildAddCourseButton(),

@@ -2,10 +2,23 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
+class AccountCreationSettings {
+  const AccountCreationSettings({
+    required this.allowNewAccounts,
+    required this.restrictionMessage,
+  });
+
+  final bool allowNewAccounts;
+  final String restrictionMessage;
+}
+
 class AuthService {
   AuthService._();
 
   static final AuthService instance = AuthService._();
+
+  static const defaultSignupRestrictionMessage =
+      'New account creation is currently closed. Please contact the system administrator.';
 
   /// Web OAuth client ID from google-services.json (needed so Android returns an idToken).
   static const String _googleServerClientId =
@@ -60,12 +73,67 @@ class AuthService {
     return true;
   }
 
+  DocumentReference<Map<String, dynamic>> get _accountCreationDoc =>
+      _firestore.collection('config').doc('accountCreation');
+
+  Future<AccountCreationSettings> fetchAccountCreationSettings() async {
+    try {
+      final doc = await _accountCreationDoc.get();
+      final data = doc.data();
+      if (data == null) {
+        return const AccountCreationSettings(
+          allowNewAccounts: true,
+          restrictionMessage: defaultSignupRestrictionMessage,
+        );
+      }
+
+      final message = (data['restrictionMessage'] as String?)?.trim() ?? '';
+      return AccountCreationSettings(
+        allowNewAccounts: data['allowNewAccounts'] != false,
+        restrictionMessage:
+            message.isEmpty ? defaultSignupRestrictionMessage : message,
+      );
+    } catch (_) {
+      return const AccountCreationSettings(
+        allowNewAccounts: true,
+        restrictionMessage: defaultSignupRestrictionMessage,
+      );
+    }
+  }
+
+  Future<void> saveAccountCreationSettings({
+    required bool allowNewAccounts,
+    required String restrictionMessage,
+  }) async {
+    final message = restrictionMessage.trim();
+    await _accountCreationDoc.set({
+      'allowNewAccounts': allowNewAccounts,
+      'restrictionMessage':
+          message.isEmpty ? defaultSignupRestrictionMessage : message,
+      'updated_at': FieldValue.serverTimestamp(),
+      'updated_by': currentUser?.email,
+    }, SetOptions(merge: true));
+  }
+
+  Future<bool> profileExists(String uid) async {
+    final doc = await _firestore.collection('profiles').doc(uid).get();
+    return doc.exists;
+  }
+
   Future<void> signUp({
     required String email,
     required String password,
     required String fullName,
     required String registrationNumber,
   }) async {
+    final settings = await fetchAccountCreationSettings();
+    if (!settings.allowNewAccounts) {
+      throw FirebaseAuthException(
+        code: 'operation-not-allowed',
+        message: settings.restrictionMessage,
+      );
+    }
+
     final credential = await _auth.createUserWithEmailAndPassword(
       email: email,
       password: password,
@@ -111,6 +179,15 @@ class AuthService {
 
     final docRef = _firestore.collection('profiles').doc(user.uid);
     final existing = await docRef.get();
+    if (!existing.exists) {
+      final settings = await fetchAccountCreationSettings();
+      if (!settings.allowNewAccounts) {
+        throw FirebaseAuthException(
+          code: 'operation-not-allowed',
+          message: settings.restrictionMessage,
+        );
+      }
+    }
 
     await docRef.set({
       'full_name': fullName,
@@ -137,6 +214,9 @@ class AuthService {
   }
 
   /// Returns null if the user cancelled the Google account picker.
+  ///
+  /// Throws [FirebaseAuthException] with code `operation-not-allowed` when a
+  /// brand-new Google account is blocked by system admin settings.
   Future<UserCredential?> signInWithGoogle() async {
     final googleUser = await _googleSignIn.signIn();
     if (googleUser == null) return null;
@@ -147,7 +227,38 @@ class AuthService {
       idToken: googleAuth.idToken,
     );
 
-    return _auth.signInWithCredential(credential);
+    final userCredential = await _auth.signInWithCredential(credential);
+    final isNewUser = userCredential.additionalUserInfo?.isNewUser == true;
+    final uid = userCredential.user?.uid;
+    final hasProfile = uid != null && await profileExists(uid);
+
+    if (isNewUser || !hasProfile) {
+      final settings = await fetchAccountCreationSettings();
+      if (!settings.allowNewAccounts) {
+        await _discardIncompleteGoogleSession(
+          userCredential.user,
+          deleteAuthUser: isNewUser,
+        );
+        throw FirebaseAuthException(
+          code: 'operation-not-allowed',
+          message: settings.restrictionMessage,
+        );
+      }
+    }
+
+    return userCredential;
+  }
+
+  Future<void> _discardIncompleteGoogleSession(
+    User? user, {
+    required bool deleteAuthUser,
+  }) async {
+    if (deleteAuthUser) {
+      try {
+        await user?.delete();
+      } catch (_) {}
+    }
+    await signOut();
   }
 
   Future<void> signOut() async {
