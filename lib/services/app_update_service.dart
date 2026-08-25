@@ -28,6 +28,16 @@ class AppUpdateRelease {
   final int? sizeBytes;
 }
 
+class _AppVersionInfo {
+  const _AppVersionInfo({
+    required this.currentApkLabel,
+    required this.aboutMessage,
+  });
+
+  final String currentApkLabel;
+  final String aboutMessage;
+}
+
 class AppUpdateService {
   AppUpdateService._();
 
@@ -42,7 +52,7 @@ class AppUpdateService {
 
   static const _apkMime = 'application/vnd.android.package-archive';
   static const _versionAssetPath = 'assets/app_version.json';
-  static String? _cachedCurrentApkLabel;
+  static _AppVersionInfo? _cachedVersionInfo;
   static final RegExp _apkNamePattern = RegExp(
     r'^edupal\s+v(\d+(?:\.\d+)*)\.apk$',
     caseSensitive: false,
@@ -90,12 +100,10 @@ class AppUpdateService {
 
   /// Installed APK label from [assets/app_version.json], e.g. `Edupal v4.12`.
   /// Empty until [loadCurrentApkLabel] or [findRequiredUpdate] has run.
-  static String get currentApkLabel => _cachedCurrentApkLabel ?? '';
+  static String get currentApkLabel => _cachedVersionInfo?.currentApkLabel ?? '';
 
-  /// Bump `current_apk_label` in [assets/app_version.json] when you ship an APK.
-  /// Must match the Drive file name without `.apk`.
-  static Future<String?> loadCurrentApkLabel() async {
-    if (_cachedCurrentApkLabel != null) return _cachedCurrentApkLabel;
+  static Future<_AppVersionInfo?> _loadVersionInfo() async {
+    if (_cachedVersionInfo != null) return _cachedVersionInfo;
     try {
       final raw = await rootBundle.loadString(_versionAssetPath);
       final decoded = jsonDecode(raw);
@@ -108,12 +116,28 @@ class AppUpdateService {
         debugPrint('App update: current_apk_label is missing in $_versionAssetPath');
         return null;
       }
-      _cachedCurrentApkLabel = label.trim();
-      return _cachedCurrentApkLabel;
+      final about = decoded['about_message'];
+      _cachedVersionInfo = _AppVersionInfo(
+        currentApkLabel: label.trim(),
+        aboutMessage: about is String ? about.trim() : '',
+      );
+      return _cachedVersionInfo;
     } catch (e) {
       debugPrint('App update: could not load $_versionAssetPath: $e');
       return null;
     }
+  }
+
+  /// Bump `current_apk_label` in [assets/app_version.json] when you ship an APK.
+  /// Must match the Drive file name without `.apk`.
+  static Future<String?> loadCurrentApkLabel() async {
+    return (await _loadVersionInfo())?.currentApkLabel;
+  }
+
+  static Future<String?> loadAboutMessage() async {
+    final message = (await _loadVersionInfo())?.aboutMessage;
+    if (message == null || message.isEmpty) return null;
+    return message;
   }
 
   /// Returns the newest Drive APK that is newer than this build, or null.

@@ -1090,11 +1090,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _showAboutDialog() async {
     final versionLabel =
         await AppUpdateService.loadCurrentApkLabel() ?? 'Unknown version';
+    final aboutMessage = await AppUpdateService.loadAboutMessage() ?? '';
     if (!mounted) return;
+    final content = aboutMessage.isEmpty
+        ? versionLabel
+        : '$versionLabel\n\n$aboutMessage';
     await _showThemedDialog<void>(
       title: 'Edupal',
-      content:
-          '$versionLabel\n\nYour Academic Companion. Edupal helps you organize and access your study materials seamlessly. Created and maintained by David Muigai.',
+      content: content,
       actions: (dialogContext) => [
         TextButton(
           onPressed: () => Navigator.pop(dialogContext),
