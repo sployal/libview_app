@@ -1147,7 +1147,7 @@ class _ResetPasswordDialogState extends State<_ResetPasswordDialog> {
                 return null;
               },
               decoration: InputDecoration(
-                hintText: 'your email',
+                hintText: 'your last used email',
                 filled: true,
                 fillColor: isDark
                     ? const Color(0xFF2C2C2E)
