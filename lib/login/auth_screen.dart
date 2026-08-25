@@ -562,7 +562,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
             _buildTextField(
               controller: _emailController,
               label: 'Email',
-              hint: 'name@university.edu',
+              hint: 'your email',
               icon: CupertinoIcons.mail,
               keyboardType: TextInputType.emailAddress,
               validator: (value) {
@@ -702,7 +702,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
               label: 'Email',
               hint: widget.needsProfileCompletion
                   ? 'Signed in with Google'
-                  : 'name@university.edu',
+                  : 'your email',
               icon: CupertinoIcons.mail,
               keyboardType: TextInputType.emailAddress,
               enabled: !widget.needsProfileCompletion,
@@ -1147,7 +1147,7 @@ class _ResetPasswordDialogState extends State<_ResetPasswordDialog> {
                 return null;
               },
               decoration: InputDecoration(
-                hintText: 'name@university.edu',
+                hintText: 'your email',
                 filled: true,
                 fillColor: isDark
                     ? const Color(0xFF2C2C2E)
