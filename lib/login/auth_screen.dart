@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
+import '../services/course_service.dart';
 import '../screens/no_internet_screen.dart';
 
 class AuthScreen extends StatefulWidget {
@@ -93,6 +94,19 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     try {
       // Normalize registration number (convert to uppercase for consistency)
       final normalizedRegNumber = _registrationNumberController.text.trim().toUpperCase();
+
+      final courses = await CourseService.instance.listCourses();
+      final matchedCourse = CourseService.instance.matchCourse(
+        normalizedRegNumber,
+        courses,
+      );
+      if (matchedCourse == null) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+          await _showCourseNotRegisteredDialog();
+        }
+        return;
+      }
 
       // Check if registration number already exists
       final regNumberTaken = await AuthService.instance
@@ -335,6 +349,47 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  Future<void> _showCourseNotRegisteredDialog() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+          title: Text(
+            'Course not registered',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.4,
+              color: isDark ? Colors.white : const Color(0xFF1C1C1E),
+            ),
+          ),
+          content: const Text(
+            'Your course is not registered. Contact your faculty rep or the system admin.',
+            style: TextStyle(
+              fontSize: 15,
+              color: Color(0xFF8E8E93),
+              height: 1.35,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text(
+                'OK',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: _accent,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _showSnackBar(String message, {bool success = false}) {
@@ -682,14 +737,14 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
             _buildTextField(
               controller: _registrationNumberController,
               label: 'Registration Number',
-              hint: 'Eb24/46271/20',
+              hint: 'your registration number',
               icon: CupertinoIcons.number,
               validator: (value) {
                 if (value == null || value.isEmpty) {
                   return 'Please enter your registration number';
                 }
                 if (!_isValidRegistrationNumber(value)) {
-                  return 'Enter your correct registration number (e.g., Eb24/46271/20)';
+                  return 'Enter your correct registration number';
                 }
                 return null;
               },
