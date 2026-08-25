@@ -1174,7 +1174,7 @@ class _ResetPasswordDialogState extends State<_ResetPasswordDialog> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Enter the email for your account and we will send you a reset link.',
+              'Enter the email for your account and we will send you a reset link. Check reset link in spam emails section if you don\'t see it in your inbox.',
               style: TextStyle(
                 fontSize: 15,
                 color: Color(0xFF8E8E93),
