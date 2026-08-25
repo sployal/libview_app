@@ -1,8 +1,10 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
@@ -39,6 +41,8 @@ class AppUpdateService {
   );
 
   static const _apkMime = 'application/vnd.android.package-archive';
+  static const _versionAssetPath = 'assets/app_version.json';
+  static String? _cachedCurrentApkLabel;
   static final RegExp _apkNamePattern = RegExp(
     r'^edupal\s+v(\d+(?:\.\d+)*)\.apk$',
     caseSensitive: false,
@@ -84,14 +88,44 @@ class AppUpdateService {
     return 0;
   }
 
+  /// Installed APK label from [assets/app_version.json], e.g. `Edupal v4.12`.
+  /// Empty until [loadCurrentApkLabel] or [findRequiredUpdate] has run.
+  static String get currentApkLabel => _cachedCurrentApkLabel ?? '';
+
+  /// Bump `current_apk_label` in [assets/app_version.json] when you ship an APK.
+  /// Must match the Drive file name without `.apk`.
+  static Future<String?> loadCurrentApkLabel() async {
+    if (_cachedCurrentApkLabel != null) return _cachedCurrentApkLabel;
+    try {
+      final raw = await rootBundle.loadString(_versionAssetPath);
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) {
+        debugPrint('App update: $_versionAssetPath is not a JSON object');
+        return null;
+      }
+      final label = decoded['current_apk_label'];
+      if (label is! String || label.trim().isEmpty) {
+        debugPrint('App update: current_apk_label is missing in $_versionAssetPath');
+        return null;
+      }
+      _cachedCurrentApkLabel = label.trim();
+      return _cachedCurrentApkLabel;
+    } catch (e) {
+      debugPrint('App update: could not load $_versionAssetPath: $e');
+      return null;
+    }
+  }
+
   /// Returns the newest Drive APK that is newer than this build, or null.
   /// Network / missing-folder failures return null so the app stays usable.
-  static Future<AppUpdateRelease?> findRequiredUpdate(String currentLabel) async {
+  static Future<AppUpdateRelease?> findRequiredUpdate() async {
     if (kIsWeb || !Platform.isAndroid) return null;
 
-    final currentParts = parseVersionParts(currentLabel);
+    final currentLabel = await loadCurrentApkLabel();
+    final currentParts =
+        currentLabel == null ? null : parseVersionParts(currentLabel);
     if (currentParts == null) {
-      debugPrint('App update: invalid hardcoded version "$currentLabel"');
+      debugPrint('App update: invalid current version "$currentLabel"');
       return null;
     }
 

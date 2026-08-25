@@ -8,11 +8,6 @@ import 'package:flutter/services.dart';
 import '../services/app_update_service.dart';
 import '../services/download_service.dart';
 
-/// Bump this with every APK you ship. Must match the Drive file name without `.apk`.
-/// Installed build `Edupal v4.12` + Drive file `Edupal v4.13.apk` → users are asked to update.
-/// After you ship 4.13, change this to `Edupal v4.13`.
-const String kCurrentApkVersionLabel = 'Edupal v4.12';
-
 class AppUpdateGate extends StatefulWidget {
   const AppUpdateGate({super.key, required this.child});
 
@@ -60,9 +55,7 @@ class _AppUpdateGateState extends State<AppUpdateGate>
     }
     _checking = true;
     try {
-      final release = await AppUpdateService.findRequiredUpdate(
-        kCurrentApkVersionLabel,
-      );
+      final release = await AppUpdateService.findRequiredUpdate();
       if (!mounted) return;
       setState(() => _requiredUpdate = release);
     } finally {
@@ -189,7 +182,7 @@ class _AppUpdateScreenState extends State<AppUpdateScreen> {
                 const SizedBox(height: 28),
                 _VersionCard(
                   isDark: isDark,
-                  currentLabel: kCurrentApkVersionLabel,
+                  currentLabel: AppUpdateService.currentApkLabel,
                   nextLabel: release.versionLabel,
                   fileName: release.fileName,
                   sizeLabel: sizeLabel,
