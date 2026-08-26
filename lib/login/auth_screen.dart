@@ -9,10 +9,17 @@ import '../services/course_service.dart';
 import '../screens/no_internet_screen.dart';
 
 class AuthScreen extends StatefulWidget {
-  const AuthScreen({super.key, this.needsProfileCompletion = false});
+  const AuthScreen({
+    super.key,
+    this.needsProfileCompletion = false,
+    this.initialTab = 0,
+  });
 
   /// Signed in with Google (or another provider) but missing name / reg number.
   final bool needsProfileCompletion;
+
+  /// 0 = log in, 1 = sign up. Used after onboarding.
+  final int initialTab;
 
   @override
   State<AuthScreen> createState() => _AuthScreenState();
@@ -37,12 +44,17 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    final startTab =
+        widget.needsProfileCompletion || widget.initialTab == 1 ? 1 : 0;
+    _tabController = TabController(
+      length: 2,
+      vsync: this,
+      initialIndex: startTab,
+    );
     _tabController.addListener(() {
       if (mounted) setState(() {});
     });
     if (widget.needsProfileCompletion) {
-      _tabController.index = 1;
       _prefillGoogleProfileFields();
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _blockIncompleteNewAccountIfRestricted();

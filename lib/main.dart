@@ -6,6 +6,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase_options.dart';
 import 'services/auth_service.dart';
 import 'services/streak_service.dart';
@@ -17,6 +18,7 @@ import 'screens/ai_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/no_internet_screen.dart';
 import 'login/auth_screen.dart';
+import 'login/onboarding_screen.dart';
 import 'screens/app_update_screen.dart';
 import 'screens/suspend_account.dart';
 
@@ -137,9 +139,61 @@ class AuthGate extends StatelessWidget {
           );
         }
 
-        return const AuthScreen();
+        return const OnboardingGate();
       },
     );
+  }
+}
+
+class OnboardingGate extends StatefulWidget {
+  const OnboardingGate({super.key});
+
+  static const _seenKey = 'onboarding_complete';
+
+  @override
+  State<OnboardingGate> createState() => _OnboardingGateState();
+}
+
+class _OnboardingGateState extends State<OnboardingGate> {
+  bool? _seen;
+  int _authTab = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() => _seen = prefs.getBool(OnboardingGate._seenKey) ?? false);
+  }
+
+  Future<void> _finish({required int authTab}) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(OnboardingGate._seenKey, true);
+    if (!mounted) return;
+    setState(() {
+      _seen = true;
+      _authTab = authTab;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_seen == null) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+    if (!_seen!) {
+      return OnboardingScreen(
+        onGetStarted: () => _finish(authTab: 1),
+        onSignIn: () => _finish(authTab: 0),
+      );
+    }
+    return AuthScreen(initialTab: _authTab);
   }
 }
 
