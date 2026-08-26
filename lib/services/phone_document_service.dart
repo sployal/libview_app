@@ -334,11 +334,13 @@ class PhoneDocumentService {
     if (files.isEmpty) {
       throw Exception('Could not share these files');
     }
-    await Share.shareXFiles(
-      files,
-      text: documents.length == 1
-          ? 'Sharing ${documents.first.name}'
-          : 'Sharing ${documents.length} files',
+    await SharePlus.instance.share(
+      ShareParams(
+        files: files,
+        text: documents.length == 1
+            ? 'Sharing ${documents.first.name}'
+            : 'Sharing ${documents.length} files',
+      ),
     );
   }
 

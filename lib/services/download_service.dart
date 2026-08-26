@@ -474,11 +474,13 @@ class DownloadService {
       return;
     }
 
-    await Share.shareXFiles(
-      items.map((item) => XFile(item.filePath)).toList(),
-      text: items.length == 1
-          ? 'Sharing ${items.first.name}'
-          : 'Sharing ${items.length} files',
+    await SharePlus.instance.share(
+      ShareParams(
+        files: items.map((item) => XFile(item.filePath)).toList(),
+        text: items.length == 1
+            ? 'Sharing ${items.first.name}'
+            : 'Sharing ${items.length} files',
+      ),
     );
   }
 

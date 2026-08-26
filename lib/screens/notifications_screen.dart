@@ -275,15 +275,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                               type: selectedType,
                             );
 
-                            Navigator.of(context).pop();
-                            _loadNotifications();
-
-                            if (mounted) {
-                              _showSnack(
-                                'Notification updated successfully',
-                                _success,
-                              );
+                            if (context.mounted) {
+                              Navigator.of(context).pop();
                             }
+                            if (!mounted) return;
+                            _loadNotifications();
+                            _showSnack(
+                              'Notification updated successfully',
+                              _success,
+                            );
                           } catch (e) {
                             if (mounted) {
                               _showSnack('Error updating: $e', _danger);
@@ -575,7 +575,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           if (!await NoInternetScreen.ensureOnline(context)) {
                             return;
                           }
-                          if (!mounted) return;
+                          if (!context.mounted) return;
                           await Navigator.of(context).push(
                             MaterialPageRoute(
                               builder: (ctx) =>
