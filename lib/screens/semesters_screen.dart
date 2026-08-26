@@ -7,6 +7,7 @@ import '../services/google_drive_service.dart';
 import '../ui/adaptive_layout.dart';
 import 'no_internet_screen.dart';
 import 'semester_detail_screen.dart';
+import 'system_admin_dashboard.dart';
 
 class SemestersScreen extends StatefulWidget {
   const SemestersScreen({super.key});
@@ -20,11 +21,14 @@ class _SemestersScreenState extends State<SemestersScreen> {
   static const _lastSemesterKeyPref = 'semesters_last_key';
   static const _lastSemesterNamePref = 'semesters_last_name';
   static const _lastSemesterYearPref = 'semesters_last_year';
+  static const _adminCoursePrefKey = 'semesters_admin_course_id';
 
   final Map<String, int> _unitCounts = {};
   bool _isLoadingCourse = true;
   bool _isLoadingCounts = true;
+  bool _isSystemAdmin = false;
   Course _course = Course.engineeringFallback();
+  List<Course> _allCourses = [];
   Map<String, String>? _selectedSemester;
   int _selectedYearIndex = 0;
   String? _lastSemesterKey;
@@ -86,9 +90,39 @@ class _SemestersScreenState extends State<SemestersScreen> {
     });
 
     try {
-      final course = await CourseService.instance.courseForCurrentUser();
+      final isAdmin = await SystemAdminDashboard.isCurrentUserSystemAdmin();
+      Course course;
+      var courses = <Course>[];
+
+      if (isAdmin) {
+        courses = await CourseService.instance.listCourses();
+        courses.sort(
+          (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+        );
+        final prefs = await SharedPreferences.getInstance();
+        final savedId = prefs.getString(_adminCoursePrefKey);
+        Course? saved;
+        if (savedId != null) {
+          for (final item in courses) {
+            if (item.id == savedId) {
+              saved = item;
+              break;
+            }
+          }
+        }
+        course = saved ?? await CourseService.instance.courseForCurrentUser();
+        if (courses.isNotEmpty &&
+            !courses.any((item) => item.id == course.id)) {
+          course = courses.first;
+        }
+      } else {
+        course = await CourseService.instance.courseForCurrentUser();
+      }
+
       if (!mounted) return;
       setState(() {
+        _isSystemAdmin = isAdmin;
+        _allCourses = courses;
         _course = course;
         _isLoadingCourse = false;
         if (_selectedYearIndex >= course.years) {
@@ -99,11 +133,29 @@ class _SemestersScreenState extends State<SemestersScreen> {
     } catch (_) {
       if (!mounted) return;
       setState(() {
+        _isSystemAdmin = false;
+        _allCourses = [];
         _course = Course.engineeringFallback();
         _isLoadingCourse = false;
       });
       await _loadUnitCounts();
     }
+  }
+
+  Future<void> _selectAdminCourse(Course course) async {
+    if (course.id == _course.id) return;
+    HapticFeedback.selectionClick();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_adminCoursePrefKey, course.id);
+    if (!mounted) return;
+    setState(() {
+      _course = course;
+      _selectedSemester = null;
+      if (_selectedYearIndex >= course.years) {
+        _selectedYearIndex = 0;
+      }
+    });
+    await _loadUnitCounts();
   }
 
   Future<void> _loadUnitCounts() async {
@@ -238,8 +290,10 @@ class _SemestersScreenState extends State<SemestersScreen> {
     final selected = _selectedSemester;
     if (selected != null) {
       return SemesterDetailScreen(
-        key: ValueKey(selected['folderId']),
-        semesterName: selected['name']!,
+        key: ValueKey('${_course.id}-${selected['folderId']}'),
+        semesterName: _isSystemAdmin
+            ? '${_course.name} · ${selected['name']!}'
+            : selected['name']!,
         folderId: selected['folderId'],
         onBack: _closeSemester,
       );
@@ -290,14 +344,22 @@ class _SemestersScreenState extends State<SemestersScreen> {
                     padding: pagePad.copyWith(top: 4, bottom: bottomPad),
                     sliver: SliverList(
                       delegate: SliverChildListDelegate([
-                        Text(
-                          _course.name,
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                            color: subtitleColor,
+                        if (_isSystemAdmin && _allCourses.isNotEmpty)
+                          _AdminCourseSelector(
+                            courses: _allCourses,
+                            selected: _course,
+                            isDark: isDark,
+                            onSelected: _selectAdminCourse,
+                          )
+                        else
+                          Text(
+                            _course.name,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500,
+                              color: subtitleColor,
+                            ),
                           ),
-                        ),
                         const SizedBox(height: 12),
                         _OverviewStrip(
                           isDark: isDark,
@@ -379,6 +441,126 @@ class _SemestersScreenState extends State<SemestersScreen> {
                 ],
               ),
             ),
+    );
+  }
+}
+
+class _AdminCourseSelector extends StatelessWidget {
+  const _AdminCourseSelector({
+    required this.courses,
+    required this.selected,
+    required this.isDark,
+    required this.onSelected,
+  });
+
+  final List<Course> courses;
+  final Course selected;
+  final bool isDark;
+  final ValueChanged<Course> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final card = isDark ? const Color(0xFF1F2937) : Colors.white;
+    final title = isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
+    final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
+    final border = isDark ? const Color(0xFF374151) : const Color(0xFFE5E7EB);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'View materials for',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 0.3,
+            color: muted,
+          ),
+        ),
+        const SizedBox(height: 8),
+        PopupMenuButton<Course>(
+          tooltip: 'Select a course',
+          offset: const Offset(0, 8),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          color: card,
+          onSelected: onSelected,
+          itemBuilder: (context) {
+            return courses.map((course) {
+              final isSelected = course.id == selected.id;
+              return PopupMenuItem<Course>(
+                value: course,
+                child: Row(
+                  children: [
+                    Icon(
+                      isSelected
+                          ? Icons.check_circle_rounded
+                          : Icons.school_outlined,
+                      size: 18,
+                      color: isSelected
+                          ? const Color(0xFF6366F1)
+                          : muted,
+                    ),
+                    const SizedBox(width: 10),
+                    Flexible(
+                      child: Text(
+                        course.name,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontWeight:
+                              isSelected ? FontWeight.w700 : FontWeight.w500,
+                          color: title,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      '${course.years} yr',
+                      style: TextStyle(fontSize: 12, color: muted),
+                    ),
+                  ],
+                ),
+              );
+            }).toList();
+          },
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: card,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: border),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(isDark ? 0.18 : 0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.school_rounded,
+                  size: 20,
+                  color: Color(0xFF6366F1),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    selected.name,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: title,
+                    ),
+                  ),
+                ),
+                Icon(Icons.keyboard_arrow_down_rounded, color: muted),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
