@@ -50,6 +50,11 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
   bool _unitsAsGrid = true;
   String _unitQuery = '';
   final TextEditingController _unitSearchController = TextEditingController();
+  String _fileQuery = '';
+  String _fileTypeFilter = 'All';
+  final TextEditingController _fileSearchController = TextEditingController();
+  final FocusNode _fileSearchFocus = FocusNode();
+  static const _fileTypeFilters = ['All', 'PDF', 'IMG'];
   static const _filesViewPrefKey = 'semester_files_view_large_icons';
   static const _unitsViewPrefKey = 'semester_units_view_grid';
 
@@ -61,6 +66,9 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     _loadUserRole();
     _loadFilesViewPreference();
     _loadSubjects();
+    _fileSearchFocus.addListener(() {
+      if (mounted) setState(() {});
+    });
   }
 
   Future<void> _loadFilesViewPreference() async {
@@ -75,6 +83,8 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
   @override
   void dispose() {
     _unitSearchController.dispose();
+    _fileSearchController.dispose();
+    _fileSearchFocus.dispose();
     super.dispose();
   }
 
@@ -108,6 +118,23 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
 
   int get _totalUnitFiles =>
       subjects.fold(0, (sum, subject) => sum + subject.fileCount);
+
+  List<StudyMaterial> get _visibleFiles {
+    final query = _fileQuery.trim().toLowerCase();
+    return currentFiles.where((file) {
+      if (_fileTypeFilter != 'All' && file.type != _fileTypeFilter) {
+        return false;
+      }
+      if (query.isEmpty) return true;
+      return file.name.toLowerCase().contains(query);
+    }).toList();
+  }
+
+  void _resetFileSearch() {
+    _fileSearchController.clear();
+    _fileQuery = '';
+    _fileTypeFilter = 'All';
+  }
 
   void _openUnit(Subject subject) {
     HapticFeedback.lightImpact();
@@ -199,6 +226,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
       currentFiles = [];
       downloadingFiles.clear();
       downloadProgress.clear();
+      _resetFileSearch();
     });
 
     try {
@@ -874,6 +902,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
       currentFiles = [];
       downloadingFiles.clear();
       downloadProgress.clear();
+      _resetFileSearch();
     });
   }
 
@@ -1073,9 +1102,9 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
         top: 12,
         bottom: AdaptiveLayout.bottomClearance(context),
       ),
-      itemCount: currentFiles.length,
+      itemCount: _visibleFiles.length,
       itemBuilder: (context, index) {
-        final file = currentFiles[index];
+        final file = _visibleFiles[index];
         final fileColor = _getFileColor(file.type);
         final isDownloading = downloadingFiles[file.id] ?? false;
         final progress = downloadProgress[file.id] ?? 0.0;
@@ -1188,9 +1217,9 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
             crossAxisSpacing: 12,
             childAspectRatio: 0.78,
           ),
-          itemCount: currentFiles.length,
+          itemCount: _visibleFiles.length,
           itemBuilder: (context, index) {
-            final file = currentFiles[index];
+            final file = _visibleFiles[index];
             final isDownloading = downloadingFiles[file.id] ?? false;
             final progress = downloadProgress[file.id] ?? 0.0;
 
@@ -1315,9 +1344,28 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
   }
 
   Widget _buildFilesView() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final background =
+        isDark ? const Color(0xFF111827) : const Color(0xFFF8FAFC);
+    final titleColor =
+        isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
+    final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
+    final visibleFiles = _visibleFiles;
+    final folderCount = currentFiles.length;
+    final matchCount = visibleFiles.length;
+    final filesNoun = folderCount == 1 ? 'file' : 'files';
+    final isFiltering =
+        _fileQuery.trim().isNotEmpty || _fileTypeFilter != 'All';
+    final countLabel = isFiltering
+        ? '$matchCount of $folderCount $filesNoun'
+        : '$folderCount $filesNoun';
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: background,
       appBar: AppBar(
+        backgroundColor: background,
+        foregroundColor: titleColor,
+        elevation: 0,
         toolbarHeight: 52,
         centerTitle: false,
         titleSpacing: 0,
@@ -1330,16 +1378,18 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
           children: [
             Text(
               selectedSubject!.name,
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: 18,
+                color: titleColor,
               ),
             ),
             Text(
               selectedSubject!.code,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.normal,
+                color: muted,
               ),
             ),
           ],
@@ -1390,81 +1440,271 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
           if (isUploading)
             LinearProgressIndicator(
               value: uploadProgress > 0 ? uploadProgress : null,
-              backgroundColor: const Color(0xFFE5E7EB),
+              backgroundColor: isDark
+                  ? const Color(0xFF374151)
+                  : const Color(0xFFE5E7EB),
               valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
               minHeight: 3,
             ),
+          if (!isLoadingFiles && currentFiles.isNotEmpty)
+            _buildFolderFileSearch(
+              isDark: isDark,
+              muted: muted,
+              countLabel: countLabel,
+            ),
           Expanded(
             child: isLoadingFiles
-          ? const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
-                  ),
-                  SizedBox(height: 16),
-                  Text(
-                    'Loading files...',
-                    style: TextStyle(
-                      color: Color(0xFF6B7280),
-                      fontSize: 16,
-                    ),
-                  ),
-                ],
-              ),
-            )
-          : currentFiles.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.folder_open_rounded,
-                        size: 64,
-                        color: Colors.grey[400],
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'No files found',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'This units folder is empty',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[500],
-                        ),
-                      ),
-                      if (_isLiveFolder &&
-                          _canManageFolders &&
-                          selectedSubject!.folderId.isNotEmpty) ...[
-                        const SizedBox(height: 20),
-                        FilledButton.icon(
-                          onPressed: isUploading ? null : _pickAndUploadFile,
-                          style: FilledButton.styleFrom(
-                            backgroundColor: const Color(0xFF6366F1),
+                ? const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Color(0xFF6366F1),
                           ),
-                          icon: const Icon(Icons.upload_file_rounded),
-                          label: const Text('Upload file'),
+                        ),
+                        SizedBox(height: 16),
+                        Text(
+                          'Loading files...',
+                          style: TextStyle(
+                            color: Color(0xFF6B7280),
+                            fontSize: 16,
+                          ),
                         ),
                       ],
-                    ],
-                  ),
-                )
-              : RefreshIndicator(
-                  onRefresh: () => _loadSubjectFiles(selectedSubject!),
-                  child: _useLargeIcons
-                      ? _buildLargeIconsGrid()
-                      : _buildDetailsFileList(),
-                ),
+                    ),
+                  )
+                : currentFiles.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.folder_open_rounded,
+                              size: 64,
+                              color: Colors.grey[400],
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'No files found',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'This units folder is empty',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[500],
+                              ),
+                            ),
+                            if (_isLiveFolder &&
+                                _canManageFolders &&
+                                selectedSubject!.folderId.isNotEmpty) ...[
+                              const SizedBox(height: 20),
+                              FilledButton.icon(
+                                onPressed:
+                                    isUploading ? null : _pickAndUploadFile,
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: const Color(0xFF6366F1),
+                                ),
+                                icon: const Icon(Icons.upload_file_rounded),
+                                label: const Text('Upload file'),
+                              ),
+                            ],
+                          ],
+                        ),
+                      )
+                    : RefreshIndicator(
+                        color: const Color(0xFF6366F1),
+                        onRefresh: () =>
+                            _loadSubjectFiles(selectedSubject!),
+                        child: visibleFiles.isEmpty
+                            ? ListView(
+                                physics:
+                                    const AlwaysScrollableScrollPhysics(),
+                                children: [
+                                  SizedBox(
+                                    height: MediaQuery.sizeOf(context)
+                                            .height *
+                                        0.28,
+                                    child: Center(
+                                      child: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.search_off_rounded,
+                                            size: 56,
+                                            color: muted,
+                                          ),
+                                          const SizedBox(height: 12),
+                                          Text(
+                                            'No matching files',
+                                            style: TextStyle(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.w600,
+                                              color: titleColor,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Text(
+                                            _fileQuery.trim().isEmpty
+                                                ? 'Try a different filter'
+                                                : 'Nothing matches “${_fileQuery.trim()}”',
+                                            style: TextStyle(
+                                              fontSize: 14,
+                                              color: muted,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              )
+                            : _useLargeIcons
+                                ? _buildLargeIconsGrid()
+                                : _buildDetailsFileList(),
+                      ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildFolderFileSearch({
+    required bool isDark,
+    required Color muted,
+    required String countLabel,
+  }) {
+    const accent = Color(0xFF818CF8);
+    final fieldFill =
+        isDark ? const Color(0xFF1F2937) : const Color(0xFFEEF2F6);
+    final chipFill =
+        isDark ? const Color(0xFF1F2937) : Colors.white;
+    final chipBorder = isDark
+        ? const Color(0xFF374151)
+        : const Color(0xFFE5E7EB);
+    final highlighted = _fileSearchFocus.hasFocus || _fileQuery.isNotEmpty;
+    final pagePad = AdaptiveLayout.pagePadding(context);
+
+    return Padding(
+      padding: pagePad.copyWith(top: 4, bottom: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextField(
+            controller: _fileSearchController,
+            focusNode: _fileSearchFocus,
+            onChanged: (value) => setState(() => _fileQuery = value),
+            textInputAction: TextInputAction.search,
+            style: TextStyle(
+              color: isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827),
+              fontSize: 15,
+            ),
+            decoration: InputDecoration(
+              hintText: 'Search notes, slides, labs...',
+              hintStyle: TextStyle(color: muted, fontSize: 15),
+              prefixIcon: Icon(
+                Icons.search_rounded,
+                color: highlighted ? accent : muted,
+              ),
+              suffixIcon: _fileQuery.isEmpty
+                  ? null
+                  : IconButton(
+                      tooltip: 'Clear search',
+                      onPressed: () {
+                        _fileSearchController.clear();
+                        setState(() => _fileQuery = '');
+                      },
+                      icon: Icon(Icons.close_rounded, color: muted),
+                    ),
+              filled: true,
+              fillColor: fieldFill,
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(999),
+                borderSide: BorderSide(
+                  color: highlighted
+                      ? accent
+                      : (isDark
+                          ? const Color(0xFF374151)
+                          : const Color(0xFFD1D5DB)),
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(999),
+                borderSide: const BorderSide(color: accent, width: 1.4),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final label in _fileTypeFilters)
+                _fileFilterChip(
+                  label,
+                  selected: _fileTypeFilter == label,
+                  fill: chipFill,
+                  border: chipBorder,
+                  muted: muted,
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            countLabel,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: muted,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _fileFilterChip(
+    String label, {
+    required bool selected,
+    required Color fill,
+    required Color border,
+    required Color muted,
+  }) {
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        setState(() => _fileTypeFilter = label);
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xFF7C83F8) : fill,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: selected ? const Color(0xFF7C83F8) : border,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: selected ? Colors.white : muted,
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+          ),
+        ),
       ),
     );
   }
