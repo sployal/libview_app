@@ -999,12 +999,15 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
   Widget _filePreview(StudyMaterial file, {required double iconSize}) {
     return Image.network(
       _previewUrl(file),
+      key: ValueKey('preview-${file.id}'),
       fit: BoxFit.cover,
       width: double.infinity,
       height: double.infinity,
+      gaplessPlayback: true,
+      cacheWidth: 400,
       errorBuilder: (_, __, ___) => _fileTypeFallback(file, iconSize: iconSize),
-      loadingBuilder: (context, child, progress) {
-        if (progress == null) return child;
+      frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+        if (wasSynchronouslyLoaded || frame != null) return child;
         return _fileTypeFallback(file, iconSize: iconSize);
       },
     );
@@ -1110,6 +1113,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
         final progress = downloadProgress[file.id] ?? 0.0;
 
         return Container(
+          key: ValueKey(file.id),
           margin: const EdgeInsets.only(bottom: 12),
           decoration: _fileCardDecoration(),
           child: Material(
@@ -1224,6 +1228,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
             final progress = downloadProgress[file.id] ?? 0.0;
 
             return Container(
+              key: ValueKey(file.id),
               decoration: _fileCardDecoration(),
               child: Material(
                 color: Colors.transparent,
@@ -1362,6 +1367,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
 
     return Scaffold(
       backgroundColor: background,
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(
         backgroundColor: background,
         foregroundColor: titleColor,
@@ -1416,7 +1422,12 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
               _canManageFolders &&
               selectedSubject!.folderId.isNotEmpty
           ? _fabAboveNav(
-              FloatingActionButton.extended(
+              IgnorePointer(
+                ignoring: _fileSearchFocus.hasFocus,
+                child: AnimatedOpacity(
+                  opacity: _fileSearchFocus.hasFocus ? 0 : 1,
+                  duration: const Duration(milliseconds: 120),
+                  child: FloatingActionButton.extended(
                 onPressed: isUploading ? null : _pickAndUploadFile,
                 backgroundColor: const Color(0xFF6366F1),
                 foregroundColor: Colors.white,
@@ -1433,9 +1444,14 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                     : const Icon(Icons.upload_file_rounded),
                 label: Text(isUploading ? 'Uploading...' : 'Upload file'),
               ),
+                ),
+              ),
             )
           : null,
-      body: Column(
+      body: MediaQuery.removeViewInsets(
+        context: context,
+        removeBottom: true,
+        child: Column(
         children: [
           if (isUploading)
             LinearProgressIndicator(
@@ -1573,6 +1589,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
           ),
         ],
       ),
+      ),
     );
   }
 
@@ -1601,6 +1618,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
             controller: _fileSearchController,
             focusNode: _fileSearchFocus,
             onChanged: (value) => setState(() => _fileQuery = value),
+            onTapOutside: (_) => _fileSearchFocus.unfocus(),
             textInputAction: TextInputAction.search,
             style: TextStyle(
               color: isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827),

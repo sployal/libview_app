@@ -357,6 +357,7 @@ class _MainScreenState extends State<MainScreen>
         },
         child: Scaffold(
           extendBody: true,
+          resizeToAvoidBottomInset: false,
           backgroundColor:
               isDark ? const Color(0xFF111827) : const Color(0xFFF8FAFC),
           body: FadeTransition(
