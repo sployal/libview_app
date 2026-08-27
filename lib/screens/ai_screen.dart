@@ -729,7 +729,7 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             Text(
-              'Ask UniStudy AI',
+              'Ask Edupal AI',
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,

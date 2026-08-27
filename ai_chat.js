@@ -2,7 +2,7 @@ const axios = require('axios');
 
 const INVOKE_URL = 'https://integrate.api.nvidia.com/v1/chat/completions';
 const SYSTEM_PROMPT =
-  'You are UniStudy AI, a helpful university study assistant. ' +
+  'You are Edupal AI, a helpful university study assistant. ' +
   'Answer clearly and concisely. Help with coursework, exam prep, ' +
   'explanations, summaries, diagrams in images, and study planning. ' +
   'If a question is outside academics, still be helpful but keep a study-focused tone.';

@@ -21,6 +21,7 @@ import 'login/auth_screen.dart';
 import 'login/onboarding_screen.dart';
 import 'screens/app_update_screen.dart';
 import 'screens/suspend_account.dart';
+import 'ui/app_splash_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -45,7 +46,7 @@ class StudyApp extends StatelessWidget {
       listenable: ThemeController.instance,
       builder: (context, _) {
         return MaterialApp(
-          title: 'UniStudy',
+          title: 'Edupal',
           debugShowCheckedModeBanner: false,
           theme: ThemeData(
             primarySwatch: Colors.blue,
@@ -84,7 +85,9 @@ class StudyApp extends StatelessWidget {
             splashFactory: NoSplash.splashFactory,
           ),
           themeMode: ThemeController.instance.mode,
-          home: const AppUpdateGate(child: AuthGate()),
+          home: const SplashGate(
+            child: AppUpdateGate(child: AuthGate()),
+          ),
         );
       },
     );
@@ -102,11 +105,7 @@ class AuthGate extends StatelessWidget {
       builder: (context, snapshot) {
         // Show loading while checking auth state
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(
-              child: CircularProgressIndicator(),
-            ),
-          );
+          return const AppSplashScreen();
         }
 
         final user = snapshot.data;
@@ -117,11 +116,7 @@ class AuthGate extends StatelessWidget {
             builder: (context, profileSnapshot) {
               if (profileSnapshot.connectionState == ConnectionState.waiting &&
                   !profileSnapshot.hasData) {
-                return const Scaffold(
-                  body: Center(
-                    child: CircularProgressIndicator(),
-                  ),
-                );
+                return const AppSplashScreen();
               }
 
               final profileData = profileSnapshot.data?.data();
@@ -183,9 +178,7 @@ class _OnboardingGateState extends State<OnboardingGate> {
   @override
   Widget build(BuildContext context) {
     if (_seen == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const AppSplashScreen();
     }
     if (!_seen!) {
       return OnboardingScreen(
