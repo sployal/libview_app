@@ -454,15 +454,11 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
       return;
     }
 
-    final originalExtension = _fileExtension(material.name);
     final name = await _promptFolderName(
       title: 'Rename file',
       confirmLabel: 'Rename',
       initial: _fileStem(material.name),
       fieldLabel: 'File name',
-      helperText: originalExtension.isEmpty
-          ? null
-          : 'The $originalExtension extension is kept automatically.',
     );
     if (name == null) return;
 
