@@ -54,7 +54,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
   String _fileTypeFilter = 'All';
   final TextEditingController _fileSearchController = TextEditingController();
   final FocusNode _fileSearchFocus = FocusNode();
-  static const _fileTypeFilters = ['All', 'PDF', 'IMG'];
+  static const _fileTypeFilters = ['All', 'PDF', 'DOC', 'PPT', 'IMG'];
   static const _filesViewPrefKey = 'semester_files_view_large_icons';
   static const _unitsViewPrefKey = 'semester_units_view_grid';
 
