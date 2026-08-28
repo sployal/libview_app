@@ -1735,7 +1735,11 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     final titleColor =
         isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
     final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
-    final field = isDark ? const Color(0xFF111827) : const Color(0xFFEEF2F6);
+    const accent = Color(0xFF818CF8);
+    final fieldFill =
+        isDark ? const Color(0xFF1F2937) : const Color(0xFFEEF2F6);
+    final unitSearchHighlighted =
+        _unitSearchFocus.hasFocus || _unitQuery.isNotEmpty;
     final visible = _visibleUnits;
     final totalFiles = _totalUnitFiles;
     final pagePad = AdaptiveLayout.pagePadding(context);
@@ -1843,30 +1847,57 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                         },
                         onTapOutside: (_) => _unitSearchFocus.unfocus(),
                         textInputAction: TextInputAction.search,
+                        style: TextStyle(
+                          color: isDark
+                              ? const Color(0xFFF9FAFB)
+                              : const Color(0xFF111827),
+                          fontSize: 15,
+                        ),
                         decoration: InputDecoration(
                           hintText: 'Search units',
-                          prefixIcon: const Icon(Icons.search_rounded),
+                          hintStyle: TextStyle(color: muted, fontSize: 15),
+                          prefixIcon: Icon(
+                            Icons.search_rounded,
+                            color: unitSearchHighlighted ? accent : muted,
+                          ),
                           suffixIcon: _unitQuery.isEmpty
                               ? null
                               : IconButton(
-                                  icon: const Icon(Icons.close_rounded),
+                                  tooltip: 'Clear search',
                                   onPressed: () {
                                     _unitSearchController.clear();
                                     setState(() {
                                       _unitQuery = '';
                                     });
                                   },
+                                  icon: Icon(
+                                    Icons.close_rounded,
+                                    color: muted,
+                                  ),
                                 ),
                           filled: true,
-                          fillColor: field,
+                          fillColor: fieldFill,
                           isDense: true,
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 16,
-                            vertical: 10,
+                            vertical: 14,
                           ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(14),
-                            borderSide: BorderSide.none,
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(999),
+                            borderSide: BorderSide(
+                              color: unitSearchHighlighted
+                                  ? accent
+                                  : (isDark
+                                      ? const Color(0xFF374151)
+                                      : const Color(0xFFD1D5DB)),
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(999),
+                            borderSide: const BorderSide(
+                              color: accent,
+                              width: 1.4,
+                            ),
                           ),
                         ),
                       ),
