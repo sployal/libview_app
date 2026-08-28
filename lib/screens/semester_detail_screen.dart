@@ -50,6 +50,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
   bool _unitsAsGrid = true;
   String _unitQuery = '';
   final TextEditingController _unitSearchController = TextEditingController();
+  final FocusNode _unitSearchFocus = FocusNode();
   String _fileQuery = '';
   String _fileTypeFilter = 'All';
   final TextEditingController _fileSearchController = TextEditingController();
@@ -66,6 +67,9 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     _loadUserRole();
     _loadFilesViewPreference();
     _loadSubjects();
+    _unitSearchFocus.addListener(() {
+      if (mounted) setState(() {});
+    });
     _fileSearchFocus.addListener(() {
       if (mounted) setState(() {});
     });
@@ -83,6 +87,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
   @override
   void dispose() {
     _unitSearchController.dispose();
+    _unitSearchFocus.dispose();
     _fileSearchController.dispose();
     _fileSearchFocus.dispose();
     super.dispose();
@@ -1739,28 +1744,39 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
 
     return Scaffold(
       backgroundColor: background,
+      resizeToAvoidBottomInset: false,
       floatingActionButton: _isLiveFolder && _canManageFolders
           ? _fabAboveNav(
-              FloatingActionButton.extended(
-                onPressed: _isMutatingFolder ? null : _createUnitFolder,
-                backgroundColor: const Color(0xFF6366F1),
-                foregroundColor: Colors.white,
-                icon: _isMutatingFolder
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
-                    : const Icon(Icons.create_new_folder_rounded),
-                label: Text(_isMutatingFolder ? 'Working...' : 'New unit'),
+              IgnorePointer(
+                ignoring: _unitSearchFocus.hasFocus,
+                child: AnimatedOpacity(
+                  opacity: _unitSearchFocus.hasFocus ? 0 : 1,
+                  duration: const Duration(milliseconds: 120),
+                  child: FloatingActionButton.extended(
+                    onPressed: _isMutatingFolder ? null : _createUnitFolder,
+                    backgroundColor: const Color(0xFF6366F1),
+                    foregroundColor: Colors.white,
+                    icon: _isMutatingFolder
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : const Icon(Icons.create_new_folder_rounded),
+                    label: Text(_isMutatingFolder ? 'Working...' : 'New unit'),
+                  ),
+                ),
               ),
             )
           : null,
-      body: RefreshIndicator(
+      body: MediaQuery.removeViewInsets(
+        context: context,
+        removeBottom: true,
+        child: RefreshIndicator(
         color: const Color(0xFF6366F1),
         onRefresh: _refreshSubjects,
         child: CustomScrollView(
@@ -1819,11 +1835,13 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                       const SizedBox(height: 10),
                       TextField(
                         controller: _unitSearchController,
+                        focusNode: _unitSearchFocus,
                         onChanged: (value) {
                           setState(() {
                             _unitQuery = value;
                           });
                         },
+                        onTapOutside: (_) => _unitSearchFocus.unfocus(),
                         textInputAction: TextInputAction.search,
                         decoration: InputDecoration(
                           hintText: 'Search units',
@@ -2013,6 +2031,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                 ),
               ),
           ],
+        ),
         ),
       ),
     );
