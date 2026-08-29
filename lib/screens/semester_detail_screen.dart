@@ -46,8 +46,8 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
   double uploadProgress = 0.0;
   bool _isMutatingFolder = false;
   String _role = 'student';
-  bool _useLargeIcons = false;
-  bool _unitsAsGrid = true;
+  bool _useLargeIcons = true;
+  bool _unitsAsGrid = false;
   String _unitQuery = '';
   final TextEditingController _unitSearchController = TextEditingController();
   final FocusNode _unitSearchFocus = FocusNode();
@@ -56,8 +56,8 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
   final TextEditingController _fileSearchController = TextEditingController();
   final FocusNode _fileSearchFocus = FocusNode();
   static const _fileTypeFilters = ['All', 'PDF', 'DOC', 'PPT', 'IMG'];
-  static const _filesViewPrefKey = 'semester_files_view_large_icons';
-  static const _unitsViewPrefKey = 'semester_units_view_grid';
+  static const _filesViewPrefKey = 'semester_files_view_grid';
+  static const _unitsViewPrefKey = 'semester_units_view_list';
 
   bool get _canManageFolders => _role != 'student';
 
@@ -79,8 +79,8 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
     setState(() {
-      _useLargeIcons = prefs.getBool(_filesViewPrefKey) ?? false;
-      _unitsAsGrid = prefs.getBool(_unitsViewPrefKey) ?? true;
+      _useLargeIcons = prefs.getBool(_filesViewPrefKey) ?? true;
+      _unitsAsGrid = prefs.getBool(_unitsViewPrefKey) ?? false;
     });
   }
 
