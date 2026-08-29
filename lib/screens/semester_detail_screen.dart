@@ -1,6 +1,9 @@
-import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:image_picker_android/image_picker_android.dart';
+import 'package:image_picker_platform_interface/image_picker_platform_interface.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/auth_service.dart';
 import '../services/google_drive_service.dart';
@@ -44,6 +47,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
   final Set<String> _deletingIds = {};
   bool isUploading = false;
   double uploadProgress = 0.0;
+  static const int _maxImageUploadSelection = 10;
   bool _isMutatingFolder = false;
   String _role = 'student';
   bool _useLargeIcons = true;
@@ -858,40 +862,67 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
       return;
     }
 
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.image,
-      withData: true,
-      dialogTitle: 'Choose a photo',
-    );
+    _enableAndroidPhotoPicker();
+    List<XFile> images;
+    try {
+      images = await ImagePicker().pickMultiImage(
+        limit: _maxImageUploadSelection,
+      );
+    } on PlatformException catch (e) {
+      if (!mounted) return;
+      _showMessage(
+        e.message ?? 'Could not open photos',
+        isError: true,
+      );
+      return;
+    }
+    if (images.isEmpty || !mounted) return;
+    if (images.length > _maxImageUploadSelection) {
+      _showMessage(
+        'You can upload up to $_maxImageUploadSelection images at a time',
+        isError: true,
+      );
+      return;
+    }
 
-    if (result == null || result.files.isEmpty) return;
+    final picked = <PhonePickedDocument>[];
+    final usedNames = <String>{};
+    for (final image in images) {
+      final name = _uniquePickedName(image.name, usedNames);
+      usedNames.add(name);
+      picked.add(
+        PhonePickedDocument(
+          name: name,
+          path: image.path,
+          sizeBytes: await image.length(),
+        ),
+      );
+    }
 
-    final file = result.files.first;
-    await _uploadPickedFile(
-      folderId: subject.folderId,
-      fileName: file.name,
-      filePath: file.path,
-      bytes: file.bytes,
-    );
+    if (picked.isEmpty || !mounted) return;
+    await _uploadPickedFiles(subject.folderId, picked);
   }
 
-  Future<void> _uploadPickedFile({
-    required String folderId,
-    required String fileName,
-    String? filePath,
-    List<int>? bytes,
-  }) {
-    return _uploadPickedFiles(
-      folderId,
-      [
-        PhonePickedDocument(
-          name: fileName,
-          path: filePath ?? '',
-          sizeBytes: bytes?.length ?? 0,
-        ),
-      ],
-      bytesByName: bytes == null ? null : {fileName: bytes},
-    );
+  void _enableAndroidPhotoPicker() {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
+    final implementation = ImagePickerPlatform.instance;
+    if (implementation is ImagePickerAndroid) {
+      implementation.useAndroidPhotoPicker = true;
+    }
+  }
+
+  String _uniquePickedName(String fileName, Iterable<String> usedNames) {
+    if (!usedNames.contains(fileName)) return fileName;
+    final dot = fileName.lastIndexOf('.');
+    final stem = dot > 0 ? fileName.substring(0, dot) : fileName;
+    final ext = dot > 0 ? fileName.substring(dot) : '';
+    var n = 2;
+    var candidate = '${stem}_$n$ext';
+    while (usedNames.contains(candidate)) {
+      n++;
+      candidate = '${stem}_$n$ext';
+    }
+    return candidate;
   }
 
   Future<void> _uploadPickedFiles(
@@ -940,7 +971,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
         _showMessage(
           uploaded == 1
               ? '${files.first.name} uploaded successfully'
-              : '$uploaded documents uploaded successfully',
+              : '$uploaded files uploaded successfully',
         );
       } else if (uploaded > 0) {
         _showMessage(
