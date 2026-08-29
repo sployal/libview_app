@@ -51,6 +51,105 @@ class _WebViewScreenState extends State<WebViewScreen> {
     }
   }
 
+  static const String _viewerCleanupJs = r'''
+(function() {
+  var root = document.head || document.documentElement;
+  if (!root) return;
+
+  if (!document.getElementById('edupal-hide-open-style')) {
+    var css = document.createElement('style');
+    css.id = 'edupal-hide-open-style';
+    css.textContent = [
+      '.ndfHFb-c4YZDc-Wrql6b,',
+      '.ndfHFb-c4YZDc-GSQQnc-LgbsSe,',
+      '.ndfHFb-c4YZDc-to915-LbYbvg,',
+      '.ndfHFb-c4YZDc-nupQLb,',
+      '[aria-label*="Open with" i],',
+      '[aria-label*="Open in" i],',
+      '[aria-label*="Open original" i],',
+      '[aria-label*="Pop-out" i],',
+      '[aria-label*="Pop out" i],',
+      '[data-tooltip*="Open with" i],',
+      '[data-tooltip*="Open in" i],',
+      'a[href*="drive.google.com/open"],',
+      'a[href*="/open?id="]',
+      '{ display: none !important; visibility: hidden !important;',
+      '  opacity: 0 !important; pointer-events: none !important; }'
+    ].join(' ');
+    root.appendChild(css);
+  }
+
+  function textOf(el) {
+    return ((el.getAttribute('aria-label') || '') + ' ' +
+            (el.getAttribute('title') || '') + ' ' +
+            (el.getAttribute('data-tooltip') || '') + ' ' +
+            (el.textContent || '')).toLowerCase();
+  }
+
+  function shouldHide(el) {
+    var t = textOf(el);
+    return t.indexOf('open with') !== -1 ||
+           t.indexOf('open in') !== -1 ||
+           t.indexOf('open original') !== -1 ||
+           t.indexOf('pop-out') !== -1 ||
+           t.indexOf('pop out') !== -1 ||
+           ((t.indexOf('open file') !== -1 || t.indexOf('open this file') !== -1) &&
+            (t.indexOf('drive') !== -1 || t.indexOf('docs') !== -1 ||
+             t.indexOf('link') !== -1));
+  }
+
+  function hide(el) {
+    if (!el || !el.style) return;
+    el.style.setProperty('display', 'none', 'important');
+    el.style.setProperty('visibility', 'hidden', 'important');
+    el.style.setProperty('opacity', '0', 'important');
+    el.style.setProperty('pointer-events', 'none', 'important');
+  }
+
+  function hideOpenUi() {
+    document.querySelectorAll('button, a, [role="button"]').forEach(function(el) {
+      if (shouldHide(el)) hide(el);
+    });
+    document.querySelectorAll(
+      '.ndfHFb-c4YZDc-Wrql6b, [role="dialog"], [role="alertdialog"], [role="status"]'
+    ).forEach(function(el) {
+      if (el.classList && el.classList.contains('ndfHFb-c4YZDc-Wrql6b')) {
+        hide(el);
+        return;
+      }
+      if (shouldHide(el)) hide(el);
+    });
+  }
+
+  if (!window.__edupalHideOpen) {
+    window.__edupalHideOpen = true;
+    try {
+      var meta = document.createElement('meta');
+      meta.name = 'viewport';
+      meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=10.0, user-scalable=yes';
+      root.appendChild(meta);
+    } catch (e) {}
+    new MutationObserver(hideOpenUi).observe(document.documentElement, {
+      childList: true,
+      subtree: true
+    });
+  }
+  hideOpenUi();
+})();
+''';
+
+  void _injectViewerCleanup() {
+    _controller.runJavaScript(_viewerCleanupJs).ignore();
+  }
+
+  bool _isExternalAppUrl(String url) {
+    final lower = url.toLowerCase();
+    return lower.startsWith('intent:') ||
+        lower.startsWith('market:') ||
+        lower.startsWith('android-app:') ||
+        lower.contains('play.google.com/store');
+  }
+
   void _initializeWebView() {
     // Convert the URL to preview format before loading
     final previewUrl = _convertToPreviewUrl(widget.url);
@@ -63,56 +162,26 @@ class _WebViewScreenState extends State<WebViewScreen> {
       ..setNavigationDelegate(
         NavigationDelegate(
           onProgress: (int progress) {
-            // Update loading bar
+            if (progress >= 10) {
+              _injectViewerCleanup();
+            }
           },
           onPageStarted: (String url) {
             setState(() {
               isLoading = true;
             });
+            _injectViewerCleanup();
           },
           onPageFinished: (String url) {
-            setState(() {
-              isLoading = false;
+            _injectViewerCleanup();
+            // Keep the overlay up until the hide CSS is in the page so the
+            // Drive "Open" chip never paints for a frame.
+            Future.delayed(const Duration(milliseconds: 350), () {
+              if (!mounted) return;
+              setState(() {
+                isLoading = false;
+              });
             });
-            
-            // ⭐ Inject JavaScript to enhance PDF zoom and hide only the "Open with" button
-            _controller.runJavaScript('''
-              // Enable viewport zooming for better PDF viewing
-              var meta = document.createElement('meta');
-              meta.name = 'viewport';
-              meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=10.0, user-scalable=yes';
-              document.getElementsByTagName('head')[0].appendChild(meta);
-              
-              // Function to hide only the "Open with Google Drive" button
-              function hideOpenButton() {
-                // Target the specific floating button (usually in top-right corner)
-                var buttons = document.querySelectorAll('button, a');
-                buttons.forEach(function(btn) {
-                  var ariaLabel = btn.getAttribute('aria-label') || '';
-                  var title = btn.getAttribute('title') || '';
-                  var text = btn.textContent || '';
-                  
-                  // Only hide if it's the "Open with" button
-                  if (ariaLabel.toLowerCase().includes('open with') ||
-                      title.toLowerCase().includes('open with') ||
-                      text.toLowerCase().includes('open with')) {
-                    btn.style.display = 'none';
-                  }
-                });
-                
-                // Also target the specific Google Drive classes for the open button
-                var openButtons = document.querySelectorAll('.ndfHFb-c4YZDc-Wrql6b');
-                openButtons.forEach(function(btn) {
-                  btn.style.display = 'none';
-                });
-              }
-              
-              // Run immediately and after delays to catch dynamic content
-              hideOpenButton();
-              setTimeout(hideOpenButton, 500);
-              setTimeout(hideOpenButton, 1500);
-              setTimeout(hideOpenButton, 3000);
-            ''');
           },
           onWebResourceError: (WebResourceError error) {
             // Ignore sub-resource failures (ads, blocked requests, etc.)
@@ -122,6 +191,9 @@ class _WebViewScreenState extends State<WebViewScreen> {
             });
           },
           onNavigationRequest: (NavigationRequest request) {
+            if (_isExternalAppUrl(request.url)) {
+              return NavigationDecision.prevent;
+            }
             // Block navigation to comment-related URLs
             if (request.url.contains('/comments') ||
                 request.url.contains('/getcomments') ||
