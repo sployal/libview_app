@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../services/app_update_service.dart';
+import '../ui/app_splash_screen.dart';
 import '../services/download_service.dart';
 
 class AppUpdateGate extends StatefulWidget {
@@ -71,6 +72,9 @@ class _AppUpdateGateState extends State<AppUpdateGate>
   Widget build(BuildContext context) {
     final release = _requiredUpdate;
     if (release == null) return widget.child;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      StartupOverlay.instance.revealDestination();
+    });
     return AppUpdateScreen(release: release);
   }
 }

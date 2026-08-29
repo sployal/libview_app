@@ -98,6 +98,12 @@ class StudyApp extends StatelessWidget {
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
 
+  static void _revealAfterFirstFrame() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      StartupOverlay.instance.revealDestination();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<firebase_auth.User?>(
@@ -105,7 +111,8 @@ class AuthGate extends StatelessWidget {
       builder: (context, snapshot) {
         // Show loading while checking auth state
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const AppSplashScreen();
+          StartupOverlay.instance.setProgress(0.22);
+          return const StartupHold();
         }
 
         final user = snapshot.data;
@@ -116,19 +123,23 @@ class AuthGate extends StatelessWidget {
             builder: (context, profileSnapshot) {
               if (profileSnapshot.connectionState == ConnectionState.waiting &&
                   !profileSnapshot.hasData) {
-                return const AppSplashScreen();
+                StartupOverlay.instance.setProgress(0.36);
+                return const StartupHold();
               }
 
               final profileData = profileSnapshot.data?.data();
               if (AuthService.isAccountSuspended(profileData)) {
+                _revealAfterFirstFrame();
                 return SuspendedAccountScreen(
                   message: AuthService.suspensionMessageFor(profileData),
                 );
               }
               if (!AuthService.instance.isProfileDataComplete(profileData)) {
+                _revealAfterFirstFrame();
                 return const AuthScreen(needsProfileCompletion: true);
               }
 
+              StartupOverlay.instance.expectHome();
               return const MainScreen();
             },
           );
@@ -178,8 +189,12 @@ class _OnboardingGateState extends State<OnboardingGate> {
   @override
   Widget build(BuildContext context) {
     if (_seen == null) {
-      return const AppSplashScreen();
+      StartupOverlay.instance.setProgress(0.28);
+      return const StartupHold();
     }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      StartupOverlay.instance.revealDestination();
+    });
     if (!_seen!) {
       return OnboardingScreen(
         onGetStarted: () => _finish(authTab: 1),

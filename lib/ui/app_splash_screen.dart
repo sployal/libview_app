@@ -1,281 +1,116 @@
-import 'dart:math' as math;
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-class AppSplashScreen extends StatefulWidget {
-  const AppSplashScreen({super.key});
+/// Tracks real startup work and keeps the splash overlay up until
+/// the destination screen (home, auth, or onboarding) is ready to show.
+class StartupOverlay extends ChangeNotifier {
+  StartupOverlay._();
 
-  @override
-  State<AppSplashScreen> createState() => _AppSplashScreenState();
+  static final StartupOverlay instance = StartupOverlay._();
+
+  double _progress = 0.08;
+  bool _visible = true;
+  bool _completing = false;
+  bool _awaitingHome = false;
+
+  double get progress => _progress;
+  bool get visible => _visible;
+  bool get awaitingHome => _awaitingHome;
+
+  void setProgress(double value) {
+    if (_completing) return;
+    final next = value.clamp(0.0, 0.98);
+    if (next <= _progress) return;
+    _progress = next;
+    _notifySafe();
+  }
+
+  void expectHome() {
+    if (_completing) return;
+    _awaitingHome = true;
+    setProgress(0.48);
+  }
+
+  void revealDestination() {
+    _awaitingHome = false;
+    complete();
+  }
+
+  void _notifySafe() {
+    final notify = notifyListeners;
+    WidgetsBinding.instance.addPostFrameCallback((_) => notify());
+  }
+
+  void completeIfAwaitingHome() {
+    if (_awaitingHome) complete();
+  }
+
+  void complete() {
+    if (_completing) return;
+    _completing = true;
+    _awaitingHome = false;
+    _progress = 1;
+    _notifySafe();
+  }
+
+  void hide() {
+    if (!_visible) return;
+    _visible = false;
+    _notifySafe();
+  }
 }
 
-class _AppSplashScreenState extends State<AppSplashScreen>
-    with TickerProviderStateMixin {
-  late final AnimationController _intro;
-  late final AnimationController _pulse;
-  late final Animation<double> _logoScale;
-  late final Animation<double> _logoOpacity;
-  late final Animation<double> _copyOpacity;
-  late final Animation<Offset> _copySlide;
+class AppSplashScreen extends StatelessWidget {
+  const AppSplashScreen({super.key, this.progress});
 
-  @override
-  void initState() {
-    super.initState();
-    _intro = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1100),
-    )..forward();
-    _pulse = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 2800),
-    )..repeat();
-
-    _logoScale = Tween<double>(begin: 0.78, end: 1).animate(
-      CurvedAnimation(
-        parent: _intro,
-        curve: const Interval(0, 0.7, curve: Curves.easeOutBack),
-      ),
-    );
-    _logoOpacity = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(
-        parent: _intro,
-        curve: const Interval(0, 0.45, curve: Curves.easeOut),
-      ),
-    );
-    _copyOpacity = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(
-        parent: _intro,
-        curve: const Interval(0.42, 1, curve: Curves.easeOut),
-      ),
-    );
-    _copySlide = Tween<Offset>(
-      begin: const Offset(0, 0.18),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        parent: _intro,
-        curve: const Interval(0.42, 1, curve: Curves.easeOutCubic),
-      ),
-    );
-  }
-
-  @override
-  void dispose() {
-    _intro.dispose();
-    _pulse.dispose();
-    super.dispose();
-  }
+  final double? progress;
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final isDark = theme.brightness == Brightness.dark;
+    final background = theme.scaffoldBackgroundColor;
+    final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
+    final percent = ((progress ?? 0) * 100).clamp(0, 100).round();
+
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light.copyWith(
+      value: (isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark)
+          .copyWith(
         statusBarColor: Colors.transparent,
-        systemNavigationBarColor: const Color(0xFF07111F),
-        systemNavigationBarIconBrightness: Brightness.light,
+        systemNavigationBarColor: background,
+        systemNavigationBarIconBrightness:
+            isDark ? Brightness.light : Brightness.dark,
       ),
       child: Scaffold(
-        backgroundColor: const Color(0xFF07111F),
-        body: Stack(
-          fit: StackFit.expand,
-          children: [
-            const DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    Color(0xFF0A1628),
-                    Color(0xFF07111F),
-                    Color(0xFF0C2744),
-                  ],
+        backgroundColor: background,
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 48),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(99),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 10,
+                    backgroundColor: scheme.primary.withOpacity(0.14),
+                    color: scheme.primary,
+                  ),
                 ),
-              ),
-            ),
-            AnimatedBuilder(
-              animation: _pulse,
-              builder: (context, _) {
-                final pulse = _pulse.value;
-                return Stack(
-                  children: [
-                    Positioned(
-                      top: -80,
-                      right: -60,
-                      child: _GlowOrb(
-                        size: 280,
-                        color: const Color(0xFF00BFFF).withOpacity(0.18),
-                        scale: 0.92 + (0.08 * math.sin(pulse * math.pi * 2)),
-                      ),
-                    ),
-                    Positioned(
-                      bottom: -40,
-                      left: -70,
-                      child: _GlowOrb(
-                        size: 240,
-                        color: const Color(0xFF6366F1).withOpacity(0.22),
-                        scale: 0.94 + (0.08 * math.cos(pulse * math.pi * 2)),
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
-            SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
-                child: Column(
-                  children: [
-                    const Spacer(flex: 3),
-                    FadeTransition(
-                      opacity: _logoOpacity,
-                      child: ScaleTransition(
-                        scale: _logoScale,
-                        child: SizedBox(
-                          width: 196,
-                          height: 196,
-                          child: Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              AnimatedBuilder(
-                                animation: _pulse,
-                                builder: (context, _) {
-                                  return CustomPaint(
-                                    size: const Size(196, 196),
-                                    painter: _PulseRingsPainter(
-                                      progress: _pulse.value,
-                                    ),
-                                  );
-                                },
-                              ),
-                              Container(
-                                width: 132,
-                                height: 132,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Colors.white.withOpacity(0.06),
-                                  border: Border.all(
-                                    color: Colors.white.withOpacity(0.14),
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: const Color(0xFF00BFFF)
-                                          .withOpacity(0.28),
-                                      blurRadius: 36,
-                                      spreadRadius: 2,
-                                    ),
-                                  ],
-                                ),
-                                child: const Padding(
-                                  padding: EdgeInsets.all(18),
-                                  child: Image(
-                                    image: AssetImage('assets/splash_logo.png'),
-                                    fit: BoxFit.contain,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 28),
-                    FadeTransition(
-                      opacity: _copyOpacity,
-                      child: SlideTransition(
-                        position: _copySlide,
-                        child: Column(
-                          children: [
-                            const Text(
-                              'Edupal',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 34,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: -0.6,
-                                height: 1.1,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              'Notes, AI, and study flow — in one place',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.62),
-                                fontSize: 14.5,
-                                fontWeight: FontWeight.w500,
-                                height: 1.35,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const Spacer(flex: 4),
-                    FadeTransition(
-                      opacity: _copyOpacity,
-                      child: Column(
-                        children: [
-                          SizedBox(
-                            width: 128,
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(99),
-                              child: LinearProgressIndicator(
-                                minHeight: 3,
-                                backgroundColor: Colors.white.withOpacity(0.12),
-                                color: const Color(0xFF38BDF8),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          Text(
-                            'Getting things ready',
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.45),
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: 0.3,
-                            ),
-                          ),
-                          const SizedBox(height: 28),
-                        ],
-                      ),
-                    ),
-                  ],
+                const SizedBox(height: 14),
+                Text(
+                  'Loading $percent%',
+                  style: TextStyle(
+                    color: muted,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.2,
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _GlowOrb extends StatelessWidget {
-  const _GlowOrb({
-    required this.size,
-    required this.color,
-    required this.scale,
-  });
-
-  final double size;
-  final Color color;
-  final double scale;
-
-  @override
-  Widget build(BuildContext context) {
-    return Transform.scale(
-      scale: scale,
-      child: ImageFiltered(
-        imageFilter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
-        child: Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: color,
           ),
         ),
       ),
@@ -283,32 +118,16 @@ class _GlowOrb extends StatelessWidget {
   }
 }
 
-class _PulseRingsPainter extends CustomPainter {
-  _PulseRingsPainter({required this.progress});
-
-  final double progress;
+/// Theme-matched placeholder while auth/profile resolve under the overlay.
+class StartupHold extends StatelessWidget {
+  const StartupHold({super.key});
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    for (var i = 0; i < 3; i++) {
-      final t = (progress + (i * 0.28)) % 1.0;
-      final radius = 52 + (t * 46);
-      final paint = Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.6
-        ..color = Color.lerp(
-          const Color(0xFF00BFFF),
-          const Color(0xFF6366F1),
-          t,
-        )!.withOpacity((1 - t) * 0.38);
-      canvas.drawCircle(center, radius, paint);
-    }
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+    );
   }
-
-  @override
-  bool shouldRepaint(covariant _PulseRingsPainter oldDelegate) =>
-      oldDelegate.progress != progress;
 }
 
 class SplashGate extends StatefulWidget {
@@ -321,19 +140,55 @@ class SplashGate extends StatefulWidget {
 }
 
 class _SplashGateState extends State<SplashGate> {
-  bool _minTimeElapsed = false;
+  static const _fadeDuration = Duration(milliseconds: 220);
+  bool _fading = false;
 
   @override
   void initState() {
     super.initState();
-    Future<void>.delayed(const Duration(milliseconds: 2200), () {
-      if (mounted) setState(() => _minTimeElapsed = true);
+    StartupOverlay.instance.addListener(_onOverlay);
+    Future<void>.delayed(const Duration(seconds: 15), () {
+      if (StartupOverlay.instance.visible) {
+        StartupOverlay.instance.complete();
+      }
     });
   }
 
   @override
+  void dispose() {
+    StartupOverlay.instance.removeListener(_onOverlay);
+    super.dispose();
+  }
+
+  void _onOverlay() {
+    final overlay = StartupOverlay.instance;
+    if (overlay.progress >= 1 && overlay.visible && !_fading) {
+      _fading = true;
+      if (mounted) setState(() {});
+      Future<void>.delayed(_fadeDuration, () {
+        overlay.hide();
+      });
+    }
+    if (mounted) setState(() {});
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (!_minTimeElapsed) return const AppSplashScreen();
-    return widget.child;
+    final overlay = StartupOverlay.instance;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        widget.child,
+        if (overlay.visible)
+          IgnorePointer(
+            child: AnimatedOpacity(
+              opacity: _fading ? 0 : 1,
+              duration: _fadeDuration,
+              curve: Curves.easeOut,
+              child: AppSplashScreen(progress: overlay.progress),
+            ),
+          ),
+      ],
+    );
   }
 }
