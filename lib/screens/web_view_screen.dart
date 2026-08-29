@@ -25,6 +25,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
   bool isLoading = true;
   bool isDownloading = false;
   double downloadProgress = 0.0;
+  String? _activeDownloadFileId;
 
   @override
   void initState() {
@@ -202,6 +203,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
     setState(() {
       isDownloading = true;
       downloadProgress = 0.0;
+      _activeDownloadFileId = fileId;
     });
 
     // Step 2: Download file using the file ID
@@ -209,43 +211,56 @@ class _WebViewScreenState extends State<WebViewScreen> {
       fileId: fileId,
       subject: widget.subject ?? 'Unknown',
       onProgress: (progress) {
+        if (!mounted) return;
         setState(() {
           downloadProgress = progress;
         });
       },
     );
 
+    if (!mounted) return;
+
     setState(() {
       isDownloading = false;
+      _activeDownloadFileId = null;
     });
 
-    // Step 3: Show result to user
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(
-                result.success ? Icons.check_circle : Icons.error,
-                color: Colors.white,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(result.message),
-              ),
-            ],
-          ),
-          backgroundColor: result.success 
-              ? const Color(0xFF10B981) 
-              : const Color(0xFFEF4444),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          duration: Duration(seconds: result.success ? 3 : 5),
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              result.success
+                  ? Icons.check_circle
+                  : result.cancelled
+                      ? Icons.cancel_rounded
+                      : Icons.error,
+              color: Colors.white,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(result.message),
+            ),
+          ],
         ),
-      );
-    }
+        backgroundColor: result.success
+            ? const Color(0xFF10B981)
+            : result.cancelled
+                ? const Color(0xFF6B7280)
+                : const Color(0xFFEF4444),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        duration: Duration(seconds: result.success || result.cancelled ? 3 : 5),
+      ),
+    );
+  }
+
+  void _cancelDownload() {
+    final fileId = _activeDownloadFileId;
+    if (fileId == null) return;
+    DownloadService.cancelDownload(fileId);
   }
 
   void _handleBack() {
@@ -277,9 +292,12 @@ class _WebViewScreenState extends State<WebViewScreen> {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.download_rounded),
-            onPressed: isDownloading ? null : _downloadFile,
-            tooltip: 'Download',
+            icon: Icon(
+              isDownloading ? Icons.close_rounded : Icons.download_rounded,
+            ),
+            color: isDownloading ? const Color(0xFFEF4444) : null,
+            onPressed: isDownloading ? _cancelDownload : _downloadFile,
+            tooltip: isDownloading ? 'Cancel download' : 'Download',
           ),
         ],
       ),
@@ -361,6 +379,21 @@ class _WebViewScreenState extends State<WebViewScreen> {
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                           color: Color(0xFF6B7280),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      TextButton.icon(
+                        onPressed: _cancelDownload,
+                        icon: const Icon(
+                          Icons.close_rounded,
+                          color: Color(0xFFEF4444),
+                        ),
+                        label: const Text(
+                          'Cancel',
+                          style: TextStyle(
+                            color: Color(0xFFEF4444),
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ],

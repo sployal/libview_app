@@ -17,6 +17,7 @@ class DownloadService {
   static const String baseUrl = 'https://www.googleapis.com/drive/v3';
   static const MethodChannel _downloadsChannel =
       MethodChannel('com.example.libview/downloads');
+  static final Map<String, CancelToken> _cancelTokens = {};
 
   /// Bumped whenever the tracked download list changes so UI can refresh.
   static final ValueNotifier<int> listVersion = ValueNotifier(0);
@@ -187,15 +188,44 @@ class DownloadService {
     return filename;
   }
   
+  static bool cancelDownload(String fileId) {
+    final token = _cancelTokens[fileId];
+    if (token == null || token.isCancelled) return false;
+    token.cancel('cancelled');
+    return true;
+  }
+
+  static Future<void> _deleteQuietly(String path) async {
+    try {
+      final file = File(path);
+      if (await file.exists()) {
+        await file.delete();
+      }
+    } catch (_) {}
+  }
+
+  static DownloadResult _cancelledResult() {
+    return DownloadResult(
+      success: false,
+      cancelled: true,
+      message: 'Download cancelled',
+    );
+  }
+
   // Download file with proper Android 13+ handling
   static Future<DownloadResult> downloadFile({
     required String fileId,
     required String subject,
     Function(double)? onProgress,
   }) async {
+    final cancelToken = CancelToken();
+    _cancelTokens[fileId] = cancelToken;
+    String? tempPath;
+
     try {
       // Request permission (only for Android 12 and below)
       final hasPermission = await requestStoragePermission();
+      if (cancelToken.isCancelled) return _cancelledResult();
       if (!hasPermission) {
         return DownloadResult(
           success: false,
@@ -205,6 +235,7 @@ class DownloadService {
       
       // Step 1: Get file metadata from Google Drive API
       final metadata = await getFileMetadata(fileId);
+      if (cancelToken.isCancelled) return _cancelledResult();
       if (metadata == null) {
         return DownloadResult(
           success: false,
@@ -226,11 +257,13 @@ class DownloadService {
       
       // Step 4: Download to a temp file, then move into the public Downloads folder
       final tempDir = await getTemporaryDirectory();
-      final tempPath = '${tempDir.path}/$fileName';
+      if (cancelToken.isCancelled) return _cancelledResult();
+      tempPath = '${tempDir.path}/$fileName';
       
       await _dio.download(
         downloadUrl,
         tempPath,
+        cancelToken: cancelToken,
         onReceiveProgress: (received, total) {
           if (total != -1 && onProgress != null) {
             final progress = received / total;
@@ -248,6 +281,11 @@ class DownloadService {
           },
         ),
       );
+
+      if (cancelToken.isCancelled) {
+        await _deleteQuietly(tempPath);
+        return _cancelledResult();
+      }
 
       final tempFile = File(tempPath);
       if (!await tempFile.exists()) {
@@ -269,16 +307,17 @@ class DownloadService {
         }
       }
 
+      if (cancelToken.isCancelled) {
+        await _deleteQuietly(tempPath);
+        return _cancelledResult();
+      }
+
       final saved = await _saveToPublicDownloads(
         sourcePath: tempPath,
         fileName: fileName,
       );
       final filePath = saved.filePath;
-      try {
-        if (await tempFile.exists()) {
-          await tempFile.delete();
-        }
-      } catch (_) {}
+      await _deleteQuietly(tempPath);
       
       // Step 7: Save download metadata
       await _saveDownloadMetadata(
@@ -294,12 +333,26 @@ class DownloadService {
         message: 'Download complete',
         filePath: filePath,
       );
+    } on DioException catch (e) {
+      if (tempPath != null) await _deleteQuietly(tempPath);
+      if (cancelToken.isCancelled || e.type == DioExceptionType.cancel) {
+        return _cancelledResult();
+      }
+      print('Download error: $e');
+      return DownloadResult(
+        success: false,
+        message: 'Download failed: ${e.message ?? e.toString()}',
+      );
     } catch (e) {
+      if (tempPath != null) await _deleteQuietly(tempPath);
+      if (cancelToken.isCancelled) return _cancelledResult();
       print('Download error: $e');
       return DownloadResult(
         success: false,
         message: 'Download failed: ${e.toString()}',
       );
+    } finally {
+      _cancelTokens.remove(fileId);
     }
   }
   
@@ -738,11 +791,13 @@ class DownloadResult {
   final bool success;
   final String message;
   final String? filePath;
+  final bool cancelled;
   
   DownloadResult({
     required this.success,
     required this.message,
     this.filePath,
+    this.cancelled = false,
   });
 }
 

@@ -428,44 +428,58 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
       fileId: fileId,
       subject: selectedSubject?.name ?? 'Unknown',
       onProgress: (progress) {
+        if (!mounted) return;
         setState(() {
           downloadProgress[material.id] = progress;
         });
       },
     );
 
+    if (!mounted) return;
+
     setState(() {
       downloadingFiles[material.id] = false;
       downloadProgress.remove(material.id);
     });
 
-    // Show result to user
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(
-                result.success ? Icons.check_circle : Icons.error,
-                color: Colors.white,
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(result.message),
-              ),
-            ],
-          ),
-          backgroundColor: result.success 
-              ? const Color(0xFF10B981) 
-              : const Color(0xFFEF4444),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-          duration: Duration(seconds: result.success ? 3 : 5),
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Icon(
+              result.success
+                  ? Icons.check_circle
+                  : result.cancelled
+                      ? Icons.cancel_rounded
+                      : Icons.error,
+              color: Colors.white,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(result.message),
+            ),
+          ],
         ),
-      );
-    }
+        backgroundColor: result.success
+            ? const Color(0xFF10B981)
+            : result.cancelled
+                ? const Color(0xFF6B7280)
+                : const Color(0xFFEF4444),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+        duration: Duration(seconds: result.success || result.cancelled ? 3 : 5),
+      ),
+    );
+  }
+
+  void _cancelDownload(StudyMaterial material) {
+    final url = material.downloadUrl;
+    if (url == null || url.isEmpty) return;
+    final fileId = _extractFileId(url);
+    if (fileId == null) return;
+    DownloadService.cancelDownload(fileId);
   }
 
   Future<void> _confirmDelete(StudyMaterial material) async {
@@ -1135,21 +1149,20 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
 
   Widget _downloadButton(StudyMaterial file, {required bool isDownloading}) {
     final fileColor = _getFileColor(file.type);
+    if (isDownloading) {
+      return IconButton(
+        icon: const Icon(Icons.close_rounded),
+        color: const Color(0xFFEF4444),
+        onPressed: () => _cancelDownload(file),
+        tooltip: 'Cancel download',
+      );
+    }
     return IconButton(
-      icon: isDownloading
-          ? SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation<Color>(fileColor),
-              ),
-            )
-          : Icon(
-              Icons.download_rounded,
-              color: fileColor,
-            ),
-      onPressed: isDownloading ? null : () => _downloadFile(file),
+      icon: Icon(
+        Icons.download_rounded,
+        color: fileColor,
+      ),
+      onPressed: () => _downloadFile(file),
       tooltip: 'Download',
     );
   }
@@ -1307,17 +1320,32 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                               ColoredBox(
                                 color: Colors.black.withOpacity(0.35),
                                 child: Center(
-                                  child: SizedBox(
-                                    width: 36,
-                                    height: 36,
-                                    child: CircularProgressIndicator(
-                                      value: progress > 0 ? progress : null,
-                                      strokeWidth: 3,
-                                      valueColor:
-                                          const AlwaysStoppedAnimation<Color>(
-                                        Colors.white,
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      SizedBox(
+                                        width: 36,
+                                        height: 36,
+                                        child: CircularProgressIndicator(
+                                          value: progress > 0 ? progress : null,
+                                          strokeWidth: 3,
+                                          valueColor:
+                                              const AlwaysStoppedAnimation<
+                                                  Color>(
+                                            Colors.white,
+                                          ),
+                                        ),
                                       ),
-                                    ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        '${(progress * 100).toInt()}%',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),
