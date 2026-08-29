@@ -94,7 +94,7 @@ class AppSplashScreen extends StatelessWidget {
                   borderRadius: BorderRadius.circular(99),
                   child: LinearProgressIndicator(
                     value: progress,
-                    minHeight: 10,
+                    minHeight: 18,
                     backgroundColor: scheme.primary.withOpacity(0.14),
                     color: scheme.primary,
                   ),
