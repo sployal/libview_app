@@ -210,6 +210,61 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
 
   bool get _isLiveFolder => widget.folderId != null && widget.folderId!.isNotEmpty;
 
+  void _insertUploadedFile(UploadResult result, PhonePickedDocument file) {
+    final name = result.name.isNotEmpty ? result.name : file.name;
+    final id = result.id.isNotEmpty
+        ? result.id
+        : 'local-${DateTime.now().microsecondsSinceEpoch}';
+    final material = StudyMaterial(
+      id: id,
+      name: name,
+      type: _typeFromFileName(name),
+      size: _displayFileSize(result.size, file.sizeBytes),
+      date: 'Just now',
+      downloadUrl: result.webViewLink,
+    );
+
+    setState(() {
+      currentFiles.removeWhere((item) => item.id == id);
+      currentFiles.insert(0, material);
+      if (selectedSubject != null) {
+        selectedSubject!.fileCount += 1;
+      }
+    });
+  }
+
+  String _typeFromFileName(String fileName) {
+    final extension = fileName.split('.').last.toLowerCase();
+    switch (extension) {
+      case 'pdf':
+        return 'PDF';
+      case 'doc':
+      case 'docx':
+        return 'DOC';
+      case 'ppt':
+      case 'pptx':
+        return 'PPT';
+      case 'jpg':
+      case 'jpeg':
+      case 'png':
+      case 'gif':
+      case 'webp':
+      case 'heic':
+        return 'IMG';
+      default:
+        return 'FILE';
+    }
+  }
+
+  String _displayFileSize(String? remoteSize, int localBytes) {
+    final parsed = int.tryParse(remoteSize ?? '');
+    final size = parsed != null && parsed > 0 ? parsed : localBytes;
+    if (size <= 0) return 'Unknown';
+    if (size < 1024) return '${size}B';
+    if (size < 1024 * 1024) return '${(size / 1024).toStringAsFixed(1)}KB';
+    return '${(size / (1024 * 1024)).toStringAsFixed(1)}MB';
+  }
+
   Future<void> _loadSubjectFiles(Subject subject) async {
     if (!_isLiveFolder || subject.folderId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -844,7 +899,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
       for (var i = 0; i < files.length; i++) {
         final file = files[i];
         try {
-          await UploadService.instance.uploadFile(
+          final result = await UploadService.instance.uploadFile(
             folderId: folderId,
             fileName: file.name,
             filePath: file.path.isEmpty ? null : file.path,
@@ -857,6 +912,9 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
             },
           );
           uploaded++;
+          if (mounted) {
+            _insertUploadedFile(result, file);
+          }
         } on UploadException catch (e) {
           lastError = e.message;
         } catch (_) {
@@ -882,10 +940,6 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
         );
       }
 
-      final subject = selectedSubject;
-      if (uploaded > 0 && subject != null) {
-        await _loadSubjectFiles(subject);
-      }
     } finally {
       if (mounted) {
         setState(() {
