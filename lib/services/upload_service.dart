@@ -14,6 +14,11 @@ class UploadException implements Exception {
   String toString() => message;
 }
 
+class UploadCancelledException implements Exception {
+  @override
+  String toString() => 'Upload cancelled';
+}
+
 class UploadResult {
   final String id;
   final String name;
@@ -75,10 +80,15 @@ class UploadService {
     required String fileName,
     String? filePath,
     List<int>? bytes,
+    CancelToken? cancelToken,
     void Function(double progress)? onProgress,
+    void Function(int sent, int total)? onBytes,
   }) async {
     if (folderId.isEmpty) {
       throw UploadException('No target folder selected');
+    }
+    if (cancelToken?.isCancelled == true) {
+      throw UploadCancelledException();
     }
 
     final multipart = await _buildMultipart(
@@ -97,12 +107,16 @@ class UploadService {
       final response = await _dio.post(
         '/upload',
         data: form,
+        cancelToken: cancelToken,
         options: Options(
           headers: {
             'Authorization': 'Bearer $token',
           },
         ),
         onSendProgress: (sent, total) {
+          if (onBytes != null) {
+            onBytes(sent, total);
+          }
           if (total > 0 && onProgress != null) {
             onProgress(sent / total);
           }
@@ -118,6 +132,9 @@ class UploadService {
       }
       throw UploadException('Unexpected response from server');
     } on DioException catch (e) {
+      if (e.type == DioExceptionType.cancel || CancelToken.isCancel(e)) {
+        throw UploadCancelledException();
+      }
       throw UploadException(
         _messageFromDio(e),
         statusCode: e.response?.statusCode,

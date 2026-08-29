@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -48,6 +49,10 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
   bool isUploading = false;
   double uploadProgress = 0.0;
   static const int _maxImageUploadSelection = 10;
+  final _UploadProgressSession _uploadSession = _UploadProgressSession();
+  CancelToken? _uploadCancelToken;
+  bool _uploadDialogVisible = false;
+  BuildContext? _uploadDialogContext;
   bool _isMutatingFolder = false;
   String _role = 'student';
   bool _useLargeIcons = true;
@@ -90,6 +95,8 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
 
   @override
   void dispose() {
+    _uploadCancelToken?.cancel('disposed');
+    _uploadSession.dispose();
     _unitSearchController.dispose();
     _unitSearchFocus.dispose();
     _fileSearchController.dispose();
@@ -932,67 +939,137 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
   }) async {
     if (isUploading || files.isEmpty) return;
 
+    final cancelToken = CancelToken();
+    _uploadCancelToken = cancelToken;
+    _uploadSession.start(files.length);
+
     setState(() {
       isUploading = true;
       uploadProgress = 0.0;
     });
+    _showUploadProgressDialog();
+    await Future<void>.delayed(Duration.zero);
 
     var uploaded = 0;
+    var cancelled = false;
     String? lastError;
 
     try {
       for (var i = 0; i < files.length; i++) {
+        if (cancelToken.isCancelled) {
+          cancelled = true;
+          break;
+        }
+
         final file = files[i];
+        _uploadSession.beginFile(file.name, file.sizeBytes, i);
+
         try {
           final result = await UploadService.instance.uploadFile(
             folderId: folderId,
             fileName: file.name,
             filePath: file.path.isEmpty ? null : file.path,
             bytes: bytesByName?[file.name],
+            cancelToken: cancelToken,
             onProgress: (progress) {
               if (!mounted) return;
-              setState(() {
-                uploadProgress = (i + progress) / files.length;
-              });
+              _uploadSession.updateFileProgress(progress);
+            },
+            onBytes: (sent, total) {
+              if (!mounted) return;
+              _uploadSession.updateBytes(sent, total);
             },
           );
           uploaded++;
           if (mounted) {
+            _uploadSession.markCompleted();
             _insertUploadedFile(result, file);
           }
+        } on UploadCancelledException {
+          cancelled = true;
+          break;
         } on UploadException catch (e) {
           lastError = e.message;
         } catch (_) {
           lastError = 'Upload failed. Please try again.';
         }
       }
-
-      if (uploaded == files.length) {
-        _showMessage(
-          uploaded == 1
-              ? '${files.first.name} uploaded successfully'
-              : '$uploaded files uploaded successfully',
-        );
-      } else if (uploaded > 0) {
-        _showMessage(
-          '$uploaded of ${files.length} uploaded. ${lastError ?? 'Some files failed.'}',
-          isError: true,
-        );
-      } else {
-        _showMessage(
-          lastError ?? 'Upload failed. Please try again.',
-          isError: true,
-        );
-      }
-
     } finally {
+      _uploadCancelToken = null;
       if (mounted) {
+        _hideUploadProgressDialog();
         setState(() {
           isUploading = false;
           uploadProgress = 0.0;
         });
       }
     }
+
+    if (!mounted) return;
+
+    if (cancelled) {
+      _showMessage(
+        uploaded == 0
+            ? 'Upload cancelled'
+            : 'Upload cancelled. $uploaded of ${files.length} uploaded.',
+        isError: true,
+      );
+    } else if (uploaded == files.length) {
+      _showMessage(
+        uploaded == 1
+            ? '${files.first.name} uploaded successfully'
+            : '$uploaded files uploaded successfully',
+      );
+    } else if (uploaded > 0) {
+      _showMessage(
+        '$uploaded of ${files.length} uploaded. ${lastError ?? 'Some files failed.'}',
+        isError: true,
+      );
+    } else {
+      _showMessage(
+        lastError ?? 'Upload failed. Please try again.',
+        isError: true,
+      );
+    }
+  }
+
+  void _showUploadProgressDialog() {
+    if (_uploadDialogVisible || !mounted) return;
+    _uploadDialogVisible = true;
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      useRootNavigator: true,
+      builder: (dialogContext) {
+        _uploadDialogContext = dialogContext;
+        return ListenableBuilder(
+          listenable: _uploadSession,
+          builder: (context, _) {
+            return _UploadProgressDialog(
+              session: _uploadSession,
+              onCancel: _cancelActiveUpload,
+            );
+          },
+        );
+      },
+    ).whenComplete(() {
+      _uploadDialogVisible = false;
+      _uploadDialogContext = null;
+    });
+  }
+
+  void _hideUploadProgressDialog() {
+    if (!_uploadDialogVisible) return;
+    final dialogContext = _uploadDialogContext;
+    if (dialogContext != null && dialogContext.mounted) {
+      Navigator.of(dialogContext).pop();
+    }
+  }
+
+  void _cancelActiveUpload() {
+    if (_uploadCancelToken == null || _uploadCancelToken!.isCancelled) return;
+    _uploadSession.markCancelling();
+    _uploadCancelToken!.cancel('cancelled');
   }
 
   void _backToSubjects() {
@@ -1568,13 +1645,20 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
         child: Column(
         children: [
           if (isUploading)
-            LinearProgressIndicator(
-              value: uploadProgress > 0 ? uploadProgress : null,
-              backgroundColor: isDark
-                  ? const Color(0xFF374151)
-                  : const Color(0xFFE5E7EB),
-              valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
-              minHeight: 3,
+            ListenableBuilder(
+              listenable: _uploadSession,
+              builder: (context, _) {
+                final value = _uploadSession.overallProgress;
+                return LinearProgressIndicator(
+                  value: value > 0 ? value : null,
+                  backgroundColor: isDark
+                      ? const Color(0xFF374151)
+                      : const Color(0xFFE5E7EB),
+                  valueColor:
+                      const AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
+                  minHeight: 3,
+                );
+              },
             ),
           if (!isLoadingFiles && currentFiles.isNotEmpty)
             _buildFolderFileSearch(
@@ -2662,4 +2746,247 @@ class _FolderNameDialogState extends State<_FolderNameDialog> {
       ],
     );
   }
+}
+
+class _UploadProgressSession extends ChangeNotifier {
+  bool cancelling = false;
+  int index = 0;
+  int total = 0;
+  int completed = 0;
+  String fileName = '';
+  int fileBytes = 0;
+  int sentBytes = 0;
+  double fileProgress = 0;
+  bool _disposed = false;
+
+  double get overallProgress {
+    if (total <= 0) return 0;
+    return ((completed + fileProgress) / total).clamp(0.0, 1.0);
+  }
+
+  void start(int count) {
+    cancelling = false;
+    index = 0;
+    total = count;
+    completed = 0;
+    fileName = '';
+    fileBytes = 0;
+    sentBytes = 0;
+    fileProgress = 0;
+    _notify();
+  }
+
+  void beginFile(String name, int size, int fileIndex) {
+    index = fileIndex;
+    fileName = name;
+    fileBytes = size;
+    sentBytes = 0;
+    fileProgress = 0;
+    _notify();
+  }
+
+  void updateFileProgress(double progress) {
+    final next = progress.clamp(0.0, 1.0);
+    final prevPct = (fileProgress * 100).floor();
+    final nextPct = (next * 100).floor();
+    fileProgress = next;
+    if (nextPct == prevPct) return;
+    _notify();
+  }
+
+  void updateBytes(int sent, int totalBytes) {
+    final previous = sentBytes;
+    sentBytes = sent;
+    if (totalBytes > 0) {
+      fileBytes = totalBytes;
+    }
+    final step = fileBytes > 0
+        ? (fileBytes / 100).clamp(4096, 256 * 1024)
+        : 32768;
+    if ((sent - previous).abs() < step && sent != fileBytes) return;
+    _notify();
+  }
+
+  void markCompleted() {
+    completed++;
+    fileProgress = 1;
+    _notify();
+  }
+
+  void markCancelling() {
+    cancelling = true;
+    _notify();
+  }
+
+  void _notify() {
+    if (_disposed) return;
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+}
+
+class _UploadProgressDialog extends StatelessWidget {
+  const _UploadProgressDialog({
+    required this.session,
+    required this.onCancel,
+  });
+
+  final _UploadProgressSession session;
+  final VoidCallback onCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final overall = session.overallProgress;
+    final percent = (overall * 100).clamp(0, 100).round();
+    final currentNumber = session.total == 0 ? 0 : session.index + 1;
+    final sizeLabel = _formatUploadBytes(
+      session.fileBytes > 0 ? session.fileBytes : session.sentBytes,
+    );
+    final sentLabel = session.sentBytes > 0
+        ? _formatUploadBytes(session.sentBytes)
+        : '0B';
+    final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
+
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop && !session.cancelling) onCancel();
+      },
+      child: Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(22, 22, 22, 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF6366F1).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(
+                      Icons.cloud_upload_rounded,
+                      color: Color(0xFF6366F1),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          session.total == 1
+                              ? 'Uploading file'
+                              : 'Uploading files',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 18,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          session.cancelling
+                              ? 'Stopping upload...'
+                              : '${session.completed} of ${session.total} complete',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: muted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Text(
+                    '$percent%',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 18,
+                      color: Color(0xFF6366F1),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              Text(
+                session.fileName.isEmpty ? 'Preparing…' : session.fileName,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 15,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                session.total == 0
+                    ? sizeLabel
+                    : 'File $currentNumber of ${session.total}  ·  $sentLabel of $sizeLabel',
+                style: TextStyle(fontSize: 12.5, color: muted),
+              ),
+              const SizedBox(height: 14),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(99),
+                child: LinearProgressIndicator(
+                  value: overall > 0 ? overall : null,
+                  minHeight: 8,
+                  backgroundColor: isDark
+                      ? const Color(0xFF374151)
+                      : const Color(0xFFE5E7EB),
+                  color: const Color(0xFF6366F1),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerRight,
+                child: session.cancelling
+                    ? Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
+                        child: Text(
+                          'Cancelling…',
+                          style: TextStyle(
+                            color: muted,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      )
+                    : TextButton(
+                        onPressed: onCancel,
+                        style: TextButton.styleFrom(
+                          foregroundColor: const Color(0xFFEF4444),
+                        ),
+                        child: const Text(
+                          'Cancel upload',
+                          style: TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+String _formatUploadBytes(int bytes) {
+  if (bytes <= 0) return '0B';
+  if (bytes < 1024) return '${bytes}B';
+  if (bytes < 1024 * 1024) {
+    return '${(bytes / 1024).toStringAsFixed(1)}KB';
+  }
+  return '${(bytes / (1024 * 1024)).toStringAsFixed(1)}MB';
 }
