@@ -22,6 +22,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
   List<DownloadItem> downloads = [];
   final Map<String, DownloadItem> _selected = {};
   final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchFocus = FocusNode();
   bool isLoading = true;
   bool _useLargeIcons = false;
   String _query = '';
@@ -38,6 +39,9 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
   void initState() {
     super.initState();
     DownloadService.listVersion.addListener(_onDownloadsChanged);
+    _searchFocus.addListener(() {
+      if (mounted) setState(() {});
+    });
     _loadFilesViewPreference();
     _loadDownloads(showSpinner: true);
   }
@@ -63,6 +67,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
   void dispose() {
     DownloadService.listVersion.removeListener(_onDownloadsChanged);
     _searchController.dispose();
+    _searchFocus.dispose();
     super.dispose();
   }
 
@@ -430,7 +435,6 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
         isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
     final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
     final card = isDark ? const Color(0xFF1F2937) : Colors.white;
-    final field = isDark ? const Color(0xFF111827) : const Color(0xFFEEF2F6);
     final visible = _visibleDownloads;
     final selectedCount = _selected.length;
     final pagePad = AdaptiveLayout.pagePadding(context);
@@ -517,7 +521,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                   child: _buildIntro(
                     muted: muted,
                     card: card,
-                    field: field,
+                    titleColor: titleColor,
                     isDark: isDark,
                   ),
                 ),
@@ -660,9 +664,16 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
   Widget _buildIntro({
     required Color muted,
     required Color card,
-    required Color field,
+    required Color titleColor,
     required bool isDark,
   }) {
+    const accent = Color(0xFF6366F1);
+    final highlighted = _searchFocus.hasFocus || _query.isNotEmpty;
+    final fieldFill = isDark ? const Color(0xFF1F2937) : Colors.white;
+    final borderColor = highlighted
+        ? accent
+        : (isDark ? const Color(0xFF4B5563) : const Color(0xFFD1D5DB));
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -679,33 +690,62 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
           ),
         ),
         if (!_selectionMode && downloads.isNotEmpty) ...[
-          const SizedBox(height: 10),
-          TextField(
-            controller: _searchController,
-            onChanged: (value) => setState(() => _query = value),
-            textInputAction: TextInputAction.search,
-            decoration: InputDecoration(
-              hintText: 'Search files',
-              prefixIcon: const Icon(Icons.search_rounded),
-              suffixIcon: _query.isEmpty
-                  ? null
-                  : IconButton(
-                      icon: const Icon(Icons.close_rounded),
-                      onPressed: () {
-                        _searchController.clear();
-                        setState(() => _query = '');
-                      },
-                    ),
-              filled: true,
-              fillColor: field,
-              isDense: true,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 10,
+          const SizedBox(height: 12),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(999),
+              boxShadow: [
+                if (!isDark)
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.06),
+                    blurRadius: 16,
+                    offset: const Offset(0, 6),
+                  ),
+              ],
+            ),
+            child: TextField(
+              controller: _searchController,
+              focusNode: _searchFocus,
+              onChanged: (value) => setState(() => _query = value),
+              onTapOutside: (_) => _searchFocus.unfocus(),
+              textInputAction: TextInputAction.search,
+              style: TextStyle(
+                color: titleColor,
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
               ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide.none,
+              decoration: InputDecoration(
+                hintText: 'Search files',
+                hintStyle: TextStyle(color: muted, fontSize: 15),
+                prefixIcon: Icon(
+                  Icons.search_rounded,
+                  color: highlighted ? accent : muted,
+                ),
+                suffixIcon: _query.isEmpty
+                    ? null
+                    : IconButton(
+                        tooltip: 'Clear search',
+                        icon: Icon(Icons.close_rounded, color: muted),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() => _query = '');
+                        },
+                      ),
+                filled: true,
+                fillColor: fieldFill,
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 14,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(999),
+                  borderSide: BorderSide(color: borderColor),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(999),
+                  borderSide: const BorderSide(color: accent, width: 1.4),
+                ),
               ),
             ),
           ),
@@ -1115,6 +1155,7 @@ class _DownloadPreview extends StatefulWidget {
 
 class _DownloadPreviewState extends State<_DownloadPreview> {
   String? _thumbnailPath;
+  bool _loading = true;
 
   @override
   void initState() {
@@ -1128,6 +1169,7 @@ class _DownloadPreviewState extends State<_DownloadPreview> {
     if (oldWidget.download.filePath != widget.download.filePath ||
         oldWidget.download.contentUri != widget.download.contentUri) {
       _thumbnailPath = null;
+      _loading = true;
       _loadThumbnail();
     }
   }
@@ -1135,13 +1177,6 @@ class _DownloadPreviewState extends State<_DownloadPreview> {
   Future<void> _loadThumbnail() async {
     final download = widget.download;
     final localPath = download.filePath;
-    if (download.type == 'IMG' &&
-        localPath.isNotEmpty &&
-        File(localPath).existsSync()) {
-      if (!mounted) return;
-      setState(() => _thumbnailPath = localPath);
-      return;
-    }
 
     final path = await PhoneDocumentService.instance.thumbnailPathFor(
       key: '${download.filePath}:${download.contentUri}:${download.date}',
@@ -1151,7 +1186,10 @@ class _DownloadPreviewState extends State<_DownloadPreview> {
       modifiedMs: DateTime.tryParse(download.date)?.millisecondsSinceEpoch ?? 0,
     );
     if (!mounted) return;
-    setState(() => _thumbnailPath = path);
+    setState(() {
+      _thumbnailPath = path;
+      _loading = false;
+    });
   }
 
   Widget _fallback() {
@@ -1169,6 +1207,21 @@ class _DownloadPreviewState extends State<_DownloadPreview> {
 
   @override
   Widget build(BuildContext context) {
+    if (_loading) {
+      return ColoredBox(
+        color: widget.color.withOpacity(0.08),
+        child: const Center(
+          child: SizedBox(
+            width: 22,
+            height: 22,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.2,
+              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
+            ),
+          ),
+        ),
+      );
+    }
     final path = _thumbnailPath;
     if (path == null || path.isEmpty) {
       return _fallback();
@@ -1178,6 +1231,8 @@ class _DownloadPreviewState extends State<_DownloadPreview> {
       fit: BoxFit.cover,
       width: double.infinity,
       height: double.infinity,
+      alignment: Alignment.topCenter,
+      gaplessPlayback: true,
       errorBuilder: (_, __, ___) => _fallback(),
     );
   }

@@ -771,12 +771,15 @@ class MainActivity : FlutterActivity() {
         }
         dest.parentFile?.mkdirs()
 
-        val bitmap = when (ext) {
-            "pdf" -> renderPdfThumbnail(uriString, path)
-            "jpg", "jpeg", "png", "gif", "webp", "bmp" -> renderImageThumbnail(uriString, path)
-            "docx", "docm", "xlsx", "xlsm", "pptx", "pptm", "ppsx", "ppsm" ->
-                renderOfficeThumbnail(uriString, path, ext)
-            else -> null
+        val readableUri = resolveUri(uriString, path, fileName)?.toString()
+        val bitmap = try {
+            renderThumbnail(ext, readableUri ?: uriString, path)
+        } catch (_: Exception) {
+            null
+        } ?: try {
+            renderThumbnailFromCopy(ext, readableUri ?: uriString, path, name)
+        } catch (_: Exception) {
+            null
         } ?: return null
 
         dest.outputStream().use { output ->
@@ -784,6 +787,35 @@ class MainActivity : FlutterActivity() {
         }
         bitmap.recycle()
         return if (dest.exists() && dest.length() > 0) dest.absolutePath else null
+    }
+
+    private fun renderThumbnail(ext: String, uriString: String?, path: String?): Bitmap? {
+        return when (ext) {
+            "pdf" -> renderPdfThumbnail(uriString, path)
+            "jpg", "jpeg", "png", "gif", "webp", "bmp" -> renderImageThumbnail(uriString, path)
+            "docx", "docm", "xlsx", "xlsm", "pptx", "pptm", "ppsx", "ppsm" ->
+                renderOfficeThumbnail(uriString, path, ext)
+            else -> null
+        }
+    }
+
+    private fun renderThumbnailFromCopy(
+        ext: String,
+        uriString: String?,
+        path: String?,
+        fileName: String,
+    ): Bitmap? {
+        val copied = try {
+            copyDocumentToCache(uriString, path, fileName)
+        } catch (_: Exception) {
+            return null
+        }
+        val file = File(copied)
+        return try {
+            renderThumbnail(ext, null, file.absolutePath)
+        } finally {
+            file.delete()
+        }
     }
 
     private fun renderOfficeThumbnail(uriString: String?, path: String?, ext: String): Bitmap? {
@@ -814,34 +846,51 @@ class MainActivity : FlutterActivity() {
     }
 
     private fun openDocumentStream(uriString: String?, path: String?): InputStream? {
+        if (!uriString.isNullOrBlank()) {
+            try {
+                contentResolver.openInputStream(Uri.parse(uriString))?.let { return it }
+            } catch (_: Exception) {
+            }
+        }
         if (!path.isNullOrBlank()) {
             val file = File(path)
             if (file.exists()) {
-                return FileInputStream(file)
+                try {
+                    return FileInputStream(file)
+                } catch (_: Exception) {
+                }
             }
         }
-        if (!uriString.isNullOrBlank()) {
-            return contentResolver.openInputStream(Uri.parse(uriString))
+        val resolved = resolveUri(uriString, path, path?.let { File(it).name })
+        if (resolved != null) {
+            try {
+                return contentResolver.openInputStream(resolved)
+            } catch (_: Exception) {
+            }
         }
         return null
     }
 
     private fun renderPdfThumbnail(uriString: String?, path: String?): Bitmap? {
         val pfd = openDocumentDescriptor(uriString, path) ?: return null
-        return pfd.use { descriptor ->
-            PdfRenderer(descriptor).use { renderer ->
-                if (renderer.pageCount < 1) return null
-                renderer.openPage(0).use { page ->
-                    val maxWidth = 400
-                    val scale = maxWidth.toFloat() / page.width.coerceAtLeast(1)
-                    val width = maxWidth
-                    val height = (page.height * scale).toInt().coerceAtLeast(1)
-                    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-                    bitmap.eraseColor(Color.WHITE)
-                    page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-                    bitmap
+        return try {
+            pfd.use { descriptor ->
+                PdfRenderer(descriptor).use { renderer ->
+                    if (renderer.pageCount < 1) return null
+                    renderer.openPage(0).use { page ->
+                        val maxWidth = 400
+                        val scale = maxWidth.toFloat() / page.width.coerceAtLeast(1)
+                        val width = maxWidth
+                        val height = (page.height * scale).toInt().coerceAtLeast(1)
+                        val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+                        bitmap.eraseColor(Color.WHITE)
+                        page.render(bitmap, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                        bitmap
+                    }
                 }
             }
+        } catch (_: Exception) {
+            null
         }
     }
 
@@ -871,16 +920,8 @@ class MainActivity : FlutterActivity() {
         path: String?,
         options: BitmapFactory.Options,
     ): Bitmap? {
-        if (!path.isNullOrBlank()) {
-            val file = File(path)
-            if (file.exists()) {
-                return BitmapFactory.decodeFile(file.absolutePath, options)
-            }
-        }
-        if (!uriString.isNullOrBlank()) {
-            return contentResolver.openInputStream(Uri.parse(uriString))?.use { input ->
-                BitmapFactory.decodeStream(input, null, options)
-            }
+        openDocumentStream(uriString, path)?.use { input ->
+            return BitmapFactory.decodeStream(input, null, options)
         }
         return null
     }
@@ -889,14 +930,27 @@ class MainActivity : FlutterActivity() {
         uriString: String?,
         path: String?,
     ): ParcelFileDescriptor? {
+        if (!uriString.isNullOrBlank()) {
+            try {
+                contentResolver.openFileDescriptor(Uri.parse(uriString), "r")?.let { return it }
+            } catch (_: Exception) {
+            }
+        }
         if (!path.isNullOrBlank()) {
             val file = File(path)
             if (file.exists()) {
-                return ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
+                try {
+                    return ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
+                } catch (_: Exception) {
+                }
             }
         }
-        if (!uriString.isNullOrBlank()) {
-            return contentResolver.openFileDescriptor(Uri.parse(uriString), "r")
+        val resolved = resolveUri(uriString, path, path?.let { File(it).name })
+        if (resolved != null) {
+            try {
+                return contentResolver.openFileDescriptor(resolved, "r")
+            } catch (_: Exception) {
+            }
         }
         return null
     }
@@ -905,16 +959,36 @@ class MainActivity : FlutterActivity() {
         val safeName = (fileName ?: "document").replace(Regex("[\\\\/:*?\"<>|]"), "_")
         val dest = File(cacheDir, "phone_doc_${System.currentTimeMillis()}_$safeName")
 
-        if (!path.isNullOrBlank()) {
-            val source = File(path)
-            if (source.exists()) {
-                source.copyTo(dest, overwrite = true)
-                return dest.absolutePath
+        if (!uriString.isNullOrBlank()) {
+            try {
+                contentResolver.openInputStream(Uri.parse(uriString))?.use { input ->
+                    dest.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                if (dest.exists() && dest.length() > 0) {
+                    return dest.absolutePath
+                }
+            } catch (_: Exception) {
             }
         }
 
-        if (!uriString.isNullOrBlank()) {
-            contentResolver.openInputStream(Uri.parse(uriString))?.use { input ->
+        if (!path.isNullOrBlank()) {
+            val source = File(path)
+            if (source.exists()) {
+                try {
+                    source.copyTo(dest, overwrite = true)
+                    if (dest.exists() && dest.length() > 0) {
+                        return dest.absolutePath
+                    }
+                } catch (_: Exception) {
+                }
+            }
+        }
+
+        val resolved = resolveUri(uriString, path, fileName)
+        if (resolved != null) {
+            contentResolver.openInputStream(resolved)?.use { input ->
                 dest.outputStream().use { output ->
                     input.copyTo(output)
                 }

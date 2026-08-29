@@ -166,7 +166,6 @@ class PhoneDocumentService {
         ? fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase()
         : '';
     if (!Platform.isAndroid || !_thumbnailExtensions.contains(ext)) {
-      _thumbnailCache[key] = null;
       return null;
     }
 
@@ -177,11 +176,12 @@ class PhoneDocumentService {
         'fileName': fileName,
         'modifiedMs': modifiedMs,
       });
-      final resolved = (thumb == null || thumb.isEmpty) ? null : thumb;
-      _thumbnailCache[key] = resolved;
-      return resolved;
+      if (thumb == null || thumb.isEmpty) {
+        return null;
+      }
+      _thumbnailCache[key] = thumb;
+      return thumb;
     } catch (_) {
-      _thumbnailCache[key] = null;
       return null;
     }
   }
