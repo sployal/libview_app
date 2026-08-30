@@ -414,6 +414,7 @@ class _AiScreenState extends State<AiScreen> {
     final useInlineSidebar = AdaptiveLayout.isTablet(context);
 
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(
         automaticallyImplyLeading: false,
         leading: IconButton(
@@ -896,8 +897,12 @@ class _Composer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      top: false,
+    final keyboard = MediaQuery.viewInsetsOf(context).bottom;
+    final bottomInset =
+        keyboard > 0 ? keyboard : MediaQuery.paddingOf(context).bottom;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottomInset),
       child: Container(
         padding: const EdgeInsets.fromLTRB(8, 8, 12, 8),
         decoration: BoxDecoration(
