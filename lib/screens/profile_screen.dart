@@ -51,7 +51,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   bool get _canOpenClassMembers {
     final role = (_role ?? '').toLowerCase();
-    return role == 'class_rep' || role == 'assistant_class_rep';
+    return role == 'class_rep';
   }
 
   @override
