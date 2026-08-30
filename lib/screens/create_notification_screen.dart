@@ -8,6 +8,7 @@ import '../services/auth_service.dart';
 import '../services/course_service.dart';
 import '../services/media_service.dart';
 import '../services/notification_service.dart';
+import '../ui/adaptive_layout.dart';
 import 'system_admin_dashboard.dart';
 
 class CreateNotificationScreen extends StatefulWidget {
@@ -288,6 +289,17 @@ class _CreateNotificationScreenState extends State<CreateNotificationScreen> {
     }
   }
 
+  /// Keep content above [MainScreen]'s tab bar when this route is nested
+  /// (Home → Notifications). From Profile the root route already covers it.
+  double _bottomContentInset(BuildContext context) {
+    final nested =
+        Navigator.of(context) != Navigator.of(context, rootNavigator: true);
+    if (nested) {
+      return AdaptiveLayout.bottomClearance(context);
+    }
+    return MediaQuery.viewPaddingOf(context).bottom;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -315,7 +327,12 @@ class _CreateNotificationScreenState extends State<CreateNotificationScreen> {
               ),
             )
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
+              padding: EdgeInsets.fromLTRB(
+                24,
+                24,
+                24,
+                24 + _bottomContentInset(context),
+              ),
               child: Form(
                 key: _formKey,
                 child: Column(
