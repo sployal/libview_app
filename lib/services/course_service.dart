@@ -79,6 +79,46 @@ class Course {
     return admissionNumberPattern.hasMatch(normalized);
   }
 
+  static String normalizeAdmissionNumber(String value) {
+    return value.trim().replaceAll(RegExp(r'\s+'), '').replaceAll(r'\', '/').toUpperCase();
+  }
+
+  /// Prefix, serial (middle), and class-year (last) segments.
+  static List<String> admissionSegments(String value) {
+    final normalized = normalizeAdmissionNumber(value);
+    if (normalized.isEmpty) return const [];
+    return normalized.split('/');
+  }
+
+  static int admissionDigitCount(String value) {
+    return RegExp(r'\d').allMatches(value).length;
+  }
+
+  /// True when [admission] has the same digit counts as [sample] in the
+  /// prefix, middle serial, and last class-year parts.
+  static bool matchesAdmissionDigitLayout(String admission, String sample) {
+    return admissionDigitLayoutError(admission, sample) == null;
+  }
+
+  static String? admissionDigitLayoutError(String admission, String sample) {
+    final admissionParts = admissionSegments(admission);
+    final sampleParts = admissionSegments(sample);
+    if (admissionParts.length != 3 || sampleParts.length != 3) {
+      return 'Use prefix/number/year, matching the course sample.';
+    }
+
+    const labels = ['course code', 'middle number', 'last part'];
+    for (var i = 0; i < 3; i++) {
+      final expected = admissionDigitCount(sampleParts[i]);
+      final actual = admissionDigitCount(admissionParts[i]);
+      if (actual == expected) continue;
+      final digitWord = expected == 1 ? 'digit' : 'digits';
+      return 'The ${labels[i]} must have $expected $digitWord '
+          '(like ${sampleParts[i]}), not $actual.';
+    }
+    return null;
+  }
+
   static String admissionPrefixFromSample(String sample) {
     final trimmed = sample.trim().toUpperCase();
     if (trimmed.isEmpty) return '';

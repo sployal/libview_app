@@ -293,7 +293,7 @@ class _CourseAdditionScreenState extends State<CourseAdditionScreen> {
                 Text(
                   prefix.isEmpty
                       ? 'The part before the first / is the course code (C2, EB24, BBIT — any letters or numbers). Matching ignores case. The part after the last / groups classmates.'
-                      : 'Users whose admission number starts with "$prefix/" will be linked to this course. Matching ignores case. The last segment after / groups them into the same class.',
+                      : 'Users whose admission number starts with "$prefix/" will be linked to this course. Sign-up also requires the same number of digits in the prefix, middle, and last parts as this sample. Matching ignores case. The last segment after / groups them into the same class.',
                   style: TextStyle(
                     fontSize: 13,
                     color: secondaryText,

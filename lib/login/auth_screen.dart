@@ -207,7 +207,11 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
         normalizedAdmissionNumber,
         courses,
       );
-      if (matchedCourse == null) {
+      if (matchedCourse == null ||
+          !Course.matchesAdmissionDigitLayout(
+            normalizedAdmissionNumber,
+            matchedCourse.sampleAdmissionNumber,
+          )) {
         if (mounted) {
           setState(() => _isLoading = false);
           await _showCourseNotRegisteredDialog();
