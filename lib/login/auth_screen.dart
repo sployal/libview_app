@@ -88,15 +88,8 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     super.dispose();
   }
 
-  // Validate registration number format
   bool _isValidRegistrationNumber(String regNumber) {
-    final trimmed = regNumber.trim();
-    
-    // Format: 2 letters, 2 digits, /, 5 digits, /, 2 digits
-    // Example: Eb24/46271/20 or EB24/46271/20
-    final regExp = RegExp(r'^[a-zA-Z]{2}\d{2}/\d{5}/\d{2}$');
-    
-    return regExp.hasMatch(trimmed);
+    return Course.isValidAdmissionNumber(regNumber);
   }
 
   Future<bool> _ensureSignupAllowed({bool showPopup = true}) async {
@@ -835,7 +828,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
             _buildTextField(
               controller: _registrationNumberController,
               label: 'Registration Number',
-              hint: 'your registration number',
+              hint: 'e.g. EB24/46271/20',
               icon: CupertinoIcons.number,
               validator: (value) {
                 if (value == null || value.isEmpty) {

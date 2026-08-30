@@ -216,15 +216,15 @@ class _CourseAdditionScreenState extends State<CourseAdditionScreen> {
                 _buildTextField(
                   controller: _admissionController,
                   label: 'Sample admission number',
-                  hint: 'e.g. EB24/46271/20',
+                  hint: 'e.g. C2/11745/24',
                   icon: Icons.badge_rounded,
                   onChanged: (_) => setState(() {}),
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
                       return 'Enter a sample admission number';
                     }
-                    if (Course.admissionPrefixFromSample(value).isEmpty) {
-                      return 'Use a code before the first /, e.g. EB24/56121/21';
+                    if (!Course.isValidAdmissionNumber(value)) {
+                      return 'Use prefix/number/year, e.g. C2/11745/24';
                     }
                     return null;
                   },
@@ -232,8 +232,8 @@ class _CourseAdditionScreenState extends State<CourseAdditionScreen> {
                 const SizedBox(height: 12),
                 Text(
                   prefix.isEmpty
-                      ? 'The code before the first / (for example EB24 in EB24/56121/21) decides the course. The numbers after the last / (for example 21) group class members.'
-                      : 'Users whose admission number starts with "$prefix/" will be linked to this course. The last segment after / groups them into the same class.',
+                      ? 'The part before the first / is the course code (C2, EB24, BBIT — any letters or numbers). Matching ignores case. The part after the last / groups classmates.'
+                      : 'Users whose admission number starts with "$prefix/" will be linked to this course. Matching ignores case. The last segment after / groups them into the same class.',
                   style: const TextStyle(
                     fontSize: 13,
                     color: Color(0xFF6B7280),

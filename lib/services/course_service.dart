@@ -62,6 +62,17 @@ class Course {
   static String displayName(int year, int sem) =>
       'Year $year - Semester $sem';
 
+  /// Any prefix, then /serial/classYear. Case is ignored when matching.
+  /// Examples: C2/11745/24, eb24/46271/20, BBIT/12345/21.
+  static final RegExp admissionNumberPattern = RegExp(
+    r'^[A-Za-z0-9]+/\d+/\d{2}$',
+  );
+
+  static bool isValidAdmissionNumber(String value) {
+    final normalized = value.trim().replaceAll(RegExp(r'\s+'), '');
+    return admissionNumberPattern.hasMatch(normalized);
+  }
+
   static String admissionPrefixFromSample(String sample) {
     final trimmed = sample.trim().toUpperCase();
     if (trimmed.isEmpty) return '';
@@ -272,9 +283,9 @@ class CourseService {
     if (sample.isEmpty) {
       throw UploadException('Sample admission number is required');
     }
-    if (prefix.isEmpty) {
+    if (!Course.isValidAdmissionNumber(sample) || prefix.isEmpty) {
       throw UploadException(
-        'Sample admission number must start with a course code before the first /',
+        'Sample admission number must be prefix/number/year, e.g. C2/11745/24',
       );
     }
 
@@ -365,9 +376,9 @@ class CourseService {
     if (sample.isEmpty) {
       throw UploadException('Sample admission number is required');
     }
-    if (prefix.isEmpty) {
+    if (!Course.isValidAdmissionNumber(sample) || prefix.isEmpty) {
       throw UploadException(
-        'Sample admission number must start with a course code before the first /',
+        'Sample admission number must be prefix/number/year, e.g. C2/11745/24',
       );
     }
 
