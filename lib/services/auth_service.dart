@@ -85,12 +85,22 @@ class AuthService {
   }
 
   /// Deletes a profile and, when the backend is available, the Auth account.
-  Future<void> deleteAccount(String userId) async {
+  Future<void> deleteAccount(String userId, {String? email}) async {
     if (userId.isEmpty) {
       throw Exception('Missing user id');
     }
     if (userId == currentUser?.uid) {
       throw Exception('You cannot delete your own account.');
+    }
+
+    var accountEmail = email?.trim().toLowerCase() ?? '';
+    if (accountEmail.isEmpty) {
+      final snap = await _firestore.collection('profiles').doc(userId).get();
+      accountEmail =
+          (snap.data()?['email'] as String?)?.trim().toLowerCase() ?? '';
+    }
+    if (accountEmail == 'muigaid91@gmail.com') {
+      throw Exception('This account cannot be deleted.');
     }
 
     final token = await currentUser?.getIdToken();

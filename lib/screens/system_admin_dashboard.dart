@@ -1083,7 +1083,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
                       ),
                     ),
                     subtitle: Text(
-                      'Matches profiles whose admission number belongs to this course.',
+                      'Removes matching profiles and their sign-in accounts. Your account and the owner account are skipped.',
                       style: TextStyle(color: _muted, fontSize: 13),
                     ),
                     onChanged: (value) {

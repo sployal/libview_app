@@ -482,8 +482,15 @@ class CourseService {
       for (final profile in associated) {
         final id = profile['id']?.toString() ?? '';
         if (id.isEmpty) continue;
-        await _firestore.collection('profiles').doc(id).delete();
-        deletedUsers++;
+        try {
+          await AuthService.instance.deleteAccount(
+            id,
+            email: profile['email']?.toString(),
+          );
+          deletedUsers++;
+        } catch (_) {
+          // Skip the signed-in admin, the owner account, or a failed delete.
+        }
       }
     }
 
