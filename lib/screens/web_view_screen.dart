@@ -26,11 +26,24 @@ class _WebViewScreenState extends State<WebViewScreen> {
   bool isDownloading = false;
   double downloadProgress = 0.0;
   String? _activeDownloadFileId;
+  bool _isDark = false;
+
+  static const _darkBg = Color(0xFF111827);
+  static const _lightBg = Color(0xFFF8FAFC);
 
   @override
   void initState() {
     super.initState();
     _initializeWebView();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    if (dark == _isDark) return;
+    _isDark = dark;
+    _controller.setBackgroundColor(dark ? _darkBg : _lightBg);
   }
 
   // Convert Google Drive URL to preview URL
@@ -139,7 +152,14 @@ class _WebViewScreenState extends State<WebViewScreen> {
 ''';
 
   void _injectViewerCleanup() {
-    _controller.runJavaScript(_viewerCleanupJs).ignore();
+    final pageBg = _isDark ? '#111827' : '#F8FAFC';
+    _controller.runJavaScript('''
+$_viewerCleanupJs
+try {
+  document.documentElement.style.backgroundColor = '$pageBg';
+  if (document.body) document.body.style.backgroundColor = '$pageBg';
+} catch (e) {}
+''').ignore();
   }
 
   bool _isExternalAppUrl(String url) {
@@ -156,7 +176,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
     
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(const Color(0x00000000))
+      ..setBackgroundColor(_isDark ? _darkBg : _lightBg)
       // ⭐ ENABLE ZOOM SUPPORT - This is the key addition
       ..enableZoom(true)
       ..setNavigationDelegate(
@@ -345,16 +365,26 @@ class _WebViewScreenState extends State<WebViewScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final background = isDark ? _darkBg : _lightBg;
+    final titleColor = isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
+    final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
+    final card = isDark ? const Color(0xFF1F2937) : Colors.white;
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: background,
       appBar: AppBar(
+        backgroundColor: background,
+        foregroundColor: titleColor,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_rounded),
           onPressed: _handleBack,
         ),
         title: Text(
           widget.title,
-          style: const TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(fontWeight: FontWeight.bold, color: titleColor),
         ),
         actions: [
           IconButton(
@@ -377,24 +407,27 @@ class _WebViewScreenState extends State<WebViewScreen> {
         children: [
           WebViewWidget(controller: _controller),
           if (isLoading)
-            const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      Color(0xFF6366F1),
+            ColoredBox(
+              color: background,
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        Color(0xFF6366F1),
+                      ),
                     ),
-                  ),
-                  SizedBox(height: 16),
-                  Text(
-                    'Loading...',
-                    style: TextStyle(
-                      color: Color(0xFF6B7280),
-                      fontSize: 16,
+                    const SizedBox(height: 16),
+                    Text(
+                      'Loading...',
+                      style: TextStyle(
+                        color: muted,
+                        fontSize: 16,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           if (isDownloading)
@@ -405,7 +438,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
                   padding: const EdgeInsets.all(24),
                   margin: const EdgeInsets.symmetric(horizontal: 32),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: card,
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Column(
@@ -417,20 +450,20 @@ class _WebViewScreenState extends State<WebViewScreen> {
                         color: Color(0xFF6366F1),
                       ),
                       const SizedBox(height: 16),
-                      const Text(
+                      Text(
                         'Downloading...',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF1F2937),
+                          color: titleColor,
                         ),
                       ),
                       const SizedBox(height: 8),
-                      const Text(
+                      Text(
                         'Getting file information',
                         style: TextStyle(
                           fontSize: 14,
-                          color: Color(0xFF6B7280),
+                          color: muted,
                         ),
                       ),
                       const SizedBox(height: 16),
