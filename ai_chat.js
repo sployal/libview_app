@@ -55,8 +55,11 @@ function extractReply(data) {
 function registerAiRoutes(app, { requireAuth }) {
   app.post('/ai/chat', requireAuth, async (req, res) => {
     const apiKey = process.env.NVIDIA_API_KEY;
-    if (!apiKey) {
-      return res.status(503).json({ error: 'AI is not configured (missing NVIDIA_API_KEY)' });
+    const model = process.env.NVIDIA_AI_MODEL;
+    if (!apiKey || !model) {
+      return res.status(503).json({
+        error: `AI is not configured (missing ${!apiKey ? 'NVIDIA_API_KEY' : 'NVIDIA_AI_MODEL'})`,
+      });
     }
 
     const messages = Array.isArray(req.body?.messages) ? req.body.messages : [];
@@ -68,7 +71,7 @@ function registerAiRoutes(app, { requireAuth }) {
 
     const payload = {
       messages: nvidiaMessages,
-      model: process.env.NVIDIA_AI_MODEL || 'meta/llama-3.2-90b-vision-instruct',
+      model,
       frequency_penalty: 0,
       max_tokens: 1024,
       presence_penalty: 0,
