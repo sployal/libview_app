@@ -2,7 +2,9 @@ import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../services/auth_service.dart';
 import '../services/course_service.dart';
@@ -20,6 +22,10 @@ class CreateNotificationScreen extends StatefulWidget {
 }
 
 class _CreateNotificationScreenState extends State<CreateNotificationScreen> {
+  static const _accent = Color(0xFF6366F1);
+  static const _danger = Color(0xFFEF4444);
+  static const _success = Color(0xFF10B981);
+
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _messageController = TextEditingController();
@@ -37,44 +43,48 @@ class _CreateNotificationScreenState extends State<CreateNotificationScreen> {
   String? _imageName;
   String? _imageMime;
 
-  final List<Map<String, dynamic>> _notificationTypes = [
-    {
-      'value': 'general',
-      'label': 'General',
-      'icon': Icons.notifications_rounded,
-      'color': Color(0xFF6B7280),
-    },
-    {
-      'value': 'assignment',
-      'label': 'Assignment',
-      'icon': Icons.assignment_rounded,
-      'color': Color(0xFF3B82F6),
-    },
-    {
-      'value': 'exam',
-      'label': 'Exam',
-      'icon': Icons.quiz_rounded,
-      'color': Color(0xFFEF4444),
-    },
-    {
-      'value': 'event',
-      'label': 'Event',
-      'icon': Icons.event_rounded,
-      'color': Color(0xFF8B5CF6),
-    },
-    {
-      'value': 'announcement',
-      'label': 'Announcement',
-      'icon': Icons.campaign_rounded,
-      'color': Color(0xFFF59E0B),
-    },
+  static const _notificationTypes = <({
+    String value,
+    String label,
+    IconData icon,
+    Color color,
+  })>[
+    (
+      value: 'general',
+      label: 'General',
+      icon: CupertinoIcons.bell_fill,
+      color: _accent,
+    ),
+    (
+      value: 'assignment',
+      label: 'Assignment',
+      icon: CupertinoIcons.doc_text_fill,
+      color: Color(0xFF3B82F6),
+    ),
+    (
+      value: 'exam',
+      label: 'Exam',
+      icon: CupertinoIcons.pencil_ellipsis_rectangle,
+      color: Color(0xFFEF4444),
+    ),
+    (
+      value: 'event',
+      label: 'Event',
+      icon: CupertinoIcons.calendar,
+      color: Color(0xFF8B5CF6),
+    ),
+    (
+      value: 'announcement',
+      label: 'Announcement',
+      icon: CupertinoIcons.speaker_2_fill,
+      color: Color(0xFFF59E0B),
+    ),
   ];
 
   bool get _isClassLeadership =>
       _role == 'class_rep' || _role == 'assistant_class_rep';
 
-  bool get _isSystemAdmin =>
-      SystemAdminDashboard.isSystemAdminRole(_role);
+  bool get _isSystemAdmin => SystemAdminDashboard.isSystemAdminRole(_role);
 
   Course? get _selectedCourse {
     for (final course in _courses) {
@@ -103,8 +113,7 @@ class _CreateNotificationScreenState extends State<CreateNotificationScreen> {
           .get();
       final data = profileDoc.data() ?? {};
       final role = ((data['role'] as String?) ?? 'student').toLowerCase();
-      final admissionNumber =
-          (data['admission_number'] as String?) ?? '';
+      final admissionNumber = (data['admission_number'] as String?) ?? '';
       final prefix = Course.admissionPrefixFromSample(admissionNumber);
       final suffix = Course.classSuffixFromSample(admissionNumber);
       final courses = await CourseService.instance.listCourses();
@@ -119,7 +128,9 @@ class _CreateNotificationScreenState extends State<CreateNotificationScreen> {
             : '';
         _courseName = course?.name ?? '';
         _courses = List<Course>.from(courses)
-          ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+          ..sort(
+            (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+          );
         _audience = (role == 'class_rep' || role == 'assistant_class_rep')
             ? 'class'
             : 'all';
@@ -158,6 +169,17 @@ class _CreateNotificationScreenState extends State<CreateNotificationScreen> {
     return 'This notification will be visible to all users';
   }
 
+  void _showSnack(String message, Color color) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: color,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
   Future<void> _pickImage() async {
     if (_isLoading) return;
 
@@ -175,13 +197,7 @@ class _CreateNotificationScreenState extends State<CreateNotificationScreen> {
     const maxBytes = 8 * 1024 * 1024;
     if (bytes.length > maxBytes) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please choose an image smaller than 8 MB.'),
-          backgroundColor: Color(0xFFEF4444),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      _showSnack('Please choose an image smaller than 8 MB.', _danger);
       return;
     }
 
@@ -198,14 +214,7 @@ class _CreateNotificationScreenState extends State<CreateNotificationScreen> {
     if (_isSystemAdmin &&
         _audience == 'course' &&
         (_selectedCourseId == null || _selectedCourseId!.isEmpty)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Please select a course'),
-          backgroundColor: const Color(0xFFEF4444),
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-      );
+      _showSnack('Please select a course', _danger);
       return;
     }
 
@@ -237,50 +246,12 @@ class _CreateNotificationScreenState extends State<CreateNotificationScreen> {
       );
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Row(
-              children: [
-                Icon(Icons.check_circle, color: Colors.white),
-                SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Notification sent successfully!',
-                    style: TextStyle(fontWeight: FontWeight.w500),
-                  ),
-                ),
-              ],
-            ),
-            backgroundColor: const Color(0xFF10B981),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            margin: const EdgeInsets.all(16),
-          ),
-        );
+        _showSnack('Notification sent successfully', _success);
         Navigator.of(context).pop();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error_outline, color: Colors.white),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Error creating notification: $e',
-                    style: const TextStyle(fontWeight: FontWeight.w500),
-                  ),
-                ),
-              ],
-            ),
-            backgroundColor: const Color(0xFFEF4444),
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            margin: const EdgeInsets.all(16),
-          ),
-        );
+        _showSnack('Error creating notification: $e', _danger);
       }
     } finally {
       if (mounted) {
@@ -302,418 +273,425 @@ class _CreateNotificationScreenState extends State<CreateNotificationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final background =
+        isDark ? const Color(0xFF111827) : const Color(0xFFF8FAFC);
+    final titleColor =
+        isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
+    final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
+    final card = isDark ? const Color(0xFF1F2937) : Colors.white;
+    final divider = isDark ? const Color(0xFF374151) : const Color(0xFFE5E7EB);
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: Color(0xFF1F2937)),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        title: const Text(
-          'Create Notification',
-          style: TextStyle(
-            color: Color(0xFF1F2937),
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
+      backgroundColor: background,
       body: _isLoadingProfile
-          ? const Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
+          ? Center(
+              child: CupertinoActivityIndicator(
+                color: isDark ? Colors.white : _accent,
+                radius: 14,
               ),
             )
-          : SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(
-                24,
-                24,
-                24,
-                24 + _bottomContentInset(context),
-              ),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Row(
+          : CustomScrollView(
+              physics: const BouncingScrollPhysics(),
+              slivers: [
+                SliverAppBar(
+                  pinned: true,
+                  elevation: 0,
+                  scrolledUnderElevation: 0,
+                  backgroundColor: background,
+                  systemOverlayStyle: isDark
+                      ? SystemUiOverlayStyle.light
+                      : SystemUiOverlayStyle.dark,
+                  leading: IconButton(
+                    icon: Icon(CupertinoIcons.back, color: titleColor),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ),
+                SliverPadding(
+                  padding: EdgeInsets.fromLTRB(
+                    20,
+                    0,
+                    20,
+                    24 + _bottomContentInset(context),
+                  ),
+                  sliver: SliverToBoxAdapter(
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Icon(
-                              Icons.info_outline_rounded,
-                              color: Colors.white,
-                              size: 24,
+                          Text(
+                            'Create Notification',
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.4,
+                              color: titleColor,
+                              height: 1.1,
                             ),
                           ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Text(
-                              _audienceHint,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
+                          const SizedBox(height: 6),
+                          Text(
+                            'Post to your class, course, or everyone',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                              color: muted,
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          _hintBanner(
+                            isDark: isDark,
+                            titleColor: titleColor,
+                            card: card,
+                          ),
+                          if (_isClassLeadership) ...[
+                            const SizedBox(height: 28),
+                            _sectionLabel('Send to', muted),
+                            const SizedBox(height: 12),
+                            _buildAudienceOption(
+                              value: 'class',
+                              title: _classLabel.isEmpty
+                                  ? 'My class'
+                                  : 'My class ($_classLabel)',
+                              subtitle: 'Only students in your year/class',
+                              icon: CupertinoIcons.person_2_fill,
+                              titleColor: titleColor,
+                              muted: muted,
+                              card: card,
+                              divider: divider,
+                            ),
+                            const SizedBox(height: 10),
+                            _buildAudienceOption(
+                              value: 'course',
+                              title: _courseName.isEmpty
+                                  ? 'Entire course'
+                                  : 'Entire course ($_courseName)',
+                              subtitle: 'All years in your course',
+                              icon: CupertinoIcons.book_fill,
+                              titleColor: titleColor,
+                              muted: muted,
+                              card: card,
+                              divider: divider,
+                            ),
+                          ],
+                          if (_isSystemAdmin) ...[
+                            const SizedBox(height: 28),
+                            _sectionLabel('Send to', muted),
+                            const SizedBox(height: 12),
+                            _buildAudienceOption(
+                              value: 'all',
+                              title: 'Everyone',
+                              subtitle: 'All users on the platform',
+                              icon: CupertinoIcons.globe,
+                              titleColor: titleColor,
+                              muted: muted,
+                              card: card,
+                              divider: divider,
+                            ),
+                            const SizedBox(height: 10),
+                            _buildAudienceOption(
+                              value: 'course',
+                              title: 'Course members',
+                              subtitle: _courses.isEmpty
+                                  ? 'No courses available yet'
+                                  : 'Members of a specific existing course',
+                              icon: CupertinoIcons.book_fill,
+                              titleColor: titleColor,
+                              muted: muted,
+                              card: card,
+                              divider: divider,
+                            ),
+                            if (_audience == 'course') ...[
+                              const SizedBox(height: 12),
+                              if (_courses.isEmpty)
+                                Text(
+                                  'No courses available yet',
+                                  style: TextStyle(fontSize: 13, color: muted),
+                                )
+                              else
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: _courses.map((course) {
+                                    return _chip(
+                                      label: course.name,
+                                      selected: _selectedCourseId == course.id,
+                                      onTap: () => setState(
+                                        () => _selectedCourseId = course.id,
+                                      ),
+                                      titleColor: titleColor,
+                                      muted: muted,
+                                      card: card,
+                                      divider: divider,
+                                      icon: CupertinoIcons.book,
+                                    );
+                                  }).toList(),
+                                ),
+                            ],
+                          ],
+                          const SizedBox(height: 28),
+                          _sectionLabel('Type', muted),
+                          const SizedBox(height: 12),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: _notificationTypes.map((type) {
+                              return _chip(
+                                label: type.label,
+                                selected: _selectedType == type.value,
+                                onTap: () =>
+                                    setState(() => _selectedType = type.value),
+                                titleColor: titleColor,
+                                muted: muted,
+                                card: card,
+                                divider: divider,
+                                icon: type.icon,
+                                selectedColor: type.color,
+                              );
+                            }).toList(),
+                          ),
+                          const SizedBox(height: 28),
+                          _sectionLabel('Title (optional)', muted),
+                          const SizedBox(height: 10),
+                          _themedField(
+                            controller: _titleController,
+                            hint: 'Add a title, or leave blank',
+                            titleColor: titleColor,
+                            muted: muted,
+                            card: card,
+                            divider: divider,
+                          ),
+                          const SizedBox(height: 20),
+                          _sectionLabel('Message', muted),
+                          const SizedBox(height: 10),
+                          _themedField(
+                            controller: _messageController,
+                            hint: 'What should people know?',
+                            titleColor: titleColor,
+                            muted: muted,
+                            card: card,
+                            divider: divider,
+                            maxLines: 5,
+                            validator: (value) {
+                              if (value == null || value.trim().isEmpty) {
+                                return 'Please enter a message';
+                              }
+                              if (value.trim().length < 10) {
+                                return 'Message must be at least 10 characters';
+                              }
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 20),
+                          _sectionLabel('Image (optional)', muted),
+                          const SizedBox(height: 10),
+                          if (_imageBytes != null) ...[
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(16),
+                              child: Image.memory(
+                                _imageBytes!,
+                                height: 180,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
                               ),
+                            ),
+                            const SizedBox(height: 8),
+                            TextButton.icon(
+                              onPressed: _isLoading
+                                  ? null
+                                  : () {
+                                      setState(() {
+                                        _imageBytes = null;
+                                        _imageName = null;
+                                        _imageMime = null;
+                                      });
+                                    },
+                              icon: const Icon(
+                                CupertinoIcons.trash,
+                                size: 16,
+                                color: _danger,
+                              ),
+                              label: const Text(
+                                'Remove image',
+                                style: TextStyle(
+                                  color: _danger,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ] else
+                            OutlinedButton.icon(
+                              onPressed: _isLoading ? null : _pickImage,
+                              icon: const Icon(
+                                CupertinoIcons.photo,
+                                size: 18,
+                              ),
+                              label: const Text(
+                                'Upload image',
+                                style: TextStyle(fontWeight: FontWeight.w700),
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                minimumSize: const Size(double.infinity, 52),
+                                foregroundColor: titleColor,
+                                side: BorderSide(color: divider),
+                                backgroundColor: card,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                            ),
+                          const SizedBox(height: 28),
+                          SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              onPressed:
+                                  _isLoading ? null : _createNotification,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: _accent,
+                                foregroundColor: Colors.white,
+                                disabledBackgroundColor:
+                                    _accent.withOpacity(0.55),
+                                elevation: 0,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                              child: _isLoading
+                                  ? const SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                          Colors.white,
+                                        ),
+                                      ),
+                                    )
+                                  : const Text(
+                                      'Send Notification',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
                             ),
                           ),
                         ],
                       ),
                     ),
-                    if (_isClassLeadership) ...[
-                      const SizedBox(height: 32),
-                      const Text(
-                        'Send to',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF1F2937),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      _buildAudienceOption(
-                        value: 'class',
-                        title: _classLabel.isEmpty
-                            ? 'My class'
-                            : 'My class ($_classLabel)',
-                        subtitle: 'Only students in your year/class',
-                        icon: Icons.groups_rounded,
-                      ),
-                      const SizedBox(height: 8),
-                      _buildAudienceOption(
-                        value: 'course',
-                        title: _courseName.isEmpty
-                            ? 'Entire course'
-                            : 'Entire course ($_courseName)',
-                        subtitle: 'All years in your course',
-                        icon: Icons.school_rounded,
-                      ),
-                    ],
-                    if (_isSystemAdmin) ...[
-                      const SizedBox(height: 32),
-                      const Text(
-                        'Send to',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF1F2937),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      _buildAudienceOption(
-                        value: 'all',
-                        title: 'Everyone',
-                        subtitle: 'All users on the platform',
-                        icon: Icons.public_rounded,
-                      ),
-                      const SizedBox(height: 8),
-                      _buildAudienceOption(
-                        value: 'course',
-                        title: 'Course members',
-                        subtitle: _courses.isEmpty
-                            ? 'No courses available yet'
-                            : 'Members of a specific existing course',
-                        icon: Icons.school_rounded,
-                      ),
-                      if (_audience == 'course') ...[
-                        const SizedBox(height: 12),
-                        if (_courses.isEmpty)
-                          const Text(
-                            'No courses available yet',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Color(0xFF6B7280),
-                            ),
-                          )
-                        else
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: _courses.map((course) {
-                              final isSelected = _selectedCourseId == course.id;
-                              return GestureDetector(
-                                onTap: () {
-                                  setState(() => _selectedCourseId = course.id);
-                                },
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 12,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: isSelected
-                                        ? const Color(0xFF6366F1).withOpacity(0.1)
-                                        : Colors.white,
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: isSelected
-                                          ? const Color(0xFF6366F1)
-                                          : const Color(0xFFE5E7EB),
-                                      width: isSelected ? 2 : 1,
-                                    ),
-                                  ),
-                                  child: Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(
-                                        Icons.school_rounded,
-                                        size: 18,
-                                        color: isSelected
-                                            ? const Color(0xFF6366F1)
-                                            : const Color(0xFF6B7280),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        course.name,
-                                        style: TextStyle(
-                                          color: isSelected
-                                              ? const Color(0xFF6366F1)
-                                              : const Color(0xFF1F2937),
-                                          fontWeight: isSelected
-                                              ? FontWeight.bold
-                                              : FontWeight.w500,
-                                          fontSize: 14,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                      ],
-                    ],
-                    const SizedBox(height: 32),
-                    const Text(
-                      'Notification Type',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1F2937),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: _notificationTypes.map((type) {
-                        final isSelected = _selectedType == type['value'];
-                        return GestureDetector(
-                          onTap: () {
-                            setState(() {
-                              _selectedType = type['value'] as String;
-                            });
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? (type['color'] as Color).withOpacity(0.1)
-                                  : Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: isSelected
-                                    ? type['color'] as Color
-                                    : const Color(0xFFE5E7EB),
-                                width: isSelected ? 2 : 1,
-                              ),
-                              boxShadow: [
-                                if (isSelected)
-                                  BoxShadow(
-                                    color: (type['color'] as Color)
-                                        .withOpacity(0.2),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 2),
-                                  ),
-                              ],
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  type['icon'] as IconData,
-                                  color: isSelected
-                                      ? type['color'] as Color
-                                      : const Color(0xFF6B7280),
-                                  size: 20,
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  type['label'] as String,
-                                  style: TextStyle(
-                                    color: isSelected
-                                        ? type['color'] as Color
-                                        : const Color(0xFF6B7280),
-                                    fontWeight: isSelected
-                                        ? FontWeight.bold
-                                        : FontWeight.w500,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      }).toList(                      ),
-                    ),
-                    const SizedBox(height: 32),
-                    _buildTextField(
-                      controller: _titleController,
-                      label: 'Title (optional)',
-                      hint: 'Enter a title, or leave blank',
-                      icon: Icons.title_rounded,
-                      maxLines: 1,
-                    ),
-                    const SizedBox(height: 24),
-                    _buildTextField(
-                      controller: _messageController,
-                      label: 'Message',
-                      hint: 'Enter notification message',
-                      icon: Icons.message_rounded,
-                      maxLines: 5,
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Please enter a message';
-                        }
-                        if (value.trim().length < 10) {
-                          return 'Message must be at least 10 characters';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 24),
-                    const Text(
-                      'Image (optional)',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF1F2937),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    if (_imageBytes != null) ...[
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(16),
-                        child: Image.memory(
-                          _imageBytes!,
-                          height: 180,
-                          width: double.infinity,
-                          fit: BoxFit.cover,
-                        ),
-                      ),
-                      TextButton.icon(
-                        onPressed: _isLoading
-                            ? null
-                            : () {
-                                setState(() {
-                                  _imageBytes = null;
-                                  _imageName = null;
-                                  _imageMime = null;
-                                });
-                              },
-                        icon: const Icon(Icons.close_rounded, color: Color(0xFFEF4444)),
-                        label: const Text(
-                          'Remove image',
-                          style: TextStyle(color: Color(0xFFEF4444)),
-                        ),
-                      ),
-                    ] else
-                      OutlinedButton.icon(
-                        onPressed: _isLoading ? null : _pickImage,
-                        icon: const Icon(Icons.add_photo_alternate_outlined),
-                        label: const Text('Upload image'),
-                        style: OutlinedButton.styleFrom(
-                          minimumSize: const Size(double.infinity, 52),
-                          foregroundColor: const Color(0xFF6366F1),
-                          side: const BorderSide(color: Color(0xFF6366F1)),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                        ),
-                      ),
-                    const SizedBox(height: 32),
-                    SizedBox(
-                      width: double.infinity,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [
-                              Color(0xFF6366F1),
-                              Color(0xFF8B5CF6),
-                            ],
-                          ),
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(0xFF6366F1).withOpacity(0.4),
-                              blurRadius: 15,
-                              offset: const Offset(0, 8),
-                            ),
-                          ],
-                        ),
-                        child: ElevatedButton(
-                          onPressed: _isLoading ? null : _createNotification,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.transparent,
-                            foregroundColor: Colors.white,
-                            shadowColor: Colors.transparent,
-                            padding: const EdgeInsets.symmetric(vertical: 18),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            elevation: 0,
-                          ),
-                          child: _isLoading
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    valueColor: AlwaysStoppedAnimation<Color>(
-                                      Colors.white,
-                                    ),
-                                  ),
-                                )
-                              : const Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.send_rounded, size: 20),
-                                    SizedBox(width: 8),
-                                    Text(
-                                      'Send Notification',
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
+              ],
+            ),
+    );
+  }
+
+  Widget _sectionLabel(String label, Color muted) {
+    return Text(
+      label.toUpperCase(),
+      style: TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        letterSpacing: 0.6,
+        color: muted,
+      ),
+    );
+  }
+
+  Widget _hintBanner({
+    required bool isDark,
+    required Color titleColor,
+    required Color card,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Color.alphaBlend(
+          _accent.withOpacity(isDark ? 0.16 : 0.08),
+          card,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _accent.withOpacity(isDark ? 0.28 : 0.18)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: _accent.withOpacity(0.14),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              CupertinoIcons.info_circle_fill,
+              color: _accent,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              _audienceHint,
+              style: TextStyle(
+                fontSize: 14,
+                height: 1.35,
+                fontWeight: FontWeight.w500,
+                color: titleColor,
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _chip({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+    required Color titleColor,
+    required Color muted,
+    required Color card,
+    required Color divider,
+    IconData? icon,
+    Color selectedColor = _accent,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: selected ? selectedColor : card,
+          borderRadius: BorderRadius.circular(99),
+          border: Border.all(color: selected ? selectedColor : divider),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(
+                icon,
+                size: 15,
+                color: selected ? Colors.white : muted,
+              ),
+              const SizedBox(width: 7),
+            ],
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: selected ? Colors.white : titleColor,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -722,155 +700,124 @@ class _CreateNotificationScreenState extends State<CreateNotificationScreen> {
     required String title,
     required String subtitle,
     required IconData icon,
+    required Color titleColor,
+    required Color muted,
+    required Color card,
+    required Color divider,
   }) {
     final isSelected = _audience == value;
-    return GestureDetector(
-      onTap: () => setState(() => _audience = value),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? const Color(0xFF6366F1).withOpacity(0.08)
-              : Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected
-                ? const Color(0xFF6366F1)
-                : const Color(0xFFE5E7EB),
-            width: isSelected ? 2 : 1,
-          ),
+    return Material(
+      color: isSelected
+          ? Color.alphaBlend(_accent.withOpacity(0.12), card)
+          : card,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: isSelected ? _accent : divider,
+          width: isSelected ? 1.5 : 1,
         ),
-        child: Row(
-          children: [
-            Icon(
-              icon,
-              color: isSelected
-                  ? const Color(0xFF6366F1)
-                  : const Color(0xFF6B7280),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: isSelected
-                          ? const Color(0xFF6366F1)
-                          : const Color(0xFF1F2937),
-                    ),
-                  ),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF6B7280),
-                    ),
-                  ),
-                ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => setState(() => _audience = value),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: (isSelected ? _accent : muted).withOpacity(0.14),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  icon,
+                  size: 18,
+                  color: isSelected ? _accent : muted,
+                ),
               ),
-            ),
-            Icon(
-              isSelected
-                  ? Icons.radio_button_checked
-                  : Icons.radio_button_off,
-              color: isSelected
-                  ? const Color(0xFF6366F1)
-                  : const Color(0xFF9CA3AF),
-            ),
-          ],
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: isSelected ? _accent : titleColor,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: TextStyle(fontSize: 13, color: muted),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                isSelected
+                    ? CupertinoIcons.checkmark_circle_fill
+                    : CupertinoIcons.circle,
+                color: isSelected ? _accent : muted,
+                size: 22,
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildTextField({
+  Widget _themedField({
     required TextEditingController controller,
-    required String label,
     required String hint,
-    required IconData icon,
+    required Color titleColor,
+    required Color muted,
+    required Color card,
+    required Color divider,
     int maxLines = 1,
     String? Function(String?)? validator,
   }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF1F2937),
-          ),
+    return TextFormField(
+      controller: controller,
+      maxLines: maxLines,
+      validator: validator,
+      style: TextStyle(color: titleColor, fontSize: 16),
+      cursorColor: _accent,
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: TextStyle(color: muted),
+        filled: true,
+        fillColor: card,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: divider),
         ),
-        const SizedBox(height: 12),
-        Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.04),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: TextFormField(
-            controller: controller,
-            maxLines: maxLines,
-            validator: validator,
-            style: const TextStyle(
-              color: Color(0xFF1F2937),
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-            ),
-            decoration: InputDecoration(
-              hintText: hint,
-              hintStyle: TextStyle(
-                color: Colors.grey[400],
-                fontWeight: FontWeight.w400,
-              ),
-              prefixIcon: Container(
-                margin: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF6366F1).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Icon(icon, color: const Color(0xFF6366F1), size: 20),
-              ),
-              filled: true,
-              fillColor: Colors.white,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: BorderSide.none,
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(color: Color(0xFFE5E7EB), width: 1),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(color: Color(0xFF6366F1), width: 2),
-              ),
-              errorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(color: Color(0xFFEF4444), width: 1),
-              ),
-              focusedErrorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(color: Color(0xFFEF4444), width: 2),
-              ),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 16,
-              ),
-            ),
-          ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: divider),
         ),
-      ],
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: _accent, width: 1.5),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: _danger),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: _danger, width: 1.5),
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
+      ),
     );
   }
 }
