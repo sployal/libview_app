@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -13,7 +14,7 @@ import 'services/course_service.dart';
 import 'services/streak_service.dart';
 import 'services/theme_controller.dart';
 import 'screens/home_screen.dart';
-import 'screens/semesters_screen.dart';
+import 'screens/materials_tab_screen.dart';
 import 'screens/downloads_screen.dart';
 import 'screens/ai_screen.dart';
 import 'screens/profile_screen.dart';
@@ -145,7 +146,8 @@ class AuthGate extends StatelessWidget {
               final role = profileData?['role'] as String?;
               final exemptFromCourseLock =
                   SystemAdminDashboard.isAllowedEmail(email) ||
-                      SystemAdminDashboard.isSystemAdminRole(role);
+                      SystemAdminDashboard.isSystemAdminRole(role) ||
+                      AuthService.isClientRole(role);
 
               if (exemptFromCourseLock) {
                 StartupOverlay.instance.expectHome();
@@ -291,6 +293,8 @@ class _MainScreenState extends State<MainScreen>
       GlobalKey<NavigatorState>();
   late final NavigatorObserver _homeNavObserver;
   late final NavigatorObserver _downloadsNavObserver;
+  String _materialsTabLabel = 'Semesters';
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _profileSub;
 
   Navigator _tabNavigator({
     required GlobalKey<NavigatorState> key,
@@ -315,7 +319,7 @@ class _MainScreenState extends State<MainScreen>
           observer: _homeNavObserver,
           home: const HomeScreen(),
         ),
-        const SemestersScreen(),
+        const MaterialsTabScreen(),
         const AiScreen(),
         _tabNavigator(
           key: _downloadsNavigatorKey,
@@ -360,6 +364,18 @@ class _MainScreenState extends State<MainScreen>
     _animationController.forward();
     WidgetsBinding.instance.addObserver(this);
     StreakService.instance.recordDailyOpen();
+    _listenMaterialsTabLabel();
+  }
+
+  void _listenMaterialsTabLabel() {
+    final uid = AuthService.instance.currentUser?.uid;
+    if (uid == null) return;
+    _profileSub = AuthService.instance.profileDocStream(uid).listen((doc) {
+      final isClient = AuthService.isClientRole(doc.data()?['role'] as String?);
+      final next = isClient ? 'Files' : 'Semesters';
+      if (!mounted || next == _materialsTabLabel) return;
+      setState(() => _materialsTabLabel = next);
+    });
   }
 
   @override
@@ -372,6 +388,7 @@ class _MainScreenState extends State<MainScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _profileSub?.cancel();
     _animationController.dispose();
     super.dispose();
   }
@@ -425,6 +442,7 @@ class _MainScreenState extends State<MainScreen>
             selectedIndex: _selectedIndex,
             isDark: isDark,
             onTap: _selectTab,
+            materialsLabel: _materialsTabLabel,
           ),
         ),
       ),
@@ -437,15 +455,25 @@ class _AppBottomNav extends StatelessWidget {
     required this.selectedIndex,
     required this.isDark,
     required this.onTap,
+    this.materialsLabel = 'Semesters',
   });
 
   final int selectedIndex;
   final bool isDark;
   final ValueChanged<int> onTap;
+  final String materialsLabel;
 
-  static const _items = [
+  List<(IconData, IconData, String)> get _items => [
     (Icons.home_rounded, Icons.home_outlined, 'Home'),
-    (Icons.school_rounded, Icons.school_outlined, 'Semesters'),
+    (
+      materialsLabel == 'Files'
+          ? Icons.folder_rounded
+          : Icons.school_rounded,
+      materialsLabel == 'Files'
+          ? Icons.folder_outlined
+          : Icons.school_outlined,
+      materialsLabel,
+    ),
     (Icons.auto_awesome_rounded, Icons.auto_awesome_outlined, 'AI'),
     (Icons.download_rounded, Icons.download_outlined, 'Downloads'),
     (Icons.person_rounded, Icons.person_outline_rounded, 'Profile'),

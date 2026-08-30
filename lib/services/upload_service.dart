@@ -326,6 +326,107 @@ class UploadService {
     }
   }
 
+  Future<ClientWorkspaceResult> createClientWorkspace({
+    required String name,
+  }) async {
+    if (name.trim().isEmpty) {
+      throw UploadException('Client name is required');
+    }
+
+    final token = await _idToken();
+
+    try {
+      final response = await _dio.post(
+        '/client-workspace',
+        data: {'name': name.trim()},
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+          receiveTimeout: const Duration(minutes: 2),
+        ),
+      );
+
+      final data = response.data;
+      if (data is Map<String, dynamic>) {
+        return ClientWorkspaceResult.fromJson(data);
+      }
+      if (data is Map) {
+        return ClientWorkspaceResult.fromJson(Map<String, dynamic>.from(data));
+      }
+      throw UploadException('Unexpected response from server');
+    } on DioException catch (e) {
+      throw UploadException(
+        _messageFromDio(e, action: 'client'),
+        statusCode: e.response?.statusCode,
+      );
+    }
+  }
+
+  Future<UploadResult> renameClientWorkspace({
+    required String folderId,
+    required String name,
+  }) async {
+    if (folderId.isEmpty) {
+      throw UploadException('No client folder to rename');
+    }
+    if (name.trim().isEmpty) {
+      throw UploadException('Client name is required');
+    }
+
+    final token = await _idToken();
+
+    try {
+      final response = await _dio.patch(
+        '/client-workspace/${Uri.encodeComponent(folderId)}',
+        data: {'name': name.trim()},
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      );
+
+      final data = response.data;
+      if (data is Map<String, dynamic>) {
+        return UploadResult.fromJson(data);
+      }
+      if (data is Map) {
+        return UploadResult.fromJson(Map<String, dynamic>.from(data));
+      }
+      throw UploadException('Unexpected response from server');
+    } on DioException catch (e) {
+      throw UploadException(
+        _messageFromDio(e, action: 'client'),
+        statusCode: e.response?.statusCode,
+      );
+    }
+  }
+
+  Future<void> deleteClientWorkspace(String folderId) async {
+    if (folderId.isEmpty) {
+      throw UploadException('No client folder to delete');
+    }
+
+    final token = await _idToken();
+
+    try {
+      await _dio.delete(
+        '/client-workspace/${Uri.encodeComponent(folderId)}',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      );
+    } on DioException catch (e) {
+      throw UploadException(
+        _messageFromDio(e, action: 'client'),
+        statusCode: e.response?.statusCode,
+      );
+    }
+  }
+
   Future<UploadResult> renameFile({
     required String fileId,
     required String name,
@@ -502,6 +603,8 @@ class UploadService {
         return 'Could not create the folder.';
       case 'course':
         return 'Could not update the course.';
+      case 'client':
+        return 'Could not update the client workspace.';
       case 'storage':
         return 'Could not load storage.';
       default:
@@ -652,6 +755,29 @@ class CourseStructureResult {
           json['name']?.toString() ??
           '',
       semesters: semesters,
+    );
+  }
+}
+
+class ClientWorkspaceResult {
+  final String folderId;
+  final String name;
+  final bool created;
+  final String clientsRootId;
+
+  ClientWorkspaceResult({
+    required this.folderId,
+    required this.name,
+    required this.created,
+    required this.clientsRootId,
+  });
+
+  factory ClientWorkspaceResult.fromJson(Map<String, dynamic> json) {
+    return ClientWorkspaceResult(
+      folderId: json['folderId']?.toString() ?? json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      created: json['created'] == true,
+      clientsRootId: json['clientsRootId']?.toString() ?? '',
     );
   }
 }

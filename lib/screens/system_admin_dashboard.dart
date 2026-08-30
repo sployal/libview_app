@@ -7,8 +7,10 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/auth_service.dart';
+import '../services/client_service.dart';
 import '../services/course_service.dart';
 import '../services/upload_service.dart';
+import 'client_workspace_screen.dart';
 import 'course_addition.dart';
 
 class SystemAdminDashboard extends StatefulWidget {
@@ -47,8 +49,10 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
   List<Map<String, dynamic>> _filteredStaff = [];
   List<Map<String, dynamic>> _filteredSuspended = [];
   List<Course> _courses = [];
+  List<ClientWorkspace> _clients = [];
   bool _isLoading = true;
   bool _isLoadingCourses = true;
+  bool _isLoadingClients = true;
   bool _isLoadingStorage = true;
   bool _isStatsExpanded = true;
   bool _isStorageExpanded = false;
@@ -65,7 +69,12 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
   String _restrictionMessage = AuthService.defaultSignupRestrictionMessage;
   bool _savingAccountPolicy = false;
 
-  static const _userRoles = ['student', 'class_rep', 'assistant_class_rep'];
+  static const _userRoles = [
+    'student',
+    'class_rep',
+    'assistant_class_rep',
+    AuthService.clientRole,
+  ];
   static const _staffRoles = ['lecturer', 'admin', 'system_admin'];
   static const _allRoles = [
     'student',
@@ -83,6 +92,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
     'class_rep': const Color(0xFFF59E0B),
     'assistant_class_rep': const Color(0xFF0EA5E9),
     'student': const Color(0xFF10B981),
+    'client': const Color(0xFF0EA5E9),
   };
 
   bool get _isDark => Theme.of(context).brightness == Brightness.dark;
@@ -114,6 +124,8 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
       .length;
   int get _totalSuspended =>
       _profiles.where((p) => p['suspended'] == true).length;
+  int get _totalClients =>
+      _profiles.where((p) => AuthService.isClientRole(p['role'] as String?)).length;
 
   int get _newThisWeek {
     final weekAgo = DateTime.now().subtract(const Duration(days: 7));
@@ -146,6 +158,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
     }
     await _loadProfiles();
     await _loadCourses();
+    await _loadClients();
     await _loadStorage();
     await _loadAccountCreationSettings();
   }
@@ -276,10 +289,23 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
     }
 
     try {
-      await _firestore.collection('profiles').doc(userId).update({
+      final updates = <String, dynamic>{
         'role': newRole,
         'updated_at': FieldValue.serverTimestamp(),
-      });
+      };
+      if (!AuthService.isClientRole(newRole)) {
+        updates['client_id'] = FieldValue.delete();
+        final profile = await _firestore.collection('profiles').doc(userId).get();
+        final previousClientId =
+            (profile.data()?['client_id'] as String?)?.trim() ?? '';
+        if (previousClientId.isNotEmpty) {
+          await _firestore.collection('clients').doc(previousClientId).set({
+            'member_uids': FieldValue.arrayRemove([userId]),
+            'updated_at': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+        }
+      }
+      await _firestore.collection('profiles').doc(userId).update(updates);
 
       if (!mounted) return;
       _applyLocalRoleChange(userId, newRole);
@@ -966,6 +992,8 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
         return CupertinoIcons.person_2_fill;
       case 'assistant_class_rep':
         return CupertinoIcons.person_2;
+      case 'client':
+        return CupertinoIcons.folder_fill;
       case 'student':
       default:
         return CupertinoIcons.person_fill;
@@ -1018,6 +1046,436 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
       if (!mounted) return;
       setState(() => _isLoadingCourses = false);
     }
+  }
+
+  Future<void> _loadClients() async {
+    setState(() => _isLoadingClients = true);
+    try {
+      final clients = await ClientService.instance.listClients();
+      if (!mounted) return;
+      setState(() {
+        _clients = clients;
+        _isLoadingClients = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isLoadingClients = false);
+    }
+  }
+
+  Map<String, dynamic>? _profileById(String uid) {
+    for (final profile in _profiles) {
+      if (profile['id']?.toString() == uid) return profile;
+    }
+    return null;
+  }
+
+  String _profileLabel(String uid) {
+    final profile = _profileById(uid);
+    if (profile == null) return uid;
+    final name = profile['full_name']?.toString().trim() ?? '';
+    if (name.isNotEmpty) return name;
+    final email = profile['email']?.toString().trim() ?? '';
+    return email.isNotEmpty ? email : uid;
+  }
+
+  Future<void> _showCreateClientDialog() async {
+    final nameController = TextEditingController();
+    final emailController = TextEditingController();
+    final created = await showDialog<({String name, String email})>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: _card,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          title: Text(
+            'Add client',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              color: _titleColor,
+            ),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                autofocus: true,
+                textCapitalization: TextCapitalization.words,
+                decoration: InputDecoration(
+                  hintText: 'Client name',
+                  hintStyle: TextStyle(color: _muted),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: emailController,
+                keyboardType: TextInputType.emailAddress,
+                autocorrect: false,
+                decoration: InputDecoration(
+                  hintText: 'Email address',
+                  hintStyle: TextStyle(color: _muted),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                final name = nameController.text.trim();
+                final email = emailController.text.trim();
+                if (name.isEmpty || !email.contains('@')) return;
+                Navigator.pop(context, (name: name, email: email));
+              },
+              child: const Text(
+                'Create',
+                style: TextStyle(fontWeight: FontWeight.w600),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+    if (created == null || !mounted) return;
+    final name = created.name;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Center(
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: _card,
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: const CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
+          ),
+        ),
+      ),
+    );
+
+    try {
+      await ClientService.instance.createClient(
+        name: name,
+        email: created.email,
+      );
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Created client "$name"'),
+          backgroundColor: const Color(0xFF10B981),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      await _loadClients();
+      await _loadStorage(refresh: true);
+    } catch (error) {
+      if (!mounted) return;
+      Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not create client: $error'),
+          backgroundColor: const Color(0xFFEF4444),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _showRenameClientDialog(ClientWorkspace client) async {
+    final controller = TextEditingController(text: client.name);
+    final name = await showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: _card,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          title: Text(
+            'Rename client',
+            style: TextStyle(fontWeight: FontWeight.w700, color: _titleColor),
+          ),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            textCapitalization: TextCapitalization.words,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, controller.text.trim()),
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+    if (name == null || name.isEmpty || name == client.name || !mounted) return;
+    try {
+      await ClientService.instance.renameClient(client: client, name: name);
+      if (!mounted) return;
+      await _loadClients();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not rename client: $error'),
+          backgroundColor: const Color(0xFFEF4444),
+        ),
+      );
+    }
+  }
+
+  Future<void> _showAttachClientUser(ClientWorkspace client) async {
+    final candidates = _profiles.where((profile) {
+      final uid = profile['id']?.toString() ?? '';
+      if (uid.isEmpty) return false;
+      if (client.memberUids.contains(uid) || client.ownerUid == uid) {
+        return false;
+      }
+      return true;
+    }).toList();
+
+    if (candidates.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No other users are available to attach.')),
+      );
+      return;
+    }
+
+    final selected = await showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: _card,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          title: Text(
+            'Attach user',
+            style: TextStyle(fontWeight: FontWeight.w700, color: _titleColor),
+          ),
+          content: SizedBox(
+            width: 360,
+            height: 360,
+            child: ListView.builder(
+              itemCount: candidates.length,
+              itemBuilder: (context, index) {
+                final user = candidates[index];
+                return ListTile(
+                  title: Text(
+                    user['full_name']?.toString() ?? 'Unknown',
+                    style: TextStyle(color: _titleColor),
+                  ),
+                  subtitle: Text(
+                    user['email']?.toString() ?? '',
+                    style: TextStyle(color: _muted, fontSize: 13),
+                  ),
+                  onTap: () => Navigator.pop(context, user['id']?.toString()),
+                );
+              },
+            ),
+          ),
+        );
+      },
+    );
+    if (selected == null || selected.isEmpty || !mounted) return;
+
+    try {
+      await ClientService.instance.attachUser(client: client, uid: selected);
+      if (!mounted) return;
+      await _loadClients();
+      await _loadProfiles(silent: true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('User attached to this client'),
+          backgroundColor: Color(0xFF10B981),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not attach user: $error'),
+          backgroundColor: const Color(0xFFEF4444),
+        ),
+      );
+    }
+  }
+
+  Future<void> _confirmDeleteClient(ClientWorkspace client) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: _card,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          title: Text(
+            'Delete client',
+            style: TextStyle(fontWeight: FontWeight.w700, color: _titleColor),
+          ),
+          content: Text(
+            'This removes "${client.name}" and permanently deletes its Drive folder under Edupal/clients. Attached users become students again.',
+            style: TextStyle(color: _muted, height: 1.35),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text(
+                'Delete',
+                style: TextStyle(
+                  color: Color(0xFFEF4444),
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirmed != true || !mounted) return;
+
+    try {
+      await ClientService.instance.deleteClient(client);
+      if (!mounted) return;
+      await _loadClients();
+      await _loadProfiles(silent: true);
+      await _loadStorage(refresh: true);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Deleted ${client.name}'),
+          backgroundColor: const Color(0xFF10B981),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not delete client: $error'),
+          backgroundColor: const Color(0xFFEF4444),
+        ),
+      );
+    }
+  }
+
+  void _openClientFiles(ClientWorkspace client) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ClientWorkspaceScreen(
+          workspace: client,
+          onBack: () => Navigator.pop(context),
+        ),
+      ),
+    );
+  }
+
+  void _showClientActions(ClientWorkspace client) {
+    HapticFeedback.selectionClick();
+    _showThemedActionSheet(
+      title: client.name,
+      message: client.ownerUid.isEmpty
+          ? 'No user attached yet'
+          : 'Owner: ${_profileLabel(client.ownerUid)}',
+      actions: [
+        _ThemedSheetAction(
+          label: 'Open files',
+          color: const Color(0xFF6366F1),
+          onTap: () => _openClientFiles(client),
+        ),
+        _ThemedSheetAction(
+          label: 'Attach user',
+          color: const Color(0xFF0EA5E9),
+          onTap: () => _showAttachClientUser(client),
+        ),
+        _ThemedSheetAction(
+          label: 'Rename',
+          color: const Color(0xFF8B5CF6),
+          onTap: () => _showRenameClientDialog(client),
+        ),
+        _ThemedSheetAction(
+          label: 'Delete client',
+          color: const Color(0xFFEF4444),
+          onTap: () => _confirmDeleteClient(client),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAddClientButton() {
+    return _settingsRow(
+      icon: CupertinoIcons.person_badge_plus,
+      iconColor: const Color(0xFF0EA5E9),
+      title: 'Add Client',
+      showDivider: true,
+      onTap: _showCreateClientDialog,
+    );
+  }
+
+  Widget _buildClientCard(ClientWorkspace client, {required bool showDivider}) {
+    final owner = client.ownerUid.isEmpty
+        ? (client.inviteEmail.isEmpty ? 'Unassigned' : client.inviteEmail)
+        : _profileLabel(client.ownerUid);
+    final extra = client.memberUids.length > 1
+        ? ' • ${client.memberUids.length} members'
+        : '';
+    return _settingsRow(
+      icon: CupertinoIcons.folder_fill,
+      iconColor: const Color(0xFF0EA5E9),
+      title: client.name,
+      subtitle: '$owner$extra',
+      showChevron: true,
+      showDivider: showDivider,
+      onTap: () => _showClientActions(client),
+    );
+  }
+
+  Widget _buildAvailableClients() {
+    if (_isLoadingClients) {
+      return _groupedCard([
+        const Padding(
+          padding: EdgeInsets.symmetric(vertical: 18),
+          child: Center(child: CupertinoActivityIndicator()),
+        ),
+      ]);
+    }
+    if (_clients.isEmpty) {
+      return _groupedCard([
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Text(
+            'No clients yet. Add one to create a folder under Edupal/clients.',
+            style: TextStyle(color: _muted, fontSize: 15),
+          ),
+        ),
+      ]);
+    }
+    return _groupedCard([
+      for (var i = 0; i < _clients.length; i++)
+        _buildClientCard(
+          _clients[i],
+          showDivider: i < _clients.length - 1,
+        ),
+    ]);
   }
 
   Future<void> _openCourseAddition({Course? course}) async {
@@ -2197,11 +2655,15 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
           _sectionLabel('Management'),
           _groupedCard([
             _buildAddCourseButton(),
+            _buildAddClientButton(),
             _buildTokenRefreshSection(),
           ]),
           const SizedBox(height: 18),
           _sectionLabel('Courses'),
           _buildAvailableCourses(),
+          const SizedBox(height: 18),
+          _sectionLabel('Clients'),
+          _buildAvailableClients(),
           const SizedBox(height: 18),
           _buildStorageSection(),
           const SizedBox(height: 18),
@@ -2289,6 +2751,13 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
                 '$_totalSystemAdmins',
                 _roleColors['system_admin']!,
                 _getRoleIcon('system_admin'),
+                showDivider: true,
+              ),
+              _countRow(
+                'Clients',
+                '$_totalClients',
+                _roleColors['client']!,
+                _getRoleIcon('client'),
               ),
             ],
           ]),

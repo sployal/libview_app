@@ -74,6 +74,9 @@ admin.initializeApp({
 const firestore = admin.firestore();
 
 const extraSemesterIds = new Set();
+const clientWorkspaceIds = new Set();
+const clientResolveCache = new Map();
+let clientsRootFolderId = '';
 
 async function syncEngineeringCourseToFirestore() {
   if (!CONFIG.EDUPAL_FOLDER_ID) {
@@ -147,6 +150,144 @@ function rememberSemesterFolderId(folderId) {
   if (typeof folderId === 'string' && folderId) {
     extraSemesterIds.add(folderId);
   }
+}
+
+function rememberClientWorkspaceId(folderId) {
+  if (typeof folderId === 'string' && folderId) {
+    clientWorkspaceIds.add(folderId);
+  }
+}
+
+function forgetClientWorkspaceId(folderId) {
+  if (typeof folderId === 'string' && folderId) {
+    clientWorkspaceIds.delete(folderId);
+    clientResolveCache.clear();
+  }
+}
+
+async function loadClientWorkspaceIdsFromFirestore() {
+  try {
+    const snapshot = await firestore.collection('clients').get();
+    snapshot.forEach((doc) => {
+      const id = doc.data().drive_folder_id;
+      if (typeof id === 'string' && id) clientWorkspaceIds.add(id);
+    });
+  } catch (err) {
+    console.error('Failed to load client workspace folders from Firestore:', err.message);
+  }
+}
+
+function isClientWorkspaceFolder(folderId) {
+  return typeof folderId === 'string' && clientWorkspaceIds.has(folderId);
+}
+
+async function ensureClientsRootFolder() {
+  const edupalId = await resolveEdupalFolderId();
+  const rootFolders = await listChildFolders(edupalId);
+  const folder = await findOrCreateNamedFolder('clients', edupalId, rootFolders);
+  clientsRootFolderId = folder.id;
+  if (folder.created) {
+    console.log(`Created Drive folder "clients" under Edupal root (${folder.id}).`);
+  }
+  await firestore.collection('config').doc('googleDriveFolders').set(
+    {
+      clientsFolderId: folder.id,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    },
+    { merge: true }
+  );
+  return folder.id;
+}
+
+async function createClientWorkspaceFolder(name) {
+  const rootId = await ensureClientsRootFolder();
+  const children = await listChildFolders(rootId);
+  const folder = await findOrCreateNamedFolder(name, rootId, children);
+  rememberClientWorkspaceId(folder.id);
+  return {
+    folderId: folder.id,
+    name: folder.name,
+    created: folder.created,
+    clientsRootId: rootId,
+  };
+}
+
+async function resolveClientWorkspaceId(folderId) {
+  if (!folderId || typeof folderId !== 'string') return null;
+  if (isClientWorkspaceFolder(folderId)) return folderId;
+
+  const cached = clientResolveCache.get(folderId);
+  if (cached && Date.now() - cached.at < CACHE_TTL_MS) {
+    return cached.workspaceId;
+  }
+
+  let current = folderId;
+  const seen = new Set();
+  let workspaceId = null;
+  try {
+    while (current && !seen.has(current)) {
+      seen.add(current);
+      if (isClientWorkspaceFolder(current)) {
+        workspaceId = current;
+        break;
+      }
+      if (current === CONFIG.EDUPAL_FOLDER_ID || current === clientsRootFolderId) {
+        break;
+      }
+      const meta = await drive.files.get({
+        fileId: current,
+        fields: 'id, parents',
+        supportsAllDrives: true,
+      });
+      current = (meta.data.parents || [])[0] || '';
+    }
+  } catch (err) {
+    workspaceId = null;
+  }
+
+  clientResolveCache.set(folderId, { workspaceId, at: Date.now() });
+  return workspaceId;
+}
+
+async function isSystemAdminUser(user) {
+  const email = String(user?.email || '').toLowerCase();
+  if (email && email === SYSTEM_ADMIN_EMAIL) return true;
+  if (CONFIG.ADMIN_UIDS.size > 0 && CONFIG.ADMIN_UIDS.has(user.uid)) return true;
+  try {
+    const snap = await firestore.collection('profiles').doc(user.uid).get();
+    const role = String(snap.data()?.role || '').toLowerCase();
+    return role === 'system_admin' || role === 'super_admin';
+  } catch (err) {
+    return false;
+  }
+}
+
+async function clientWorkspaceAllowsUser(workspaceFolderId, user) {
+  if (!workspaceFolderId || !user?.uid) return false;
+  if (await isSystemAdminUser(user)) return true;
+
+  const snapshot = await firestore
+    .collection('clients')
+    .where('drive_folder_id', '==', workspaceFolderId)
+    .limit(1)
+    .get();
+  if (snapshot.empty) return false;
+
+  const doc = snapshot.docs[0];
+  const data = doc.data() || {};
+  if (data.suspended === true) return false;
+  if (data.owner_uid === user.uid) return true;
+  const members = Array.isArray(data.member_uids) ? data.member_uids : [];
+  if (members.includes(user.uid)) return true;
+
+  const profile = await firestore.collection('profiles').doc(user.uid).get();
+  return String(profile.data()?.client_id || '') === doc.id;
+}
+
+async function userCanWriteClientFolder(user, folderId) {
+  const workspaceId = await resolveClientWorkspaceId(folderId);
+  if (!workspaceId) return false;
+  return clientWorkspaceAllowsUser(workspaceId, user);
 }
 
 // Where the refresh token lives in Firestore, instead of an env var.
@@ -593,11 +734,12 @@ async function deleteItem(fileId) {
 // folder: either it *is* a subject folder (parent is a semester ID), or
 // it sits inside a valid subject folder.
 async function isManagedFromParents(parents) {
-  if ((parents || []).some((p) => isSemesterFolder(p))) {
+  if ((parents || []).some((p) => isSemesterFolder(p) || isClientWorkspaceFolder(p))) {
     return true;
   }
   for (const parent of parents || []) {
     if (await isValidSubjectFolder(parent)) return true;
+    if (await resolveClientWorkspaceId(parent)) return true;
   }
   return false;
 }
@@ -691,19 +833,9 @@ function requireAdmin(req, res, next) {
 }
 
 function requireSystemAdmin(req, res, next) {
-  const email = (req.user.email || '').toLowerCase();
-  if (email === SYSTEM_ADMIN_EMAIL) return next();
-  if (CONFIG.ADMIN_UIDS.size > 0 && CONFIG.ADMIN_UIDS.has(req.user.uid)) {
-    return next();
-  }
-
-  firestore
-    .collection('profiles')
-    .doc(req.user.uid)
-    .get()
-    .then((snap) => {
-      const role = String(snap.data()?.role || '').toLowerCase();
-      if (role === 'system_admin' || role === 'super_admin') return next();
+  isSystemAdminUser(req.user)
+    .then((allowed) => {
+      if (allowed) return next();
       console.warn(`System admin check failed for uid ${req.user.uid}`);
       return res.status(403).json({ error: 'You do not have permission.' });
     })
@@ -1014,6 +1146,8 @@ app.get('/auth/google/callback', async (req, res) => {
     try {
       await syncEngineeringCourseToFirestore();
       await loadSemesterIdsFromFirestore();
+      await ensureClientsRootFolder();
+      await loadClientWorkspaceIdsFromFirestore();
     } catch (err) {
       console.error('Failed to sync Engineering Drive folders after OAuth:', err.message);
     }
@@ -1049,8 +1183,14 @@ app.post('/upload', requireAuth, (req, res) => {
     }
 
     const { folderId } = req.body;
-    if (!(await isValidSubjectFolder(folderId))) {
+    const subjectOk = await isValidSubjectFolder(folderId);
+    const clientOk = !subjectOk && (await userCanWriteClientFolder(req.user, folderId));
+    if (!subjectOk && !clientOk) {
       console.warn(`Upload rejected: invalid folder ${folderId || '(empty)'}`);
+      return res.status(403).json({ error: 'File upload failed' });
+    }
+    if (clientOk && isClientWorkspaceFolder(folderId)) {
+      console.warn(`Upload rejected: client workspace root ${folderId}`);
       return res.status(403).json({ error: 'File upload failed' });
     }
 
@@ -1084,7 +1224,10 @@ app.post('/folders', requireAuth, async (req, res) => {
     console.warn('Folder create rejected: empty name');
     return res.status(400).json({ error: 'Could not create the folder' });
   }
-  if (!(await isValidCreateParent(parentFolderId))) {
+  const semesterParentOk = await isValidCreateParent(parentFolderId);
+  const clientParentOk =
+    !semesterParentOk && (await userCanWriteClientFolder(req.user, parentFolderId));
+  if (!semesterParentOk && !clientParentOk) {
     console.warn(`Folder create rejected: invalid parent ${parentFolderId || '(empty)'}`);
     return res.status(403).json({ error: 'Could not create the folder' });
   }
@@ -1124,6 +1267,77 @@ app.post('/course-structure', requireAuth, requireSystemAdmin, async (req, res) 
   } catch (e) {
     console.error('Course structure creation failed:', e);
     res.status(500).json({ error: 'Could not create the course' });
+  }
+});
+
+// --- Create a client workspace folder under Edupal/clients (system admin) ---
+
+app.post('/client-workspace', requireAuth, requireSystemAdmin, async (req, res) => {
+  if (!driveIsConfigured()) {
+    console.warn('Client workspace rejected: Drive OAuth is not configured');
+    return res.status(503).json({ error: 'Could not create the client workspace' });
+  }
+
+  const { name } = req.body || {};
+  if (!name || typeof name !== 'string' || !name.trim()) {
+    console.warn('Client workspace rejected: empty name');
+    return res.status(400).json({ error: 'Could not create the client workspace' });
+  }
+
+  try {
+    const workspace = await createClientWorkspaceFolder(name.trim());
+    res.json(workspace);
+  } catch (e) {
+    console.error('Client workspace creation failed:', e);
+    res.status(500).json({ error: 'Could not create the client workspace' });
+  }
+});
+
+app.patch('/client-workspace/:folderId', requireAuth, requireSystemAdmin, async (req, res) => {
+  if (!driveIsConfigured()) {
+    console.warn('Client rename rejected: Drive OAuth is not configured');
+    return res.status(503).json({ error: 'Rename failed' });
+  }
+
+  const { folderId } = req.params;
+  const { name } = req.body || {};
+  if (!folderId || !isClientWorkspaceFolder(folderId)) {
+    console.warn(`Client rename rejected: invalid folder ${folderId || '(empty)'}`);
+    return res.status(403).json({ error: 'Rename failed' });
+  }
+  if (!name || typeof name !== 'string' || !name.trim()) {
+    console.warn('Client rename rejected: empty name');
+    return res.status(400).json({ error: 'Rename failed' });
+  }
+
+  try {
+    const result = await renameItem(folderId, name.trim());
+    res.json(result);
+  } catch (e) {
+    console.error('Client workspace rename failed:', e);
+    res.status(500).json({ error: 'Rename failed' });
+  }
+});
+
+app.delete('/client-workspace/:folderId', requireAuth, requireSystemAdmin, async (req, res) => {
+  if (!driveIsConfigured()) {
+    console.warn('Client delete rejected: Drive OAuth is not configured');
+    return res.status(503).json({ error: 'Delete failed' });
+  }
+
+  const { folderId } = req.params;
+  if (!folderId || !isClientWorkspaceFolder(folderId)) {
+    console.warn(`Client delete rejected: invalid folder ${folderId || '(empty)'}`);
+    return res.status(403).json({ error: 'Delete failed' });
+  }
+
+  try {
+    await deleteItem(folderId);
+    forgetClientWorkspaceId(folderId);
+    res.json({ deleted: true, folderId });
+  } catch (e) {
+    console.error('Client workspace delete failed:', e);
+    res.status(500).json({ error: 'Delete failed' });
   }
 });
 
@@ -1472,8 +1686,8 @@ app.patch('/files/:fileId', requireAuth, requireAdmin, async (req, res) => {
     console.warn('Rename rejected: empty name');
     return res.status(400).json({ error: 'Rename failed' });
   }
-  if (isSemesterFolder(fileId)) {
-    console.warn(`Rename rejected: semester folder ${fileId}`);
+  if (isSemesterFolder(fileId) || isClientWorkspaceFolder(fileId)) {
+    console.warn(`Rename rejected: protected folder ${fileId}`);
     return res.status(403).json({ error: 'Rename failed' });
   }
   if (!(await isManagedItem(fileId))) {
@@ -1502,6 +1716,10 @@ app.delete('/files/:fileId', requireAuth, requireAdmin, async (req, res) => {
   if (!fileId) {
     console.warn('Delete rejected: missing fileId');
     return res.status(400).json({ error: 'Delete failed' });
+  }
+  if (isSemesterFolder(fileId) || isClientWorkspaceFolder(fileId)) {
+    console.warn(`Delete rejected: protected folder ${fileId}`);
+    return res.status(403).json({ error: 'Delete failed' });
   }
   if (!(await isManagedItem(fileId))) {
     console.warn(`Delete rejected: unmanaged file ${fileId}`);
@@ -1537,9 +1755,10 @@ app.get('/folders/:folderId', requireAuth, async (req, res) => {
   }
 
   const apiKey = driveReadKey();
-  const allowed =
+  const semesterOk =
     isSemesterFolder(folderId) || (await isValidSubjectFolder(folderId));
-  if (!allowed) {
+  const clientOk = !semesterOk && (await userCanWriteClientFolder(req.user, folderId));
+  if (!semesterOk && !clientOk) {
     console.warn(`Folder list rejected: invalid folder ${folderId}`);
     return res.status(403).json({ error: 'Could not load this folder' });
   }
@@ -1589,6 +1808,12 @@ initDriveAuth().then(async () => {
     console.error('Failed to sync Engineering Drive folders to Firestore:', err.message);
   }
   await loadSemesterIdsFromFirestore();
+  try {
+    await ensureClientsRootFolder();
+  } catch (err) {
+    console.error('Failed to ensure Edupal/clients folder:', err.message);
+  }
+  await loadClientWorkspaceIdsFromFirestore();
   app.listen(CONFIG.PORT, () => {
     console.log(`Edupal backend listening on port ${CONFIG.PORT}`);
     if (!driveIsConfigured()) {

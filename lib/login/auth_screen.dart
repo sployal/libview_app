@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/cupertino.dart';
@@ -5,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../services/auth_service.dart';
+import '../services/client_service.dart';
 import '../services/course_service.dart';
 import '../screens/no_internet_screen.dart';
 
@@ -40,6 +42,8 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
   bool _isLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  ClientWorkspace? _invitedClient;
+  Timer? _inviteLookupTimer;
 
   @override
   void initState() {
@@ -54,9 +58,11 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     _tabController.addListener(() {
       if (mounted) setState(() {});
     });
+    _emailController.addListener(_scheduleInviteLookup);
     if (widget.needsProfileCompletion) {
       _prefillGoogleProfileFields();
       WidgetsBinding.instance.addPostFrameCallback((_) {
+        _lookupInvitedClient();
         _blockIncompleteNewAccountIfRestricted();
       });
     }
@@ -79,6 +85,8 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
 
   @override
   void dispose() {
+    _inviteLookupTimer?.cancel();
+    _emailController.removeListener(_scheduleInviteLookup);
     _tabController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
@@ -102,13 +110,35 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     return false;
   }
 
+  void _scheduleInviteLookup() {
+    _inviteLookupTimer?.cancel();
+    _inviteLookupTimer = Timer(const Duration(milliseconds: 280), () {
+      _lookupInvitedClient();
+    });
+  }
+
+  Future<void> _lookupInvitedClient() async {
+    final client = await ClientService.instance.clientForInviteEmail(
+      _emailController.text,
+    );
+    if (!mounted) return;
+    if (client?.id == _invitedClient?.id) return;
+    setState(() => _invitedClient = client);
+  }
+
   Future<void> _blockIncompleteNewAccountIfRestricted() async {
     final user = AuthService.instance.currentUser;
     if (user == null) return;
     final hasProfile = await AuthService.instance.profileExists(user.uid);
     if (hasProfile) return;
-    final allowed = await _ensureSignupAllowed();
+    final allowed = await _ensureSignupAllowed(showPopup: false);
     if (allowed || !mounted) return;
+    final invite = await ClientService.instance.clientForInviteEmail(user.email);
+    if (invite != null) return;
+    final settings = await AuthService.instance.fetchAccountCreationSettings();
+    if (mounted) {
+      await _showSignupRestrictedDialog(settings.restrictionMessage);
+    }
     await AuthService.instance.signOut();
   }
 
@@ -123,16 +153,52 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
   }
 
   Future<void> _signUp() async {
-    if (!_signUpFormKey.currentState!.validate()) return;
     if (!await NoInternetScreen.ensureOnline(context)) return;
     if (!mounted) return;
-    if (!widget.needsProfileCompletion && !await _ensureSignupAllowed()) {
+
+    final invitedClient = _invitedClient ??
+        await ClientService.instance.clientForInviteEmail(
+          _emailController.text,
+        );
+    if (!mounted) return;
+    if (invitedClient?.id != _invitedClient?.id) {
+      setState(() => _invitedClient = invitedClient);
+    }
+    if (!_signUpFormKey.currentState!.validate()) return;
+    if (!widget.needsProfileCompletion &&
+        invitedClient == null &&
+        !await _ensureSignupAllowed()) {
       return;
     }
 
     setState(() => _isLoading = true);
 
     try {
+      if (invitedClient != null) {
+        if (widget.needsProfileCompletion) {
+          await AuthService.instance.completeStudentProfile(
+            fullName: _fullNameController.text.trim(),
+          );
+          return;
+        }
+        await AuthService.instance.signUp(
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+          fullName: _fullNameController.text.trim(),
+        );
+        if (mounted) {
+          _showSnackBar('Account created successfully!', success: true);
+          _tabController.animateTo(0);
+          _fullNameController.clear();
+          _registrationNumberController.clear();
+          _confirmPasswordController.clear();
+          _emailController.clear();
+          _passwordController.clear();
+          setState(() => _invitedClient = null);
+        }
+        return;
+      }
+
       // Normalize registration number (convert to uppercase for consistency)
       final normalizedRegNumber = _registrationNumberController.text.trim().toUpperCase();
 
@@ -846,9 +912,11 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
           children: [
             _buildSectionTitle(
               widget.needsProfileCompletion ? 'Finish setup' : 'Create account',
-              widget.needsProfileCompletion
-                  ? 'Add your student details to continue'
-                  : 'Join and start your academic journey',
+              _invitedClient != null
+                  ? 'Continue as ${_invitedClient!.name}'
+                  : widget.needsProfileCompletion
+                      ? 'Add your student details to continue'
+                      : 'Join and start your academic journey',
             ),
             const SizedBox(height: 28),
 
@@ -878,24 +946,6 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
             ),
             const SizedBox(height: 16),
 
-            // Registration Number Field
-            _buildTextField(
-              controller: _registrationNumberController,
-              label: 'Registration Number',
-              hint: 'e.g. EB24/46271/20',
-              icon: CupertinoIcons.number,
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return 'Please enter your registration number';
-                }
-                if (!_isValidRegistrationNumber(value)) {
-                  return 'Enter your correct registration number';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-
             // Email Field
             _buildTextField(
               controller: _emailController,
@@ -916,6 +966,24 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                 return null;
               },
             ),
+            if (_invitedClient == null) ...[
+              const SizedBox(height: 16),
+              _buildTextField(
+                controller: _registrationNumberController,
+                label: 'Registration Number',
+                hint: 'e.g. EB24/46271/20',
+                icon: CupertinoIcons.number,
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'Please enter your admission number';
+                  }
+                  if (!_isValidRegistrationNumber(value)) {
+                    return 'Enter your correct registration number';
+                  }
+                  return null;
+                },
+              ),
+            ],
             if (!widget.needsProfileCompletion) ...[
               const SizedBox(height: 16),
 

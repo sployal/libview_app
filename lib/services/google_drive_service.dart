@@ -225,6 +225,46 @@ class GoogleDriveService {
     }
   }
 
+  static Future<DriveFolderSummary> summarizeFolder(
+    String folderId, {
+    int maxDepth = 3,
+  }) async {
+    if (folderId.isEmpty || maxDepth < 0) {
+      return const DriveFolderSummary();
+    }
+    try {
+      final items = await getFolderContents(folderId);
+      var summary = const DriveFolderSummary();
+      final nested = <DriveItem>[];
+      for (final item in items) {
+        if (item.isFolder) {
+          summary = DriveFolderSummary(
+            bytes: summary.bytes,
+            fileCount: summary.fileCount,
+            folderCount: summary.folderCount + 1,
+          );
+          nested.add(item);
+        } else {
+          summary = DriveFolderSummary(
+            bytes: summary.bytes + (int.tryParse(item.size ?? '') ?? 0),
+            fileCount: summary.fileCount + 1,
+            folderCount: summary.folderCount,
+          );
+        }
+      }
+      if (maxDepth > 0) {
+        for (final folder in nested) {
+          summary = summary +
+              await summarizeFolder(folder.id, maxDepth: maxDepth - 1);
+        }
+      }
+      return summary;
+    } catch (e) {
+      print('Error summarizing folder: $e');
+      return const DriveFolderSummary();
+    }
+  }
+
   static Future<int> countFoldersInFolder(String folderId) async {
     final items = await getFolderContents(folderId);
     return items.where((item) => item.isFolder).length;
@@ -362,6 +402,26 @@ class GoogleDriveService {
 // ============================================================================
 // Model classes
 // ============================================================================
+
+class DriveFolderSummary {
+  final int bytes;
+  final int fileCount;
+  final int folderCount;
+
+  const DriveFolderSummary({
+    this.bytes = 0,
+    this.fileCount = 0,
+    this.folderCount = 0,
+  });
+
+  DriveFolderSummary operator +(DriveFolderSummary other) {
+    return DriveFolderSummary(
+      bytes: bytes + other.bytes,
+      fileCount: fileCount + other.fileCount,
+      folderCount: folderCount + other.folderCount,
+    );
+  }
+}
 
 class DriveItem {
   final String id;

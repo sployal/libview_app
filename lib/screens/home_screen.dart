@@ -52,6 +52,7 @@ class _HomeScreenState extends State<HomeScreen>
   final _editTodoFocus = FocusNode();
   String? _editingTodoId;
   String? _firstName;
+  bool _isClientUser = false;
   WeatherSnapshot? _weather;
   bool _weatherLoading = true;
   String? _weatherPlaceLabel;
@@ -294,6 +295,9 @@ class _HomeScreenState extends State<HomeScreen>
       if (!mounted) return;
       setState(() {
         _firstName = first.isEmpty ? null : first;
+        _isClientUser = AuthService.isClientRole(
+          doc.data()?['role'] as String?,
+        );
       });
     } catch (e) {
       debugPrint('Error loading greeting name: $e');
@@ -792,9 +796,9 @@ class _HomeScreenState extends State<HomeScreen>
   ) {
     final items = [
       _Shortcut(
-        title: 'Units',
-        subtitle: 'Years & semesters',
-        icon: Icons.school_rounded,
+        title: _isClientUser ? 'Files' : 'Units',
+        subtitle: _isClientUser ? 'Your folders' : 'Years & semesters',
+        icon: _isClientUser ? Icons.folder_rounded : Icons.school_rounded,
         color: const Color(0xFF6366F1),
         onTap: () {
           HapticFeedback.lightImpact();

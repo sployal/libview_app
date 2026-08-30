@@ -3,6 +3,8 @@ import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
+import 'client_service.dart';
+
 class AccountCreationSettings {
   const AccountCreationSettings({
     required this.allowNewAccounts,
@@ -23,6 +25,11 @@ class AuthService {
 
   static const defaultSuspensionMessage =
       'Your account has been suspended. Please contact the system administrator.';
+
+  static const clientRole = 'client';
+
+  static bool isClientRole(String? role) =>
+      (role ?? '').toLowerCase().trim() == clientRole;
 
   /// Web OAuth client ID from google-services.json (needed so Android returns an idToken).
   static const String _googleServerClientId =
@@ -70,8 +77,10 @@ class AuthService {
   bool isProfileDataComplete(Map<String, dynamic>? data) {
     if (data == null) return false;
     final name = (data['full_name'] as String?)?.trim() ?? '';
+    if (name.isEmpty) return false;
+    if (isClientRole(data['role'] as String?)) return true;
     final registration = (data['registration_number'] as String?)?.trim() ?? '';
-    return name.isNotEmpty && registration.isNotEmpty;
+    return registration.isNotEmpty;
   }
 
   static bool isAccountSuspended(Map<String, dynamic>? data) {
@@ -266,14 +275,17 @@ class AuthService {
     required String email,
     required String password,
     required String fullName,
-    required String registrationNumber,
+    String registrationNumber = '',
   }) async {
-    final settings = await fetchAccountCreationSettings();
-    if (!settings.allowNewAccounts) {
-      throw FirebaseAuthException(
-        code: 'operation-not-allowed',
-        message: settings.restrictionMessage,
-      );
+    final invite = await ClientService.instance.clientForInviteEmail(email);
+    if (invite == null) {
+      final settings = await fetchAccountCreationSettings();
+      if (!settings.allowNewAccounts) {
+        throw FirebaseAuthException(
+          code: 'operation-not-allowed',
+          message: settings.restrictionMessage,
+        );
+      }
     }
 
     final credential = await _auth.createUserWithEmailAndPassword(
@@ -289,19 +301,18 @@ class AuthService {
       );
     }
 
-    await _firestore.collection('profiles').doc(user.uid).set({
-      'full_name': fullName,
-      'email': email,
-      'registration_number': registrationNumber,
-      'role': 'student',
-      'created_at': FieldValue.serverTimestamp(),
-      'updated_at': FieldValue.serverTimestamp(),
-    });
+    await _writeSignupProfile(
+      uid: user.uid,
+      email: email,
+      fullName: fullName,
+      registrationNumber: registrationNumber,
+      invite: invite,
+    );
   }
 
   Future<void> completeStudentProfile({
     required String fullName,
-    required String registrationNumber,
+    String registrationNumber = '',
   }) async {
     final user = currentUser;
     if (user == null) {
@@ -319,9 +330,10 @@ class AuthService {
       );
     }
 
+    final invite = await ClientService.instance.clientForInviteEmail(email);
     final docRef = _firestore.collection('profiles').doc(user.uid);
     final existing = await docRef.get();
-    if (!existing.exists) {
+    if (!existing.exists && invite == null) {
       final settings = await fetchAccountCreationSettings();
       if (!settings.allowNewAccounts) {
         throw FirebaseAuthException(
@@ -331,16 +343,44 @@ class AuthService {
       }
     }
 
-    final googlePhoto = googlePhotoUrlFor(user);
-    await docRef.set({
+    await _writeSignupProfile(
+      uid: user.uid,
+      email: email,
+      fullName: fullName,
+      registrationNumber: registrationNumber,
+      invite: invite,
+      existingRole: existing.data()?['role'] as String?,
+      googlePhoto: googlePhotoUrlFor(user),
+      isNewProfile: !existing.exists,
+    );
+  }
+
+  Future<void> _writeSignupProfile({
+    required String uid,
+    required String email,
+    required String fullName,
+    required String registrationNumber,
+    ClientWorkspace? invite,
+    String? existingRole,
+    String? googlePhoto,
+    bool isNewProfile = true,
+  }) async {
+    final isClient = invite != null;
+    await _firestore.collection('profiles').doc(uid).set({
       'full_name': fullName,
       'email': email,
-      'registration_number': registrationNumber,
-      'role': existing.data()?['role'] ?? 'student',
+      if (isClient) 'registration_number': '',
+      if (!isClient) 'registration_number': registrationNumber,
+      'role': isClient ? clientRole : (existingRole ?? 'student'),
+      if (isClient) 'client_id': invite.id,
       if (googlePhoto != null) 'google_photo_url': googlePhoto,
-      if (!existing.exists) 'created_at': FieldValue.serverTimestamp(),
+      if (isNewProfile) 'created_at': FieldValue.serverTimestamp(),
       'updated_at': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
+
+    if (invite != null) {
+      await ClientService.instance.claimInvite(client: invite, uid: uid);
+    }
   }
 
   Future<void> signIn({
@@ -377,16 +417,21 @@ class AuthService {
     final hasProfile = uid != null && await profileExists(uid);
 
     if (isNewUser || !hasProfile) {
-      final settings = await fetchAccountCreationSettings();
-      if (!settings.allowNewAccounts) {
-        await _discardIncompleteGoogleSession(
-          userCredential.user,
-          deleteAuthUser: isNewUser,
-        );
-        throw FirebaseAuthException(
-          code: 'operation-not-allowed',
-          message: settings.restrictionMessage,
-        );
+      final invite = await ClientService.instance.clientForInviteEmail(
+        userCredential.user?.email,
+      );
+      if (invite == null) {
+        final settings = await fetchAccountCreationSettings();
+        if (!settings.allowNewAccounts) {
+          await _discardIncompleteGoogleSession(
+            userCredential.user,
+            deleteAuthUser: isNewUser,
+          );
+          throw FirebaseAuthException(
+            code: 'operation-not-allowed',
+            message: settings.restrictionMessage,
+          );
+        }
       }
     }
 
