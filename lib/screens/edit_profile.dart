@@ -1,9 +1,12 @@
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:image_cropper/image_cropper.dart';
+import 'package:path_provider/path_provider.dart';
 
 import '../services/auth_service.dart';
 import '../services/media_service.dart';
@@ -227,11 +230,57 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     if (result == null || result.files.isEmpty) return;
 
     final file = result.files.first;
-    final bytes = file.bytes;
-    if (bytes == null || bytes.isEmpty) return;
+    var path = file.path;
+    if (path == null || path.isEmpty) {
+      final bytes = file.bytes;
+      if (bytes == null || bytes.isEmpty) return;
+      final dir = await getTemporaryDirectory();
+      final ext = (file.extension != null && file.extension!.isNotEmpty)
+          ? file.extension!
+          : 'jpg';
+      path =
+          '${dir.path}/avatar_pick_${DateTime.now().millisecondsSinceEpoch}.$ext';
+      await File(path).writeAsBytes(bytes, flush: true);
+    }
+
+    CroppedFile? cropped;
+    try {
+      cropped = await ImageCropper().cropImage(
+        sourcePath: path,
+        compressFormat: ImageCompressFormat.jpg,
+        compressQuality: 90,
+        aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: 'Crop profile photo',
+            toolbarColor: _accent,
+            toolbarWidgetColor: Colors.white,
+            activeControlsWidgetColor: _accent,
+            initAspectRatio: CropAspectRatioPreset.square,
+            lockAspectRatio: true,
+            cropStyle: CropStyle.circle,
+            aspectRatioPresets: const [CropAspectRatioPreset.square],
+          ),
+          IOSUiSettings(
+            title: 'Crop profile photo',
+            aspectRatioLockEnabled: true,
+            resetAspectRatioEnabled: false,
+            cropStyle: CropStyle.circle,
+            aspectRatioPresets: const [CropAspectRatioPreset.square],
+          ),
+        ],
+      );
+    } catch (_) {
+      cropped = null;
+    }
+
+    if (cropped == null) return;
+
+    final croppedBytes = await File(cropped.path).readAsBytes();
+    if (croppedBytes.isEmpty) return;
 
     const maxBytes = 8 * 1024 * 1024;
-    if (bytes.length > maxBytes) {
+    if (croppedBytes.length > maxBytes) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -243,12 +292,68 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       return;
     }
 
+    if (!mounted) return;
+    final confirmed = await _confirmAvatarPreview(croppedBytes);
+    if (!confirmed || !mounted) return;
+
     setState(() {
-      _pendingAvatarBytes = bytes;
-      _pendingAvatarFileName = file.name;
-      _pendingAvatarMime = MediaService.mimeFromName(file.name, file.extension);
+      _pendingAvatarBytes = croppedBytes;
+      _pendingAvatarFileName = 'profile.jpg';
+      _pendingAvatarMime = 'image/jpeg';
       _removeAvatar = false;
     });
+  }
+
+  Future<bool> _confirmAvatarPreview(Uint8List bytes) async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final card = isDark ? const Color(0xFF1F2937) : Colors.white;
+    final titleColor =
+        isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
+    final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: card,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: Text(
+          'Preview profile photo',
+          style: TextStyle(
+            color: titleColor,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircleAvatar(
+              radius: 72,
+              backgroundImage: MemoryImage(bytes),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'This is how your photo will appear. You can still save later.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: muted, fontSize: 14, height: 1.4),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text('Cancel', style: TextStyle(color: muted)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text(
+              'Use photo',
+              style: TextStyle(color: _accent, fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+    return result == true;
   }
 
   void _markAvatarForRemoval() {
