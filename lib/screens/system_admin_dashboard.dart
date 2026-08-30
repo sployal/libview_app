@@ -156,6 +156,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
 
     try {
       final snapshot = await _firestore.collection('profiles').get();
+      final authPhotos = await AuthService.instance.fetchAuthPhotoUrls();
       final profiles = snapshot.docs.map((doc) {
         final data = Map<String, dynamic>.from(doc.data());
         data['id'] = doc.id;
@@ -168,7 +169,10 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
         data['email'] = data['email'] ?? '';
         data['registration_number'] = data['registration_number'] ?? '';
         data['avatar_url'] = data['avatar_url'] ?? '';
-        data['google_photo_url'] = data['google_photo_url'] ?? '';
+        final storedGoogle = (data['google_photo_url'] as String?)?.trim() ?? '';
+        final fromAuth = authPhotos[doc.id] ?? '';
+        data['google_photo_url'] =
+            fromAuth.isNotEmpty ? fromAuth : storedGoogle;
         data['suspended'] = data['suspended'] == true;
         data['suspension_message'] = data['suspension_message'] ?? '';
         return data;

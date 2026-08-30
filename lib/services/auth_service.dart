@@ -159,6 +159,35 @@ class AuthService {
     await _firestore.collection('profiles').doc(userId).delete();
   }
 
+  /// Auth provider photos keyed by uid (Google photo when the user signed in that way).
+  Future<Map<String, String>> fetchAuthPhotoUrls() async {
+    final token = await currentUser?.getIdToken();
+    if (token == null || token.isEmpty) return {};
+    try {
+      final dio = Dio(
+        BaseOptions(
+          baseUrl: 'https://edupal-backend.onrender.com',
+          connectTimeout: const Duration(seconds: 30),
+          receiveTimeout: const Duration(seconds: 60),
+        ),
+      );
+      final response = await dio.get(
+        '/users/auth-photos',
+        options: Options(headers: {'Authorization': 'Bearer $token'}),
+      );
+      final raw = response.data is Map ? response.data['photos'] : null;
+      if (raw is! Map) return {};
+      return {
+        for (final entry in raw.entries)
+          if (entry.key.toString().isNotEmpty &&
+              '${entry.value}'.trim().isNotEmpty)
+            entry.key.toString(): '${entry.value}'.trim(),
+      };
+    } catch (_) {
+      return {};
+    }
+  }
+
   Future<String> currentRole() async {
     final user = currentUser;
     if (user == null) return 'student';

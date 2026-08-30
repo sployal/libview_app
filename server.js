@@ -1192,6 +1192,32 @@ app.delete('/course-folder/:folderId', requireAuth, requireSystemAdmin, async (r
   }
 });
 
+function googlePhotoFromAuthUser(user) {
+  const providers = user.providerData || [];
+  const google = providers.find((p) => p.providerId === 'google.com');
+  const url = (google && google.photoURL) || user.photoURL || '';
+  return String(url).trim();
+}
+
+app.get('/users/auth-photos', requireAuth, requireSystemAdmin, async (req, res) => {
+  try {
+    const photos = {};
+    let pageToken;
+    do {
+      const result = await admin.auth().listUsers(1000, pageToken);
+      for (const user of result.users) {
+        const url = googlePhotoFromAuthUser(user);
+        if (url) photos[user.uid] = url;
+      }
+      pageToken = result.pageToken;
+    } while (pageToken);
+    res.json({ photos });
+  } catch (e) {
+    console.error('Auth photo list failed:', e);
+    res.status(500).json({ error: 'Could not load user photos' });
+  }
+});
+
 // --- Delete a user profile + Firebase Auth account (system admin) ---------
 
 app.delete('/users/:uid', requireAuth, requireSystemAdmin, async (req, res) => {
