@@ -148,6 +148,13 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
         }
         return;
       }
+      if (matchedCourse.suspended) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+          await _showCourseSuspendedDialog(matchedCourse);
+        }
+        return;
+      }
 
       // Check if registration number already exists
       final regNumberTaken = await AuthService.instance
@@ -414,6 +421,53 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
           title: Text(
             'Sign up unavailable',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.4,
+              color: isDark ? Colors.white : const Color(0xFF1C1C1E),
+            ),
+          ),
+          content: Text(
+            message,
+            style: const TextStyle(
+              fontSize: 15,
+              color: Color(0xFF8E8E93),
+              height: 1.35,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text(
+                'OK',
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: _accent,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _showCourseSuspendedDialog(Course course) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final topic = course.suspensionTopic.isEmpty
+        ? CourseService.defaultSuspensionTopic
+        : course.suspensionTopic;
+    final message = course.suspensionMessage.isEmpty
+        ? CourseService.defaultSuspensionMessage
+        : course.suspensionMessage;
+    return showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+          title: Text(
+            topic,
             style: TextStyle(
               fontWeight: FontWeight.w700,
               letterSpacing: -0.4,

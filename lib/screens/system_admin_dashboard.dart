@@ -1201,21 +1201,241 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
 
   void _showCourseActions(Course course) {
     HapticFeedback.selectionClick();
+    final canEdit = course.id != 'engineering' &&
+        course.name.toLowerCase() != 'engineering';
     _showThemedActionSheet(
       title: course.name,
+      message: course.suspended
+          ? (course.suspensionTopic.isEmpty
+              ? 'This course is suspended'
+              : course.suspensionTopic)
+          : null,
       actions: [
-        _ThemedSheetAction(
-          label: 'Edit Course',
-          color: const Color(0xFF6366F1),
-          onTap: () => _openCourseAddition(course: course),
-        ),
-        _ThemedSheetAction(
-          label: 'Delete Course',
-          color: const Color(0xFFEF4444),
-          onTap: () => _showDeleteCourseDialog(course),
-        ),
+        if (canEdit)
+          _ThemedSheetAction(
+            label: 'Edit Course',
+            color: const Color(0xFF6366F1),
+            onTap: () => _openCourseAddition(course: course),
+          ),
+        if (course.suspended)
+          _ThemedSheetAction(
+            label: 'Restore Course',
+            color: const Color(0xFF10B981),
+            onTap: () => _unsuspendCourse(course),
+          )
+        else
+          _ThemedSheetAction(
+            label: 'Suspend Course',
+            color: const Color(0xFFF59E0B),
+            onTap: () => _showSuspendCourseDialog(course),
+          ),
+        if (canEdit)
+          _ThemedSheetAction(
+            label: 'Delete Course',
+            color: const Color(0xFFEF4444),
+            onTap: () => _showDeleteCourseDialog(course),
+          ),
       ],
     );
+  }
+
+  Future<void> _showSuspendCourseDialog(Course course) async {
+    final notice = await _promptCourseSuspensionNotice(course);
+    if (notice == null || !mounted) return;
+    try {
+      final updated = await CourseService.instance.suspendCourse(
+        course: course,
+        topic: notice.topic,
+        message: notice.message,
+      );
+      if (!mounted) return;
+      setState(() {
+        final index = _courses.indexWhere((item) => item.id == course.id);
+        if (index != -1) {
+          _courses[index] = updated;
+        }
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(CupertinoIcons.pause_circle_fill, color: Colors.white),
+              const SizedBox(width: 12),
+              Expanded(child: Text('${course.name} suspended')),
+            ],
+          ),
+          backgroundColor: const Color(0xFFF59E0B),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not suspend course: $e'),
+          backgroundColor: const Color(0xFFEF4444),
+        ),
+      );
+    }
+  }
+
+  Future<void> _unsuspendCourse(Course course) async {
+    try {
+      final updated = await CourseService.instance.unsuspendCourse(course);
+      if (!mounted) return;
+      setState(() {
+        final index = _courses.indexWhere((item) => item.id == course.id);
+        if (index != -1) {
+          _courses[index] = updated;
+        }
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(CupertinoIcons.checkmark_circle_fill, color: Colors.white),
+              const SizedBox(width: 12),
+              Expanded(child: Text('${course.name} restored')),
+            ],
+          ),
+          backgroundColor: const Color(0xFF10B981),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not restore course: $e'),
+          backgroundColor: const Color(0xFFEF4444),
+        ),
+      );
+    }
+  }
+
+  Future<_CourseSuspensionNotice?> _promptCourseSuspensionNotice(
+    Course course,
+  ) async {
+    final topicController = TextEditingController(
+      text: course.suspensionTopic.isEmpty
+          ? CourseService.defaultSuspensionTopic
+          : course.suspensionTopic,
+    );
+    final messageController = TextEditingController(
+      text: course.suspensionMessage.isEmpty
+          ? CourseService.defaultSuspensionMessage
+          : course.suspensionMessage,
+    );
+    try {
+      return await showDialog<_CourseSuspensionNotice>(
+        context: context,
+        builder: (dialogContext) {
+          return AlertDialog(
+            backgroundColor: _card,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+            title: Text(
+              'Suspend ${course.name}',
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.4,
+                color: _titleColor,
+              ),
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Students in this course will not be able to use the app until you restore it. They will see this topic and message.',
+                    style: TextStyle(fontSize: 14, color: _muted, height: 1.35),
+                  ),
+                  const SizedBox(height: 14),
+                  Text(
+                    'Topic',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: _titleColor,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: topicController,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: InputDecoration(
+                      hintText: CourseService.defaultSuspensionTopic,
+                      filled: true,
+                      fillColor: _chip,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Message',
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: _titleColor,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  TextField(
+                    controller: messageController,
+                    maxLines: 4,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: InputDecoration(
+                      hintText: CourseService.defaultSuspensionMessage,
+                      filled: true,
+                      fillColor: _chip,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: Text('Cancel', style: TextStyle(color: _muted)),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.of(dialogContext).pop(
+                    _CourseSuspensionNotice(
+                      topic: topicController.text.trim().isEmpty
+                          ? CourseService.defaultSuspensionTopic
+                          : topicController.text.trim(),
+                      message: messageController.text.trim().isEmpty
+                          ? CourseService.defaultSuspensionMessage
+                          : messageController.text.trim(),
+                    ),
+                  );
+                },
+                child: const Text(
+                  'Suspend',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFFF59E0B),
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      );
+    } finally {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        topicController.dispose();
+        messageController.dispose();
+      });
+    }
   }
 
   Future<void> _showThemedActionSheet({
@@ -1352,17 +1572,23 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
 
   Widget _buildCourseCard(Course course, {required bool showDivider}) {
     final semesterCount = course.semesters.length;
-    final canManage = course.id != 'engineering' &&
-        course.name.toLowerCase() != 'engineering';
+    final prefix = course.admissionPrefix.isEmpty
+        ? (course.sampleAdmissionNumber.isEmpty
+            ? '—'
+            : course.sampleAdmissionNumber)
+        : course.admissionPrefix;
+    final status = course.suspended ? ' • Suspended' : '';
     return _settingsRow(
       icon: CupertinoIcons.book_fill,
-      iconColor: const Color(0xFF6366F1),
+      iconColor: course.suspended
+          ? const Color(0xFFF59E0B)
+          : const Color(0xFF6366F1),
       title: course.name,
       subtitle:
-          '${course.years} ${course.years == 1 ? 'year' : 'years'} • $semesterCount semester folders • ${course.admissionPrefix.isEmpty ? (course.sampleAdmissionNumber.isEmpty ? '—' : course.sampleAdmissionNumber) : course.admissionPrefix}',
-      showChevron: canManage,
+          '${course.years} ${course.years == 1 ? 'year' : 'years'} • $semesterCount semester folders • $prefix$status',
+      showChevron: true,
       showDivider: showDivider,
-      onTap: canManage ? () => _showCourseActions(course) : null,
+      onTap: () => _showCourseActions(course),
     );
   }
 
@@ -2508,6 +2734,16 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
             ),
     );
   }
+}
+
+class _CourseSuspensionNotice {
+  const _CourseSuspensionNotice({
+    required this.topic,
+    required this.message,
+  });
+
+  final String topic;
+  final String message;
 }
 
 class _ThemedSheetAction {

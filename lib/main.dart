@@ -9,6 +9,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase_options.dart';
 import 'services/auth_service.dart';
+import 'services/course_service.dart';
 import 'services/streak_service.dart';
 import 'services/theme_controller.dart';
 import 'screens/home_screen.dart';
@@ -16,6 +17,7 @@ import 'screens/semesters_screen.dart';
 import 'screens/downloads_screen.dart';
 import 'screens/ai_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/system_admin_dashboard.dart';
 import 'screens/no_internet_screen.dart';
 import 'login/auth_screen.dart';
 import 'login/onboarding_screen.dart';
@@ -139,8 +141,52 @@ class AuthGate extends StatelessWidget {
                 return const AuthScreen(needsProfileCompletion: true);
               }
 
-              StartupOverlay.instance.expectHome();
-              return const MainScreen();
+              final email = user.email;
+              final role = profileData?['role'] as String?;
+              final exemptFromCourseLock =
+                  SystemAdminDashboard.isAllowedEmail(email) ||
+                      SystemAdminDashboard.isSystemAdminRole(role);
+
+              if (exemptFromCourseLock) {
+                StartupOverlay.instance.expectHome();
+                return const MainScreen();
+              }
+
+              return StreamBuilder<List<Course>>(
+                stream: CourseService.instance.watchCourses(),
+                builder: (context, coursesSnapshot) {
+                  if (coursesSnapshot.connectionState ==
+                          ConnectionState.waiting &&
+                      !coursesSnapshot.hasData) {
+                    StartupOverlay.instance.setProgress(0.42);
+                    return const StartupHold();
+                  }
+
+                  final registration =
+                      (profileData?['registration_number'] as String?) ?? '';
+                  final suspendedCourse = CourseService.instance
+                      .suspendedCourseForRegistration(
+                    registration,
+                    coursesSnapshot.data ?? const [],
+                  );
+                  if (suspendedCourse != null) {
+                    _revealAfterFirstFrame();
+                    final topic = suspendedCourse.suspensionTopic.isEmpty
+                        ? CourseService.defaultSuspensionTopic
+                        : suspendedCourse.suspensionTopic;
+                    final message = suspendedCourse.suspensionMessage.isEmpty
+                        ? CourseService.defaultSuspensionMessage
+                        : suspendedCourse.suspensionMessage;
+                    return SuspendedAccountScreen(
+                      title: topic,
+                      message: message,
+                    );
+                  }
+
+                  StartupOverlay.instance.expectHome();
+                  return const MainScreen();
+                },
+              );
             },
           );
         }

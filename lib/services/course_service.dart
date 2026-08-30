@@ -12,6 +12,9 @@ class Course {
   final String admissionPrefix;
   final String driveFolderId;
   final Map<String, Map<String, String>> semesters;
+  final bool suspended;
+  final String suspensionTopic;
+  final String suspensionMessage;
 
   const Course({
     required this.id,
@@ -21,6 +24,9 @@ class Course {
     required this.admissionPrefix,
     required this.driveFolderId,
     required this.semesters,
+    this.suspended = false,
+    this.suspensionTopic = '',
+    this.suspensionMessage = '',
   });
 
   String get driveFolderTargetId {
@@ -143,6 +149,9 @@ class Course {
           : admissionPrefixFromSample(storedPrefix),
       driveFolderId: (data['drive_folder_id'] as String?) ?? '',
       semesters: semesters,
+      suspended: data['suspended'] == true,
+      suspensionTopic: (data['suspension_topic'] as String?)?.trim() ?? '',
+      suspensionMessage: (data['suspension_message'] as String?)?.trim() ?? '',
     );
   }
 
@@ -189,6 +198,10 @@ class CourseService {
 
   static final CourseService instance = CourseService._();
 
+  static const defaultSuspensionTopic = 'System maintenance';
+  static const defaultSuspensionMessage =
+      'This course is temporarily unavailable. Please try again later.';
+
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   CollectionReference<Map<String, dynamic>> get _courses =>
@@ -202,6 +215,21 @@ class CourseService {
     }
     final snapshot = await _courses.get();
     return snapshot.docs.map(Course.fromDoc).toList();
+  }
+
+  Stream<List<Course>> watchCourses() {
+    return _courses.snapshots().map(
+      (snapshot) => snapshot.docs.map(Course.fromDoc).toList(),
+    );
+  }
+
+  Course? suspendedCourseForRegistration(
+    String registrationNumber,
+    List<Course> courses,
+  ) {
+    final course = matchCourse(registrationNumber, courses);
+    if (course == null || !course.suspended) return null;
+    return course;
   }
 
   Future<void> seedEngineeringIfNeeded() async {
@@ -357,6 +385,58 @@ class CourseService {
     );
   }
 
+  Future<Course> suspendCourse({
+    required Course course,
+    required String topic,
+    required String message,
+  }) async {
+    final trimmedTopic = topic.trim();
+    final trimmedMessage = message.trim();
+    final payload = {
+      'suspended': true,
+      'suspension_topic':
+          trimmedTopic.isEmpty ? defaultSuspensionTopic : trimmedTopic,
+      'suspension_message':
+          trimmedMessage.isEmpty ? defaultSuspensionMessage : trimmedMessage,
+      'suspended_at': FieldValue.serverTimestamp(),
+      'suspended_by': FirebaseAuth.instance.currentUser?.email,
+      'updated_at': FieldValue.serverTimestamp(),
+    };
+    await _courses.doc(course.id).update(payload);
+    return Course(
+      id: course.id,
+      name: course.name,
+      years: course.years,
+      sampleAdmissionNumber: course.sampleAdmissionNumber,
+      admissionPrefix: course.admissionPrefix,
+      driveFolderId: course.driveFolderId,
+      semesters: course.semesters,
+      suspended: true,
+      suspensionTopic: payload['suspension_topic'] as String,
+      suspensionMessage: payload['suspension_message'] as String,
+    );
+  }
+
+  Future<Course> unsuspendCourse(Course course) async {
+    await _courses.doc(course.id).update({
+      'suspended': false,
+      'suspension_topic': FieldValue.delete(),
+      'suspension_message': FieldValue.delete(),
+      'suspended_at': FieldValue.delete(),
+      'suspended_by': FieldValue.delete(),
+      'updated_at': FieldValue.serverTimestamp(),
+    });
+    return Course(
+      id: course.id,
+      name: course.name,
+      years: course.years,
+      sampleAdmissionNumber: course.sampleAdmissionNumber,
+      admissionPrefix: course.admissionPrefix,
+      driveFolderId: course.driveFolderId,
+      semesters: course.semesters,
+    );
+  }
+
   Future<Course> updateCourse({
     required Course course,
     required String name,
@@ -441,6 +521,9 @@ class CourseService {
       admissionPrefix: prefix,
       driveFolderId: course.driveFolderId,
       semesters: semesters,
+      suspended: course.suspended,
+      suspensionTopic: course.suspensionTopic,
+      suspensionMessage: course.suspensionMessage,
     );
   }
 
