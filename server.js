@@ -1,5 +1,6 @@
 require('dotenv').config();
 
+const fs = require('fs');
 const path = require('path');
 const https = require('https');
 const express = require('express');
@@ -8,8 +9,9 @@ const multer = require('multer');
 const { google } = require('googleapis');
 const { Readable } = require('stream');
 const admin = require('firebase-admin');
-const { registerAiRoutes } = require('./ai_chat.js');
+const { registerAiRoutes } = require('./ai_chat');
 const { registerMediaRoutes } = require('./media server.js');
+const { registerContactRoutes } = require('./contact');
 
 // =========================================================================
 // config
@@ -24,7 +26,6 @@ const EDUPAL_FOLDER_ID =
   process.env.EDUPAL_FOLDER_ID || process.env.ROOT_FOLDER_ID || '';
 const SYSTEM_ADMIN_EMAIL = (
   process.env.SYSTEM_ADMIN_EMAIL ||
-  process.env.SUPER_ADMIN_EMAIL ||
   'muigaid91@gmail.com'
 ).toLowerCase();
 
@@ -172,7 +173,11 @@ async function loadRefreshToken() {
 // drive.js  (OAuth2 client instead of a service account)
 // =========================================================================
 
-const DRIVE_SCOPES = ['https://www.googleapis.com/auth/drive'];
+const DRIVE_SCOPES = [
+  'https://www.googleapis.com/auth/drive',
+  // HTTPS send for /contact. Render free instances block SMTP 25/465/587.
+  'https://www.googleapis.com/auth/gmail.send',
+];
 
 const oauth2Client = new google.auth.OAuth2(
   CONFIG.GOOGLE_OAUTH_CLIENT_ID,
@@ -336,7 +341,7 @@ async function listDirectChildren(parentId) {
   do {
     const res = await drive.files.list({
       q: `'${parentId}' in parents and trashed = false`,
-      fields: 'nextPageToken, files(id, name, mimeType, size)',
+      fields: 'nextPageToken, files(id, name, mimeType, size, modifiedTime, webViewLink, thumbnailLink)',
       pageSize: 1000,
       pageToken,
       supportsAllDrives: true,
@@ -658,6 +663,8 @@ const app = express();
 app.use(
   cors({
     origin: CONFIG.ALLOWED_ORIGINS.includes('*') ? '*' : CONFIG.ALLOWED_ORIGINS,
+    // Let the web app read the download filename from Content-Disposition.
+    exposedHeaders: ['Content-Disposition', 'Content-Type'],
   })
 );
 app.use(express.json({ limit: '12mb' }));
@@ -671,14 +678,39 @@ const upload = multer({
 
 app.get('/health', (req, res) => res.json({ ok: true, driveConfigured: driveIsConfigured() }));
 
+// Public Firebase *web* client config from web-service.json (same idea as
+// google-services.json). Flutter never calls this. Additive only.
+app.get('/firebase-config', (req, res) => {
+  const candidates = [
+    process.env.FIREBASE_WEB_CONFIG_PATH &&
+      path.resolve(__dirname, process.env.FIREBASE_WEB_CONFIG_PATH),
+    path.resolve(__dirname, 'secrets', 'web-service.json'),
+  ].filter(Boolean);
+
+  for (const file of candidates) {
+    try {
+      if (!fs.existsSync(file)) continue;
+      const config = JSON.parse(fs.readFileSync(file, 'utf8'));
+      if (!config?.apiKey || !config?.projectId) continue;
+      return res.json(config);
+    } catch (err) {
+      console.error('Failed to read web-service.json:', err.message);
+    }
+  }
+
+  return res.status(503).json({
+    error: 'web-service.json was not found in the secrets folder',
+  });
+});
+
 // --- Weather (OpenWeather; API key stays on the server) ---------------
 
 const OPENWEATHER_API_KEY = process.env.OPENWEATHER_API_KEY || '';
 const DEFAULT_WEATHER_LOCATION = {
   name: 'Chuka',
   country: 'KE',
-  lat: -0.3335,
-  lon: 37.6469,
+  lat: -0.3333,
+  lon: 37.65,
 };
 const weatherCache = new Map();
 const WEATHER_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -1080,6 +1112,161 @@ app.delete('/course-folder/:folderId', requireAuth, requireSystemAdmin, async (r
 
 // --- Rename a file or folder (admin-only by default) --------------------
 
+// Drive thumbnailLink URLs expire and often 403 in the browser. Proxy them
+// through the backend so folder cards can show real file previews.
+app.get('/files/:fileId/thumbnail', requireAuth, async (req, res) => {
+  if (!driveIsConfigured()) {
+    return res.status(503).json({ error: 'Drive is not configured yet. Complete the OAuth setup first.' });
+  }
+
+  const { fileId } = req.params;
+  if (!fileId) {
+    return res.status(400).json({ error: 'A file ID is required' });
+  }
+
+  try {
+    const meta = await drive.files.get({
+      fileId,
+      fields: 'thumbnailLink,hasThumbnail',
+      supportsAllDrives: true,
+    });
+    const thumbnailLink = meta.data.thumbnailLink;
+    if (!thumbnailLink) {
+      return res.status(404).json({ error: 'No thumbnail' });
+    }
+
+    const url = thumbnailLink.replace(/=s\d+/, '=s400');
+    const token = await oauth2Client.getAccessToken();
+    const accessToken = typeof token === 'string' ? token : token?.token;
+    const thumbRes = await fetch(url, {
+      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+    });
+    if (!thumbRes.ok) {
+      return res.status(thumbRes.status).json({ error: 'Thumbnail fetch failed' });
+    }
+
+    const contentType = thumbRes.headers.get('content-type') || 'image/jpeg';
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'private, max-age=3600');
+    res.send(Buffer.from(await thumbRes.arrayBuffer()));
+  } catch (e) {
+    console.error('Thumbnail failed:', e);
+    res.status(500).json({ error: 'Failed to load thumbnail' });
+  }
+});
+
+// =========================================================================
+// Web app — file download
+// Signed-in students download unit files (PDF, Office, images, and the rest)
+// through this proxy instead of Google's public uc?export=download link,
+// which 403s for private Drive files. Native Google Docs/Sheets/Slides are
+// exported to Office/PDF first, then the bytes are streamed to the client.
+// The Next.js Downloads page saves that blob locally (IndexedDB) and also
+// triggers a browser save.
+// =========================================================================
+
+// Pick an export MIME type + filename when the Drive item is a Google Doc,
+// Sheet, or Slide rather than an uploaded binary.
+function googleExportFor(mimeType, fileName) {
+  if (mimeType.includes('spreadsheet')) {
+    return {
+      mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      name: fileName.replace(/\.[^.]+$/, '') + '.xlsx',
+    };
+  }
+  if (mimeType.includes('presentation')) {
+    return {
+      mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      name: fileName.replace(/\.[^.]+$/, '') + '.pptx',
+    };
+  }
+  if (mimeType.includes('document')) {
+    return {
+      mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      name: fileName.replace(/\.[^.]+$/, '') + '.docx',
+    };
+  }
+  return {
+    mime: 'application/pdf',
+    name: fileName.replace(/\.[^.]+$/, '') + '.pdf',
+  };
+}
+
+function contentDispositionAttachment(fileName) {
+  const safe = sanitizeFileName(fileName).replace(/"/g, '');
+  return `attachment; filename="${safe}"; filename*=UTF-8''${encodeURIComponent(safe)}`;
+}
+
+app.get('/files/:fileId/download', requireAuth, async (req, res) => {
+  if (!driveIsConfigured()) {
+    return res.status(503).json({ error: 'Drive is not configured yet. Complete the OAuth setup first.' });
+  }
+
+  const { fileId } = req.params;
+  if (!fileId) {
+    return res.status(400).json({ error: 'A file ID is required' });
+  }
+  if (!(await isManagedItem(fileId))) {
+    return res.status(403).json({ error: 'Invalid or unauthorized file' });
+  }
+
+  try {
+    const meta = await drive.files.get({
+      fileId,
+      fields: 'id, name, mimeType, size',
+      supportsAllDrives: true,
+    });
+    const sourceMime = meta.data.mimeType || 'application/octet-stream';
+    const sourceName = meta.data.name || 'download';
+    const isGoogleApp = sourceMime.startsWith('application/vnd.google-apps.');
+
+    let downloadMime = sourceMime;
+    let downloadName = sourceName;
+    let stream;
+
+    if (isGoogleApp) {
+      const exported = googleExportFor(sourceMime, sourceName);
+      downloadMime = exported.mime;
+      downloadName = exported.name;
+      const result = await drive.files.export(
+        { fileId, mimeType: downloadMime },
+        { responseType: 'stream' },
+      );
+      stream = result.data;
+    } else {
+      const result = await drive.files.get(
+        { fileId, alt: 'media', supportsAllDrives: true },
+        { responseType: 'stream' },
+      );
+      stream = result.data;
+    }
+
+    res.setHeader('Content-Type', downloadMime);
+    res.setHeader('Content-Disposition', contentDispositionAttachment(downloadName));
+    if (meta.data.size && !isGoogleApp) {
+      res.setHeader('Content-Length', String(meta.data.size));
+    }
+    res.setHeader('Cache-Control', 'private, no-store');
+
+    stream.on('error', (error) => {
+      console.error('Download stream failed:', error);
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Download failed' });
+      } else {
+        res.destroy(error);
+      }
+    });
+    stream.pipe(res);
+  } catch (e) {
+    console.error('Download failed:', e);
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Failed to download file' });
+    }
+  }
+});
+
+// --- Rename a file or folder (admin-only by default) --------------------
+
 app.patch('/files/:fileId', requireAuth, requireAdmin, async (req, res) => {
   if (!driveIsConfigured()) {
     return res.status(503).json({ error: 'Drive is not configured yet. Complete the OAuth setup first.' });
@@ -1134,15 +1321,65 @@ app.delete('/files/:fileId', requireAuth, requireAdmin, async (req, res) => {
   }
 });
 
+// =========================================================================
+// Web app (Next.js) — Drive listing
+// Flutter lists Drive with a client API key. The web semester/unit screens
+// call this authenticated route instead. Keep new web-only Drive endpoints
+// in this section so they stay distinct from the Flutter upload/folder APIs
+// above.
+// =========================================================================
+
+app.get('/folders/:folderId', requireAuth, async (req, res) => {
+  if (!driveIsConfigured()) {
+    return res.status(503).json({ error: 'Drive is not configured yet. Complete the OAuth setup first.' });
+  }
+
+  const { folderId } = req.params;
+  if (!folderId) {
+    return res.status(400).json({ error: 'A folder ID is required' });
+  }
+
+  const allowed =
+    isSemesterFolder(folderId) || (await isValidSubjectFolder(folderId));
+  if (!allowed) {
+    return res.status(403).json({ error: 'Invalid or unauthorized folder' });
+  }
+
+  try {
+    const children = await listDirectChildren(folderId);
+    const folders = [];
+    const files = [];
+    for (const item of children) {
+      if (item.mimeType === FOLDER_MIME) folders.push(item);
+      else files.push(item);
+    }
+
+    if (String(req.query.counts || '') === '1') {
+      await Promise.all(
+        folders.map(async (folder) => {
+          const inner = await listDirectChildren(folder.id);
+          folder.fileCount = inner.filter((file) => file.mimeType !== FOLDER_MIME).length;
+        })
+      );
+    }
+
+    res.json({ folders, files });
+  } catch (e) {
+    console.error('Folder listing failed:', e);
+    res.status(500).json({ error: 'Failed to list folder contents' });
+  }
+});
+
 // --- AI chat (NVIDIA Llama vision) --------------------------------------
 
 registerAiRoutes(app, { requireAuth });
 registerMediaRoutes(app, { requireAuth, requireSystemAdmin, upload });
+registerContactRoutes(app, { oauth2Client });
 
 // --- Fallback error handler --------------------------------------------
 
 app.use((err, req, res, next) => {
-  console.error(err);
+  console.error('[express]', err.message || err);
   res.status(500).json({ error: 'Unexpected server error' });
 });
 
