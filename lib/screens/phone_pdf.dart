@@ -533,6 +533,16 @@ class _PhonePdfScreenState extends State<PhonePdfScreen>
   @override
   Widget build(BuildContext context) {
     final filtered = _filtered;
+    final totalCount = _documents.length;
+    final matchCount = filtered.length;
+    final filesNoun = totalCount == 1 ? 'file' : 'files';
+    final isFiltering =
+        _query.trim().isNotEmpty || _kindFilter != 'All';
+    final countLabel = _isLoading
+        ? 'Looking for documents…'
+        : isFiltering
+            ? '$matchCount of $totalCount $filesNoun'
+            : '$totalCount $filesNoun';
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final background =
         isDark ? const Color(0xFF111827) : const Color(0xFFF8FAFC);
@@ -738,7 +748,20 @@ class _PhonePdfScreenState extends State<PhonePdfScreen>
                 },
               ),
             ),
-            const SizedBox(height: 8),
+            Padding(
+              padding: AdaptiveLayout.pagePadding(context).copyWith(
+                top: 10,
+                bottom: 4,
+              ),
+              child: Text(
+                countLabel,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: muted,
+                ),
+              ),
+            ),
             Expanded(
               child: _isLoading
                   ? Center(
