@@ -142,11 +142,9 @@ class AuthGate extends StatelessWidget {
                 return const AuthScreen(needsProfileCompletion: true);
               }
 
-              final email = user.email;
               final role = profileData?['role'] as String?;
               final exemptFromCourseLock =
-                  SystemAdminDashboard.isAllowedEmail(email) ||
-                      SystemAdminDashboard.isSystemAdminRole(role) ||
+                  SystemAdminDashboard.isSystemAdminRole(role) ||
                       AuthService.isClientRole(role);
 
               if (exemptFromCourseLock) {

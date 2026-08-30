@@ -36,7 +36,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   bool _removeAvatar = false;
 
   bool get _isSystemAdmin {
-    if (SystemAdminDashboard.isAllowedEmail(_currentEmail)) return true;
     return SystemAdminDashboard.isSystemAdminRole(_currentRole);
   }
 

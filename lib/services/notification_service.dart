@@ -111,8 +111,7 @@ class NotificationService {
         .where((id) => id.isNotEmpty)
         .toSet();
 
-    final seeAll = SystemAdminDashboard.isSystemAdminRole(role) ||
-        SystemAdminDashboard.isAllowedEmail(user.email);
+    final seeAll = SystemAdminDashboard.isSystemAdminRole(role);
 
     return notificationsSnap.docs
         .map((doc) => _fromDoc(doc, readIds.contains(doc.id)))

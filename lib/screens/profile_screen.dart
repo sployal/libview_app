@@ -46,8 +46,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   bool get _isSystemAdmin {
-    final email = _email ?? AuthService.instance.currentUser?.email;
-    if (SystemAdminDashboard.isAllowedEmail(email)) return true;
     return SystemAdminDashboard.isSystemAdminRole(_role);
   }
 

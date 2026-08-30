@@ -16,21 +16,15 @@ import 'course_addition.dart';
 class SystemAdminDashboard extends StatefulWidget {
   const SystemAdminDashboard({super.key});
 
-  static const allowedEmail = 'muigaid91@gmail.com';
   static const systemAdminRole = 'system_admin';
-
-  static bool isAllowedEmail(String? email) =>
-      email?.toLowerCase() == allowedEmail;
 
   static bool isSystemAdminRole(String? role) {
     final value = (role ?? '').toLowerCase();
     return value == systemAdminRole || value == 'super_admin';
   }
 
-  /// Owner email or users with the `system_admin` role.
+  /// Users with the `system_admin` role (assigned by the server from SYSTEM_ADMIN_EMAIL).
   static Future<bool> isCurrentUserSystemAdmin() async {
-    final email = AuthService.instance.currentUser?.email;
-    if (isAllowedEmail(email)) return true;
     final role = await AuthService.instance.currentRole();
     return isSystemAdminRole(role);
   }
@@ -360,7 +354,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
 
   bool _canSuspend(Map<String, dynamic> user) {
     if (_isCurrentUser(user)) return false;
-    if (SystemAdminDashboard.isAllowedEmail(user['email'] as String?)) {
+    if (SystemAdminDashboard.isSystemAdminRole(user['role'] as String?)) {
       return false;
     }
     return true;

@@ -24,10 +24,9 @@ const { registerContactRoutes } = require('./contact');
 // finds or creates an "updates" folder under the Edupal root for APKs.
 const EDUPAL_FOLDER_ID =
   process.env.EDUPAL_FOLDER_ID || process.env.ROOT_FOLDER_ID || '';
-const SYSTEM_ADMIN_EMAIL = (
-  process.env.SYSTEM_ADMIN_EMAIL ||
-  'muigaid91@gmail.com'
-).toLowerCase();
+const SYSTEM_ADMIN_EMAIL = String(process.env.SYSTEM_ADMIN_EMAIL || '')
+  .trim()
+  .toLowerCase();
 
 const ADMIN_UIDS = new Set(
   (process.env.ADMIN_UIDS || '')
@@ -249,14 +248,62 @@ async function resolveClientWorkspaceId(folderId) {
   return workspaceId;
 }
 
+function isConfiguredSystemAdminEmail(email) {
+  return Boolean(SYSTEM_ADMIN_EMAIL) && String(email || '').trim().toLowerCase() === SYSTEM_ADMIN_EMAIL;
+}
+
+const promotedSystemAdminUids = new Set();
+
+async function ensureEnvSystemAdminRole(user) {
+  if (!SYSTEM_ADMIN_EMAIL || !user?.uid) return;
+  if (!isConfiguredSystemAdminEmail(user.email)) return;
+  if (promotedSystemAdminUids.has(user.uid)) return;
+
+  const ref = firestore.collection('profiles').doc(user.uid);
+  const snap = await ref.get();
+  const data = snap.data() || {};
+  const role = String(data.role || '').toLowerCase();
+  if (role !== 'system_admin') {
+    await ref.set(
+      {
+        email: SYSTEM_ADMIN_EMAIL,
+        role: 'system_admin',
+        updated_at: admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
+  }
+  promotedSystemAdminUids.add(user.uid);
+}
+
+async function promoteEnvSystemAdminOnStartup() {
+  if (!SYSTEM_ADMIN_EMAIL) {
+    console.warn('SYSTEM_ADMIN_EMAIL is not set in .env — no account will be auto-promoted to system admin.');
+    return;
+  }
+  try {
+    const authUser = await admin.auth().getUserByEmail(SYSTEM_ADMIN_EMAIL);
+    await ensureEnvSystemAdminRole({ uid: authUser.uid, email: authUser.email });
+    console.log(`Ensured system_admin role for ${SYSTEM_ADMIN_EMAIL}`);
+  } catch (err) {
+    if (err.code === 'auth/user-not-found') {
+      console.warn(
+        `SYSTEM_ADMIN_EMAIL ${SYSTEM_ADMIN_EMAIL} has no Firebase Auth user yet. They will be promoted on first sign-in.`,
+      );
+      return;
+    }
+    console.warn('Could not auto-promote system admin:', err.message);
+  }
+}
+
 async function isSystemAdminUser(user) {
   const email = String(user?.email || '').toLowerCase();
-  if (email && email === SYSTEM_ADMIN_EMAIL) return true;
+  if (isConfiguredSystemAdminEmail(email)) return true;
   if (CONFIG.ADMIN_UIDS.size > 0 && CONFIG.ADMIN_UIDS.has(user.uid)) return true;
   try {
     const snap = await firestore.collection('profiles').doc(user.uid).get();
     const role = String(snap.data()?.role || '').toLowerCase();
-    return role === 'system_admin' || role === 'super_admin';
+    return role === 'system_admin';
   } catch (err) {
     return false;
   }
@@ -837,6 +884,11 @@ async function requireAuth(req, res, next) {
   try {
     const decoded = await admin.auth().verifyIdToken(token);
     req.user = decoded;
+    try {
+      await ensureEnvSystemAdminRole(decoded);
+    } catch (err) {
+      console.warn('Could not promote system admin profile:', err.message);
+    }
     next();
   } catch (err) {
     console.error('Token verification failed:', err.message);
@@ -1494,7 +1546,10 @@ app.delete('/users/:uid', requireAuth, requireSystemAdmin, async (req, res) => {
       if (err.code !== 'auth/user-not-found') throw err;
     }
 
-    if (profileEmail === SYSTEM_ADMIN_EMAIL || authEmail === SYSTEM_ADMIN_EMAIL) {
+    if (
+      isConfiguredSystemAdminEmail(profileEmail) ||
+      isConfiguredSystemAdminEmail(authEmail)
+    ) {
       return res.status(403).json({ error: 'This account cannot be deleted.' });
     }
 
@@ -1853,6 +1908,7 @@ initDriveAuth().then(async () => {
     console.error('Failed to ensure Edupal/clients folder:', err.message);
   }
   await loadClientWorkspaceIdsFromFirestore();
+  await promoteEnvSystemAdminOnStartup();
   app.listen(CONFIG.PORT, () => {
     console.log(`Edupal backend listening on port ${CONFIG.PORT}`);
     if (!driveIsConfigured()) {

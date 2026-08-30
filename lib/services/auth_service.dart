@@ -126,16 +126,6 @@ class AuthService {
       throw Exception('You cannot delete your own account.');
     }
 
-    var accountEmail = email?.trim().toLowerCase() ?? '';
-    if (accountEmail.isEmpty) {
-      final snap = await _firestore.collection('profiles').doc(userId).get();
-      accountEmail =
-          (snap.data()?['email'] as String?)?.trim().toLowerCase() ?? '';
-    }
-    if (accountEmail == 'muigaid91@gmail.com') {
-      throw Exception('This account cannot be deleted.');
-    }
-
     final token = await currentUser?.getIdToken();
     if (token != null && token.isNotEmpty) {
       try {
