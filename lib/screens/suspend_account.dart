@@ -1,7 +1,10 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
-class SuspendedAccountScreen extends StatelessWidget {
+import '../services/auth_service.dart';
+
+class SuspendedAccountScreen extends StatefulWidget {
   const SuspendedAccountScreen({
     super.key,
     required this.message,
@@ -10,6 +13,31 @@ class SuspendedAccountScreen extends StatelessWidget {
 
   final String title;
   final String message;
+
+  @override
+  State<SuspendedAccountScreen> createState() => _SuspendedAccountScreenState();
+}
+
+class _SuspendedAccountScreenState extends State<SuspendedAccountScreen> {
+  bool _signingOut = false;
+
+  Future<void> _signOut() async {
+    if (_signingOut) return;
+    HapticFeedback.lightImpact();
+    setState(() => _signingOut = true);
+    try {
+      await AuthService.instance.signOut();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _signingOut = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not sign out: $e'),
+          backgroundColor: const Color(0xFFEF4444),
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,7 +76,7 @@ class SuspendedAccountScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 28),
                 Text(
-                  title,
+                  widget.title,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 26,
@@ -66,7 +94,7 @@ class SuspendedAccountScreen extends StatelessWidget {
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Text(
-                    message,
+                    widget.message,
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 16,
@@ -76,6 +104,39 @@ class SuspendedAccountScreen extends StatelessWidget {
                   ),
                 ),
                 const Spacer(flex: 3),
+                SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: FilledButton(
+                    onPressed: _signingOut ? null : _signOut,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFFEF4444),
+                      disabledBackgroundColor:
+                          const Color(0xFFEF4444).withValues(alpha: 0.45),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: _signingOut
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2.4,
+                              valueColor:
+                                  AlwaysStoppedAnimation<Color>(Colors.white),
+                            ),
+                          )
+                        : const Text(
+                            'Sign out',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                  ),
+                ),
                 const SizedBox(height: 28),
               ],
             ),
