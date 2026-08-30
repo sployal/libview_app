@@ -1192,6 +1192,47 @@ app.delete('/course-folder/:folderId', requireAuth, requireSystemAdmin, async (r
   }
 });
 
+// --- Delete a user profile + Firebase Auth account (system admin) ---------
+
+app.delete('/users/:uid', requireAuth, requireSystemAdmin, async (req, res) => {
+  const uid = String(req.params.uid || '').trim();
+  if (!uid) {
+    return res.status(400).json({ error: 'Delete failed' });
+  }
+  if (uid === req.user.uid) {
+    return res.status(400).json({ error: 'You cannot delete your own account.' });
+  }
+
+  try {
+    const snap = await firestore.collection('profiles').doc(uid).get();
+    const profileEmail = String(snap.data()?.email || '').toLowerCase();
+
+    let authEmail = '';
+    try {
+      const authUser = await admin.auth().getUser(uid);
+      authEmail = String(authUser.email || '').toLowerCase();
+    } catch (err) {
+      if (err.code !== 'auth/user-not-found') throw err;
+    }
+
+    if (profileEmail === SYSTEM_ADMIN_EMAIL || authEmail === SYSTEM_ADMIN_EMAIL) {
+      return res.status(403).json({ error: 'This account cannot be deleted.' });
+    }
+
+    try {
+      await admin.auth().deleteUser(uid);
+    } catch (err) {
+      if (err.code !== 'auth/user-not-found') throw err;
+    }
+
+    await firestore.collection('profiles').doc(uid).delete();
+    res.json({ deleted: true, uid });
+  } catch (e) {
+    console.error('User delete failed:', e);
+    res.status(500).json({ error: 'Delete failed' });
+  }
+});
+
 // --- Rename a file or folder (admin-only by default) --------------------
 
 // Drive thumbnailLink URLs expire and often 403 in the browser. Proxy them

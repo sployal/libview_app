@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
@@ -81,6 +82,47 @@ class AuthService {
       'suspended_by': FieldValue.delete(),
       'updated_at': FieldValue.serverTimestamp(),
     });
+  }
+
+  /// Deletes a profile and, when the backend is available, the Auth account.
+  Future<void> deleteAccount(String userId) async {
+    if (userId.isEmpty) {
+      throw Exception('Missing user id');
+    }
+    if (userId == currentUser?.uid) {
+      throw Exception('You cannot delete your own account.');
+    }
+
+    final token = await currentUser?.getIdToken();
+    if (token != null && token.isNotEmpty) {
+      try {
+        final dio = Dio(
+          BaseOptions(
+            baseUrl: 'https://edupal-backend.onrender.com',
+            connectTimeout: const Duration(seconds: 30),
+            receiveTimeout: const Duration(seconds: 30),
+          ),
+        );
+        await dio.delete(
+          '/users/${Uri.encodeComponent(userId)}',
+          options: Options(headers: {'Authorization': 'Bearer $token'}),
+        );
+        return;
+      } on DioException catch (e) {
+        final status = e.response?.statusCode ?? 0;
+        if (status == 400 || status == 403) {
+          final data = e.response?.data;
+          final message = data is Map
+              ? data['error']?.toString()
+              : null;
+          throw Exception(
+            (message == null || message.isEmpty) ? 'Could not delete user' : message,
+          );
+        }
+      }
+    }
+
+    await _firestore.collection('profiles').doc(userId).delete();
   }
 
   Future<String> currentRole() async {

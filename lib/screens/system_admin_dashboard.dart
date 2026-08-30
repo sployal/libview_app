@@ -334,6 +334,8 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
     return true;
   }
 
+  bool _canDelete(Map<String, dynamic> user) => _canSuspend(user);
+
   Future<void> _suspendUser(Map<String, dynamic> user) async {
     if (!_canSuspend(user)) {
       if (!mounted) return;
@@ -424,6 +426,98 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Could not restore account: $e'),
+          backgroundColor: const Color(0xFFEF4444),
+        ),
+      );
+    }
+  }
+
+  Future<void> _deleteUser(Map<String, dynamic> user) async {
+    if (!_canDelete(user)) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You cannot delete this account.'),
+          backgroundColor: Color(0xFFEF4444),
+        ),
+      );
+      return;
+    }
+
+    final name = user['full_name']?.toString().trim() ?? '';
+    final email = user['email']?.toString().trim() ?? '';
+    final label = name.isNotEmpty ? name : (email.isNotEmpty ? email : 'this user');
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: _card,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+          title: Text(
+            'Delete user',
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.4,
+              color: _titleColor,
+            ),
+          ),
+          content: Text(
+            'This permanently removes $label from the app. They will need a new account to sign in again.',
+            style: TextStyle(
+              fontSize: 15,
+              color: _muted,
+              height: 1.35,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: Text('Cancel', style: TextStyle(color: _muted)),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text(
+                'Delete',
+                style: TextStyle(
+                  color: Color(0xFFEF4444),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirmed != true || !mounted) return;
+
+    try {
+      await AuthService.instance.deleteAccount(user['id'].toString());
+      if (!mounted) return;
+      setState(() {
+        _profiles.removeWhere((p) => p['id'] == user['id']);
+        _filterLists();
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Row(
+            children: [
+              Icon(CupertinoIcons.trash_fill, color: Colors.white),
+              SizedBox(width: 12),
+              Text('User deleted'),
+            ],
+          ),
+          backgroundColor: Color(0xFFEF4444),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not delete user: $e'),
           backgroundColor: const Color(0xFFEF4444),
         ),
       );
@@ -567,7 +661,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
                             vertical: 14,
                           ),
                           child: Text(
-                            'You cannot change or suspend your own account.',
+                            'You cannot change, suspend, or delete your own account.',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: _muted,
@@ -595,6 +689,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
                             iconColor: const Color(0xFF10B981),
                             title: 'Restore Account',
                             titleColor: const Color(0xFF10B981),
+                            showDivider: true,
                             onTap: () {
                               Navigator.pop(context);
                               _unsuspendUser(user);
@@ -606,6 +701,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
                             iconColor: const Color(0xFFEF4444),
                             title: 'Suspend Account',
                             titleColor: const Color(0xFFEF4444),
+                            showDivider: true,
                             onTap: () {
                               Navigator.pop(context);
                               _suspendUser(user);
@@ -618,13 +714,24 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
                               vertical: 14,
                             ),
                             child: Text(
-                              'This account cannot be suspended.',
+                              'This account cannot be suspended or deleted.',
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 color: _muted,
                                 fontWeight: FontWeight.w500,
                               ),
                             ),
+                          ),
+                        if (_canDelete(user))
+                          _settingsRow(
+                            icon: CupertinoIcons.trash_fill,
+                            iconColor: const Color(0xFFEF4444),
+                            title: 'Delete User',
+                            titleColor: const Color(0xFFEF4444),
+                            onTap: () {
+                              Navigator.pop(context);
+                              _deleteUser(user);
+                            },
                           ),
                       ]),
                   ],
