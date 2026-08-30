@@ -62,6 +62,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
   bool _allowNewAccounts = true;
   String _restrictionMessage = AuthService.defaultSignupRestrictionMessage;
   bool _savingAccountPolicy = false;
+  bool _isRefreshing = false;
 
   static const _userRoles = [
     'student',
@@ -155,6 +156,23 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
     await _loadClients();
     await _loadStorage();
     await _loadAccountCreationSettings();
+  }
+
+  Future<void> _refreshDashboard() async {
+    if (_isRefreshing) return;
+    setState(() => _isRefreshing = true);
+    HapticFeedback.selectionClick();
+    try {
+      await Future.wait([
+        _loadProfiles(silent: true),
+        _loadCourses(silent: true),
+        _loadClients(silent: true),
+        _loadStorage(refresh: true),
+        _loadAccountCreationSettings(),
+      ]);
+    } finally {
+      if (mounted) setState(() => _isRefreshing = false);
+    }
   }
 
   Future<void> _loadProfiles({bool silent = false}) async {
@@ -316,7 +334,6 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
           behavior: SnackBarBehavior.floating,
         ),
       );
-      _loadProfiles(silent: true);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1014,8 +1031,10 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
     return '${months[date.month - 1]} ${date.day}, ${date.year}';
   }
 
-  Future<void> _loadCourses() async {
-    setState(() => _isLoadingCourses = true);
+  Future<void> _loadCourses({bool silent = false}) async {
+    if (!silent && mounted) {
+      setState(() => _isLoadingCourses = true);
+    }
     try {
       final courses = await CourseService.instance.listCourses();
       courses.sort(
@@ -1042,8 +1061,10 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
     }
   }
 
-  Future<void> _loadClients() async {
-    setState(() => _isLoadingClients = true);
+  Future<void> _loadClients({bool silent = false}) async {
+    if (!silent && mounted) {
+      setState(() => _isLoadingClients = true);
+    }
     try {
       final clients = await ClientService.instance.listClients();
       if (!mounted) return;
@@ -1096,13 +1117,19 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
     );
 
     try {
-      await ClientService.instance.createClient(
+      final workspace = await ClientService.instance.createClient(
         name: name,
         email: created.email,
         storageLimitBytes: created.storageLimitBytes,
       );
       if (!mounted) return;
       Navigator.pop(context);
+      setState(() {
+        _clients = [..._clients, workspace]
+          ..sort(
+            (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+          );
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Created client "$name"'),
@@ -1110,8 +1137,6 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
           behavior: SnackBarBehavior.floating,
         ),
       );
-      await _loadClients();
-      await _loadStorage(refresh: true);
     } catch (error) {
       if (!mounted) return;
       Navigator.pop(context);
@@ -1139,7 +1164,24 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
         storageLimitBytes: edited.storageLimitBytes,
       );
       if (!mounted) return;
-      await _loadClients();
+      setState(() {
+        final index = _clients.indexWhere((item) => item.id == client.id);
+        if (index != -1) {
+          _clients[index] = ClientWorkspace(
+            id: client.id,
+            name: edited.name,
+            driveFolderId: client.driveFolderId,
+            ownerUid: client.ownerUid,
+            memberUids: client.memberUids,
+            inviteEmail: ClientWorkspace.normalizeEmail(edited.email),
+            suspended: client.suspended,
+            storageLimitBytes: edited.storageLimitBytes,
+          );
+          _clients.sort(
+            (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+          );
+        }
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Client updated'),
@@ -1198,9 +1240,19 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
     try {
       final deletedUsers = await ClientService.instance.deleteClient(client);
       if (!mounted) return;
-      await _loadClients();
-      await _loadProfiles(silent: true);
-      await _loadStorage(refresh: true);
+      setState(() {
+        _clients.removeWhere((item) => item.id == client.id);
+        final attachedIds = {
+          ...client.memberUids,
+          if (client.ownerUid.isNotEmpty) client.ownerUid,
+        };
+        _profiles.removeWhere((profile) {
+          final id = profile['id']?.toString() ?? '';
+          final clientId = profile['client_id']?.toString() ?? '';
+          return attachedIds.contains(id) || clientId == client.id;
+        });
+        _filterLists();
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -1310,8 +1362,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
       ),
     );
     if (saved == true && mounted) {
-      await _loadCourses();
-      await _loadStorage(refresh: true);
+      await _loadCourses(silent: true);
     }
   }
 
@@ -1443,6 +1494,23 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
       );
       if (!mounted) return;
       Navigator.pop(context);
+      final associatedIds = deleteAssociatedUsers
+          ? _associatedProfiles(course)
+              .map((profile) => profile['id']?.toString() ?? '')
+              .where((id) => id.isNotEmpty)
+              .toSet()
+          : const <String>{};
+      setState(() {
+        _courses.removeWhere((item) => item.id == course.id);
+        if (associatedIds.isNotEmpty) {
+          _profiles.removeWhere(
+            (profile) => associatedIds.contains(profile['id']?.toString()),
+          );
+        }
+        if (_userCourseFilter == course.id) _userCourseFilter = 'all';
+        if (_staffCourseFilter == course.id) _staffCourseFilter = 'all';
+        _filterLists();
+      });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -1454,11 +1522,6 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
           behavior: SnackBarBehavior.floating,
         ),
       );
-      await _loadCourses();
-      await _loadStorage(refresh: true);
-      if (deleteAssociatedUsers) {
-        await _loadProfiles();
-      }
     } catch (error) {
       if (!mounted) return;
       Navigator.pop(context);
@@ -2987,10 +3050,13 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
                 color: _isDark ? const Color(0xFFF9FAFB) : const Color(0xFF6B7280),
               ),
             )
-          : CustomScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              slivers: [
-                SliverAppBar(
+          : RefreshIndicator(
+              color: const Color(0xFF6366F1),
+              onRefresh: _refreshDashboard,
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                slivers: [
+                  SliverAppBar(
                   pinned: true,
                   floating: false,
                   snap: false,
@@ -3023,16 +3089,13 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
                     ),
                     CupertinoButton(
                       padding: const EdgeInsets.only(right: 8),
-                      onPressed: () {
-                        HapticFeedback.selectionClick();
-                        _loadProfiles();
-                        _loadCourses();
-                        _loadStorage(refresh: true);
-                      },
-                      child: const Icon(
-                        CupertinoIcons.refresh,
-                        color: Color(0xFF6366F1),
-                      ),
+                      onPressed: _isRefreshing ? null : _refreshDashboard,
+                      child: _isRefreshing
+                          ? const CupertinoActivityIndicator()
+                          : const Icon(
+                              CupertinoIcons.refresh,
+                              color: Color(0xFF6366F1),
+                            ),
                     ),
                   ],
                 ),
@@ -3049,7 +3112,8 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
                     ),
                   ),
                 ),
-              ],
+                ],
+              ),
             ),
     );
   }
