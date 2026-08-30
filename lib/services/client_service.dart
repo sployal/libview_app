@@ -305,57 +305,6 @@ class ClientService {
     }, SetOptions(merge: true));
   }
 
-  Future<void> attachUser({
-    required ClientWorkspace client,
-    required String uid,
-  }) async {
-    if (uid.isEmpty) {
-      throw UploadException('Select a user to attach');
-    }
-
-    final profileRef = _firestore.collection('profiles').doc(uid);
-    final profile = await profileRef.get();
-    if (!profile.exists) {
-      throw UploadException('That user was not found');
-    }
-
-    final previousClientId =
-        (profile.data()?['client_id'] as String?)?.trim() ?? '';
-    final batch = _firestore.batch();
-
-    if (previousClientId.isNotEmpty && previousClientId != client.id) {
-      batch.set(
-        _clients.doc(previousClientId),
-        {
-          'member_uids': FieldValue.arrayRemove([uid]),
-          'updated_at': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
-      );
-    }
-
-    final members = {...client.memberUids, uid};
-    batch.set(
-      _clients.doc(client.id),
-      {
-        'owner_uid': client.ownerUid.isEmpty ? uid : client.ownerUid,
-        'member_uids': members.toList(),
-        'updated_at': FieldValue.serverTimestamp(),
-      },
-      SetOptions(merge: true),
-    );
-    batch.set(
-      profileRef,
-      {
-        'role': AuthService.clientRole,
-        'client_id': client.id,
-        'updated_at': FieldValue.serverTimestamp(),
-      },
-      SetOptions(merge: true),
-    );
-    await batch.commit();
-  }
-
   Future<void> detachUser({
     required ClientWorkspace client,
     required String uid,

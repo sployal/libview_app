@@ -684,7 +684,7 @@ class _ClientUnassignedState extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Ask the system admin to attach your account to a client folder.',
+                  'Sign in with the email the system admin used when creating this client.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 15,

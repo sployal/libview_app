@@ -1164,83 +1164,6 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
     }
   }
 
-  Future<void> _showAttachClientUser(ClientWorkspace client) async {
-    final candidates = _profiles.where((profile) {
-      final uid = profile['id']?.toString() ?? '';
-      if (uid.isEmpty) return false;
-      if (client.memberUids.contains(uid) || client.ownerUid == uid) {
-        return false;
-      }
-      return true;
-    }).toList();
-
-    if (candidates.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No other users are available to attach.')),
-      );
-      return;
-    }
-
-    final selected = await showDialog<String>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: _card,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-          ),
-          title: Text(
-            'Attach user',
-            style: TextStyle(fontWeight: FontWeight.w700, color: _titleColor),
-          ),
-          content: SizedBox(
-            width: 360,
-            height: 360,
-            child: ListView.builder(
-              itemCount: candidates.length,
-              itemBuilder: (context, index) {
-                final user = candidates[index];
-                return ListTile(
-                  title: Text(
-                    user['full_name']?.toString() ?? 'Unknown',
-                    style: TextStyle(color: _titleColor),
-                  ),
-                  subtitle: Text(
-                    user['email']?.toString() ?? '',
-                    style: TextStyle(color: _muted, fontSize: 13),
-                  ),
-                  onTap: () => Navigator.pop(context, user['id']?.toString()),
-                );
-              },
-            ),
-          ),
-        );
-      },
-    );
-    if (selected == null || selected.isEmpty || !mounted) return;
-
-    try {
-      await ClientService.instance.attachUser(client: client, uid: selected);
-      if (!mounted) return;
-      await _loadClients();
-      await _loadProfiles(silent: true);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('User attached to this client'),
-          backgroundColor: Color(0xFF10B981),
-        ),
-      );
-    } catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Could not attach user: $error'),
-          backgroundColor: const Color(0xFFEF4444),
-        ),
-      );
-    }
-  }
-
   Future<void> _confirmDeleteClient(ClientWorkspace client) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -1330,11 +1253,6 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
           label: 'Open files',
           color: const Color(0xFF6366F1),
           onTap: () => _openClientFiles(client),
-        ),
-        _ThemedSheetAction(
-          label: 'Attach user',
-          color: const Color(0xFF0EA5E9),
-          onTap: () => _showAttachClientUser(client),
         ),
         _ThemedSheetAction(
           label: 'Edit client',
