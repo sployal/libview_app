@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase_options.dart';
 import 'services/auth_service.dart';
 import 'services/course_service.dart';
+import 'services/server_keep_alive.dart';
 import 'services/streak_service.dart';
 import 'services/theme_controller.dart';
 import 'screens/home_screen.dart';
@@ -37,7 +38,10 @@ Future<void> main() async {
 
   await ThemeController.instance.load();
 
+  ServerKeepAlive.instance.start();
+
   runApp(const StudyApp());
+
 }
 
 class StudyApp extends StatelessWidget {
