@@ -1145,16 +1145,17 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     return 'https://drive.google.com/thumbnail?id=${file.id}&sz=w400';
   }
 
-  BoxDecoration _fileCardDecoration() {
+  BoxDecoration _fileCardDecoration({required bool isDark}) {
     return BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(16),
+      color: isDark ? const Color(0xFF1F2937) : Colors.white,
+      borderRadius: BorderRadius.circular(20),
       boxShadow: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.05),
-          blurRadius: 10,
-          offset: const Offset(0, 2),
-        ),
+        if (!isDark)
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
       ],
     );
   }
@@ -1276,6 +1277,11 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
   }
 
   Widget _buildDetailsFileList() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final titleColor =
+        isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
+    final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
+
     return ListView.builder(
       padding: AdaptiveLayout.pagePadding(context).copyWith(
         top: 12,
@@ -1291,22 +1297,22 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
         return Container(
           key: ValueKey(file.id),
           margin: const EdgeInsets.only(bottom: 12),
-          decoration: _fileCardDecoration(),
+          decoration: _fileCardDecoration(isDark: isDark),
           child: Material(
             color: Colors.transparent,
             child: InkWell(
               onTap: isDownloading ? null : () => _openFileInWebView(file),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(20),
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(14),
                 child: Row(
                   children: [
                     Container(
                       width: 48,
                       height: 48,
                       decoration: BoxDecoration(
-                        color: fileColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
+                        color: fileColor.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(14),
                       ),
                       child: Icon(
                         _getFileIcon(file.type),
@@ -1314,17 +1320,17 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                         size: 24,
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 14),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             file.name,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
-                              color: Color(0xFF1F2937),
+                              color: titleColor,
                             ),
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
@@ -1337,7 +1343,9 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                                 const SizedBox(height: 4),
                                 LinearProgressIndicator(
                                   value: progress,
-                                  backgroundColor: const Color(0xFFE5E7EB),
+                                  backgroundColor: isDark
+                                      ? const Color(0xFF374151)
+                                      : const Color(0xFFE5E7EB),
                                   valueColor:
                                       AlwaysStoppedAnimation<Color>(fileColor),
                                   minHeight: 3,
@@ -1356,9 +1364,9 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                           else
                             Text(
                               '${file.type} • ${file.size} • ${file.date}',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 13,
-                                color: Color(0xFF6B7280),
+                                color: muted,
                               ),
                             ),
                         ],
@@ -1367,10 +1375,10 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                     const SizedBox(width: 8),
                     _fileOverflowMenu(file, isDownloading: isDownloading),
                     _downloadButton(file, isDownloading: isDownloading),
-                    const Icon(
+                    Icon(
                       Icons.arrow_forward_ios_rounded,
-                      size: 16,
-                      color: Color(0xFF9CA3AF),
+                      size: 14,
+                      color: muted,
                     ),
                   ],
                 ),
@@ -1383,6 +1391,10 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
   }
 
   Widget _buildLargeIconsGrid() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final titleColor =
+        isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final crossAxisCount = AdaptiveLayout.gridCount(constraints.maxWidth);
@@ -1405,7 +1417,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
 
             return Container(
               key: ValueKey(file.id),
-              decoration: _fileCardDecoration(),
+              decoration: _fileCardDecoration(isDark: isDark),
               child: Material(
                 color: Colors.transparent,
                 child: InkWell(
@@ -1483,10 +1495,10 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                           textAlign: TextAlign.center,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
-                            color: Color(0xFF1F2937),
+                            color: titleColor,
                           ),
                         ),
                       ),
