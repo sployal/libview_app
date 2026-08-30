@@ -11,7 +11,6 @@ import '../services/client_service.dart';
 import '../services/course_service.dart';
 import '../services/upload_service.dart';
 import 'client_editor_dialog.dart';
-import 'client_workspace_screen.dart';
 import 'course_addition.dart';
 
 class SystemAdminDashboard extends StatefulWidget {
@@ -1229,18 +1228,6 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
     }
   }
 
-  void _openClientFiles(ClientWorkspace client) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => ClientWorkspaceScreen(
-          workspace: client,
-          onBack: () => Navigator.pop(context),
-        ),
-      ),
-    );
-  }
-
   void _showClientActions(ClientWorkspace client) {
     HapticFeedback.selectionClick();
     _showThemedActionSheet(
@@ -1249,11 +1236,6 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
           ? 'No user attached yet'
           : 'Owner: ${_profileLabel(client.ownerUid)}',
       actions: [
-        _ThemedSheetAction(
-          label: 'Open files',
-          color: const Color(0xFF6366F1),
-          onTap: () => _openClientFiles(client),
-        ),
         _ThemedSheetAction(
           label: 'Edit client',
           color: const Color(0xFF8B5CF6),
