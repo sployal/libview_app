@@ -2,9 +2,12 @@ import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+
 import '../services/auth_service.dart';
 import '../services/media_service.dart';
+import '../ui/adaptive_layout.dart';
 import 'system_admin_dashboard.dart';
 import 'users_feedback.dart';
 
@@ -16,10 +19,13 @@ class EditProfileScreen extends StatefulWidget {
 }
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
+  static const _accent = Color(0xFF6366F1);
+  static const _danger = Color(0xFFEF4444);
+  static const _success = Color(0xFF10B981);
+
   final _firestore = FirebaseFirestore.instance;
   final _formKey = GlobalKey<FormState>();
 
-  // Controllers
   final _fullNameController = TextEditingController();
   final _usernameController = TextEditingController();
   final _avatarUrlController = TextEditingController();
@@ -35,22 +41,41 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   String? _pendingAvatarMime;
   bool _removeAvatar = false;
 
+  String _originalFullName = '';
+  String _originalUsername = '';
+
   bool get _isSystemAdmin {
     return SystemAdminDashboard.isSystemAdminRole(_currentRole);
+  }
+
+  bool get _hasUnsavedChanges {
+    if (_fullNameController.text.trim() != _originalFullName) return true;
+    if (_usernameController.text.trim() != _originalUsername) return true;
+    if (_pendingAvatarBytes != null) return true;
+    if (_removeAvatar) return true;
+    return false;
   }
 
   @override
   void initState() {
     super.initState();
+    _fullNameController.addListener(_onFieldChanged);
+    _usernameController.addListener(_onFieldChanged);
     _loadUserData();
   }
 
   @override
   void dispose() {
+    _fullNameController.removeListener(_onFieldChanged);
+    _usernameController.removeListener(_onFieldChanged);
     _fullNameController.dispose();
     _usernameController.dispose();
     _avatarUrlController.dispose();
     super.dispose();
+  }
+
+  void _onFieldChanged() {
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadUserData() async {
@@ -60,14 +85,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         final profileDoc =
             await _firestore.collection('profiles').doc(user.uid).get();
         final profileData = profileDoc.data() ?? {};
+        final fullName = (profileData['full_name'] as String? ?? '').trim();
+        final username = (profileData['username'] as String? ?? '').trim();
 
         setState(() {
           _currentEmail = user.email;
           _currentRole = profileData['role'] as String?;
-          _admissionNumber =
-              profileData['admission_number'] as String?;
-          _fullNameController.text = profileData['full_name'] as String? ?? '';
-          _usernameController.text = profileData['username'] as String? ?? '';
+          _admissionNumber = profileData['admission_number'] as String?;
+          _originalFullName = fullName;
+          _originalUsername = username;
+          _fullNameController.text = fullName;
+          _usernameController.text = username;
           _avatarUrlController.text =
               profileData['avatar_url'] as String? ?? '';
           _avatarPublicId = profileData['avatar_public_id'] as String?;
@@ -90,7 +118,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error loading profile: $e'),
-            backgroundColor: const Color(0xFFEF4444),
+            backgroundColor: _danger,
+            behavior: SnackBarBehavior.floating,
           ),
         );
       }
@@ -161,11 +190,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text('Profile updated successfully!'),
-              backgroundColor: Color(0xFF10B981),
+              backgroundColor: _success,
               behavior: SnackBarBehavior.floating,
             ),
           );
-          Navigator.pop(context, true); // Return true to indicate success
+          Navigator.pop(context, true);
         }
       }
     } catch (e) {
@@ -173,7 +202,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error updating profile: $e'),
-            backgroundColor: const Color(0xFFEF4444),
+            backgroundColor: _danger,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -207,7 +236,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please choose an image smaller than 8 MB.'),
-          backgroundColor: Color(0xFFEF4444),
+          backgroundColor: _danger,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -232,42 +261,53 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     });
   }
 
-  Future<bool> _onWillPop() async {
-    // Check if there are unsaved changes
-    final hasChanges = _fullNameController.text.trim().isNotEmpty ||
-        _usernameController.text.trim().isNotEmpty ||
-        _avatarUrlController.text.trim().isNotEmpty;
+  Future<bool> _confirmDiscardIfNeeded() async {
+    if (!_hasUnsavedChanges) return true;
 
-    if (!hasChanges) {
-      return true;
-    }
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final card = isDark ? const Color(0xFF1F2937) : Colors.white;
+    final titleColor =
+        isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
+    final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
 
     final shouldPop = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        title: const Text(
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: card,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: Text(
           'Discard Changes?',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.4,
+            color: titleColor,
+          ),
         ),
-        content: const Text('You have unsaved changes. Are you sure you want to leave?'),
+        content: Text(
+          'You have unsaved changes. Are you sure you want to leave?',
+          style: TextStyle(
+            fontSize: 15,
+            color: muted,
+            height: 1.35,
+          ),
+        ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: Color(0xFF8E8E93)),
+            ),
           ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFEF4444),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text(
+              'Discard',
+              style: TextStyle(
+                color: _danger,
+                fontWeight: FontWeight.w600,
               ),
             ),
-            child: const Text('Discard'),
           ),
         ],
       ),
@@ -278,377 +318,453 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final background =
+        isDark ? const Color(0xFF111827) : const Color(0xFFF8FAFC);
+    final card = isDark ? const Color(0xFF1F2937) : Colors.white;
+    final primaryText =
+        isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
+    final secondaryText =
+        isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
+    final divider = isDark ? const Color(0xFF374151) : const Color(0xFFE5E7EB);
+    final pagePad = AdaptiveLayout.pagePadding(context);
+    final tablet = AdaptiveLayout.isTablet(context);
+
     return PopScope(
-      canPop: false,
+      canPop: !_hasUnsavedChanges,
       onPopInvokedWithResult: (didPop, _) async {
         if (didPop) return;
-        final shouldPop = await _onWillPop();
+        final shouldPop = await _confirmDiscardIfNeeded();
         if (shouldPop && context.mounted) {
           Navigator.of(context).pop();
         }
       },
       child: Scaffold(
-        backgroundColor: const Color(0xFFF8FAFC),
-        appBar: AppBar(
-          title: const Text(
-            'Edit Profile',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          actions: [
-            if (!_isLoading)
-              TextButton(
-                onPressed: _isSaving ? null : _saveProfile,
-                child: _isSaving
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
-                        ),
-                      )
-                    : const Text(
-                        'Save',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Color(0xFF6366F1),
-                        ),
-                      ),
-              ),
-          ],
-        ),
+        backgroundColor: background,
         body: _isLoading
-            ? const Center(
-                child: CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
+            ? Center(
+                child: CupertinoActivityIndicator(
+                  color: isDark
+                      ? const Color(0xFFF9FAFB)
+                      : const Color(0xFF6B7280),
                 ),
               )
-            : SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Avatar Preview
-                      Center(
+            : CustomScrollView(
+                physics: const BouncingScrollPhysics(),
+                slivers: [
+                  compactSliverAppBar(
+                    backgroundColor: background,
+                    foregroundColor: primaryText,
+                    automaticallyImplyLeading: false,
+                    leading: IconButton(
+                      icon: Icon(CupertinoIcons.back, color: primaryText),
+                      onPressed: () => Navigator.maybePop(context),
+                    ),
+                    title: Text(
+                      'Edit Profile',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: tablet ? 22 : 20,
+                      ),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: _isSaving || !_hasUnsavedChanges
+                            ? null
+                            : _saveProfile,
+                        child: _isSaving
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  valueColor:
+                                      AlwaysStoppedAnimation<Color>(_accent),
+                                ),
+                              )
+                            : Text(
+                                'Save',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: _hasUnsavedChanges
+                                      ? _accent
+                                      : secondaryText,
+                                ),
+                              ),
+                      ),
+                    ],
+                  ),
+                  SliverPadding(
+                    padding: pagePad.copyWith(
+                      top: 8,
+                      bottom: 40 + MediaQuery.viewPaddingOf(context).bottom,
+                    ),
+                    sliver: SliverToBoxAdapter(
+                      child: Form(
+                        key: _formKey,
                         child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            GestureDetector(
-                              onTap: _isSaving ? null : _pickAvatar,
-                              child: Stack(
+                            Center(
+                              child: Column(
                                 children: [
-                                  _pendingAvatarBytes != null
-                                      ? CircleAvatar(
-                                          radius: 50,
-                                          backgroundImage:
-                                              MemoryImage(_pendingAvatarBytes!),
-                                          backgroundColor: Colors.grey[200],
-                                        )
-                                      : (!_removeAvatar &&
-                                              _avatarUrlController.text.isNotEmpty)
-                                          ? CircleAvatar(
-                                              radius: 50,
-                                              backgroundImage: NetworkImage(
-                                                  _avatarUrlController.text),
-                                              backgroundColor: Colors.grey[200],
-                                              onBackgroundImageError: (_, __) {},
-                                            )
-                                          : Container(
-                                              width: 100,
-                                              height: 100,
-                                              decoration: BoxDecoration(
-                                                gradient: const LinearGradient(
-                                                  colors: [
-                                                    Color(0xFF6366F1),
-                                                    Color(0xFF8B5CF6)
-                                                  ],
-                                                  begin: Alignment.topLeft,
-                                                  end: Alignment.bottomRight,
-                                                ),
-                                                borderRadius:
-                                                    BorderRadius.circular(50),
-                                              ),
-                                              child: Center(
-                                                child: Text(
-                                                  _getInitials(
-                                                      _fullNameController.text),
-                                                  style: const TextStyle(
-                                                    fontSize: 36,
-                                                    fontWeight: FontWeight.bold,
-                                                    color: Colors.white,
-                                                  ),
-                                                ),
+                                  GestureDetector(
+                                    onTap: _isSaving ? null : _pickAvatar,
+                                    child: Stack(
+                                      children: [
+                                        _avatarPreview(
+                                          card: card,
+                                          divider: divider,
+                                        ),
+                                        Positioned(
+                                          right: 0,
+                                          bottom: 0,
+                                          child: Container(
+                                            width: 32,
+                                            height: 32,
+                                            decoration: BoxDecoration(
+                                              color: _accent,
+                                              shape: BoxShape.circle,
+                                              border: Border.all(
+                                                color: background,
+                                                width: 3,
                                               ),
                                             ),
-                                  Positioned(
-                                    right: 0,
-                                    bottom: 0,
-                                    child: Container(
-                                      width: 32,
-                                      height: 32,
-                                      decoration: const BoxDecoration(
-                                        color: Color(0xFF6366F1),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: const Icon(
-                                        Icons.camera_alt_rounded,
-                                        color: Colors.white,
-                                        size: 16,
+                                            child: const Icon(
+                                              CupertinoIcons.camera_fill,
+                                              color: Colors.white,
+                                              size: 14,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    'Profile Picture',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: primaryText,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  TextButton(
+                                    onPressed:
+                                        _isSaving ? null : _pickAvatar,
+                                    child: const Text(
+                                      'Choose photo',
+                                      style: TextStyle(
+                                        color: _accent,
+                                        fontWeight: FontWeight.w600,
                                       ),
                                     ),
                                   ),
+                                  if (_pendingAvatarBytes != null ||
+                                      (!_removeAvatar &&
+                                          _avatarUrlController
+                                              .text.isNotEmpty))
+                                    TextButton.icon(
+                                      onPressed: _isSaving
+                                          ? null
+                                          : _markAvatarForRemoval,
+                                      icon: const Icon(
+                                        CupertinoIcons.trash,
+                                        size: 16,
+                                        color: _danger,
+                                      ),
+                                      label: const Text(
+                                        'Remove profile picture',
+                                        style: TextStyle(
+                                          color: _danger,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
                                 ],
                               ),
                             ),
+                            const SizedBox(height: 28),
+                            _sectionLabel('Personal Information', secondaryText),
                             const SizedBox(height: 12),
-                            const Text(
-                              'Profile Picture',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF1F2937),
+                            _themedField(
+                              controller: _fullNameController,
+                              label: 'Full Name',
+                              icon: CupertinoIcons.person_fill,
+                              hint: 'Enter your full name',
+                              primaryText: primaryText,
+                              secondaryText: secondaryText,
+                              card: card,
+                              divider: divider,
+                              enabled: !_isSaving,
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return 'Please enter your full name';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 12),
+                            _themedField(
+                              controller: _usernameController,
+                              label: 'Username (optional)',
+                              icon: CupertinoIcons.at,
+                              hint: 'Enter a username if you want one',
+                              primaryText: primaryText,
+                              secondaryText: secondaryText,
+                              card: card,
+                              divider: divider,
+                              enabled: !_isSaving,
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return null;
+                                }
+                                if (value.contains(' ')) {
+                                  return 'Username cannot contain spaces';
+                                }
+                                return null;
+                              },
+                            ),
+                            const SizedBox(height: 24),
+                            _sectionLabel('Account Information', secondaryText),
+                            const SizedBox(height: 12),
+                            _buildReadOnlyField(
+                              label: 'Admission Number',
+                              value: (_admissionNumber == null ||
+                                      _admissionNumber!.trim().isEmpty)
+                                  ? 'Not available'
+                                  : _admissionNumber!,
+                              icon: CupertinoIcons.creditcard_fill,
+                              primaryText: primaryText,
+                              secondaryText: secondaryText,
+                              card: card,
+                              divider: divider,
+                            ),
+                            const SizedBox(height: 12),
+                            _buildReadOnlyField(
+                              label: 'Email',
+                              value: _currentEmail ?? 'Not available',
+                              icon: CupertinoIcons.mail_solid,
+                              primaryText: primaryText,
+                              secondaryText: secondaryText,
+                              card: card,
+                              divider: divider,
+                            ),
+                            const SizedBox(height: 12),
+                            _buildReadOnlyField(
+                              label: 'Role',
+                              value: _formatRole(_currentRole ?? 'student'),
+                              icon: _getRoleIcon(_currentRole ?? 'student'),
+                              primaryText: primaryText,
+                              secondaryText: secondaryText,
+                              card: card,
+                              divider: divider,
+                              accentColor:
+                                  _getRoleColor(_currentRole ?? 'student'),
+                            ),
+                            const SizedBox(height: 28),
+                            if (_isSystemAdmin) ...[
+                              SizedBox(
+                                width: double.infinity,
+                                height: 54,
+                                child: OutlinedButton.icon(
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            const UsersFeedbackScreen(),
+                                      ),
+                                    );
+                                  },
+                                  icon: const Icon(CupertinoIcons.chat_bubble_2),
+                                  label: const Text(
+                                    'User Feedback',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: primaryText,
+                                    side: BorderSide(color: divider),
+                                    backgroundColor: card,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                            ],
+                            SizedBox(
+                              width: double.infinity,
+                              height: 54,
+                              child: ElevatedButton(
+                                onPressed: _isSaving || !_hasUnsavedChanges
+                                    ? null
+                                    : _saveProfile,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: _accent,
+                                  foregroundColor: Colors.white,
+                                  disabledBackgroundColor:
+                                      _accent.withOpacity(0.45),
+                                  disabledForegroundColor:
+                                      Colors.white.withOpacity(0.85),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  elevation: 0,
+                                ),
+                                child: _isSaving
+                                    ? const SizedBox(
+                                        width: 24,
+                                        height: 24,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2.5,
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                            Colors.white,
+                                          ),
+                                        ),
+                                      )
+                                    : const Text(
+                                        'Save Changes',
+                                        style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
                               ),
                             ),
-                            const SizedBox(height: 4),
-                            TextButton(
-                              onPressed: _isSaving ? null : _pickAvatar,
-                              child: const Text('Choose photo'),
-                            ),
-                            if (_pendingAvatarBytes != null ||
-                                (!_removeAvatar &&
-                                    _avatarUrlController.text.isNotEmpty))
-                              TextButton.icon(
-                                onPressed:
-                                    _isSaving ? null : _markAvatarForRemoval,
-                                icon: const Icon(
-                                  Icons.delete_outline_rounded,
-                                  color: Color(0xFFEF4444),
-                                ),
-                                label: const Text(
-                                  'Remove profile picture',
-                                  style: TextStyle(color: Color(0xFFEF4444)),
-                                ),
-                              ),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 32),
-
-                      // Form Fields
-                      _buildSectionTitle('Personal Information'),
-                      const SizedBox(height: 16),
-                      
-                      _buildTextField(
-                        controller: _fullNameController,
-                        label: 'Full Name',
-                        icon: Icons.person_rounded,
-                        hint: 'Enter your full name',
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return 'Please enter your full name';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-
-                      _buildTextField(
-                        controller: _usernameController,
-                        label: 'Username (optional)',
-                        icon: Icons.alternate_email_rounded,
-                        hint: 'Enter a username if you want one',
-                        validator: (value) {
-                          if (value == null || value.trim().isEmpty) {
-                            return null;
-                          }
-                          if (value.contains(' ')) {
-                            return 'Username cannot contain spaces';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Read-only fields
-                      _buildSectionTitle('Account Information'),
-                      const SizedBox(height: 16),
-
-                      _buildReadOnlyField(
-                        label: 'Admission Number',
-                        value: (_admissionNumber == null ||
-                                _admissionNumber!.trim().isEmpty)
-                            ? 'Not available'
-                            : _admissionNumber!,
-                        icon: Icons.badge_rounded,
-                      ),
-                      const SizedBox(height: 16),
-
-                      _buildReadOnlyField(
-                        label: 'Email',
-                        value: _currentEmail ?? 'Not available',
-                        icon: Icons.email_rounded,
-                      ),
-                      const SizedBox(height: 16),
-
-                      _buildReadOnlyField(
-                        label: 'Role',
-                        value: _formatRole(_currentRole ?? 'student'),
-                        icon: _getRoleIcon(_currentRole ?? 'student'),
-                        color: _getRoleColor(_currentRole ?? 'student'),
-                      ),
-                      const SizedBox(height: 32),
-
-                      if (_isSystemAdmin) ...[
-                        SizedBox(
-                          width: double.infinity,
-                          height: 54,
-                          child: OutlinedButton.icon(
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      const UsersFeedbackScreen(),
-                                ),
-                              );
-                            },
-                            icon: const Icon(Icons.feedback_outlined),
-                            label: const Text(
-                              'User Feedback',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: const Color(0xFF0F172A),
-                              side: const BorderSide(color: Color(0xFF0F172A)),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                      ],
-
-                      // Save Button
-                      SizedBox(
-                        width: double.infinity,
-                        height: 54,
-                        child: ElevatedButton(
-                          onPressed: _isSaving ? null : _saveProfile,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF6366F1),
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            elevation: 0,
-                          ),
-                          child: _isSaving
-                              ? const SizedBox(
-                                  width: 24,
-                                  height: 24,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2.5,
-                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                                  ),
-                                )
-                              : const Text(
-                                  'Save Changes',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                        ),
-                      ),
-                      const SizedBox(height: 40),
-                    ],
+                    ),
                   ),
-                ),
+                ],
               ),
       ),
     );
   }
 
-  Widget _buildSectionTitle(String title) {
-    return Text(
-      title,
-      style: const TextStyle(
-        fontSize: 18,
-        fontWeight: FontWeight.bold,
-        color: Color(0xFF1F2937),
+  Widget _avatarPreview({
+    required Color card,
+    required Color divider,
+  }) {
+    if (_pendingAvatarBytes != null) {
+      return CircleAvatar(
+        radius: 50,
+        backgroundImage: MemoryImage(_pendingAvatarBytes!),
+        backgroundColor: card,
+      );
+    }
+    if (!_removeAvatar && _avatarUrlController.text.isNotEmpty) {
+      return CircleAvatar(
+        radius: 50,
+        backgroundImage: NetworkImage(_avatarUrlController.text),
+        backgroundColor: card,
+        onBackgroundImageError: (_, __) {},
+      );
+    }
+    return Container(
+      width: 100,
+      height: 100,
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [_accent, Color(0xFF8B5CF6)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(50),
+        border: Border.all(color: divider, width: 0),
+      ),
+      child: Center(
+        child: Text(
+          _getInitials(_fullNameController.text),
+          style: const TextStyle(
+            fontSize: 36,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildTextField({
+  Widget _sectionLabel(String title, Color muted) {
+    return Text(
+      title.toUpperCase(),
+      style: TextStyle(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        letterSpacing: 0.6,
+        color: muted,
+      ),
+    );
+  }
+
+  Widget _themedField({
     required TextEditingController controller,
     required String label,
     required IconData icon,
     required String hint,
+    required Color primaryText,
+    required Color secondaryText,
+    required Color card,
+    required Color divider,
+    required bool enabled,
     String? Function(String?)? validator,
-    void Function(String)? onChanged,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
+    return TextFormField(
+      controller: controller,
+      enabled: enabled,
+      validator: validator,
+      style: TextStyle(
+        color: primaryText,
+        fontWeight: FontWeight.w500,
+        fontSize: 16,
       ),
-      child: TextFormField(
-        controller: controller,
-        style: const TextStyle(
-          color: Color(0xFF1F2937),
-          fontWeight: FontWeight.w500,
+      cursorColor: _accent,
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(
+          color: secondaryText,
+          fontWeight: FontWeight.w600,
         ),
-        decoration: InputDecoration(
-          labelText: label,
-          labelStyle: const TextStyle(
-            color: Color(0xFF1F2937),
-            fontWeight: FontWeight.w600,
-          ),
-          hintText: hint,
-          hintStyle: TextStyle(
-            color: Colors.grey[400],
-          ),
-          prefixIcon: Icon(icon, color: const Color(0xFF6366F1)),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: Color(0xFF6366F1), width: 2),
-          ),
-          errorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: Color(0xFFEF4444), width: 2),
-          ),
-          focusedErrorBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(color: Color(0xFFEF4444), width: 2),
-          ),
-          filled: true,
-          fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        hintText: hint,
+        hintStyle: TextStyle(color: secondaryText.withOpacity(0.7)),
+        prefixIcon: Icon(icon, color: _accent, size: 20),
+        filled: true,
+        fillColor: card,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: divider),
         ),
-        validator: validator,
-        onChanged: onChanged,
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: divider),
+        ),
+        disabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: BorderSide(color: divider),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: _accent, width: 1.5),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: _danger),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: _danger, width: 1.5),
+        ),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       ),
     );
   }
@@ -657,18 +773,23 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     required String label,
     required String value,
     required IconData icon,
-    Color? color,
+    required Color primaryText,
+    required Color secondaryText,
+    required Color card,
+    required Color divider,
+    Color? accentColor,
   }) {
+    final iconColor = accentColor ?? secondaryText;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.grey[100],
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.grey[300]!),
+        color: card,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: divider),
       ),
       child: Row(
         children: [
-          Icon(icon, color: color ?? const Color(0xFF6B7280), size: 20),
+          Icon(icon, color: iconColor, size: 20),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -678,7 +799,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   label,
                   style: TextStyle(
                     fontSize: 12,
-                    color: Colors.grey[600],
+                    color: secondaryText,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
@@ -687,14 +808,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                   value,
                   style: TextStyle(
                     fontSize: 16,
-                    color: color ?? const Color(0xFF1F2937),
+                    color: accentColor ?? primaryText,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
             ),
           ),
-          Icon(Icons.lock_rounded, color: Colors.grey[400], size: 16),
+          Icon(CupertinoIcons.lock_fill, color: secondaryText, size: 16),
         ],
       ),
     );
@@ -728,16 +849,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     switch (role.toLowerCase()) {
       case 'system_admin':
       case 'super_admin':
-        return Icons.shield_rounded;
+        return CupertinoIcons.shield_fill;
       case 'admin':
-        return Icons.admin_panel_settings_rounded;
+        return CupertinoIcons.person_crop_circle_badge_checkmark;
       case 'lecturer':
-        return Icons.school_rounded;
+        return CupertinoIcons.book_fill;
       case 'class_rep':
-        return Icons.people_rounded;
+        return CupertinoIcons.person_2_fill;
       case 'student':
       default:
-        return Icons.person_rounded;
+        return CupertinoIcons.person_fill;
     }
   }
 
