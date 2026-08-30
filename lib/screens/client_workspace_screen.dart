@@ -132,7 +132,7 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
   Future<void> _createFolder() async {
     final name = await _promptName(
       title: 'New folder',
-      hint: 'Folder name',
+      hint: '',
     );
     if (name == null || name.isEmpty) return;
     setState(() => _creating = true);

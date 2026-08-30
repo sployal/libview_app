@@ -2792,7 +2792,7 @@ class _FolderNameDialogState extends State<_FolderNameDialog> {
         autofocus: true,
         textCapitalization: TextCapitalization.sentences,
         decoration: InputDecoration(
-          hintText: 'e.g. CS101 Data Structures',
+          hintText: '',
           labelText: widget.fieldLabel,
           helperText: widget.helperText,
         ),
