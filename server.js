@@ -256,7 +256,10 @@ async function driveGetMeta(fileId, fields, apiKey) {
 }
 
 async function isValidSubjectFolder(folderId) {
-  if (!folderId || typeof folderId !== 'string') return false;
+  if (!folderId || typeof folderId !== 'string') {
+    console.warn('Subject folder check failed: missing folderId');
+    return false;
+  }
 
   const cached = validationCache.get(folderId);
   if (cached && Date.now() - cached.at < CACHE_TTL_MS) {
@@ -273,7 +276,16 @@ async function isValidSubjectFolder(folderId) {
     const isFolder = res.data.mimeType === 'application/vnd.google-apps.folder';
     const parents = res.data.parents || [];
     valid = isFolder && parents.some((p) => isSemesterFolder(p));
+    if (!valid) {
+      console.warn(
+        `Subject folder check failed for ${folderId}: mime=${res.data.mimeType} parents=${JSON.stringify(parents)} knownSemesters=${extraSemesterIds.size}`
+      );
+    }
   } catch (err) {
+    console.error(
+      `Subject folder check failed for ${folderId}:`,
+      err.response?.data || err.message || err
+    );
     valid = false;
   }
 
@@ -653,7 +665,8 @@ async function requireAuth(req, res, next) {
   const token = header.startsWith('Bearer ') ? header.slice(7) : null;
 
   if (!token) {
-    return res.status(401).json({ error: 'Missing Authorization header' });
+    console.warn('Auth rejected: missing Bearer token');
+    return res.status(401).json({ error: 'Please sign in again.' });
   }
 
   try {
@@ -662,7 +675,7 @@ async function requireAuth(req, res, next) {
     next();
   } catch (err) {
     console.error('Token verification failed:', err.message);
-    res.status(401).json({ error: 'Invalid or expired token' });
+    res.status(401).json({ error: 'Please sign in again.' });
   }
 }
 
@@ -673,7 +686,8 @@ function requireAdmin(req, res, next) {
   if (CONFIG.ADMIN_UIDS.size === 0 || CONFIG.ADMIN_UIDS.has(req.user.uid)) {
     return next();
   }
-  res.status(403).json({ error: 'Admin privileges required for this action' });
+  console.warn(`Admin check failed for uid ${req.user.uid}`);
+  res.status(403).json({ error: 'You do not have permission.' });
 }
 
 function requireSystemAdmin(req, res, next) {
@@ -690,11 +704,12 @@ function requireSystemAdmin(req, res, next) {
     .then((snap) => {
       const role = String(snap.data()?.role || '').toLowerCase();
       if (role === 'system_admin' || role === 'super_admin') return next();
-      return res.status(403).json({ error: 'System admin privileges required' });
+      console.warn(`System admin check failed for uid ${req.user.uid}`);
+      return res.status(403).json({ error: 'You do not have permission.' });
     })
     .catch((err) => {
       console.error('System admin check failed:', err.message);
-      return res.status(403).json({ error: 'System admin privileges required' });
+      return res.status(403).json({ error: 'You do not have permission.' });
     });
 }
 
@@ -914,9 +929,8 @@ app.get('/weather/locations', requireAuth, requireOpenWeather, async (req, res) 
 
 app.get('/drive-storage', requireAuth, requireSystemAdmin, async (req, res) => {
   if (!driveIsConfigured()) {
-    return res.status(503).json({
-      error: 'Drive is not configured yet. Complete the OAuth setup first.',
-    });
+    console.warn('Drive storage rejected: Drive OAuth is not configured');
+    return res.status(503).json({ error: 'Could not load storage' });
   }
 
   try {
@@ -934,7 +948,7 @@ app.get('/drive-storage', requireAuth, requireSystemAdmin, async (req, res) => {
     res.json({ ...data, cached: false });
   } catch (e) {
     console.error('Drive storage query failed:', e);
-    res.status(500).json({ error: e.message || 'Failed to load Drive storage' });
+    res.status(500).json({ error: 'Could not load storage' });
   }
 });
 
@@ -1020,20 +1034,24 @@ app.get('/auth/google/callback', async (req, res) => {
 
 app.post('/upload', requireAuth, (req, res) => {
   if (!driveIsConfigured()) {
-    return res.status(503).json({ error: 'Drive is not configured yet. Complete the OAuth setup first.' });
+    console.warn('Upload rejected: Drive OAuth is not configured');
+    return res.status(503).json({ error: 'File upload failed' });
   }
 
   upload.single('file')(req, res, async (err) => {
     if (err) {
-      return res.status(400).json({ error: err.message });
+      console.error('Upload rejected:', err.message);
+      return res.status(400).json({ error: 'File upload failed' });
     }
     if (!req.file) {
-      return res.status(400).json({ error: 'A "file" field is required' });
+      console.warn('Upload rejected: missing file field');
+      return res.status(400).json({ error: 'File upload failed' });
     }
 
     const { folderId } = req.body;
     if (!(await isValidSubjectFolder(folderId))) {
-      return res.status(403).json({ error: 'Invalid or unauthorized target folder' });
+      console.warn(`Upload rejected: invalid folder ${folderId || '(empty)'}`);
+      return res.status(403).json({ error: 'File upload failed' });
     }
 
     try {
@@ -1047,7 +1065,7 @@ app.post('/upload', requireAuth, (req, res) => {
       res.json(result);
     } catch (e) {
       console.error('Upload failed:', e);
-      res.status(500).json({ error: 'Upload failed' });
+      res.status(500).json({ error: 'File upload failed' });
     }
   });
 });
@@ -1056,16 +1074,19 @@ app.post('/upload', requireAuth, (req, res) => {
 
 app.post('/folders', requireAuth, async (req, res) => {
   if (!driveIsConfigured()) {
-    return res.status(503).json({ error: 'Drive is not configured yet. Complete the OAuth setup first.' });
+    console.warn('Folder create rejected: Drive OAuth is not configured');
+    return res.status(503).json({ error: 'Could not create the folder' });
   }
 
   const { name, parentFolderId } = req.body;
 
   if (!name || typeof name !== 'string' || !name.trim()) {
-    return res.status(400).json({ error: 'A non-empty "name" is required' });
+    console.warn('Folder create rejected: empty name');
+    return res.status(400).json({ error: 'Could not create the folder' });
   }
   if (!(await isValidCreateParent(parentFolderId))) {
-    return res.status(403).json({ error: 'Invalid or unauthorized parent folder' });
+    console.warn(`Folder create rejected: invalid parent ${parentFolderId || '(empty)'}`);
+    return res.status(403).json({ error: 'Could not create the folder' });
   }
 
   try {
@@ -1073,7 +1094,7 @@ app.post('/folders', requireAuth, async (req, res) => {
     res.json(folder);
   } catch (e) {
     console.error('Folder creation failed:', e);
-    res.status(500).json({ error: 'Failed to create folder' });
+    res.status(500).json({ error: 'Could not create the folder' });
   }
 });
 
@@ -1081,17 +1102,20 @@ app.post('/folders', requireAuth, async (req, res) => {
 
 app.post('/course-structure', requireAuth, requireSystemAdmin, async (req, res) => {
   if (!driveIsConfigured()) {
-    return res.status(503).json({ error: 'Drive is not configured yet. Complete the OAuth setup first.' });
+    console.warn('Course structure rejected: Drive OAuth is not configured');
+    return res.status(503).json({ error: 'Could not create the course' });
   }
 
   const { name, years } = req.body || {};
   const yearCount = Number(years);
 
   if (!name || typeof name !== 'string' || !name.trim()) {
-    return res.status(400).json({ error: 'A non-empty course "name" is required' });
+    console.warn('Course structure rejected: empty name');
+    return res.status(400).json({ error: 'Could not create the course' });
   }
   if (!Number.isInteger(yearCount) || yearCount < 1 || yearCount > 10) {
-    return res.status(400).json({ error: 'years must be an integer between 1 and 10' });
+    console.warn(`Course structure rejected: invalid years ${years}`);
+    return res.status(400).json({ error: 'Could not create the course' });
   }
 
   try {
@@ -1099,7 +1123,7 @@ app.post('/course-structure', requireAuth, requireSystemAdmin, async (req, res) 
     res.json(structure);
   } catch (e) {
     console.error('Course structure creation failed:', e);
-    res.status(500).json({ error: e.message || 'Failed to create course folders' });
+    res.status(500).json({ error: 'Could not create the course' });
   }
 });
 
@@ -1107,22 +1131,26 @@ app.post('/course-structure', requireAuth, requireSystemAdmin, async (req, res) 
 
 app.patch('/course-folder/:folderId', requireAuth, requireSystemAdmin, async (req, res) => {
   if (!driveIsConfigured()) {
-    return res.status(503).json({ error: 'Drive is not configured yet. Complete the OAuth setup first.' });
+    console.warn('Course rename rejected: Drive OAuth is not configured');
+    return res.status(503).json({ error: 'Rename failed' });
   }
 
   const { folderId } = req.params;
   const { name } = req.body || {};
 
   if (!folderId) {
-    return res.status(400).json({ error: 'A folder ID is required' });
+    console.warn('Course rename rejected: missing folderId');
+    return res.status(400).json({ error: 'Rename failed' });
   }
   if (!name || typeof name !== 'string' || !name.trim()) {
-    return res.status(400).json({ error: 'A non-empty "name" is required' });
+    console.warn('Course rename rejected: empty name');
+    return res.status(400).json({ error: 'Rename failed' });
   }
 
   const courseFolderId = await resolveCourseFolderId(folderId);
   if (!courseFolderId) {
-    return res.status(403).json({ error: 'Invalid or unauthorized course folder' });
+    console.warn(`Course rename rejected: invalid folder ${folderId}`);
+    return res.status(403).json({ error: 'Rename failed' });
   }
 
   try {
@@ -1130,7 +1158,7 @@ app.patch('/course-folder/:folderId', requireAuth, requireSystemAdmin, async (re
     res.json(result);
   } catch (e) {
     console.error('Course folder rename failed:', e);
-    res.status(500).json({ error: 'Failed to rename the course folder' });
+    res.status(500).json({ error: 'Rename failed' });
   }
 });
 
@@ -1138,17 +1166,20 @@ app.patch('/course-folder/:folderId', requireAuth, requireSystemAdmin, async (re
 
 app.delete('/course-folder/:folderId', requireAuth, requireSystemAdmin, async (req, res) => {
   if (!driveIsConfigured()) {
-    return res.status(503).json({ error: 'Drive is not configured yet. Complete the OAuth setup first.' });
+    console.warn('Course delete rejected: Drive OAuth is not configured');
+    return res.status(503).json({ error: 'Delete failed' });
   }
 
   const { folderId } = req.params;
   if (!folderId) {
-    return res.status(400).json({ error: 'A folder ID is required' });
+    console.warn('Course delete rejected: missing folderId');
+    return res.status(400).json({ error: 'Delete failed' });
   }
 
   const courseFolderId = await resolveCourseFolderId(folderId);
   if (!courseFolderId) {
-    return res.status(403).json({ error: 'Invalid or unauthorized course folder' });
+    console.warn(`Course delete rejected: invalid folder ${folderId}`);
+    return res.status(403).json({ error: 'Delete failed' });
   }
 
   try {
@@ -1157,7 +1188,7 @@ app.delete('/course-folder/:folderId', requireAuth, requireSystemAdmin, async (r
     res.json({ deleted: true, courseFolderId });
   } catch (e) {
     console.error('Course folder delete failed:', e);
-    res.status(500).json({ error: 'Failed to delete the course Drive folders' });
+    res.status(500).json({ error: 'Delete failed' });
   }
 });
 
@@ -1167,25 +1198,29 @@ app.delete('/course-folder/:folderId', requireAuth, requireSystemAdmin, async (r
 // through the backend so folder cards can show real file previews.
 app.get('/files/:fileId/thumbnail', requireAuth, async (req, res) => {
   if (!driveReadIsConfigured()) {
-    return res.status(503).json({ error: 'GOOGLE_DRIVE_API_KEY is not configured.' });
+    console.warn('Thumbnail rejected: GOOGLE_DRIVE_API_KEY is missing');
+    return res.status(503).json({ error: 'Could not load preview' });
   }
 
   const { fileId } = req.params;
   if (!fileId) {
-    return res.status(400).json({ error: 'A file ID is required' });
+    console.warn('Thumbnail rejected: missing fileId');
+    return res.status(400).json({ error: 'Could not load preview' });
   }
 
   try {
     const meta = await driveGetMeta(fileId, 'thumbnailLink,hasThumbnail', driveReadKey());
     const thumbnailLink = meta.thumbnailLink;
     if (!thumbnailLink) {
-      return res.status(404).json({ error: 'No thumbnail' });
+      console.warn(`Thumbnail missing for ${fileId}`);
+      return res.status(404).json({ error: 'Could not load preview' });
     }
 
     const url = thumbnailLink.replace(/=s\d+/, '=s400');
     const thumbRes = await fetch(url);
     if (!thumbRes.ok) {
-      return res.status(thumbRes.status).json({ error: 'Thumbnail fetch failed' });
+      console.error(`Thumbnail fetch failed for ${fileId}:`, thumbRes.status);
+      return res.status(thumbRes.status).json({ error: 'Could not load preview' });
     }
 
     const contentType = thumbRes.headers.get('content-type') || 'image/jpeg';
@@ -1194,7 +1229,7 @@ app.get('/files/:fileId/thumbnail', requireAuth, async (req, res) => {
     res.send(Buffer.from(await thumbRes.arrayBuffer()));
   } catch (e) {
     console.error('Thumbnail failed:', e);
-    res.status(500).json({ error: 'Failed to load thumbnail' });
+    res.status(500).json({ error: 'Could not load preview' });
   }
 });
 
@@ -1268,19 +1303,22 @@ function downloadUrlFromMeta(meta, apiKey, exportMime) {
 
 app.get('/files/:fileId/download', requireAuth, async (req, res) => {
   if (!driveDownloadIsConfigured()) {
-    return res.status(503).json({ error: 'GOOGLE_DRIVE_DOWNLOAD_API_KEY is not configured.' });
+    console.warn('Download rejected: GOOGLE_DRIVE_DOWNLOAD_API_KEY is missing');
+    return res.status(503).json({ error: 'Download failed' });
   }
 
   const { fileId } = req.params;
   if (!fileId) {
-    return res.status(400).json({ error: 'A file ID is required' });
+    console.warn('Download rejected: missing fileId');
+    return res.status(400).json({ error: 'Download failed' });
   }
 
   const apiKey = driveDownloadKey();
 
   try {
     if (!(await isManagedItem(fileId))) {
-      return res.status(403).json({ error: 'Invalid or unauthorized file' });
+      console.warn(`Download rejected: unmanaged file ${fileId}`);
+      return res.status(403).json({ error: 'Download failed' });
     }
 
     const meta = await driveGetMeta(
@@ -1303,7 +1341,8 @@ app.get('/files/:fileId/download', requireAuth, async (req, res) => {
 
     const downloadUrl = downloadUrlFromMeta(meta, apiKey, downloadMime);
     if (!downloadUrl) {
-      return res.status(400).json({ error: 'This file type cannot be downloaded' });
+      console.warn(`Download rejected: no URL for ${fileId} mime=${sourceMime}`);
+      return res.status(400).json({ error: 'Download failed' });
     }
 
     let fileRes = await fetch(downloadUrl, { redirect: 'follow' });
@@ -1313,7 +1352,7 @@ app.get('/files/:fileId/download', requireAuth, async (req, res) => {
     }
     if (!fileRes.ok) {
       console.error('Download upstream failed:', fileRes.status, await fileRes.text().catch(() => ''));
-      return res.status(fileRes.status === 404 ? 404 : 502).json({ error: 'Failed to download file' });
+      return res.status(fileRes.status === 404 ? 404 : 502).json({ error: 'Download failed' });
     }
 
     res.setHeader('Content-Type', downloadMime);
@@ -1342,7 +1381,7 @@ app.get('/files/:fileId/download', requireAuth, async (req, res) => {
   } catch (e) {
     console.error('Download failed:', e);
     if (!res.headersSent) {
-      res.status(500).json({ error: 'Failed to download file' });
+      res.status(500).json({ error: 'Download failed' });
     }
   }
 });
@@ -1351,23 +1390,28 @@ app.get('/files/:fileId/download', requireAuth, async (req, res) => {
 
 app.patch('/files/:fileId', requireAuth, requireAdmin, async (req, res) => {
   if (!driveIsConfigured()) {
-    return res.status(503).json({ error: 'Drive is not configured yet. Complete the OAuth setup first.' });
+    console.warn('Rename rejected: Drive OAuth is not configured');
+    return res.status(503).json({ error: 'Rename failed' });
   }
 
   const { fileId } = req.params;
   const { name } = req.body || {};
 
   if (!fileId) {
-    return res.status(400).json({ error: 'A file ID is required' });
+    console.warn('Rename rejected: missing fileId');
+    return res.status(400).json({ error: 'Rename failed' });
   }
   if (!name || typeof name !== 'string' || !name.trim()) {
-    return res.status(400).json({ error: 'A non-empty "name" is required' });
+    console.warn('Rename rejected: empty name');
+    return res.status(400).json({ error: 'Rename failed' });
   }
   if (isSemesterFolder(fileId)) {
-    return res.status(403).json({ error: 'Semester folders cannot be renamed' });
+    console.warn(`Rename rejected: semester folder ${fileId}`);
+    return res.status(403).json({ error: 'Rename failed' });
   }
   if (!(await isManagedItem(fileId))) {
-    return res.status(403).json({ error: 'Invalid or unauthorized file' });
+    console.warn(`Rename rejected: unmanaged file ${fileId}`);
+    return res.status(403).json({ error: 'Rename failed' });
   }
 
   try {
@@ -1383,15 +1427,18 @@ app.patch('/files/:fileId', requireAuth, requireAdmin, async (req, res) => {
 
 app.delete('/files/:fileId', requireAuth, requireAdmin, async (req, res) => {
   if (!driveIsConfigured()) {
-    return res.status(503).json({ error: 'Drive is not configured yet. Complete the OAuth setup first.' });
+    console.warn('Delete rejected: Drive OAuth is not configured');
+    return res.status(503).json({ error: 'Delete failed' });
   }
 
   const { fileId } = req.params;
   if (!fileId) {
-    return res.status(400).json({ error: 'A file ID is required' });
+    console.warn('Delete rejected: missing fileId');
+    return res.status(400).json({ error: 'Delete failed' });
   }
   if (!(await isManagedItem(fileId))) {
-    return res.status(403).json({ error: 'Invalid or unauthorized file' });
+    console.warn(`Delete rejected: unmanaged file ${fileId}`);
+    return res.status(403).json({ error: 'Delete failed' });
   }
 
   try {
@@ -1412,19 +1459,22 @@ app.delete('/files/:fileId', requireAuth, requireAdmin, async (req, res) => {
 
 app.get('/folders/:folderId', requireAuth, async (req, res) => {
   if (!driveReadIsConfigured()) {
-    return res.status(503).json({ error: 'GOOGLE_DRIVE_API_KEY is not configured.' });
+    console.warn('Folder list rejected: GOOGLE_DRIVE_API_KEY is missing');
+    return res.status(503).json({ error: 'Could not load this folder' });
   }
 
   const { folderId } = req.params;
   if (!folderId) {
-    return res.status(400).json({ error: 'A folder ID is required' });
+    console.warn('Folder list rejected: missing folderId');
+    return res.status(400).json({ error: 'Could not load this folder' });
   }
 
   const apiKey = driveReadKey();
   const allowed =
     isSemesterFolder(folderId) || (await isValidSubjectFolder(folderId));
   if (!allowed) {
-    return res.status(403).json({ error: 'Invalid or unauthorized folder' });
+    console.warn(`Folder list rejected: invalid folder ${folderId}`);
+    return res.status(403).json({ error: 'Could not load this folder' });
   }
 
   try {
@@ -1448,7 +1498,7 @@ app.get('/folders/:folderId', requireAuth, async (req, res) => {
     res.json({ folders, files });
   } catch (e) {
     console.error('Folder listing failed:', e);
-    res.status(500).json({ error: 'Failed to list folder contents' });
+    res.status(500).json({ error: 'Could not load this folder' });
   }
 });
 
@@ -1462,7 +1512,7 @@ registerContactRoutes(app, { oauth2Client });
 
 app.use((err, req, res, next) => {
   console.error('[express]', err.message || err);
-  res.status(500).json({ error: 'Unexpected server error' });
+  res.status(500).json({ error: 'Something went wrong.' });
 });
 
 initDriveAuth().then(async () => {

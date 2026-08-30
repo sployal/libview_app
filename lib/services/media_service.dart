@@ -78,10 +78,10 @@ class MediaService {
         publicId: data['publicId']?.toString() ?? '',
       );
     } on DioException catch (e) {
-      final message = e.response?.data is Map
-          ? (e.response!.data['error']?.toString() ?? e.message)
-          : e.message;
-      throw Exception(message ?? 'Image upload failed');
+      if (e.response?.statusCode == 401) {
+        throw Exception('Please sign in again.');
+      }
+      throw Exception('Image upload failed.');
     }
   }
 
@@ -108,10 +108,10 @@ class MediaService {
         ),
       );
     } on DioException catch (e) {
-      final message = e.response?.data is Map
-          ? (e.response!.data['error']?.toString() ?? e.message)
-          : e.message;
-      throw Exception(message ?? 'Image delete failed');
+      if (e.response?.statusCode == 401) {
+        throw Exception('Please sign in again.');
+      }
+      throw Exception('Could not delete the image.');
     }
   }
 

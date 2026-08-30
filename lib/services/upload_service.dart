@@ -479,75 +479,34 @@ class UploadService {
   }
 
   String _messageFromDio(DioException error, {String action = 'upload'}) {
-    final data = error.response?.data;
-    if (data is Map && data['error'] is String) {
-      return data['error'] as String;
-    }
-
-    switch (error.response?.statusCode) {
-      case 401:
-        return 'Session expired. Please sign in again.';
-      case 403:
-        if (action == 'delete') {
-          return 'You do not have permission to delete this file.';
-        }
-        if (action == 'storage') {
-          return 'You do not have permission to view Drive storage.';
-        }
-        if (action == 'rename' || action == 'folder' || action == 'course') {
-          return 'You do not have permission to rename this item.';
-        }
-        return 'You cannot upload to this folder.';
-      case 400:
-        if (action == 'delete') {
-          return 'Delete was rejected.';
-        }
-        if (action == 'rename') {
-          return 'That file name is not allowed.';
-        }
-        if (action == 'folder' || action == 'course') {
-          return 'That folder name is not allowed.';
-        }
-        return 'Upload was rejected. Use a file under 20 MB.';
-      default:
-        break;
+    if (error.response?.statusCode == 401) {
+      return 'Please sign in again.';
     }
 
     if (error.type == DioExceptionType.connectionTimeout ||
         error.type == DioExceptionType.sendTimeout ||
         error.type == DioExceptionType.receiveTimeout) {
-      if (action == 'delete') {
-        return 'Delete timed out. The server may be waking up — try again.';
-      }
-      if (action == 'rename' ||
-          action == 'folder' ||
-          action == 'course' ||
-          action == 'storage') {
-        return 'Request timed out. The server may be waking up — try again.';
-      }
-      return 'Upload timed out. The server may be waking up — try again.';
+      return 'Please try again.';
     }
 
     if (error.type == DioExceptionType.connectionError) {
-      return 'Could not reach the upload server. Check your connection.';
+      return 'Check your connection and try again.';
     }
 
-    if (action == 'delete') {
-      return 'Delete failed. Please try again.';
+    switch (action) {
+      case 'delete':
+        return 'Delete failed.';
+      case 'rename':
+        return 'Rename failed.';
+      case 'folder':
+        return 'Could not create the folder.';
+      case 'course':
+        return 'Could not update the course.';
+      case 'storage':
+        return 'Could not load storage.';
+      default:
+        return 'File upload failed.';
     }
-    if (action == 'rename') {
-      return 'Rename failed. Please try again.';
-    }
-    if (action == 'folder') {
-      return 'Could not create the folder. Please try again.';
-    }
-    if (action == 'course') {
-      return 'Could not update the course Drive folders. Please try again.';
-    }
-    if (action == 'storage') {
-      return 'Could not load Drive storage. Please try again.';
-    }
-    return 'Upload failed. Please try again.';
   }
 }
 
