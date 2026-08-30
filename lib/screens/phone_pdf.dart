@@ -2,11 +2,12 @@ import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 import '../services/phone_document_service.dart';
+import '../ui/adaptive_layout.dart';
 
 class PhonePdfScreen extends StatefulWidget {
   const PhonePdfScreen({super.key});
@@ -25,7 +26,6 @@ class _PhonePdfScreenState extends State<PhonePdfScreen>
   final Map<String, PhoneDocument> _selected = {};
   List<PhoneDocument> _documents = [];
   bool _isLoading = true;
-  bool _hasAllFilesAccess = false;
   bool _isPreparing = false;
   bool _useLargeIcons = false;
   String? _errorMessage;
@@ -86,11 +86,9 @@ class _PhonePdfScreenState extends State<PhonePdfScreen>
       if (requestPermission) {
         await PhoneDocumentService.instance.requestAccess();
       }
-      final hasAll = await PhoneDocumentService.instance.hasAllFilesAccess();
       final documents = await PhoneDocumentService.instance.listDocuments();
       if (!mounted) return;
       setState(() {
-        _hasAllFilesAccess = hasAll;
         _documents = documents;
         _isLoading = false;
       });
@@ -295,26 +293,43 @@ class _PhonePdfScreenState extends State<PhonePdfScreen>
     return timeago.format(DateTime.fromMillisecondsSinceEpoch(modifiedMs));
   }
 
-  BoxDecoration _docCardDecoration({required bool selected}) {
+  BoxDecoration _docCardDecoration({
+    required bool isDark,
+    required bool selected,
+  }) {
     return BoxDecoration(
-      color: selected ? const Color(0xFFEEF2FF) : Colors.white,
-      borderRadius: BorderRadius.circular(16),
+      color: selected
+          ? (isDark
+              ? const Color(0xFF312E81).withOpacity(0.45)
+              : const Color(0xFFEEF2FF))
+          : (isDark ? const Color(0xFF1F2937) : Colors.white),
+      borderRadius: BorderRadius.circular(20),
       border: selected
-          ? Border.all(color: const Color(0xFF6366F1))
+          ? Border.all(color: const Color(0xFF6366F1), width: 1.5)
           : null,
       boxShadow: [
-        BoxShadow(
-          color: Colors.black.withValues(alpha: 0.04),
-          blurRadius: 10,
-          offset: const Offset(0, 4),
-        ),
+        if (!isDark)
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
       ],
     );
   }
 
-  Widget _buildDetailsList(List<PhoneDocument> filtered) {
+  Widget _buildDetailsList(
+    List<PhoneDocument> filtered, {
+    required bool isDark,
+    required Color titleColor,
+    required Color muted,
+  }) {
+    final pagePad = AdaptiveLayout.pagePadding(context);
     return ListView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+      padding: pagePad.copyWith(
+        top: 4,
+        bottom: MediaQuery.viewPaddingOf(context).bottom + 24,
+      ),
       itemCount: filtered.length,
       itemBuilder: (context, index) {
         final doc = filtered[index];
@@ -331,64 +346,94 @@ class _PhonePdfScreenState extends State<PhonePdfScreen>
 
         return Container(
           margin: const EdgeInsets.only(bottom: 10),
-          decoration: _docCardDecoration(selected: selected),
-          child: ListTile(
-            onTap: _isPreparing ? null : () => _onTap(doc),
-            onLongPress: _isPreparing ? null : () => _onLongPress(doc),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 14,
-              vertical: 6,
-            ),
-            leading: CircleAvatar(
-              backgroundColor: selected
-                  ? const Color(0xFF6366F1)
-                  : color.withValues(alpha: 0.12),
-              foregroundColor: selected ? Colors.white : color,
-              child: Icon(
-                selected ? Icons.check_rounded : _iconFor(doc.kind),
+          decoration: _docCardDecoration(isDark: isDark, selected: selected),
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: _isPreparing ? null : () => _onTap(doc),
+              onLongPress: _isPreparing ? null : () => _onLongPress(doc),
+              borderRadius: BorderRadius.circular(20),
+              child: Padding(
+                padding: const EdgeInsets.all(14),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: selected
+                            ? const Color(0xFF6366F1)
+                            : color.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Icon(
+                        selected ? Icons.check_rounded : _iconFor(doc.kind),
+                        color: selected ? Colors.white : color,
+                        size: 24,
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            doc.name,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: titleColor,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            meta,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontSize: 13, color: muted),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (preparing)
+                      const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    else
+                      Icon(
+                        selected
+                            ? Icons.check_circle_rounded
+                            : Icons.upload_rounded,
+                        color: selected ? const Color(0xFF6366F1) : muted,
+                      ),
+                  ],
+                ),
               ),
             ),
-            title: Text(
-              doc.name,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontWeight: FontWeight.w600,
-                color: Colors.black,
-              ),
-            ),
-            subtitle: Text(
-              meta,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: Colors.black),
-            ),
-            trailing: preparing
-                ? const SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : Icon(
-                    selected
-                        ? Icons.check_circle_rounded
-                        : Icons.upload_rounded,
-                    color: selected
-                        ? const Color(0xFF6366F1)
-                        : Colors.black,
-                  ),
           ),
         );
       },
     );
   }
 
-  Widget _buildLargeIconsGrid(List<PhoneDocument> filtered) {
+  Widget _buildLargeIconsGrid(
+    List<PhoneDocument> filtered, {
+    required bool isDark,
+    required Color titleColor,
+    required Color muted,
+  }) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final crossAxisCount = constraints.maxWidth >= 720 ? 3 : 2;
+        final crossAxisCount = AdaptiveLayout.gridCount(constraints.maxWidth);
         return GridView.builder(
-          padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+          padding: AdaptiveLayout.pagePadding(context).copyWith(
+            top: 4,
+            bottom: MediaQuery.viewPaddingOf(context).bottom + 24,
+          ),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: crossAxisCount,
             mainAxisSpacing: 12,
@@ -403,13 +448,13 @@ class _PhonePdfScreenState extends State<PhonePdfScreen>
             final preparing = _preparingName == doc.name;
 
             return Container(
-              decoration: _docCardDecoration(selected: selected),
+              decoration: _docCardDecoration(isDark: isDark, selected: selected),
               child: Material(
                 color: Colors.transparent,
                 child: InkWell(
                   onTap: _isPreparing ? null : () => _onTap(doc),
                   onLongPress: _isPreparing ? null : () => _onLongPress(doc),
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -419,7 +464,7 @@ class _PhonePdfScreenState extends State<PhonePdfScreen>
                           children: [
                             ClipRRect(
                               borderRadius: const BorderRadius.vertical(
-                                top: Radius.circular(16),
+                                top: Radius.circular(20),
                               ),
                               child: _LocalDocPreview(
                                 key: ValueKey(doc.key),
@@ -454,7 +499,7 @@ class _PhonePdfScreenState extends State<PhonePdfScreen>
                                     : Icons.upload_rounded,
                                 color: selected
                                     ? const Color(0xFF6366F1)
-                                    : Colors.black.withValues(alpha: 0.7),
+                                    : muted,
                               ),
                             ),
                           ],
@@ -467,10 +512,10 @@ class _PhonePdfScreenState extends State<PhonePdfScreen>
                           textAlign: TextAlign.center,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
-                            color: Colors.black,
+                            color: titleColor,
                           ),
                         ),
                       ),
@@ -488,6 +533,18 @@ class _PhonePdfScreenState extends State<PhonePdfScreen>
   @override
   Widget build(BuildContext context) {
     final filtered = _filtered;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final background =
+        isDark ? const Color(0xFF111827) : const Color(0xFFF8FAFC);
+    final titleColor =
+        isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
+    final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
+    final card = isDark ? const Color(0xFF1F2937) : Colors.white;
+    const accent = Color(0xFF6366F1);
+    final fieldFill = isDark ? const Color(0xFF1F2937) : Colors.white;
+    final borderColor = _query.isNotEmpty
+        ? accent
+        : (isDark ? const Color(0xFF4B5563) : const Color(0xFFD1D5DB));
 
     return PopScope(
       canPop: !_selectionMode,
@@ -496,8 +553,11 @@ class _PhonePdfScreenState extends State<PhonePdfScreen>
         _clearSelection();
       },
       child: Scaffold(
-        backgroundColor: const Color(0xFFF8FAFC),
+        backgroundColor: background,
         appBar: AppBar(
+          backgroundColor: background,
+          foregroundColor: titleColor,
+          elevation: 0,
           leading: _selectionMode
               ? IconButton(
                   icon: const Icon(Icons.close_rounded),
@@ -508,9 +568,9 @@ class _PhonePdfScreenState extends State<PhonePdfScreen>
             _selectionMode
                 ? '${_selected.length} of $_maxSelection selected'
                 : 'PDFs & documents',
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              color: Colors.black,
+            style: TextStyle(
+              fontWeight: FontWeight.w700,
+              color: titleColor,
             ),
           ),
           actions: [
@@ -573,127 +633,128 @@ class _PhonePdfScreenState extends State<PhonePdfScreen>
         body: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: TextField(
-                controller: _searchController,
-                onChanged: (value) => setState(() => _query = value),
-                textInputAction: TextInputAction.search,
-                style: const TextStyle(color: Colors.black),
-                decoration: InputDecoration(
-                  hintText: 'Search PDFs, Word, Excel, PowerPoint…',
-                  hintStyle: const TextStyle(color: Colors.black54),
-                  prefixIcon: const Icon(
-                    Icons.search_rounded,
-                    color: Colors.black,
+              padding: AdaptiveLayout.pagePadding(context).copyWith(top: 12),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(999),
+                  boxShadow: [
+                    if (!isDark)
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.06),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
+                      ),
+                  ],
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: (value) => setState(() => _query = value),
+                  textInputAction: TextInputAction.search,
+                  style: TextStyle(
+                    color: titleColor,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
                   ),
-                  suffixIcon: _query.isEmpty
-                      ? null
-                      : IconButton(
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() => _query = '');
-                          },
-                          icon: const Icon(
-                            Icons.close_rounded,
-                            color: Colors.black,
+                  decoration: InputDecoration(
+                    hintText: 'Search PDFs, Word, Excel, PowerPoint…',
+                    hintStyle: TextStyle(color: muted, fontSize: 15),
+                    prefixIcon: Icon(
+                      Icons.search_rounded,
+                      color: _query.isNotEmpty ? accent : muted,
+                    ),
+                    suffixIcon: _query.isEmpty
+                        ? null
+                        : IconButton(
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() => _query = '');
+                            },
+                            icon: Icon(Icons.close_rounded, color: muted),
                           ),
-                        ),
-                  filled: true,
-                  fillColor: Colors.white,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide.none,
+                    filled: true,
+                    fillColor: fieldFill,
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(999),
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(999),
+                      borderSide: const BorderSide(color: accent, width: 1.4),
+                    ),
                   ),
                 ),
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             SizedBox(
-              height: 38,
+              height: 36,
               child: ListView.separated(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: AdaptiveLayout.pagePadding(context),
                 scrollDirection: Axis.horizontal,
                 itemCount: _kinds.length,
                 separatorBuilder: (_, __) => const SizedBox(width: 8),
                 itemBuilder: (context, index) {
                   final kind = _kinds[index];
                   final selected = _kindFilter == kind;
-                  return ChoiceChip(
-                    label: Text(kind),
-                    selected: selected,
-                    onSelected: (_) => setState(() => _kindFilter = kind),
-                    selectedColor: const Color(0xFF6366F1),
-                    labelStyle: TextStyle(
-                      color: selected ? Colors.white : Colors.black,
-                      fontWeight: FontWeight.w600,
+                  return GestureDetector(
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      setState(() => _kindFilter = kind);
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: selected ? accent : card,
+                        borderRadius: BorderRadius.circular(20),
+                        border: selected
+                            ? null
+                            : Border.all(
+                                color: isDark
+                                    ? const Color(0xFF374151)
+                                    : const Color(0xFFE5E7EB),
+                              ),
+                      ),
+                      child: Text(
+                        kind,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: selected
+                              ? Colors.white
+                              : (isDark
+                                  ? const Color(0xFFE5E7EB)
+                                  : const Color(0xFF374151)),
+                        ),
+                      ),
                     ),
-                    backgroundColor: Colors.white,
-                    side: BorderSide(
-                      color: selected
-                          ? const Color(0xFF6366F1)
-                          : const Color(0xFFE5E7EB),
-                    ),
-                    showCheckmark: false,
                   );
                 },
               ),
             ),
-            if (!_hasAllFilesAccess && !_isLoading)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                child: Material(
-                  color: const Color(0xFFEEF2FF),
-                  borderRadius: BorderRadius.circular(14),
-                  child: ListTile(
-                    dense: true,
-                    leading: const Icon(
-                      Icons.folder_off_rounded,
-                      color: Color(0xFF6366F1),
-                    ),
-                    title: const Text(
-                      'Allow all-files access to see every document',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.black,
-                      ),
-                    ),
-                    trailing: TextButton(
-                      onPressed: () async {
-                        final granted =
-                            await PhoneDocumentService.instance.requestAccess();
-                        if (!granted) {
-                          await openAppSettings();
-                        }
-                        if (!mounted) return;
-                        await _loadDocuments(requestPermission: false);
-                      },
-                      child: const Text('Enable'),
-                    ),
-                  ),
-                ),
-              ),
             const SizedBox(height: 8),
             Expanded(
               child: _isLoading
-                  ? const Center(
+                  ? Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          CircularProgressIndicator(
+                          const CircularProgressIndicator(
                             valueColor: AlwaysStoppedAnimation<Color>(
                               Color(0xFF6366F1),
                             ),
                           ),
-                          SizedBox(height: 16),
+                          const SizedBox(height: 16),
                           Text(
                             'Looking for documents…',
                             style: TextStyle(
-                              color: Colors.black,
+                              color: muted,
                               fontSize: 16,
                             ),
                           ),
@@ -704,6 +765,8 @@ class _PhonePdfScreenState extends State<PhonePdfScreen>
                       ? _EmptyState(
                           icon: Icons.error_outline_rounded,
                           title: _errorMessage!,
+                          titleColor: titleColor,
+                          muted: muted,
                           actionLabel: 'Try again',
                           onAction: _loadDocuments,
                         )
@@ -715,16 +778,29 @@ class _PhonePdfScreenState extends State<PhonePdfScreen>
                                   : 'No documents match “$_query”',
                               subtitle:
                                   'Tap browse to pick a file from Files or Drive.',
+                              titleColor: titleColor,
+                              muted: muted,
                               actionLabel: 'Browse files',
                               onAction: _browseWithPicker,
                             )
                           : RefreshIndicator(
+                              color: accent,
                               onRefresh: _selectionMode
                                   ? () async {}
                                   : () => _loadDocuments(),
                               child: _useLargeIcons
-                                  ? _buildLargeIconsGrid(filtered)
-                                  : _buildDetailsList(filtered),
+                                  ? _buildLargeIconsGrid(
+                                      filtered,
+                                      isDark: isDark,
+                                      titleColor: titleColor,
+                                      muted: muted,
+                                    )
+                                  : _buildDetailsList(
+                                      filtered,
+                                      isDark: isDark,
+                                      titleColor: titleColor,
+                                      muted: muted,
+                                    ),
                             ),
             ),
           ],
@@ -812,6 +888,8 @@ class _EmptyState extends StatelessWidget {
   final IconData icon;
   final String title;
   final String? subtitle;
+  final Color titleColor;
+  final Color muted;
   final String actionLabel;
   final VoidCallback onAction;
 
@@ -819,6 +897,8 @@ class _EmptyState extends StatelessWidget {
     required this.icon,
     required this.title,
     this.subtitle,
+    required this.titleColor,
+    required this.muted,
     required this.actionLabel,
     required this.onAction,
   });
@@ -831,15 +911,15 @@ class _EmptyState extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 64, color: Colors.grey[400]),
+            Icon(icon, size: 64, color: muted),
             const SizedBox(height: 16),
             Text(
               title,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
-                color: Colors.black,
+                color: titleColor,
               ),
             ),
             if (subtitle != null) ...[
@@ -847,7 +927,7 @@ class _EmptyState extends StatelessWidget {
               Text(
                 subtitle!,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 14, color: Colors.black),
+                style: TextStyle(fontSize: 14, color: muted),
               ),
             ],
             const SizedBox(height: 20),
