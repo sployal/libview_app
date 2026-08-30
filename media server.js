@@ -99,7 +99,7 @@ function registerMediaRoutes(app, { requireAuth, requireSystemAdmin, upload }) {
     }
 
     try {
-      await cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
+      await destroyEdupalImage(publicId);
       res.json({ deleted: true });
     } catch (err) {
       console.error('Cloudinary delete failed:', err.message);
@@ -108,4 +108,46 @@ function registerMediaRoutes(app, { requireAuth, requireSystemAdmin, upload }) {
   });
 }
 
-module.exports = { registerMediaRoutes };
+async function destroyEdupalImage(publicId) {
+  configureCloudinary();
+  if (!cloudinaryConfigured()) {
+    throw new Error('Cloudinary is not configured');
+  }
+  const id = typeof publicId === 'string' ? publicId.trim() : '';
+  if (!id) {
+    throw new Error('A Cloudinary publicId is required');
+  }
+  if (!id.startsWith('edupal/')) {
+    throw new Error('You can only delete Edupal media');
+  }
+  await cloudinary.uploader.destroy(id, { resource_type: 'image' });
+}
+
+function profileAvatarPublicId(profile) {
+  const stored = String(profile?.avatar_public_id || '').trim();
+  if (stored) return stored;
+
+  const url = String(profile?.avatar_url || '').trim();
+  if (!url.includes('res.cloudinary.com') || !url.includes('/edupal/')) {
+    return '';
+  }
+  const match = url.match(/\/upload\/(?:v\d+\/)?(.+?)(?:\.[a-z0-9]+)?(?:\?.*)?$/i);
+  return match ? match[1] : '';
+}
+
+async function deleteProfileAvatar(profile) {
+  const publicId = profileAvatarPublicId(profile);
+  if (!publicId) return false;
+  try {
+    await destroyEdupalImage(publicId);
+    return true;
+  } catch (err) {
+    console.warn('Profile avatar Cloudinary cleanup failed:', err.message);
+    return false;
+  }
+}
+
+module.exports = {
+  registerMediaRoutes,
+  deleteProfileAvatar,
+};

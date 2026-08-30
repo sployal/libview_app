@@ -10,7 +10,7 @@ const { google } = require('googleapis');
 const { Readable } = require('stream');
 const admin = require('firebase-admin');
 const { registerAiRoutes } = require('./ai_chat');
-const { registerMediaRoutes } = require('./media server.js');
+const { registerMediaRoutes, deleteProfileAvatar } = require('./media server.js');
 const { registerContactRoutes } = require('./contact');
 
 // =========================================================================
@@ -1559,6 +1559,7 @@ app.delete('/users/:uid', requireAuth, requireSystemAdmin, async (req, res) => {
       if (err.code !== 'auth/user-not-found') throw err;
     }
 
+    await deleteProfileAvatar(snap.data());
     await firestore.collection('profiles').doc(uid).delete();
     res.json({ deleted: true, uid });
   } catch (e) {
