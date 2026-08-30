@@ -79,8 +79,8 @@ class AuthService {
     final name = (data['full_name'] as String?)?.trim() ?? '';
     if (name.isEmpty) return false;
     if (isClientRole(data['role'] as String?)) return true;
-    final registration = (data['registration_number'] as String?)?.trim() ?? '';
-    return registration.isNotEmpty;
+    final admission = (data['admission_number'] as String?)?.trim() ?? '';
+    return admission.isNotEmpty;
   }
 
   static bool isAccountSuspended(Map<String, dynamic>? data) {
@@ -207,13 +207,13 @@ class AuthService {
     return role;
   }
 
-  Future<bool> isRegistrationNumberTaken(
-    String registrationNumber, {
+  Future<bool> isAdmissionNumberTaken(
+    String admissionNumber, {
     String? excludeUid,
   }) async {
     final snapshot = await _firestore
         .collection('profiles')
-        .where('registration_number', isEqualTo: registrationNumber)
+        .where('admission_number', isEqualTo: admissionNumber)
         .limit(1)
         .get();
 
@@ -275,7 +275,7 @@ class AuthService {
     required String email,
     required String password,
     required String fullName,
-    String registrationNumber = '',
+    String admissionNumber = '',
   }) async {
     final invite = await ClientService.instance.clientForInviteEmail(email);
     if (invite == null) {
@@ -305,14 +305,14 @@ class AuthService {
       uid: user.uid,
       email: email,
       fullName: fullName,
-      registrationNumber: registrationNumber,
+      admissionNumber: admissionNumber,
       invite: invite,
     );
   }
 
   Future<void> completeStudentProfile({
     required String fullName,
-    String registrationNumber = '',
+    String admissionNumber = '',
   }) async {
     final user = currentUser;
     if (user == null) {
@@ -347,7 +347,7 @@ class AuthService {
       uid: user.uid,
       email: email,
       fullName: fullName,
-      registrationNumber: registrationNumber,
+      admissionNumber: admissionNumber,
       invite: invite,
       existingRole: existing.data()?['role'] as String?,
       googlePhoto: googlePhotoUrlFor(user),
@@ -359,7 +359,7 @@ class AuthService {
     required String uid,
     required String email,
     required String fullName,
-    required String registrationNumber,
+    required String admissionNumber,
     ClientWorkspace? invite,
     String? existingRole,
     String? googlePhoto,
@@ -369,8 +369,8 @@ class AuthService {
     await _firestore.collection('profiles').doc(uid).set({
       'full_name': fullName,
       'email': email,
-      if (isClient) 'registration_number': '',
-      if (!isClient) 'registration_number': registrationNumber,
+      if (isClient) 'admission_number': '',
+      if (!isClient) 'admission_number': admissionNumber,
       'role': isClient ? clientRole : (existingRole ?? 'student'),
       if (isClient) 'client_id': invite.id,
       if (googlePhoto != null) 'google_photo_url': googlePhoto,

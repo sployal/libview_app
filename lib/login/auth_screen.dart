@@ -37,7 +37,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _fullNameController = TextEditingController();
-  final _registrationNumberController = TextEditingController();
+  final _admissionNumberController = TextEditingController();
   
   bool _isLoading = false;
   bool _obscurePassword = true;
@@ -92,12 +92,12 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     _fullNameController.dispose();
-    _registrationNumberController.dispose();
+    _admissionNumberController.dispose();
     super.dispose();
   }
 
-  bool _isValidRegistrationNumber(String regNumber) {
-    return Course.isValidAdmissionNumber(regNumber);
+  bool _isValidAdmissionNumber(String admissionNumber) {
+    return Course.isValidAdmissionNumber(admissionNumber);
   }
 
   Future<bool> _ensureSignupAllowed({bool showPopup = true}) async {
@@ -190,7 +190,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
           _showSnackBar('Account created successfully!', success: true);
           _tabController.animateTo(0);
           _fullNameController.clear();
-          _registrationNumberController.clear();
+          _admissionNumberController.clear();
           _confirmPasswordController.clear();
           _emailController.clear();
           _passwordController.clear();
@@ -199,12 +199,12 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
         return;
       }
 
-      // Normalize registration number (convert to uppercase for consistency)
-      final normalizedRegNumber = _registrationNumberController.text.trim().toUpperCase();
+      // Normalize admission number (convert to uppercase for consistency)
+      final normalizedAdmissionNumber = _admissionNumberController.text.trim().toUpperCase();
 
       final courses = await CourseService.instance.listCourses();
       final matchedCourse = CourseService.instance.matchCourse(
-        normalizedRegNumber,
+        normalizedAdmissionNumber,
         courses,
       );
       if (matchedCourse == null) {
@@ -222,16 +222,16 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
         return;
       }
 
-      // Check if registration number already exists
-      final regNumberTaken = await AuthService.instance
-          .isRegistrationNumberTaken(
-            normalizedRegNumber,
+      // Check if admission number already exists
+      final admissionNumberTaken = await AuthService.instance
+          .isAdmissionNumberTaken(
+            normalizedAdmissionNumber,
             excludeUid: widget.needsProfileCompletion
                 ? AuthService.instance.currentUser?.uid
                 : null,
           );
 
-      if (regNumberTaken) {
+      if (admissionNumberTaken) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -241,7 +241,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
                   SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'Registration number already exists',
+                      'Admission number already exists',
                       style: TextStyle(fontWeight: FontWeight.w500),
                     ),
                   ),
@@ -261,7 +261,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
       if (widget.needsProfileCompletion) {
         await AuthService.instance.completeStudentProfile(
           fullName: _fullNameController.text.trim(),
-          registrationNumber: normalizedRegNumber,
+          admissionNumber: normalizedAdmissionNumber,
         );
         return;
       }
@@ -271,7 +271,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
         email: _emailController.text.trim(),
         password: _passwordController.text,
         fullName: _fullNameController.text.trim(),
-        registrationNumber: normalizedRegNumber,
+        admissionNumber: normalizedAdmissionNumber,
       );
 
       if (mounted) {
@@ -280,7 +280,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
         // Switch to login tab and clear form
         _tabController.animateTo(0);
         _fullNameController.clear();
-        _registrationNumberController.clear();
+        _admissionNumberController.clear();
         _confirmPasswordController.clear();
         _emailController.clear();
         _passwordController.clear();
@@ -969,16 +969,16 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
             if (_invitedClient == null) ...[
               const SizedBox(height: 16),
               _buildTextField(
-                controller: _registrationNumberController,
-                label: 'Registration Number',
+                controller: _admissionNumberController,
+                label: 'Admission Number',
                 hint: '',
                 icon: CupertinoIcons.number,
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
                     return 'Please enter your admission number';
                   }
-                  if (!_isValidRegistrationNumber(value)) {
-                    return 'Enter your correct registration number';
+                  if (!_isValidAdmissionNumber(value)) {
+                    return 'Enter your correct admission number';
                   }
                   return null;
                 },

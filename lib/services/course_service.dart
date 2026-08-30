@@ -108,11 +108,11 @@ class Course {
   }
 
   /// Same course prefix and same class-year suffix, e.g. both `EB24/.../21`.
-  static bool isSameClass(String registrationA, String registrationB) {
-    final prefixA = admissionPrefixFromSample(registrationA);
-    final prefixB = admissionPrefixFromSample(registrationB);
-    final suffixA = classSuffixFromSample(registrationA);
-    final suffixB = classSuffixFromSample(registrationB);
+  static bool isSameClass(String admissionA, String admissionB) {
+    final prefixA = admissionPrefixFromSample(admissionA);
+    final prefixB = admissionPrefixFromSample(admissionB);
+    final suffixA = classSuffixFromSample(admissionA);
+    final suffixB = classSuffixFromSample(admissionB);
     if (prefixA.isEmpty || prefixB.isEmpty) return false;
     if (suffixA.isEmpty || suffixB.isEmpty) return false;
     return prefixA == prefixB && suffixA == suffixB;
@@ -223,11 +223,11 @@ class CourseService {
     );
   }
 
-  Course? suspendedCourseForRegistration(
-    String registrationNumber,
+  Course? suspendedCourseForAdmission(
+    String admissionNumber,
     List<Course> courses,
   ) {
-    final course = matchCourse(registrationNumber, courses);
+    final course = matchCourse(admissionNumber, courses);
     if (course == null || !course.suspended) return null;
     return course;
   }
@@ -258,15 +258,15 @@ class CourseService {
   Future<Course> courseForCurrentUser() async {
     final courses = await listCourses();
     final uid = AuthService.instance.currentUser?.uid;
-    String registrationNumber = '';
+    String admissionNumber = '';
 
     if (uid != null) {
       final profile = await _firestore.collection('profiles').doc(uid).get();
-      registrationNumber =
-          (profile.data()?['registration_number'] as String?) ?? '';
+      admissionNumber =
+          (profile.data()?['admission_number'] as String?) ?? '';
     }
 
-    final matched = matchCourse(registrationNumber, courses);
+    final matched = matchCourse(admissionNumber, courses);
     if (matched != null) return matched;
 
     for (final course in courses) {
@@ -277,8 +277,8 @@ class CourseService {
     return Course.engineeringFallback();
   }
 
-  Course? matchCourse(String registrationNumber, List<Course> courses) {
-    final segment = Course.admissionPrefixFromSample(registrationNumber);
+  Course? matchCourse(String admissionNumber, List<Course> courses) {
+    final segment = Course.admissionPrefixFromSample(admissionNumber);
     if (segment.isEmpty) return null;
 
     for (final course in courses) {
@@ -534,9 +534,9 @@ class CourseService {
   }) {
     final allCourses = courses ?? [course];
     return profiles.where((profile) {
-      final registration =
-          profile['registration_number']?.toString() ?? '';
-      final matched = matchCourse(registration, allCourses);
+      final admission =
+          profile['admission_number']?.toString() ?? '';
+      final matched = matchCourse(admission, allCourses);
       return matched?.id == course.id;
     }).toList();
   }

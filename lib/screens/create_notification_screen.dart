@@ -102,13 +102,13 @@ class _CreateNotificationScreenState extends State<CreateNotificationScreen> {
           .get();
       final data = profileDoc.data() ?? {};
       final role = ((data['role'] as String?) ?? 'student').toLowerCase();
-      final registrationNumber =
-          (data['registration_number'] as String?) ?? '';
-      final prefix = Course.admissionPrefixFromSample(registrationNumber);
-      final suffix = Course.classSuffixFromSample(registrationNumber);
+      final admissionNumber =
+          (data['admission_number'] as String?) ?? '';
+      final prefix = Course.admissionPrefixFromSample(admissionNumber);
+      final suffix = Course.classSuffixFromSample(admissionNumber);
       final courses = await CourseService.instance.listCourses();
       final course =
-          CourseService.instance.matchCourse(registrationNumber, courses);
+          CourseService.instance.matchCourse(admissionNumber, courses);
 
       if (!mounted) return;
       setState(() {

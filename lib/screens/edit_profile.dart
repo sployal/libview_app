@@ -28,7 +28,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   bool _isSaving = false;
   String? _currentEmail;
   String? _currentRole;
-  String? _registrationNumber;
+  String? _admissionNumber;
   String? _avatarPublicId;
   Uint8List? _pendingAvatarBytes;
   String? _pendingAvatarFileName;
@@ -65,8 +65,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         setState(() {
           _currentEmail = user.email;
           _currentRole = profileData['role'] as String?;
-          _registrationNumber =
-              profileData['registration_number'] as String?;
+          _admissionNumber =
+              profileData['admission_number'] as String?;
           _fullNameController.text = profileData['full_name'] as String? ?? '';
           _usernameController.text = profileData['username'] as String? ?? '';
           _avatarUrlController.text =
@@ -478,10 +478,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
                       _buildReadOnlyField(
                         label: 'Admission Number',
-                        value: (_registrationNumber == null ||
-                                _registrationNumber!.trim().isEmpty)
+                        value: (_admissionNumber == null ||
+                                _admissionNumber!.trim().isEmpty)
                             ? 'Not available'
-                            : _registrationNumber!,
+                            : _admissionNumber!,
                         icon: Icons.badge_rounded,
                       ),
                       const SizedBox(height: 16),

@@ -181,7 +181,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
         data['full_name'] = data['full_name'] ?? 'Unknown user';
         data['username'] = data['username'] ?? '';
         data['email'] = data['email'] ?? '';
-        data['registration_number'] = data['registration_number'] ?? '';
+        data['admission_number'] = data['admission_number'] ?? '';
         data['avatar_url'] = data['avatar_url'] ?? '';
         final storedGoogle = (data['google_photo_url'] as String?)?.trim() ?? '';
         final fromAuth = authPhotos[doc.id] ?? '';
@@ -248,9 +248,9 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
   }
 
   Course? _courseForProfile(Map<String, dynamic> user) {
-    final registration = user['registration_number']?.toString() ?? '';
-    if (registration.isEmpty || _courses.isEmpty) return null;
-    return CourseService.instance.matchCourse(registration, _courses);
+    final admission = user['admission_number']?.toString() ?? '';
+    if (admission.isEmpty || _courses.isEmpty) return null;
+    return CourseService.instance.matchCourse(admission, _courses);
   }
 
   bool _matchesSearch(Map<String, dynamic> user, String query) {
@@ -260,7 +260,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
     return user['full_name'].toString().toLowerCase().contains(q) ||
         user['username'].toString().toLowerCase().contains(q) ||
         user['email'].toString().toLowerCase().contains(q) ||
-        user['registration_number'].toString().toLowerCase().contains(q) ||
+        user['admission_number'].toString().toLowerCase().contains(q) ||
         courseName.contains(q);
   }
 
@@ -644,10 +644,10 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
                         CupertinoIcons.mail_solid,
                       ),
                       _buildDetailRow(
-                        'Registration',
-                        (user['registration_number'] as String).isEmpty
+                        'Admission Number',
+                        (user['admission_number'] as String).isEmpty
                             ? 'N/A'
-                            : user['registration_number'].toString(),
+                            : user['admission_number'].toString(),
                         CupertinoIcons.number,
                       ),
                       _buildDetailRow(
@@ -2711,7 +2711,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
     final email = user['email'].toString();
     final username = user['username'].toString();
     final course = _courseForProfile(user);
-    final registration = user['registration_number']?.toString() ?? '';
+    final admission = user['admission_number']?.toString() ?? '';
 
     return Material(
       color: Colors.transparent,
@@ -2744,13 +2744,13 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
                               : (username.isNotEmpty ? '@$username' : 'No email'),
                           style: TextStyle(fontSize: 13, color: _muted),
                         ),
-                        if (course != null || registration.isNotEmpty)
+                        if (course != null || admission.isNotEmpty)
                           Text(
                             course != null
-                                ? (registration.isNotEmpty
-                                    ? '${course.name} · $registration'
+                                ? (admission.isNotEmpty
+                                    ? '${course.name} · $admission'
                                     : course.name)
-                                : registration,
+                                : admission,
                             style: TextStyle(fontSize: 12, color: _muted),
                           ),
                         if (user['suspended'] == true)

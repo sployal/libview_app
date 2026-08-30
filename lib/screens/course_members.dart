@@ -62,12 +62,12 @@ class _CourseMembersScreenState extends State<CourseMembersScreen> {
       final myDoc = await _firestore.collection('profiles').doc(user.uid).get();
       final myData = myDoc.data() ?? {};
       _isAdmin = (myData['role'] as String?)?.toLowerCase() == 'admin';
-      final registrationNumber =
-          (myData['registration_number'] as String?) ?? '';
+      final admissionNumber =
+          (myData['admission_number'] as String?) ?? '';
 
       final courses = await CourseService.instance.listCourses();
       final course =
-          CourseService.instance.matchCourse(registrationNumber, courses);
+          CourseService.instance.matchCourse(admissionNumber, courses);
 
       if (course == null) {
         if (!mounted) return;
@@ -92,7 +92,7 @@ class _CourseMembersScreenState extends State<CourseMembersScreen> {
         data['full_name'] = data['full_name'] ?? 'Unknown user';
         data['username'] = data['username'] ?? '';
         data['email'] = data['email'] ?? '';
-        data['registration_number'] = data['registration_number'] ?? '';
+        data['admission_number'] = data['admission_number'] ?? '';
         data['avatar_url'] = data['avatar_url'] ?? '';
         return data;
       }).toList();
@@ -151,7 +151,7 @@ class _CourseMembersScreenState extends State<CourseMembersScreen> {
       return member['full_name'].toString().toLowerCase().contains(q) ||
           member['username'].toString().toLowerCase().contains(q) ||
           member['email'].toString().toLowerCase().contains(q) ||
-          member['registration_number'].toString().toLowerCase().contains(q);
+          member['admission_number'].toString().toLowerCase().contains(q);
     }).toList();
   }
 
@@ -225,7 +225,7 @@ class _CourseMembersScreenState extends State<CourseMembersScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                member['registration_number'].toString(),
+                member['admission_number'].toString(),
                 style: const TextStyle(color: Color(0xFF6B7280)),
               ),
               const SizedBox(height: 8),
@@ -410,7 +410,7 @@ class _CourseMembersScreenState extends State<CourseMembersScreen> {
                     children: [
                       Text(
                         _courseName == null
-                            ? 'Add a registration number that matches your course so members can be listed.'
+                            ? 'Add an admission number that matches your course so members can be listed.'
                             : '$_courseName · ${_coursePrefix ?? ''} · ${_members.length} member${_members.length == 1 ? '' : 's'}',
                         style: const TextStyle(
                           fontSize: 13,
@@ -469,7 +469,7 @@ class _CourseMembersScreenState extends State<CourseMembersScreen> {
                             padding: const EdgeInsets.all(32),
                             child: Text(
                               _courseName == null
-                                  ? 'Your registration number must match a course admission code, for example EB24/56171/21.'
+                                  ? 'Your admission number must match a course admission code, for example EB24/56171/21.'
                                   : 'No course members found.',
                               textAlign: TextAlign.center,
                               style: TextStyle(
@@ -543,7 +543,7 @@ class _CourseMembersScreenState extends State<CourseMembersScreen> {
                                   children: [
                                     const SizedBox(height: 4),
                                     Text(
-                                      member['registration_number'].toString(),
+                                      member['admission_number'].toString(),
                                       style: const TextStyle(
                                         color: Colors.black87,
                                       ),

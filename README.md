@@ -6,7 +6,7 @@ A Flutter university study app for browsing course materials, reading and downlo
   <img src="docs/screenshots/edupal-hero.png" alt="Edupal preview" width="820" />
 </p>
 
-Students sign in, get assigned to a course from their registration number, then walk year → semester → unit → files stored on Google Drive. Staff and class reps can upload, organize folders, and send notifications. A small backend (Edupal API on Render) handles uploads, AI chat, Drive storage, and weather.
+Students sign in, get assigned to a course from their admission number, then walk year → semester → unit → files stored on Google Drive. Staff and class reps can upload, organize folders, and send notifications. A small backend (Edupal API on Render) handles uploads, AI chat, Drive storage, and weather.
 
 ## Screens
 
@@ -47,7 +47,7 @@ Students sign in, get assigned to a course from their registration number, then 
 2. **App update gate** can force an in-app update before anything else.
 3. **Auth gate** watches Firebase Auth:
    - signed out → login / sign up
-   - signed in but missing name or registration number → complete profile
+   - signed in but missing name or admission number → complete profile
    - `suspended` on the profile → blocked screen
    - otherwise → main shell
 
@@ -55,7 +55,7 @@ New Google accounts that are missing profile fields land on the same auth screen
 
 ### Courses and Drive
 
-Courses live in Firestore (`CourseService`). Each course has a Drive root folder and a map of semester folder IDs (`year1_sem1`, …). The registration number prefix (for example `EB24` in `EB24/56171/21`) is used to match a student to a course.
+Courses live in Firestore (`CourseService`). Each course has a Drive root folder and a map of semester folder IDs (`year1_sem1`, …). The admission number prefix (for example `EB24` in `EB24/56171/21`) is used to match a student to a course.
 
 On **Semesters**, the user picks a year, then a semester. That opens the Drive folder for that term: unit folders, then study files (PDF, Office, images). Non-students can create/rename/delete unit folders and upload files (max 20 MB) through the backend, which writes to Drive.
 

@@ -97,11 +97,11 @@ class NotificationService {
     final profile = await _firestore.collection('profiles').doc(user.uid).get();
     final data = profile.data() ?? {};
     final role = ((data['role'] as String?) ?? 'student').toLowerCase();
-    final registrationNumber =
-        (data['registration_number'] as String?) ?? '';
+    final admissionNumber =
+        (data['admission_number'] as String?) ?? '';
     final courses = await CourseService.instance.listCourses();
     final userCourse =
-        CourseService.instance.matchCourse(registrationNumber, courses);
+        CourseService.instance.matchCourse(admissionNumber, courses);
 
     final notificationsSnap =
         await _notifications.orderBy('created_at', descending: true).get();
@@ -121,7 +121,7 @@ class NotificationService {
               seeAll ||
               _isVisibleToUser(
                 item: item,
-                registrationNumber: registrationNumber,
+                admissionNumber: admissionNumber,
                 userCourse: userCourse,
               ),
         )
@@ -165,13 +165,13 @@ class NotificationService {
       throw Exception('Students cannot create notifications');
     }
 
-    final registrationNumber =
-        (data['registration_number'] as String?) ?? '';
-    final prefix = Course.admissionPrefixFromSample(registrationNumber);
-    final suffix = Course.classSuffixFromSample(registrationNumber);
+    final admissionNumber =
+        (data['admission_number'] as String?) ?? '';
+    final prefix = Course.admissionPrefixFromSample(admissionNumber);
+    final suffix = Course.classSuffixFromSample(admissionNumber);
     final courses = await CourseService.instance.listCourses();
     final course =
-        CourseService.instance.matchCourse(registrationNumber, courses);
+        CourseService.instance.matchCourse(admissionNumber, courses);
 
     final isClassLeadership =
         role == 'class_rep' || role == 'assistant_class_rep';
@@ -187,7 +187,7 @@ class NotificationService {
       resolvedAudience = audience == 'course' ? 'course' : 'class';
       if (prefix.isEmpty || (resolvedAudience == 'class' && suffix.isEmpty)) {
         throw Exception(
-          'Your registration number is needed to send a class or course notification.',
+          'Your admission number is needed to send a class or course notification.',
         );
       }
     } else if (isSystemAdmin && audience == 'course') {
@@ -285,7 +285,7 @@ class NotificationService {
 
   bool _isVisibleToUser({
     required AppNotification item,
-    required String registrationNumber,
+    required String admissionNumber,
     required Course? userCourse,
   }) {
     if (item.audience == 'all' || item.audience.isEmpty) return true;
@@ -294,13 +294,13 @@ class NotificationService {
       if (item.courseId.isNotEmpty && userCourse != null) {
         return userCourse.id == item.courseId;
       }
-      final userPrefix = Course.admissionPrefixFromSample(registrationNumber);
+      final userPrefix = Course.admissionPrefixFromSample(admissionNumber);
       return userPrefix.isNotEmpty && userPrefix == item.admissionPrefix;
     }
 
     if (item.audience == 'class') {
-      final userPrefix = Course.admissionPrefixFromSample(registrationNumber);
-      final userSuffix = Course.classSuffixFromSample(registrationNumber);
+      final userPrefix = Course.admissionPrefixFromSample(admissionNumber);
+      final userSuffix = Course.classSuffixFromSample(admissionNumber);
       return userPrefix.isNotEmpty &&
           userSuffix.isNotEmpty &&
           userPrefix == item.admissionPrefix &&

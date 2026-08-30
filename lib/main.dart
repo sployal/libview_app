@@ -164,11 +164,11 @@ class AuthGate extends StatelessWidget {
                     return const StartupHold();
                   }
 
-                  final registration =
-                      (profileData?['registration_number'] as String?) ?? '';
+                  final admission =
+                      (profileData?['admission_number'] as String?) ?? '';
                   final suspendedCourse = CourseService.instance
-                      .suspendedCourseForRegistration(
-                    registration,
+                      .suspendedCourseForAdmission(
+                    admission,
                     coursesSnapshot.data ?? const [],
                   );
                   if (suspendedCourse != null) {

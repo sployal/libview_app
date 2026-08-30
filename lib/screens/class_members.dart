@@ -21,7 +21,7 @@ class _ClassMembersScreenState extends State<ClassMembersScreen> {
   String _roleFilter = 'all';
   String? _currentUserId;
   String? _currentRole;
-  String? _registrationNumber;
+  String? _admissionNumber;
   String? _classLabel;
 
   static const _memberRoles = {
@@ -58,11 +58,11 @@ class _ClassMembersScreenState extends State<ClassMembersScreen> {
       final myDoc = await _firestore.collection('profiles').doc(user.uid).get();
       final myData = myDoc.data() ?? {};
       _currentRole = (myData['role'] as String?) ?? 'student';
-      _registrationNumber =
-          (myData['registration_number'] as String?) ?? '';
+      _admissionNumber =
+          (myData['admission_number'] as String?) ?? '';
 
-      final prefix = Course.admissionPrefixFromSample(_registrationNumber ?? '');
-      final suffix = Course.classSuffixFromSample(_registrationNumber ?? '');
+      final prefix = Course.admissionPrefixFromSample(_admissionNumber ?? '');
+      final suffix = Course.classSuffixFromSample(_admissionNumber ?? '');
       _classLabel = prefix.isNotEmpty && suffix.isNotEmpty
           ? '$prefix / $suffix'
           : null;
@@ -85,15 +85,15 @@ class _ClassMembersScreenState extends State<ClassMembersScreen> {
         data['full_name'] = data['full_name'] ?? 'Unknown user';
         data['username'] = data['username'] ?? '';
         data['email'] = data['email'] ?? '';
-        data['registration_number'] = data['registration_number'] ?? '';
+        data['admission_number'] = data['admission_number'] ?? '';
         data['avatar_url'] = data['avatar_url'] ?? '';
         return data;
       }).where((profile) {
         final role = profile['role'].toString().toLowerCase();
         if (!_memberRoles.contains(role)) return false;
         return Course.isSameClass(
-          _registrationNumber ?? '',
-          profile['registration_number'].toString(),
+          _admissionNumber ?? '',
+          profile['admission_number'].toString(),
         );
       }).toList()
         ..sort((a, b) {
@@ -143,7 +143,7 @@ class _ClassMembersScreenState extends State<ClassMembersScreen> {
       return member['full_name'].toString().toLowerCase().contains(q) ||
           member['username'].toString().toLowerCase().contains(q) ||
           member['email'].toString().toLowerCase().contains(q) ||
-          member['registration_number'].toString().toLowerCase().contains(q);
+          member['admission_number'].toString().toLowerCase().contains(q);
     }).toList();
   }
 
@@ -224,7 +224,7 @@ class _ClassMembersScreenState extends State<ClassMembersScreen> {
               ),
               const SizedBox(height: 4),
               Text(
-                member['registration_number'].toString(),
+                member['admission_number'].toString(),
                 style: const TextStyle(color: Color(0xFF6B7280)),
               ),
               const SizedBox(height: 8),
@@ -410,7 +410,7 @@ class _ClassMembersScreenState extends State<ClassMembersScreen> {
                     children: [
                       Text(
                         _classLabel == null
-                            ? 'Add a registration number like EB24/56171/21 to identify your class.'
+                            ? 'Add an admission number like EB24/56171/21 to identify your class.'
                             : 'Class $_classLabel · ${_members.length} member${_members.length == 1 ? '' : 's'}',
                         style: const TextStyle(
                           fontSize: 13,
@@ -469,7 +469,7 @@ class _ClassMembersScreenState extends State<ClassMembersScreen> {
                             padding: const EdgeInsets.all(32),
                             child: Text(
                               _classLabel == null
-                                  ? 'Your registration number needs a class year after the last /, for example /21.'
+                                  ? 'Your admission number needs a class year after the last /, for example /21.'
                                   : 'No class members found.',
                               textAlign: TextAlign.center,
                               style: TextStyle(
@@ -543,7 +543,7 @@ class _ClassMembersScreenState extends State<ClassMembersScreen> {
                                   children: [
                                     const SizedBox(height: 4),
                                     Text(
-                                      member['registration_number'].toString(),
+                                      member['admission_number'].toString(),
                                       style: const TextStyle(
                                         color: Colors.black87,
                                       ),

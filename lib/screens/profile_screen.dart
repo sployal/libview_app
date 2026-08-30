@@ -30,7 +30,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String? _fullName;
   String? _email;
   String? _username;
-  String? _registrationNumber;
+  String? _admissionNumber;
   String? _avatarUrl;
   String? _role;
   bool _isLoading = true;
@@ -115,7 +115,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _email = user.email;
           _fullName = profileData['full_name'] as String?;
           _username = profileData['username'] as String?;
-          _registrationNumber = profileData['registration_number'] as String?;
+          _admissionNumber = profileData['admission_number'] as String?;
           _role = profileData['role'] as String?;
           _avatarUrl = AuthService.displayAvatarUrl(
             avatarUrl: profileData['avatar_url'] as String?,
@@ -500,7 +500,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             color: secondaryText,
           ),
         ),
-        if (_registrationNumber != null || _role != null) ...[
+        if (_admissionNumber != null || _role != null) ...[
           const SizedBox(height: 12),
           Wrap(
             spacing: 8,
@@ -508,10 +508,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
             alignment:
                 tablet ? WrapAlignment.start : WrapAlignment.center,
             children: [
-              if (_registrationNumber != null)
+              if (_admissionNumber != null)
                 _pill(
                   icon: CupertinoIcons.tag_fill,
-                  label: _registrationNumber!,
+                  label: _admissionNumber!,
                   color: const Color(0xFF6366F1),
                   isDark: isDark,
                 ),
