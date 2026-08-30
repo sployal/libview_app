@@ -971,7 +971,7 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
               _buildTextField(
                 controller: _registrationNumberController,
                 label: 'Registration Number',
-                hint: 'e.g. EB24/46271/20',
+                hint: '',
                 icon: CupertinoIcons.number,
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
