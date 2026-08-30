@@ -19,7 +19,8 @@ class NoInternetScreen extends StatefulWidget {
     final currentName = ModalRoute.of(context)?.settings.name;
     if (currentName == routeName) return false;
 
-    final restored = await Navigator.of(context).push<bool>(
+    // Cover the bottom app bar: Home/Profile live in nested tab navigators.
+    final restored = await Navigator.of(context, rootNavigator: true).push<bool>(
       MaterialPageRoute(
         settings: const RouteSettings(name: routeName),
         fullscreenDialog: true,
