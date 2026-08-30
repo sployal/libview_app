@@ -255,7 +255,7 @@ async function driveGetMeta(fileId, fields, apiKey) {
   return res.data;
 }
 
-async function isValidSubjectFolder(folderId, { apiKey } = {}) {
+async function isValidSubjectFolder(folderId) {
   if (!folderId || typeof folderId !== 'string') return false;
 
   const cached = validationCache.get(folderId);
@@ -265,12 +265,16 @@ async function isValidSubjectFolder(folderId, { apiKey } = {}) {
 
   let valid = false;
   try {
-    const data = await driveGetMeta(folderId, 'id, mimeType, parents', apiKey);
-    const isFolder = data.mimeType === 'application/vnd.google-apps.folder';
-    const parents = data.parents || [];
+    const res = await drive.files.get({
+      fileId: folderId,
+      fields: 'id, mimeType, parents',
+      supportsAllDrives: true,
+    });
+    const isFolder = res.data.mimeType === 'application/vnd.google-apps.folder';
+    const parents = res.data.parents || [];
     valid = isFolder && parents.some((p) => isSemesterFolder(p));
   } catch (err) {
-    valid = false; // not found, not accessible, or transient error — fail closed
+    valid = false;
   }
 
   validationCache.set(folderId, { valid, at: Date.now() });
@@ -576,22 +580,26 @@ async function deleteItem(fileId) {
 // A file/folder may be deleted only if it lives under a known semester
 // folder: either it *is* a subject folder (parent is a semester ID), or
 // it sits inside a valid subject folder.
-async function isManagedFromParents(parents, { apiKey } = {}) {
+async function isManagedFromParents(parents) {
   if ((parents || []).some((p) => isSemesterFolder(p))) {
     return true;
   }
   for (const parent of parents || []) {
-    if (await isValidSubjectFolder(parent, { apiKey })) return true;
+    if (await isValidSubjectFolder(parent)) return true;
   }
   return false;
 }
 
-async function isManagedItem(fileId, { apiKey } = {}) {
+async function isManagedItem(fileId) {
   if (!fileId || typeof fileId !== 'string') return false;
 
   try {
-    const data = await driveGetMeta(fileId, 'id, parents', apiKey);
-    return isManagedFromParents(data.parents || [], { apiKey });
+    const res = await drive.files.get({
+      fileId,
+      fields: 'id, parents',
+      supportsAllDrives: true,
+    });
+    return isManagedFromParents(res.data.parents || []);
   } catch (err) {
     return false;
   }
@@ -1271,14 +1279,15 @@ app.get('/files/:fileId/download', requireAuth, async (req, res) => {
   const apiKey = driveDownloadKey();
 
   try {
-    const meta = await driveGetMeta(
-      fileId,
-      'id, name, mimeType, size, webContentLink, exportLinks, parents',
-      apiKey
-    );
-    if (!(await isManagedFromParents(meta.parents || [], { apiKey }))) {
+    if (!(await isManagedItem(fileId))) {
       return res.status(403).json({ error: 'Invalid or unauthorized file' });
     }
+
+    const meta = await driveGetMeta(
+      fileId,
+      'id, name, mimeType, size, webContentLink, exportLinks',
+      apiKey
+    );
 
     const sourceMime = meta.mimeType || 'application/octet-stream';
     const sourceName = meta.name || 'download';
@@ -1413,7 +1422,7 @@ app.get('/folders/:folderId', requireAuth, async (req, res) => {
 
   const apiKey = driveReadKey();
   const allowed =
-    isSemesterFolder(folderId) || (await isValidSubjectFolder(folderId, { apiKey }));
+    isSemesterFolder(folderId) || (await isValidSubjectFolder(folderId));
   if (!allowed) {
     return res.status(403).json({ error: 'Invalid or unauthorized folder' });
   }
