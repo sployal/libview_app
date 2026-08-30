@@ -56,6 +56,11 @@ const CONFIG = {
   MAX_UPLOAD_BYTES: parseInt(process.env.MAX_UPLOAD_BYTES || `${20 * 1024 * 1024}`, 10),
   EDUPAL_FOLDER_ID,
   ADMIN_UIDS,
+
+  // Public Drive API keys — used only for listing/reading and downloads,
+  // same split as the Flutter app. Writes stay on OAuth.
+  GOOGLE_DRIVE_API_KEY: process.env.GOOGLE_DRIVE_API_KEY || '',
+  GOOGLE_DRIVE_DOWNLOAD_API_KEY: process.env.GOOGLE_DRIVE_DOWNLOAD_API_KEY || '',
 };
 
 // =========================================================================
@@ -186,6 +191,7 @@ const oauth2Client = new google.auth.OAuth2(
 );
 
 const drive = google.drive({ version: 'v3', auth: oauth2Client });
+const publicDrive = google.drive({ version: 'v3' });
 
 // Tracks whether we've successfully loaded/set a refresh token onto
 // oauth2Client, so routes can fail fast with a clear message instead of
@@ -194,6 +200,28 @@ let driveReady = false;
 
 function driveIsConfigured() {
   return driveReady;
+}
+
+function driveReadIsConfigured() {
+  return Boolean(CONFIG.GOOGLE_DRIVE_API_KEY);
+}
+
+function driveDownloadIsConfigured() {
+  return Boolean(CONFIG.GOOGLE_DRIVE_DOWNLOAD_API_KEY);
+}
+
+function driveReadKey() {
+  if (!CONFIG.GOOGLE_DRIVE_API_KEY) {
+    throw new Error('GOOGLE_DRIVE_API_KEY is missing from .env');
+  }
+  return CONFIG.GOOGLE_DRIVE_API_KEY;
+}
+
+function driveDownloadKey() {
+  if (!CONFIG.GOOGLE_DRIVE_DOWNLOAD_API_KEY) {
+    throw new Error('GOOGLE_DRIVE_DOWNLOAD_API_KEY is missing from .env');
+  }
+  return CONFIG.GOOGLE_DRIVE_DOWNLOAD_API_KEY;
 }
 
 // Called once at startup, and again right after the one-time OAuth
@@ -216,7 +244,18 @@ const CACHE_TTL_MS = 10 * 60 * 1000;
 // Confirms `folderId` is a real folder whose parent is one of our
 // known semester folders (i.e. it's a legitimate subject folder,
 // not an arbitrary ID the client made up).
-async function isValidSubjectFolder(folderId) {
+async function driveGetMeta(fileId, fields, apiKey) {
+  const client = apiKey ? publicDrive : drive;
+  const res = await client.files.get({
+    fileId,
+    fields,
+    supportsAllDrives: true,
+    ...(apiKey ? { key: apiKey } : {}),
+  });
+  return res.data;
+}
+
+async function isValidSubjectFolder(folderId, { apiKey } = {}) {
   if (!folderId || typeof folderId !== 'string') return false;
 
   const cached = validationCache.get(folderId);
@@ -226,13 +265,9 @@ async function isValidSubjectFolder(folderId) {
 
   let valid = false;
   try {
-    const res = await drive.files.get({
-      fileId: folderId,
-      fields: 'id, mimeType, parents',
-      supportsAllDrives: true,
-    });
-    const isFolder = res.data.mimeType === 'application/vnd.google-apps.folder';
-    const parents = res.data.parents || [];
+    const data = await driveGetMeta(folderId, 'id, mimeType, parents', apiKey);
+    const isFolder = data.mimeType === 'application/vnd.google-apps.folder';
+    const parents = data.parents || [];
     valid = isFolder && parents.some((p) => isSemesterFolder(p));
   } catch (err) {
     valid = false; // not found, not accessible, or transient error — fail closed
@@ -335,17 +370,19 @@ const FOLDER_MIME = 'application/vnd.google-apps.folder';
 const STORAGE_CACHE_TTL_MS = 5 * 60 * 1000;
 let storageCache = { at: 0, data: null };
 
-async function listDirectChildren(parentId) {
+async function listDirectChildren(parentId, { apiKey } = {}) {
+  const client = apiKey ? publicDrive : drive;
   const files = [];
   let pageToken;
   do {
-    const res = await drive.files.list({
+    const res = await client.files.list({
       q: `'${parentId}' in parents and trashed = false`,
       fields: 'nextPageToken, files(id, name, mimeType, size, modifiedTime, webViewLink, thumbnailLink)',
       pageSize: 1000,
       pageToken,
       supportsAllDrives: true,
       includeItemsFromAllDrives: true,
+      ...(apiKey ? { key: apiKey } : {}),
     });
     files.push(...(res.data.files || []));
     pageToken = res.data.nextPageToken;
@@ -539,23 +576,22 @@ async function deleteItem(fileId) {
 // A file/folder may be deleted only if it lives under a known semester
 // folder: either it *is* a subject folder (parent is a semester ID), or
 // it sits inside a valid subject folder.
-async function isManagedItem(fileId) {
+async function isManagedFromParents(parents, { apiKey } = {}) {
+  if ((parents || []).some((p) => isSemesterFolder(p))) {
+    return true;
+  }
+  for (const parent of parents || []) {
+    if (await isValidSubjectFolder(parent, { apiKey })) return true;
+  }
+  return false;
+}
+
+async function isManagedItem(fileId, { apiKey } = {}) {
   if (!fileId || typeof fileId !== 'string') return false;
 
   try {
-    const res = await drive.files.get({
-      fileId,
-      fields: 'id, parents',
-      supportsAllDrives: true,
-    });
-    const parents = res.data.parents || [];
-    if (parents.some((p) => isSemesterFolder(p))) {
-      return true;
-    }
-    for (const parent of parents) {
-      if (await isValidSubjectFolder(parent)) return true;
-    }
-    return false;
+    const data = await driveGetMeta(fileId, 'id, parents', apiKey);
+    return isManagedFromParents(data.parents || [], { apiKey });
   } catch (err) {
     return false;
   }
@@ -676,7 +712,14 @@ const upload = multer({
 
 // --- Health check -----------------------------------------------------
 
-app.get('/health', (req, res) => res.json({ ok: true, driveConfigured: driveIsConfigured() }));
+app.get('/health', (req, res) =>
+  res.json({
+    ok: true,
+    driveConfigured: driveIsConfigured(),
+    driveReadKeyConfigured: driveReadIsConfigured(),
+    driveDownloadKeyConfigured: driveDownloadIsConfigured(),
+  })
+);
 
 // Public Firebase *web* client config from web-service.json (same idea as
 // google-services.json). Flutter never calls this. Additive only.
@@ -1115,8 +1158,8 @@ app.delete('/course-folder/:folderId', requireAuth, requireSystemAdmin, async (r
 // Drive thumbnailLink URLs expire and often 403 in the browser. Proxy them
 // through the backend so folder cards can show real file previews.
 app.get('/files/:fileId/thumbnail', requireAuth, async (req, res) => {
-  if (!driveIsConfigured()) {
-    return res.status(503).json({ error: 'Drive is not configured yet. Complete the OAuth setup first.' });
+  if (!driveReadIsConfigured()) {
+    return res.status(503).json({ error: 'GOOGLE_DRIVE_API_KEY is not configured.' });
   }
 
   const { fileId } = req.params;
@@ -1125,22 +1168,14 @@ app.get('/files/:fileId/thumbnail', requireAuth, async (req, res) => {
   }
 
   try {
-    const meta = await drive.files.get({
-      fileId,
-      fields: 'thumbnailLink,hasThumbnail',
-      supportsAllDrives: true,
-    });
-    const thumbnailLink = meta.data.thumbnailLink;
+    const meta = await driveGetMeta(fileId, 'thumbnailLink,hasThumbnail', driveReadKey());
+    const thumbnailLink = meta.thumbnailLink;
     if (!thumbnailLink) {
       return res.status(404).json({ error: 'No thumbnail' });
     }
 
     const url = thumbnailLink.replace(/=s\d+/, '=s400');
-    const token = await oauth2Client.getAccessToken();
-    const accessToken = typeof token === 'string' ? token : token?.token;
-    const thumbRes = await fetch(url, {
-      headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
-    });
+    const thumbRes = await fetch(url);
     if (!thumbRes.ok) {
       return res.status(thumbRes.status).json({ error: 'Thumbnail fetch failed' });
     }
@@ -1157,10 +1192,9 @@ app.get('/files/:fileId/thumbnail', requireAuth, async (req, res) => {
 
 // =========================================================================
 // Web app — file download
-// Signed-in students download unit files (PDF, Office, images, and the rest)
-// through this proxy instead of Google's public uc?export=download link,
-// which 403s for private Drive files. Native Google Docs/Sheets/Slides are
-// exported to Office/PDF first, then the bytes are streamed to the client.
+// Signed-in students download unit files through this proxy using
+// GOOGLE_DRIVE_DOWNLOAD_API_KEY (same key as the Flutter DownloadService).
+// Native Google Docs/Sheets/Slides are exported first, then streamed.
 // The Next.js Downloads page saves that blob locally (IndexedDB) and also
 // triggers a browser save.
 // =========================================================================
@@ -1197,57 +1231,96 @@ function contentDispositionAttachment(fileName) {
   return `attachment; filename="${safe}"; filename*=UTF-8''${encodeURIComponent(safe)}`;
 }
 
+function driveMediaUrl(fileId, apiKey) {
+  const params = new URLSearchParams({
+    alt: 'media',
+    supportsAllDrives: 'true',
+    key: apiKey,
+  });
+  return `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?${params}`;
+}
+
+function driveExportUrl(fileId, mimeType, apiKey) {
+  const params = new URLSearchParams({
+    mimeType,
+    key: apiKey,
+  });
+  return `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}/export?${params}`;
+}
+
+function downloadUrlFromMeta(meta, apiKey, exportMime) {
+  const mime = meta.mimeType || '';
+  if (mime.includes('google-apps')) {
+    const links = meta.exportLinks || {};
+    return links[exportMime] || driveExportUrl(meta.id, exportMime, apiKey);
+  }
+  if (meta.webContentLink) return meta.webContentLink;
+  return driveMediaUrl(meta.id, apiKey);
+}
+
 app.get('/files/:fileId/download', requireAuth, async (req, res) => {
-  if (!driveIsConfigured()) {
-    return res.status(503).json({ error: 'Drive is not configured yet. Complete the OAuth setup first.' });
+  if (!driveDownloadIsConfigured()) {
+    return res.status(503).json({ error: 'GOOGLE_DRIVE_DOWNLOAD_API_KEY is not configured.' });
   }
 
   const { fileId } = req.params;
   if (!fileId) {
     return res.status(400).json({ error: 'A file ID is required' });
   }
-  if (!(await isManagedItem(fileId))) {
-    return res.status(403).json({ error: 'Invalid or unauthorized file' });
-  }
+
+  const apiKey = driveDownloadKey();
 
   try {
-    const meta = await drive.files.get({
+    const meta = await driveGetMeta(
       fileId,
-      fields: 'id, name, mimeType, size',
-      supportsAllDrives: true,
-    });
-    const sourceMime = meta.data.mimeType || 'application/octet-stream';
-    const sourceName = meta.data.name || 'download';
+      'id, name, mimeType, size, webContentLink, exportLinks, parents',
+      apiKey
+    );
+    if (!(await isManagedFromParents(meta.parents || [], { apiKey }))) {
+      return res.status(403).json({ error: 'Invalid or unauthorized file' });
+    }
+
+    const sourceMime = meta.mimeType || 'application/octet-stream';
+    const sourceName = meta.name || 'download';
     const isGoogleApp = sourceMime.startsWith('application/vnd.google-apps.');
 
     let downloadMime = sourceMime;
     let downloadName = sourceName;
-    let stream;
-
     if (isGoogleApp) {
       const exported = googleExportFor(sourceMime, sourceName);
       downloadMime = exported.mime;
       downloadName = exported.name;
-      const result = await drive.files.export(
-        { fileId, mimeType: downloadMime },
-        { responseType: 'stream' },
-      );
-      stream = result.data;
-    } else {
-      const result = await drive.files.get(
-        { fileId, alt: 'media', supportsAllDrives: true },
-        { responseType: 'stream' },
-      );
-      stream = result.data;
+    }
+
+    const downloadUrl = downloadUrlFromMeta(meta, apiKey, downloadMime);
+    if (!downloadUrl) {
+      return res.status(400).json({ error: 'This file type cannot be downloaded' });
+    }
+
+    let fileRes = await fetch(downloadUrl, { redirect: 'follow' });
+    const mediaUrl = driveMediaUrl(fileId, apiKey);
+    if (!fileRes.ok && !isGoogleApp && downloadUrl !== mediaUrl) {
+      fileRes = await fetch(mediaUrl, { redirect: 'follow' });
+    }
+    if (!fileRes.ok) {
+      console.error('Download upstream failed:', fileRes.status, await fileRes.text().catch(() => ''));
+      return res.status(fileRes.status === 404 ? 404 : 502).json({ error: 'Failed to download file' });
     }
 
     res.setHeader('Content-Type', downloadMime);
     res.setHeader('Content-Disposition', contentDispositionAttachment(downloadName));
-    if (meta.data.size && !isGoogleApp) {
-      res.setHeader('Content-Length', String(meta.data.size));
+    const length = fileRes.headers.get('content-length') || (!isGoogleApp && meta.size ? String(meta.size) : '');
+    if (length) {
+      res.setHeader('Content-Length', length);
     }
     res.setHeader('Cache-Control', 'private, no-store');
 
+    if (!fileRes.body) {
+      res.send(Buffer.from(await fileRes.arrayBuffer()));
+      return;
+    }
+
+    const stream = Readable.fromWeb(fileRes.body);
     stream.on('error', (error) => {
       console.error('Download stream failed:', error);
       if (!res.headersSent) {
@@ -1323,15 +1396,14 @@ app.delete('/files/:fileId', requireAuth, requireAdmin, async (req, res) => {
 
 // =========================================================================
 // Web app (Next.js) — Drive listing
-// Flutter lists Drive with a client API key. The web semester/unit screens
-// call this authenticated route instead. Keep new web-only Drive endpoints
-// in this section so they stay distinct from the Flutter upload/folder APIs
-// above.
+// Flutter lists Drive with GOOGLE_DRIVE_API_KEY. The web semester/unit
+// screens call this authenticated route, which uses the same key. Writes
+// (upload, create, rename, delete) stay on OAuth above.
 // =========================================================================
 
 app.get('/folders/:folderId', requireAuth, async (req, res) => {
-  if (!driveIsConfigured()) {
-    return res.status(503).json({ error: 'Drive is not configured yet. Complete the OAuth setup first.' });
+  if (!driveReadIsConfigured()) {
+    return res.status(503).json({ error: 'GOOGLE_DRIVE_API_KEY is not configured.' });
   }
 
   const { folderId } = req.params;
@@ -1339,14 +1411,15 @@ app.get('/folders/:folderId', requireAuth, async (req, res) => {
     return res.status(400).json({ error: 'A folder ID is required' });
   }
 
+  const apiKey = driveReadKey();
   const allowed =
-    isSemesterFolder(folderId) || (await isValidSubjectFolder(folderId));
+    isSemesterFolder(folderId) || (await isValidSubjectFolder(folderId, { apiKey }));
   if (!allowed) {
     return res.status(403).json({ error: 'Invalid or unauthorized folder' });
   }
 
   try {
-    const children = await listDirectChildren(folderId);
+    const children = await listDirectChildren(folderId, { apiKey });
     const folders = [];
     const files = [];
     for (const item of children) {
@@ -1357,7 +1430,7 @@ app.get('/folders/:folderId', requireAuth, async (req, res) => {
     if (String(req.query.counts || '') === '1') {
       await Promise.all(
         folders.map(async (folder) => {
-          const inner = await listDirectChildren(folder.id);
+          const inner = await listDirectChildren(folder.id, { apiKey });
           folder.fileCount = inner.filter((file) => file.mimeType !== FOLDER_MIME).length;
         })
       );
@@ -1399,6 +1472,12 @@ initDriveAuth().then(async () => {
       );
     } else {
       console.log('Drive OAuth refresh token loaded from Firestore.');
+    }
+    if (!driveReadIsConfigured()) {
+      console.warn('GOOGLE_DRIVE_API_KEY is missing — folder listing and thumbnails will fail.');
+    }
+    if (!driveDownloadIsConfigured()) {
+      console.warn('GOOGLE_DRIVE_DOWNLOAD_API_KEY is missing — file downloads will fail.');
     }
   });
 });
