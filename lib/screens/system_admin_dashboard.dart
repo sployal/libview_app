@@ -51,6 +51,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
   bool _isLoadingCourses = true;
   bool _isLoadingStorage = true;
   bool _isStatsExpanded = true;
+  bool _isStorageExpanded = false;
   DriveStorageSnapshot? _storage;
   String? _storageError;
   String _userSearchQuery = '';
@@ -1969,17 +1970,41 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
   }
 
   Widget _buildStorageSection() {
+    return _groupedCard([
+      _settingsRow(
+        icon: CupertinoIcons.chart_pie_fill,
+        iconColor: const Color(0xFF6366F1),
+        title: 'Storage',
+        showChevron: false,
+        trailing: Icon(
+          _isStorageExpanded
+              ? CupertinoIcons.chevron_up
+              : CupertinoIcons.chevron_down,
+          size: 16,
+          color: _muted,
+        ),
+        onTap: () {
+          setState(() => _isStorageExpanded = !_isStorageExpanded);
+        },
+      ),
+      if (_isStorageExpanded) ..._storageExpandedChildren(),
+    ]);
+  }
+
+  List<Widget> _storageExpandedChildren() {
     if (_isLoadingStorage && _storage == null) {
-      return _groupedCard([
+      return [
+        _hairline(),
         const Padding(
           padding: EdgeInsets.symmetric(vertical: 22),
           child: Center(child: CupertinoActivityIndicator()),
         ),
-      ]);
+      ];
     }
 
     if (_storageError != null && _storage == null) {
-      return _groupedCard([
+      return [
+        _hairline(),
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
           child: Text(
@@ -1994,12 +2019,13 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
           showChevron: true,
           onTap: () => _loadStorage(refresh: true),
         ),
-      ]);
+      ];
     }
 
     final storage = _storage;
     if (storage == null) {
-      return _groupedCard([
+      return [
+        _hairline(),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Text(
@@ -2007,7 +2033,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
             style: TextStyle(color: _muted, fontSize: 15),
           ),
         ),
-      ]);
+      ];
     }
 
     final limit = storage.limitBytes;
@@ -2055,9 +2081,10 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
         ? 'Root folder not configured'
         : '${storage.rootName}: ${_formatBytes(storage.rootBytes)}';
 
-    return _groupedCard([
+    return [
+      _hairline(),
       _settingsRow(
-        icon: CupertinoIcons.chart_pie_fill,
+        icon: CupertinoIcons.folder_fill,
         iconColor: const Color(0xFF6366F1),
         title: storage.accountEmail.isEmpty
             ? 'Google Drive'
@@ -2114,7 +2141,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
         total: barTotal,
         showDivider: false,
       ),
-    ]);
+    ];
   }
 
   Widget _buildTokenRefreshSection() {
@@ -2176,7 +2203,6 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
           _sectionLabel('Courses'),
           _buildAvailableCourses(),
           const SizedBox(height: 18),
-          _sectionLabel('Storage'),
           _buildStorageSection(),
           const SizedBox(height: 18),
           _sectionLabel('Overview'),
