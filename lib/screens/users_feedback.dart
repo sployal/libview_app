@@ -1,7 +1,9 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 import '../services/support_service.dart';
+import '../ui/adaptive_layout.dart';
 import 'system_admin_dashboard.dart';
 
 class UsersFeedbackScreen extends StatefulWidget {
@@ -12,6 +14,9 @@ class UsersFeedbackScreen extends StatefulWidget {
 }
 
 class _UsersFeedbackScreenState extends State<UsersFeedbackScreen> {
+  static const _danger = Color(0xFFEF4444);
+  static const _success = Color(0xFF10B981);
+
   bool _hasAccess = false;
   bool _checkingAccess = true;
 
@@ -29,7 +34,7 @@ class _UsersFeedbackScreenState extends State<UsersFeedbackScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('You do not have access to user feedback.'),
-            backgroundColor: Color(0xFFEF4444),
+            backgroundColor: _danger,
           ),
         );
         Navigator.pop(context);
@@ -50,34 +55,53 @@ class _UsersFeedbackScreenState extends State<UsersFeedbackScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Could not mark as read: $e'),
-          backgroundColor: const Color(0xFFEF4444),
+          backgroundColor: _danger,
         ),
       );
     }
   }
 
   Future<void> _deleteMessage(SupportMessage message) async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final card = isDark ? const Color(0xFF1F2937) : Colors.white;
+    final titleColor =
+        isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
+    final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
+
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text(
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: card,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: Text(
           'Delete message?',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.4,
+            color: titleColor,
+          ),
         ),
-        content: const Text('This will remove the message permanently.'),
+        content: Text(
+          'This will remove the message permanently.',
+          style: TextStyle(fontSize: 15, color: muted, height: 1.35),
+        ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFEF4444),
-              foregroundColor: Colors.white,
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: Color(0xFF8E8E93)),
             ),
-            child: const Text('Delete'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text(
+              'Delete',
+              style: TextStyle(
+                color: _danger,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),
@@ -91,7 +115,7 @@ class _UsersFeedbackScreenState extends State<UsersFeedbackScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Message deleted'),
-          backgroundColor: Color(0xFF10B981),
+          backgroundColor: _success,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -100,7 +124,7 @@ class _UsersFeedbackScreenState extends State<UsersFeedbackScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Could not delete message: $e'),
-          backgroundColor: const Color(0xFFEF4444),
+          backgroundColor: _danger,
         ),
       );
     }
@@ -133,75 +157,110 @@ class _UsersFeedbackScreenState extends State<UsersFeedbackScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final background =
+        isDark ? const Color(0xFF111827) : const Color(0xFFF8FAFC);
+    final card = isDark ? const Color(0xFF1F2937) : Colors.white;
+    final primaryText =
+        isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
+    final secondaryText =
+        isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
+    final divider = isDark ? const Color(0xFF374151) : const Color(0xFFE5E7EB);
+    final pagePad = AdaptiveLayout.pagePadding(context);
+    final tablet = AdaptiveLayout.isTablet(context);
+
+    Widget body;
+    if (_checkingAccess || !_hasAccess) {
+      body = Center(
+        child: CupertinoActivityIndicator(
+          color: isDark ? const Color(0xFFF9FAFB) : const Color(0xFF6B7280),
+        ),
+      );
+    } else {
+      body = StreamBuilder<List<SupportMessage>>(
+        stream: SupportService.instance.watchMessages(),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  'Could not load messages: ${snapshot.error}',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: secondaryText),
+                ),
+              ),
+            );
+          }
+
+          if (!snapshot.hasData) {
+            return Center(
+              child: CupertinoActivityIndicator(
+                color: isDark
+                    ? const Color(0xFFF9FAFB)
+                    : const Color(0xFF6B7280),
+              ),
+            );
+          }
+
+          final messages = snapshot.data!;
+          if (messages.isEmpty) {
+            return Center(
+              child: Text(
+                'No feedback yet',
+                style: TextStyle(fontSize: 16, color: secondaryText),
+              ),
+            );
+          }
+
+          return ListView.separated(
+            padding: pagePad.copyWith(
+              top: 8,
+              bottom: 24 + MediaQuery.viewPaddingOf(context).bottom,
+            ),
+            itemCount: messages.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 12),
+            itemBuilder: (context, index) {
+              final message = messages[index];
+              return _FeedbackCard(
+                message: message,
+                card: card,
+                primaryText: primaryText,
+                secondaryText: secondaryText,
+                divider: divider,
+                isDark: isDark,
+                onMarkRead: () => _markAsRead(message),
+                onDelete: () => _deleteMessage(message),
+                onOpenScreenshot: message.screenshotUrl == null
+                    ? null
+                    : () => _openScreenshot(message.screenshotUrl!),
+              );
+            },
+          );
+        },
+      );
+    }
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: background,
       appBar: AppBar(
-        title: const Text(
+        backgroundColor: background,
+        foregroundColor: primaryText,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        leading: IconButton(
+          icon: Icon(CupertinoIcons.back, color: primaryText),
+          onPressed: () => Navigator.maybePop(context),
+        ),
+        title: Text(
           'User Feedback',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: tablet ? 22 : 20,
+          ),
         ),
       ),
-      body: _checkingAccess || !_hasAccess
-          ? const Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
-              ),
-            )
-          : StreamBuilder<List<SupportMessage>>(
-              stream: SupportService.instance.watchMessages(),
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Text(
-                        'Could not load messages: ${snapshot.error}',
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  );
-                }
-
-                if (!snapshot.hasData) {
-                  return const Center(
-                    child: CircularProgressIndicator(
-                      valueColor:
-                          AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
-                    ),
-                  );
-                }
-
-                final messages = snapshot.data!;
-                if (messages.isEmpty) {
-                  return const Center(
-                    child: Text(
-                      'No feedback yet',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Color(0xFF6B7280),
-                      ),
-                    ),
-                  );
-                }
-
-                return ListView.separated(
-                  padding: const EdgeInsets.all(20),
-                  itemCount: messages.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 12),
-                  itemBuilder: (context, index) {
-                    final message = messages[index];
-                    return _FeedbackCard(
-                      message: message,
-                      onMarkRead: () => _markAsRead(message),
-                      onDelete: () => _deleteMessage(message),
-                      onOpenScreenshot: message.screenshotUrl == null
-                          ? null
-                          : () => _openScreenshot(message.screenshotUrl!),
-                    );
-                  },
-                );
-              },
-            ),
+      body: body,
     );
   }
 }
@@ -209,12 +268,22 @@ class _UsersFeedbackScreenState extends State<UsersFeedbackScreen> {
 class _FeedbackCard extends StatelessWidget {
   const _FeedbackCard({
     required this.message,
+    required this.card,
+    required this.primaryText,
+    required this.secondaryText,
+    required this.divider,
+    required this.isDark,
     required this.onMarkRead,
     required this.onDelete,
     this.onOpenScreenshot,
   });
 
   final SupportMessage message;
+  final Color card;
+  final Color primaryText;
+  final Color secondaryText;
+  final Color divider;
+  final bool isDark;
   final VoidCallback onMarkRead;
   final VoidCallback onDelete;
   final VoidCallback? onOpenScreenshot;
@@ -225,20 +294,13 @@ class _FeedbackCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: card,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: message.isRead
-              ? Colors.transparent
-              : const Color(0xFF6366F1).withOpacity(0.35),
+              ? divider
+              : const Color(0xFF6366F1).withOpacity(isDark ? 0.45 : 0.35),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -248,10 +310,10 @@ class _FeedbackCard extends StatelessWidget {
               Expanded(
                 child: Text(
                   message.heading,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF1F2937),
+                    color: primaryText,
                   ),
                 ),
               ),
@@ -259,8 +321,8 @@ class _FeedbackCard extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: message.isRead
-                      ? const Color(0xFF10B981).withOpacity(0.12)
-                      : const Color(0xFFF59E0B).withOpacity(0.12),
+                      ? const Color(0xFF10B981).withOpacity(isDark ? 0.18 : 0.12)
+                      : const Color(0xFFF59E0B).withOpacity(isDark ? 0.18 : 0.12),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -279,28 +341,28 @@ class _FeedbackCard extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             '${message.userName} · ${message.userEmail}',
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 12,
-              color: Color(0xFF6B7280),
+              color: secondaryText,
             ),
           ),
           if (created != null) ...[
             const SizedBox(height: 2),
             Text(
               timeago.format(created),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
-                color: Color(0xFF9CA3AF),
+                color: secondaryText.withOpacity(0.85),
               ),
             ),
           ],
           const SizedBox(height: 12),
           Text(
             message.description,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 14,
               height: 1.45,
-              color: Color(0xFF374151),
+              color: primaryText.withOpacity(0.88),
             ),
           ),
           if (message.screenshotUrl != null &&
@@ -325,16 +387,33 @@ class _FeedbackCard extends StatelessWidget {
               if (!message.isRead)
                 TextButton.icon(
                   onPressed: onMarkRead,
-                  icon: const Icon(Icons.mark_email_read_outlined, size: 18),
-                  label: const Text('Mark as read'),
+                  icon: const Icon(
+                    CupertinoIcons.envelope_open,
+                    size: 18,
+                    color: Color(0xFF6366F1),
+                  ),
+                  label: const Text(
+                    'Mark as read',
+                    style: TextStyle(
+                      color: Color(0xFF6366F1),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               const Spacer(),
               TextButton.icon(
                 onPressed: onDelete,
-                icon: const Icon(Icons.delete_outline, size: 18, color: Color(0xFFEF4444)),
+                icon: const Icon(
+                  CupertinoIcons.trash,
+                  size: 18,
+                  color: Color(0xFFEF4444),
+                ),
                 label: const Text(
                   'Delete',
-                  style: TextStyle(color: Color(0xFFEF4444)),
+                  style: TextStyle(
+                    color: Color(0xFFEF4444),
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],

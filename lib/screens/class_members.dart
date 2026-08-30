@@ -1,8 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 import '../services/auth_service.dart';
 import '../services/course_service.dart';
+import '../ui/adaptive_layout.dart';
 
 class ClassMembersScreen extends StatefulWidget {
   const ClassMembersScreen({super.key});
@@ -12,6 +14,10 @@ class ClassMembersScreen extends StatefulWidget {
 }
 
 class _ClassMembersScreenState extends State<ClassMembersScreen> {
+  static const _accent = Color(0xFF6366F1);
+  static const _danger = Color(0xFFEF4444);
+  static const _success = Color(0xFF10B981);
+
   final _firestore = FirebaseFirestore.instance;
 
   List<Map<String, dynamic>> _members = [];
@@ -58,8 +64,7 @@ class _ClassMembersScreenState extends State<ClassMembersScreen> {
       final myDoc = await _firestore.collection('profiles').doc(user.uid).get();
       final myData = myDoc.data() ?? {};
       _currentRole = (myData['role'] as String?) ?? 'student';
-      _admissionNumber =
-          (myData['admission_number'] as String?) ?? '';
+      _admissionNumber = (myData['admission_number'] as String?) ?? '';
 
       final prefix = Course.admissionPrefixFromSample(_admissionNumber ?? '');
       final suffix = Course.classSuffixFromSample(_admissionNumber ?? '');
@@ -127,7 +132,7 @@ class _ClassMembersScreenState extends State<ClassMembersScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error loading class members: $e'),
-          backgroundColor: const Color(0xFFEF4444),
+          backgroundColor: _danger,
         ),
       );
     }
@@ -169,7 +174,7 @@ class _ClassMembersScreenState extends State<ClassMembersScreen> {
                 ? '${member['full_name']} is now Assistant Class Rep'
                 : '${member['full_name']} is now a student',
           ),
-          backgroundColor: const Color(0xFF10B981),
+          backgroundColor: _success,
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -179,7 +184,7 @@ class _ClassMembersScreenState extends State<ClassMembersScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Could not update role: $e'),
-          backgroundColor: const Color(0xFFEF4444),
+          backgroundColor: _danger,
         ),
       );
     }
@@ -191,9 +196,17 @@ class _ClassMembersScreenState extends State<ClassMembersScreen> {
     final canChange = _isClassRep &&
         !isSelf &&
         (role == 'student' || role == 'assistant_class_rep');
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final sheet = isDark ? const Color(0xFF1F2937) : Colors.white;
+    final primaryText =
+        isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
+    final secondaryText =
+        isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
+    final handle = isDark ? const Color(0xFF4B5563) : const Color(0xFFD1D5DB);
 
     showModalBottomSheet(
       context: context,
+      backgroundColor: sheet,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -209,7 +222,7 @@ class _ClassMembersScreenState extends State<ClassMembersScreen> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.grey[300],
+                    color: handle,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -217,15 +230,16 @@ class _ClassMembersScreenState extends State<ClassMembersScreen> {
               const SizedBox(height: 20),
               Text(
                 member['full_name'].toString(),
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
+                  color: primaryText,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
                 member['admission_number'].toString(),
-                style: const TextStyle(color: Color(0xFF6B7280)),
+                style: TextStyle(color: secondaryText),
               ),
               const SizedBox(height: 8),
               _roleChip(role),
@@ -237,16 +251,19 @@ class _ClassMembersScreenState extends State<ClassMembersScreen> {
                       : !_isClassRep
                           ? 'Only the class rep can change member roles.'
                           : 'This member’s role cannot be changed here.',
-                  style: const TextStyle(color: Color(0xFF6B7280)),
+                  style: TextStyle(color: secondaryText),
                 )
               else if (role == 'student')
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: const Icon(
-                    Icons.group_outlined,
+                    CupertinoIcons.person_2,
                     color: Color(0xFF06B6D4),
                   ),
-                  title: const Text('Make Assistant Class Rep'),
+                  title: Text(
+                    'Make Assistant Class Rep',
+                    style: TextStyle(color: primaryText),
+                  ),
                   onTap: () {
                     Navigator.pop(context);
                     _updateRole(member, 'assistant_class_rep');
@@ -256,10 +273,13 @@ class _ClassMembersScreenState extends State<ClassMembersScreen> {
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: const Icon(
-                    Icons.person_rounded,
+                    CupertinoIcons.person_fill,
                     color: Color(0xFF10B981),
                   ),
-                  title: const Text('Change back to Student'),
+                  title: Text(
+                    'Change back to Student',
+                    style: TextStyle(color: primaryText),
+                  ),
                   onTap: () {
                     Navigator.pop(context);
                     _updateRole(member, 'student');
@@ -286,16 +306,16 @@ class _ClassMembersScreenState extends State<ClassMembersScreen> {
   IconData _roleIcon(String role) {
     switch (role.toLowerCase()) {
       case 'class_rep':
-        return Icons.people_rounded;
+        return CupertinoIcons.person_2_fill;
       case 'assistant_class_rep':
-        return Icons.group_outlined;
+        return CupertinoIcons.person_2;
       default:
-        return Icons.person_rounded;
+        return CupertinoIcons.person_fill;
     }
   }
 
   Widget _roleChip(String role) {
-    final color = _roleColors[role] ?? const Color(0xFF6366F1);
+    final color = _roleColors[role] ?? _accent;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
@@ -335,7 +355,7 @@ class _ClassMembersScreenState extends State<ClassMembersScreen> {
       return CircleAvatar(backgroundImage: NetworkImage(url));
     }
     return CircleAvatar(
-      backgroundColor: const Color(0xFF6366F1),
+      backgroundColor: _accent,
       child: Text(
         _initials(name),
         style: const TextStyle(
@@ -346,11 +366,18 @@ class _ClassMembersScreenState extends State<ClassMembersScreen> {
     );
   }
 
-  Widget _filterChip(String label, String value) {
+  Widget _filterChip({
+    required String label,
+    required String value,
+    required Color card,
+    required Color secondaryText,
+    required Color divider,
+  }) {
     final selected = _roleFilter == value;
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: FilterChip(
+        showCheckmark: false,
         label: Text(label),
         selected: selected,
         onSelected: (_) {
@@ -359,52 +386,79 @@ class _ClassMembersScreenState extends State<ClassMembersScreen> {
             _applyFilters();
           });
         },
-        backgroundColor: Colors.white,
-        selectedColor: const Color(0xFF6366F1).withValues(alpha: 0.2),
+        backgroundColor: card,
+        selectedColor: _accent.withValues(alpha: 0.18),
         labelStyle: TextStyle(
-          color: selected ? const Color(0xFF6366F1) : const Color(0xFF6B7280),
+          color: selected ? _accent : secondaryText,
           fontWeight: selected ? FontWeight.bold : FontWeight.normal,
         ),
-        side: BorderSide(
-          color: selected ? const Color(0xFF6366F1) : const Color(0xFFE5E7EB),
-        ),
+        side: BorderSide(color: selected ? _accent : divider),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final students =
-        _members.where((m) => m['role'] == 'student').length;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final background =
+        isDark ? const Color(0xFF111827) : const Color(0xFFF8FAFC);
+    final card = isDark ? const Color(0xFF1F2937) : Colors.white;
+    final primaryText =
+        isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
+    final secondaryText =
+        isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
+    final divider = isDark ? const Color(0xFF374151) : const Color(0xFFE5E7EB);
+    final pagePad = AdaptiveLayout.pagePadding(context);
+    final tablet = AdaptiveLayout.isTablet(context);
+
+    final students = _members.where((m) => m['role'] == 'student').length;
     final assistants =
         _members.where((m) => m['role'] == 'assistant_class_rep').length;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: background,
       appBar: AppBar(
-        title: const Text(
+        backgroundColor: background,
+        foregroundColor: primaryText,
+        elevation: 0,
+        surfaceTintColor: Colors.transparent,
+        leading: IconButton(
+          icon: Icon(CupertinoIcons.back, color: primaryText),
+          onPressed: () => Navigator.maybePop(context),
+        ),
+        title: Text(
           'Class Members',
-          style: TextStyle(fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: tablet ? 22 : 20,
+          ),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh_rounded),
+            icon: Icon(CupertinoIcons.refresh, color: primaryText),
             onPressed: _loadMembers,
           ),
         ],
       ),
       body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
+          ? Center(
+              child: CupertinoActivityIndicator(
+                color: isDark
+                    ? const Color(0xFFF9FAFB)
+                    : const Color(0xFF6B7280),
               ),
             )
           : Column(
               children: [
                 Container(
                   width: double.infinity,
-                  color: Colors.white,
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  color: card,
+                  padding: EdgeInsets.fromLTRB(
+                    pagePad.left,
+                    16,
+                    pagePad.right,
+                    8,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -412,17 +466,17 @@ class _ClassMembersScreenState extends State<ClassMembersScreen> {
                         _classLabel == null
                             ? 'Add an admission number like EB24/56171/21 to identify your class.'
                             : 'Class $_classLabel · ${_members.length} member${_members.length == 1 ? '' : 's'}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 13,
-                          color: Color(0xFF6B7280),
+                          color: secondaryText,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         '$students student${students == 1 ? '' : 's'} · $assistants assistant${assistants == 1 ? '' : 's'}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
-                          color: Color(0xFF9CA3AF),
+                          color: secondaryText.withOpacity(0.85),
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -433,14 +487,29 @@ class _ClassMembersScreenState extends State<ClassMembersScreen> {
                             _applyFilters();
                           });
                         },
+                        style: TextStyle(color: primaryText),
+                        cursorColor: _accent,
                         decoration: InputDecoration(
                           hintText: 'Search members...',
-                          prefixIcon: const Icon(Icons.search_rounded),
+                          hintStyle: TextStyle(color: secondaryText),
+                          prefixIcon: Icon(
+                            CupertinoIcons.search,
+                            color: secondaryText,
+                          ),
                           filled: true,
-                          fillColor: const Color(0xFFF8FAFC),
+                          fillColor: background,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide.none,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: divider),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide:
+                                const BorderSide(color: _accent, width: 1.5),
                           ),
                         ),
                       ),
@@ -449,12 +518,33 @@ class _ClassMembersScreenState extends State<ClassMembersScreen> {
                         scrollDirection: Axis.horizontal,
                         child: Row(
                           children: [
-                            _filterChip('All', 'all'),
-                            _filterChip('Students', 'student'),
-                            _filterChip('Class Reps', 'class_rep'),
                             _filterChip(
-                              'Assistants',
-                              'assistant_class_rep',
+                              label: 'All',
+                              value: 'all',
+                              card: background,
+                              secondaryText: secondaryText,
+                              divider: divider,
+                            ),
+                            _filterChip(
+                              label: 'Students',
+                              value: 'student',
+                              card: background,
+                              secondaryText: secondaryText,
+                              divider: divider,
+                            ),
+                            _filterChip(
+                              label: 'Class Reps',
+                              value: 'class_rep',
+                              card: background,
+                              secondaryText: secondaryText,
+                              divider: divider,
+                            ),
+                            _filterChip(
+                              label: 'Assistants',
+                              value: 'assistant_class_rep',
+                              card: background,
+                              secondaryText: secondaryText,
+                              divider: divider,
                             ),
                           ],
                         ),
@@ -474,14 +564,19 @@ class _ClassMembersScreenState extends State<ClassMembersScreen> {
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 fontSize: 16,
-                                color: Colors.grey[600],
+                                color: secondaryText,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
                           ),
                         )
                       : ListView.builder(
-                          padding: const EdgeInsets.all(16),
+                          padding: EdgeInsets.fromLTRB(
+                            pagePad.left,
+                            16,
+                            pagePad.right,
+                            24 + MediaQuery.viewPaddingOf(context).bottom,
+                          ),
                           itemCount: _filteredMembers.length,
                           itemBuilder: (context, index) {
                             final member = _filteredMembers[index];
@@ -490,15 +585,9 @@ class _ClassMembersScreenState extends State<ClassMembersScreen> {
                             return Container(
                               margin: const EdgeInsets.only(bottom: 12),
                               decoration: BoxDecoration(
-                                color: Colors.white,
+                                color: card,
                                 borderRadius: BorderRadius.circular(16),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.05),
-                                    blurRadius: 10,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
+                                border: Border.all(color: divider),
                               ),
                               child: ListTile(
                                 contentPadding: const EdgeInsets.all(16),
@@ -508,9 +597,10 @@ class _ClassMembersScreenState extends State<ClassMembersScreen> {
                                     Expanded(
                                       child: Text(
                                         member['full_name'].toString(),
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           fontSize: 16,
+                                          color: primaryText,
                                         ),
                                       ),
                                     ),
@@ -522,8 +612,7 @@ class _ClassMembersScreenState extends State<ClassMembersScreen> {
                                           vertical: 2,
                                         ),
                                         decoration: BoxDecoration(
-                                          color: const Color(0xFF6366F1)
-                                              .withValues(alpha: 0.1),
+                                          color: _accent.withValues(alpha: 0.12),
                                           borderRadius:
                                               BorderRadius.circular(6),
                                         ),
@@ -532,7 +621,7 @@ class _ClassMembersScreenState extends State<ClassMembersScreen> {
                                           style: TextStyle(
                                             fontSize: 10,
                                             fontWeight: FontWeight.bold,
-                                            color: Color(0xFF6366F1),
+                                            color: _accent,
                                           ),
                                         ),
                                       ),
@@ -544,15 +633,16 @@ class _ClassMembersScreenState extends State<ClassMembersScreen> {
                                     const SizedBox(height: 4),
                                     Text(
                                       member['admission_number'].toString(),
-                                      style: const TextStyle(
-                                        color: Colors.black87,
-                                      ),
+                                      style: TextStyle(color: secondaryText),
                                     ),
                                     const SizedBox(height: 6),
                                     _roleChip(role),
                                   ],
                                 ),
-                                trailing: const Icon(Icons.chevron_right_rounded),
+                                trailing: Icon(
+                                  CupertinoIcons.chevron_right,
+                                  color: secondaryText,
+                                ),
                                 onTap: () => _showRoleActions(member),
                               ),
                             );
