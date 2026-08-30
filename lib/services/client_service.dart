@@ -387,28 +387,35 @@ class ClientService {
     await batch.commit();
   }
 
-  Future<void> deleteClient(ClientWorkspace client) async {
+  Future<int> deleteClient(ClientWorkspace client) async {
     if (client.driveFolderId.isNotEmpty) {
       await UploadService.instance.deleteClientWorkspace(client.driveFolderId);
     }
 
-    final members = {...client.memberUids};
-    if (client.ownerUid.isNotEmpty) members.add(client.ownerUid);
+    final memberIds = {...client.memberUids};
+    if (client.ownerUid.isNotEmpty) memberIds.add(client.ownerUid);
 
-    final batch = _firestore.batch();
-    for (final uid in members) {
-      batch.set(
-        _firestore.collection('profiles').doc(uid),
-        {
-          'role': 'student',
-          'client_id': FieldValue.delete(),
-          'updated_at': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
-      );
+    final linked = await _firestore
+        .collection('profiles')
+        .where('client_id', isEqualTo: client.id)
+        .get();
+    for (final doc in linked.docs) {
+      memberIds.add(doc.id);
     }
-    batch.delete(_clients.doc(client.id));
-    await batch.commit();
+
+    var deletedUsers = 0;
+    for (final uid in memberIds) {
+      if (uid.isEmpty) continue;
+      try {
+        await AuthService.instance.deleteAccount(uid);
+        deletedUsers++;
+      } catch (_) {
+        // Skip the signed-in admin, the protected owner account, or a failed delete.
+      }
+    }
+
+    await _clients.doc(client.id).delete();
+    return deletedUsers;
   }
 }
 

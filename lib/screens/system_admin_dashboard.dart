@@ -1255,7 +1255,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
             style: TextStyle(fontWeight: FontWeight.w700, color: _titleColor),
           ),
           content: Text(
-            'This removes "${client.name}" and permanently deletes its Drive folder under Edupal/clients. Attached users become students again.',
+            'This permanently deletes "${client.name}", its Drive folder under Edupal/clients, and attached users. They will need a new account to sign in again.',
             style: TextStyle(color: _muted, height: 1.35),
           ),
           actions: [
@@ -1280,14 +1280,18 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
     if (confirmed != true || !mounted) return;
 
     try {
-      await ClientService.instance.deleteClient(client);
+      final deletedUsers = await ClientService.instance.deleteClient(client);
       if (!mounted) return;
       await _loadClients();
       await _loadProfiles(silent: true);
       await _loadStorage(refresh: true);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Deleted ${client.name}'),
+          content: Text(
+            deletedUsers > 0
+                ? 'Deleted ${client.name} and $deletedUsers attached user${deletedUsers == 1 ? '' : 's'}'
+                : 'Deleted ${client.name}',
+          ),
           backgroundColor: const Color(0xFF10B981),
         ),
       );
