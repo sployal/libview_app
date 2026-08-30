@@ -608,6 +608,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                                 if (value == null || value.trim().isEmpty) {
                                   return 'Please enter your full name';
                                 }
+                                final trimmedValue = value.trim();
+                                if (!RegExp(r'^[a-zA-Z\s]+$')
+                                    .hasMatch(trimmedValue)) {
+                                  return 'Name should only contain letters and spaces';
+                                }
+                                final nameParts = trimmedValue
+                                    .split(' ')
+                                    .where((part) => part.isNotEmpty)
+                                    .toList();
+                                if (nameParts.length < 2) {
+                                  return 'Please enter both first and last name';
+                                }
                                 return null;
                               },
                             ),
