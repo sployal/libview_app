@@ -249,6 +249,23 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
 
   bool get _isLiveFolder => widget.folderId != null && widget.folderId!.isNotEmpty;
 
+  Future<String?> _clientQuotaError(int incomingBytes) async {
+    final clientId = widget.clientId;
+    final rootId = widget.folderId;
+    if (clientId == null || clientId.isEmpty || rootId == null || rootId.isEmpty) {
+      return null;
+    }
+    final client = await ClientService.instance.getClient(clientId);
+    if (client == null) return null;
+    final used = await GoogleDriveService.summarizeFolder(rootId);
+    if (used.bytes + incomingBytes > client.storageLimitBytes) {
+      return 'Storage limit exceeded. '
+          '${ClientWorkspace.formatStorage(used.bytes)} of '
+          '${ClientWorkspace.formatStorage(client.storageLimitBytes)} used.';
+    }
+    return null;
+  }
+
   void _insertUploadedFile(UploadResult result, PhonePickedDocument file) {
     final name = result.name.isNotEmpty ? result.name : file.name;
     final id = result.id.isNotEmpty
@@ -966,6 +983,13 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     Map<String, List<int>>? bytesByName,
   }) async {
     if (isUploading || files.isEmpty) return;
+
+    final incomingBytes = files.fold<int>(0, (sum, file) => sum + file.sizeBytes);
+    final quotaError = await _clientQuotaError(incomingBytes);
+    if (quotaError != null) {
+      _showMessage(quotaError, isError: true);
+      return;
+    }
 
     final cancelToken = CancelToken();
     _uploadCancelToken = cancelToken;

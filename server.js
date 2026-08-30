@@ -290,6 +290,29 @@ async function userCanWriteClientFolder(user, folderId) {
   return clientWorkspaceAllowsUser(workspaceId, user);
 }
 
+const DEFAULT_CLIENT_STORAGE_LIMIT = 1024 * 1024 * 1024;
+
+async function assertClientStorageAllows(folderId, incomingBytes) {
+  const workspaceId = await resolveClientWorkspaceId(folderId);
+  if (!workspaceId) return { ok: true };
+
+  const snapshot = await firestore
+    .collection('clients')
+    .where('drive_folder_id', '==', workspaceId)
+    .limit(1)
+    .get();
+  if (snapshot.empty) return { ok: true };
+
+  const raw = Number(snapshot.docs[0].data().storage_limit_bytes);
+  const limit =
+    Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_CLIENT_STORAGE_LIMIT;
+  const used = await sumFolderBytes(workspaceId);
+  if (used + incomingBytes > limit) {
+    return { ok: false, used, limit };
+  }
+  return { ok: true, used, limit };
+}
+
 // Where the refresh token lives in Firestore, instead of an env var.
 // A single document under a "config" collection.
 const OAUTH_DOC_REF = firestore.collection('config').doc('googleDriveOAuth');
@@ -1192,6 +1215,22 @@ app.post('/upload', requireAuth, (req, res) => {
     if (clientOk && isClientWorkspaceFolder(folderId)) {
       console.warn(`Upload rejected: client workspace root ${folderId}`);
       return res.status(403).json({ error: 'File upload failed' });
+    }
+    if (clientOk) {
+      const quota = await assertClientStorageAllows(
+        folderId,
+        req.file.size || req.file.buffer.length
+      );
+      if (!quota.ok) {
+        console.warn(
+          `Upload rejected: client storage limit used=${quota.used} limit=${quota.limit}`
+        );
+        return res.status(403).json({
+          error: 'Storage limit exceeded',
+          usedBytes: quota.used,
+          limitBytes: quota.limit,
+        });
+      }
     }
 
     try {

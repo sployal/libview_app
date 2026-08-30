@@ -10,6 +10,7 @@ import '../services/auth_service.dart';
 import '../services/client_service.dart';
 import '../services/course_service.dart';
 import '../services/upload_service.dart';
+import 'client_editor_dialog.dart';
 import 'client_workspace_screen.dart';
 import 'course_addition.dart';
 
@@ -1080,68 +1081,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
   }
 
   Future<void> _showCreateClientDialog() async {
-    final nameController = TextEditingController();
-    final emailController = TextEditingController();
-    final created = await showDialog<({String name, String email})>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: _card,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-          ),
-          title: Text(
-            'Add client',
-            style: TextStyle(
-              fontWeight: FontWeight.w700,
-              color: _titleColor,
-            ),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                autofocus: true,
-                textCapitalization: TextCapitalization.words,
-                decoration: InputDecoration(
-                  hintText: 'Client name',
-                  hintStyle: TextStyle(color: _muted),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: emailController,
-                keyboardType: TextInputType.emailAddress,
-                autocorrect: false,
-                decoration: InputDecoration(
-                  hintText: 'Email address',
-                  hintStyle: TextStyle(color: _muted),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () {
-                final name = nameController.text.trim();
-                final email = emailController.text.trim();
-                if (name.isEmpty || !email.contains('@')) return;
-                Navigator.pop(context, (name: name, email: email));
-              },
-              child: const Text(
-                'Create',
-                style: TextStyle(fontWeight: FontWeight.w600),
-              ),
-            ),
-          ],
-        );
-      },
-    );
+    final created = await showClientEditorDialog(context: context);
     if (created == null || !mounted) return;
     final name = created.name;
 
@@ -1166,6 +1106,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
       await ClientService.instance.createClient(
         name: name,
         email: created.email,
+        storageLimitBytes: created.storageLimitBytes,
       );
       if (!mounted) return;
       Navigator.pop(context);
@@ -1191,48 +1132,32 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
     }
   }
 
-  Future<void> _showRenameClientDialog(ClientWorkspace client) async {
-    final controller = TextEditingController(text: client.name);
-    final name = await showDialog<String>(
+  Future<void> _showEditClientDialog(ClientWorkspace client) async {
+    final edited = await showClientEditorDialog(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: _card,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-          ),
-          title: Text(
-            'Rename client',
-            style: TextStyle(fontWeight: FontWeight.w700, color: _titleColor),
-          ),
-          content: TextField(
-            controller: controller,
-            autofocus: true,
-            textCapitalization: TextCapitalization.words,
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, controller.text.trim()),
-              child: const Text('Save'),
-            ),
-          ],
-        );
-      },
+      client: client,
     );
-    if (name == null || name.isEmpty || name == client.name || !mounted) return;
+    if (edited == null || !mounted) return;
     try {
-      await ClientService.instance.renameClient(client: client, name: name);
+      await ClientService.instance.updateClient(
+        client: client,
+        name: edited.name,
+        email: edited.email,
+        storageLimitBytes: edited.storageLimitBytes,
+      );
       if (!mounted) return;
       await _loadClients();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Client updated'),
+          backgroundColor: Color(0xFF10B981),
+        ),
+      );
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Could not rename client: $error'),
+          content: Text('Could not update client: $error'),
           backgroundColor: const Color(0xFFEF4444),
         ),
       );
@@ -1408,9 +1333,9 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
           onTap: () => _showAttachClientUser(client),
         ),
         _ThemedSheetAction(
-          label: 'Rename',
+          label: 'Edit client',
           color: const Color(0xFF8B5CF6),
-          onTap: () => _showRenameClientDialog(client),
+          onTap: () => _showEditClientDialog(client),
         ),
         _ThemedSheetAction(
           label: 'Delete client',
@@ -1442,7 +1367,8 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
       icon: CupertinoIcons.folder_fill,
       iconColor: const Color(0xFF0EA5E9),
       title: client.name,
-      subtitle: '$owner$extra',
+      subtitle:
+          '$owner$extra • ${ClientWorkspace.formatStorage(client.storageLimitBytes)} limit',
       showChevron: true,
       showDivider: showDivider,
       onTap: () => _showClientActions(client),

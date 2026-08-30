@@ -286,8 +286,14 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
     );
   }
 
+  double get _storageProgress {
+    final limit = _client.storageLimitBytes;
+    if (limit <= 0) return 0;
+    return (_summary.bytes / limit).clamp(0.0, 1.0);
+  }
+
   Widget _storageCard(bool isDark) {
-    final used = _formatBytes(_summary.bytes);
+    final used = ClientWorkspace.formatStorage(_summary.bytes);
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -328,9 +334,21 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
             ),
           ),
           const SizedBox(height: 4),
-          const Text(
-            'Used in your client folder',
-            style: TextStyle(color: Colors.white70),
+          Text(
+            'of ${ClientWorkspace.formatStorage(_client.storageLimitBytes)} used',
+            style: const TextStyle(color: Colors.white70),
+          ),
+          const SizedBox(height: 12),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(99),
+            child: LinearProgressIndicator(
+              value: _storageProgress,
+              minHeight: 8,
+              backgroundColor: Colors.white.withOpacity(0.2),
+              valueColor: AlwaysStoppedAnimation<Color>(
+                _storageProgress >= 1 ? const Color(0xFFF87171) : Colors.white,
+              ),
+            ),
           ),
           const SizedBox(height: 18),
           Row(
@@ -607,18 +625,6 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
       ),
       child: Text(text, style: TextStyle(color: muted)),
     );
-  }
-
-  String _formatBytes(int bytes) {
-    if (bytes <= 0) return '0 MB';
-    if (bytes < 1024) return '$bytes B';
-    if (bytes < 1024 * 1024) {
-      return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    }
-    if (bytes < 1024 * 1024 * 1024) {
-      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-    }
-    return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
   }
 
   String _relativeTime(DateTime time) {

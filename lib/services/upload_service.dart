@@ -580,6 +580,17 @@ class UploadService {
   }
 
   String _messageFromDio(DioException error, {String action = 'upload'}) {
+    final data = error.response?.data;
+    if (data is Map) {
+      final message = data['error']?.toString().trim() ?? '';
+      if (message == 'Storage limit exceeded') {
+        return 'Storage limit exceeded. Delete files or ask the admin to raise the limit.';
+      }
+      if (message.isNotEmpty && message != 'File upload failed') {
+        return message;
+      }
+    }
+
     if (error.response?.statusCode == 401) {
       return 'Please sign in again.';
     }

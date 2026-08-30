@@ -15,6 +15,9 @@ class ClientWorkspace {
   final List<String> memberUids;
   final String inviteEmail;
   final bool suspended;
+  final int storageLimitBytes;
+
+  static const defaultStorageLimitBytes = 1024 * 1024 * 1024;
 
   const ClientWorkspace({
     required this.id,
@@ -24,6 +27,7 @@ class ClientWorkspace {
     required this.memberUids,
     this.inviteEmail = '',
     this.suspended = false,
+    this.storageLimitBytes = defaultStorageLimitBytes,
   });
 
   factory ClientWorkspace.fromDoc(
@@ -46,11 +50,40 @@ class ClientWorkspace {
       memberUids: members,
       inviteEmail: normalizeEmail(data['invite_email'] as String?),
       suspended: data['suspended'] == true,
+      storageLimitBytes: parseStorageLimitBytes(data['storage_limit_bytes']),
     );
   }
 
   static String normalizeEmail(String? email) =>
       (email ?? '').trim().toLowerCase();
+
+  static int parseStorageLimitBytes(dynamic value) {
+    final parsed = value is int
+        ? value
+        : value is num
+            ? value.round()
+            : int.tryParse(value?.toString() ?? '') ?? 0;
+    return parsed > 0 ? parsed : defaultStorageLimitBytes;
+  }
+
+  static String formatStorage(int bytes) {
+    if (bytes <= 0) return '0 MB';
+    const gb = 1024 * 1024 * 1024;
+    const mb = 1024 * 1024;
+    if (bytes >= gb && bytes % gb == 0) {
+      return '${bytes ~/ gb} GB';
+    }
+    if (bytes >= gb) {
+      return '${(bytes / gb).toStringAsFixed(1)} GB';
+    }
+    if (bytes >= mb && bytes % mb == 0) {
+      return '${bytes ~/ mb} MB';
+    }
+    if (bytes >= mb) {
+      return '${(bytes / mb).toStringAsFixed(1)} MB';
+    }
+    return '${(bytes / 1024).toStringAsFixed(1)} KB';
+  }
 
   static String documentIdFromName(String name) {
     final slug = name
@@ -135,9 +168,17 @@ class ClientService {
     return ClientWorkspace.fromDoc(snapshot.docs.first);
   }
 
+  Future<ClientWorkspace?> getClient(String id) async {
+    if (id.isEmpty) return null;
+    final doc = await _clients.doc(id).get();
+    if (!doc.exists) return null;
+    return ClientWorkspace.fromDoc(doc);
+  }
+
   Future<ClientWorkspace> createClient({
     required String name,
     required String email,
+    int storageLimitBytes = ClientWorkspace.defaultStorageLimitBytes,
   }) async {
     final trimmed = name.trim();
     final inviteEmail = ClientWorkspace.normalizeEmail(email);
@@ -166,12 +207,17 @@ class ClientService {
       docId = '${docId}_${DateTime.now().millisecondsSinceEpoch}';
     }
 
+    final limit = storageLimitBytes > 0
+        ? storageLimitBytes
+        : ClientWorkspace.defaultStorageLimitBytes;
+
     await _clients.doc(docId).set({
       'name': trimmed,
       'invite_email': inviteEmail,
       'drive_folder_id': structure.folderId,
       'owner_uid': '',
       'member_uids': <String>[],
+      'storage_limit_bytes': limit,
       'suspended': false,
       'created_at': FieldValue.serverTimestamp(),
       'updated_at': FieldValue.serverTimestamp(),
@@ -184,6 +230,7 @@ class ClientService {
       ownerUid: '',
       memberUids: const [],
       inviteEmail: inviteEmail,
+      storageLimitBytes: limit,
     );
   }
 
@@ -216,6 +263,44 @@ class ClientService {
     }
     await _clients.doc(client.id).set({
       'name': trimmed,
+      'updated_at': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+  }
+
+  Future<void> updateClient({
+    required ClientWorkspace client,
+    required String name,
+    required String email,
+    required int storageLimitBytes,
+  }) async {
+    final trimmed = name.trim();
+    final inviteEmail = ClientWorkspace.normalizeEmail(email);
+    final limit = storageLimitBytes > 0
+        ? storageLimitBytes
+        : ClientWorkspace.defaultStorageLimitBytes;
+    if (trimmed.isEmpty) {
+      throw UploadException('Client name is required');
+    }
+    if (inviteEmail.isEmpty || !inviteEmail.contains('@')) {
+      throw UploadException('A valid client email is required');
+    }
+
+    final existingInvite = await clientForInviteEmail(inviteEmail);
+    if (existingInvite != null && existingInvite.id != client.id) {
+      throw UploadException('A client with this email already exists');
+    }
+
+    if (trimmed != client.name && client.driveFolderId.isNotEmpty) {
+      await UploadService.instance.renameClientWorkspace(
+        folderId: client.driveFolderId,
+        name: trimmed,
+      );
+    }
+
+    await _clients.doc(client.id).set({
+      'name': trimmed,
+      'invite_email': inviteEmail,
+      'storage_limit_bytes': limit,
       'updated_at': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }
