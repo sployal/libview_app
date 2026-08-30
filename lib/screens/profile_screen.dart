@@ -117,7 +117,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           _username = profileData['username'] as String?;
           _registrationNumber = profileData['registration_number'] as String?;
           _role = profileData['role'] as String?;
-          _avatarUrl = profileData['avatar_url'] as String?;
+          _avatarUrl = AuthService.displayAvatarUrl(
+            avatarUrl: profileData['avatar_url'] as String?,
+            googlePhotoUrl: profileData['google_photo_url'] as String?,
+            user: user,
+          );
           _isLoading = false;
         });
       } else {

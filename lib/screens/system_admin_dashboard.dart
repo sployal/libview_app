@@ -168,6 +168,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
         data['email'] = data['email'] ?? '';
         data['registration_number'] = data['registration_number'] ?? '';
         data['avatar_url'] = data['avatar_url'] ?? '';
+        data['google_photo_url'] = data['google_photo_url'] ?? '';
         data['suspended'] = data['suspended'] == true;
         data['suspension_message'] = data['suspension_message'] ?? '';
         return data;
@@ -745,7 +746,11 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
   }
 
   Widget _buildAvatar(Map<String, dynamic> user, {double radius = 28}) {
-    final avatarUrl = user['avatar_url']?.toString() ?? '';
+    final avatarUrl = AuthService.displayAvatarUrl(
+          avatarUrl: user['avatar_url']?.toString(),
+          googlePhotoUrl: user['google_photo_url']?.toString(),
+        ) ??
+        '';
     final role = user['role']?.toString() ?? 'student';
     final color = _roleColors[role] ?? const Color(0xFF6366F1);
 

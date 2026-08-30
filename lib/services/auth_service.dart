@@ -39,6 +39,30 @@ class AuthService {
 
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
+  /// Photo from the Google provider, if this account signed in with Google.
+  static String? googlePhotoUrlFor(User? user) {
+    if (user == null) return null;
+    for (final info in user.providerData) {
+      if (info.providerId != 'google.com') continue;
+      final url = info.photoURL?.trim();
+      if (url != null && url.isNotEmpty) return url;
+    }
+    return user.photoURL?.trim().isNotEmpty == true ? user.photoURL!.trim() : null;
+  }
+
+  /// Custom uploaded avatar wins; otherwise the stored or live Google photo.
+  static String? displayAvatarUrl({
+    String? avatarUrl,
+    String? googlePhotoUrl,
+    User? user,
+  }) {
+    final custom = avatarUrl?.trim();
+    if (custom != null && custom.isNotEmpty) return custom;
+    final stored = googlePhotoUrl?.trim();
+    if (stored != null && stored.isNotEmpty) return stored;
+    return googlePhotoUrlFor(user);
+  }
+
   Stream<DocumentSnapshot<Map<String, dynamic>>> profileDocStream(String uid) {
     return _firestore.collection('profiles').doc(uid).snapshots();
   }
@@ -278,11 +302,13 @@ class AuthService {
       }
     }
 
+    final googlePhoto = googlePhotoUrlFor(user);
     await docRef.set({
       'full_name': fullName,
       'email': email,
       'registration_number': registrationNumber,
       'role': existing.data()?['role'] ?? 'student',
+      if (googlePhoto != null) 'google_photo_url': googlePhoto,
       if (!existing.exists) 'created_at': FieldValue.serverTimestamp(),
       'updated_at': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
@@ -335,7 +361,29 @@ class AuthService {
       }
     }
 
+    await _syncGooglePhotoToProfile(
+      userCredential.user,
+      photoUrl: googleUser.photoUrl,
+    );
     return userCredential;
+  }
+
+  /// Writes the Google photo onto an existing profile so other screens can
+  /// fall back to it. Does not create a stub profile for unfinished sign-ups.
+  Future<void> _syncGooglePhotoToProfile(User? user, {String? photoUrl}) async {
+    if (user == null) return;
+    final fromGoogle = photoUrl?.trim();
+    final photo = (fromGoogle != null && fromGoogle.isNotEmpty)
+        ? fromGoogle
+        : googlePhotoUrlFor(user);
+    if (photo == null) return;
+    final ref = _firestore.collection('profiles').doc(user.uid);
+    final existing = await ref.get();
+    if (!existing.exists) return;
+    await ref.set({
+      'google_photo_url': photo,
+      'updated_at': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
   }
 
   Future<void> _discardIncompleteGoogleSession(
