@@ -27,6 +27,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
   bool _useLargeIcons = false;
   String _query = '';
   String _typeFilter = 'All';
+  static const _typeFilters = ['All', 'PDF', 'DOC', 'PPT', 'IMG'];
 
   bool get _selectionMode => _selected.isNotEmpty;
 
@@ -90,10 +91,6 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
       isLoading = false;
       final keys = loadedDownloads.map(_keyFor).toSet();
       _selected.removeWhere((key, _) => !keys.contains(key));
-      if (_typeFilter != 'All' &&
-          !loadedDownloads.any((item) => item.type == _typeFilter)) {
-        _typeFilter = 'All';
-      }
     });
   }
 
@@ -148,11 +145,6 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
       return item.name.toLowerCase().contains(query) ||
           item.subject.toLowerCase().contains(query);
     }).toList();
-  }
-
-  List<String> get _typeFilters {
-    final types = downloads.map((item) => item.type).toSet().toList()..sort();
-    return ['All', ...types];
   }
 
   Future<void> _openFile(DownloadItem download) async {
@@ -547,7 +539,9 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                   hasScrollBody: false,
                   child: Center(
                     child: Text(
-                      'No files match your search',
+                      _query.trim().isEmpty
+                          ? 'Try a different filter'
+                          : 'No files match your search',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
@@ -749,57 +743,50 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
               ),
             ),
           ),
-          if (_typeFilters.length > 2) ...[
-            const SizedBox(height: 12),
-            SizedBox(
-              height: 36,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: _typeFilters.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 8),
-                itemBuilder: (context, index) {
-                  final type = _typeFilters[index];
-                  final selected = type == _typeFilter;
-                  return GestureDetector(
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      setState(() => _typeFilter = type);
-                    },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
-                      padding: const EdgeInsets.symmetric(horizontal: 14),
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: selected
-                            ? const Color(0xFF6366F1)
-                            : card,
-                        borderRadius: BorderRadius.circular(20),
-                        border: selected
-                            ? null
-                            : Border.all(
-                                color: isDark
-                                    ? const Color(0xFF374151)
-                                    : const Color(0xFFE5E7EB),
-                              ),
-                      ),
-                      child: Text(
-                        type,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: selected
-                              ? Colors.white
-                              : (isDark
-                                  ? const Color(0xFFE5E7EB)
-                                  : const Color(0xFF374151)),
-                        ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final type in _typeFilters)
+                GestureDetector(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    setState(() => _typeFilter = type);
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 160),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: type == _typeFilter
+                          ? const Color(0xFF7C83F8)
+                          : card,
+                      borderRadius: BorderRadius.circular(999),
+                      border: Border.all(
+                        color: type == _typeFilter
+                            ? const Color(0xFF7C83F8)
+                            : (isDark
+                                ? const Color(0xFF374151)
+                                : const Color(0xFFE5E7EB)),
                       ),
                     ),
-                  );
-                },
-              ),
-            ),
-          ],
+                    child: Text(
+                      type,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: type == _typeFilter
+                            ? Colors.white
+                            : muted,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ],
       ],
     );
