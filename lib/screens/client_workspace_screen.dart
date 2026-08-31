@@ -223,7 +223,7 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
               const SizedBox(height: 18),
               _actionsRow(),
               const SizedBox(height: 22),
-              _sectionLabel('Recently opened', title),
+              _recentHeader(title),
               const SizedBox(height: 10),
               _recentSection(card, title, muted, isDark),
               const SizedBox(height: 22),
@@ -469,6 +469,32 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
         color: title,
       ),
     );
+  }
+
+  Widget _recentHeader(Color title) {
+    return Row(
+      children: [
+        Expanded(child: _sectionLabel('Recently opened', title)),
+        if (_recents.isNotEmpty)
+          GestureDetector(
+            onTap: _clearRecents,
+            child: const Text(
+              'Clear',
+              style: TextStyle(
+                color: _accent,
+                fontWeight: FontWeight.w800,
+                fontSize: 16,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Future<void> _clearRecents() async {
+    await ClientRecentFolders.clear(_client.id);
+    if (!mounted) return;
+    setState(() => _recents = []);
   }
 
   Widget _recentSection(

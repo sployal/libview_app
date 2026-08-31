@@ -439,4 +439,10 @@ class ClientRecentFolders {
       jsonEncode(next.map((item) => item.toJson()).toList()),
     );
   }
+
+  static Future<void> clear(String clientId) async {
+    if (clientId.isEmpty) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_key(clientId));
+  }
 }
