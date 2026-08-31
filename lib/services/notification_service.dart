@@ -112,6 +112,7 @@ class NotificationService {
         .toSet();
 
     final seeAll = SystemAdminDashboard.isSystemAdminRole(role);
+    final isClient = AuthService.isClientRole(role);
 
     return notificationsSnap.docs
         .map((doc) => _fromDoc(doc, readIds.contains(doc.id)))
@@ -122,6 +123,7 @@ class NotificationService {
                 item: item,
                 admissionNumber: admissionNumber,
                 userCourse: userCourse,
+                isClient: isClient,
               ),
         )
         .toList();
@@ -160,8 +162,8 @@ class NotificationService {
     final profile = await _firestore.collection('profiles').doc(user.uid).get();
     final data = profile.data() ?? {};
     final role = ((data['role'] as String?) ?? 'student').toLowerCase();
-    if (role == 'student') {
-      throw Exception('Students cannot create notifications');
+    if (role == 'student' || AuthService.isClientRole(role)) {
+      throw Exception('You cannot create notifications');
     }
 
     final admissionNumber =
@@ -286,8 +288,10 @@ class NotificationService {
     required AppNotification item,
     required String admissionNumber,
     required Course? userCourse,
+    required bool isClient,
   }) {
     if (item.audience == 'all' || item.audience.isEmpty) return true;
+    if (isClient) return false;
 
     if (item.audience == 'course') {
       if (item.courseId.isNotEmpty && userCourse != null) {

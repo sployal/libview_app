@@ -55,7 +55,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         currentUserRole = role;
         _isSystemAdmin = isSystemAdmin;
         _courses = courses;
-        canCreateNotifications = role != 'student' || isSystemAdmin;
+        canCreateNotifications = !AuthService.isClientRole(role) &&
+            (role != 'student' || isSystemAdmin);
       });
     } catch (e) {
       debugPrint('Error checking user role: $e');
