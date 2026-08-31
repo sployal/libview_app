@@ -27,6 +27,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
   double downloadProgress = 0.0;
   String? _activeDownloadFileId;
   bool _isDark = false;
+  bool _tabTickersEnabled = true;
 
   static const _darkBg = Color(0xFF111827);
   static const _lightBg = Color(0xFFF8FAFC);
@@ -41,9 +42,27 @@ class _WebViewScreenState extends State<WebViewScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     final dark = Theme.of(context).brightness == Brightness.dark;
-    if (dark == _isDark) return;
-    _isDark = dark;
-    _controller.setBackgroundColor(dark ? _darkBg : _lightBg);
+    if (dark != _isDark) {
+      _isDark = dark;
+      _controller.setBackgroundColor(dark ? _darkBg : _lightBg);
+    }
+
+    // IndexedStack keeps this tab mounted when you switch bottom-nav tabs.
+    // An off-screen Drive preview still runs Chrome's GPU thread and can
+    // SIGSEGV on MediaTek devices. Close it so only one live WebView exists.
+    final tickersEnabled = TickerMode.of(context);
+    if (_tabTickersEnabled && !tickersEnabled && widget.onBack != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) widget.onBack!();
+      });
+    }
+    _tabTickersEnabled = tickersEnabled;
+  }
+
+  @override
+  void dispose() {
+    _controller.loadRequest(Uri.parse('about:blank'));
+    super.dispose();
   }
 
   // Convert Google Drive URL to preview URL
