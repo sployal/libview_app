@@ -231,7 +231,7 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
               const SizedBox(height: 10),
               _foldersPreview(card, title, muted, isDark),
               const SizedBox(height: 20),
-              _viewAllButton(),
+              _viewAllButton(card, isDark),
             ],
           ),
         ),
@@ -596,21 +596,39 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
     );
   }
 
-  Widget _viewAllButton() {
-    return FilledButton.icon(
-      onPressed: () => _openBrowser(),
-      style: FilledButton.styleFrom(
-        backgroundColor: _accent,
-        foregroundColor: Colors.white,
-        minimumSize: const Size.fromHeight(54),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+  Widget _viewAllButton(Color card, bool isDark) {
+    return Material(
+      color: card,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: () => _openBrowser(),
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          height: 54,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isDark
+                  ? Colors.white.withOpacity(0.06)
+                  : const Color(0xFFE2E8F0),
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.folder_open_rounded, color: _accent),
+              const SizedBox(width: 8),
+              Text(
+                'View all files',
+                style: TextStyle(
+                  color: _accent,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 16,
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
-      icon: const Icon(Icons.folder_open_rounded),
-      label: const Text(
-        'View all files',
-        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
       ),
     );
   }
