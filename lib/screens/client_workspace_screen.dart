@@ -6,6 +6,8 @@ import '../services/client_service.dart';
 import '../services/google_drive_service.dart';
 import '../services/upload_service.dart';
 import 'client_files_browser_screen.dart';
+import 'no_internet_screen.dart';
+import 'web_view_screen.dart';
 
 class ClientWorkspaceScreen extends StatelessWidget {
   const ClientWorkspaceScreen({
@@ -62,7 +64,7 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
   static const _amber = Color(0xFFF59E0B);
 
   DriveFolderSummary _summary = const DriveFolderSummary();
-  List<Subject> _folders = [];
+  List<StudyMaterial> _recentFiles = [];
   List<ClientRecentFolder> _recents = [];
   bool _loading = true;
   bool _creating = false;
@@ -95,13 +97,13 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
       final folderId = _client.driveFolderId;
       final results = await Future.wait([
         GoogleDriveService.summarizeFolder(folderId),
-        GoogleDriveService.getSubjectsFromFolder(folderId),
+        GoogleDriveService.getRecentFiles(folderId, limit: 4),
         ClientRecentFolders.load(_client.id),
       ]);
       if (!mounted) return;
       setState(() {
         _summary = results[0] as DriveFolderSummary;
-        _folders = results[1] as List<Subject>;
+        _recentFiles = results[1] as List<StudyMaterial>;
         _recents = results[2] as List<ClientRecentFolder>;
         _loading = false;
       });
@@ -227,11 +229,9 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
               const SizedBox(height: 10),
               _recentSection(card, title, muted, isDark),
               const SizedBox(height: 22),
-              _sectionLabel('Your folders', title),
+              _sectionLabel('Recent files', title),
               const SizedBox(height: 10),
-              _foldersPreview(card, title, muted, isDark),
-              const SizedBox(height: 20),
-              _viewAllButton(),
+              _recentFilesPreview(card, title, muted),
             ],
           ),
         ),
@@ -543,49 +543,49 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
     );
   }
 
-  Widget _foldersPreview(
+  Widget _recentFilesPreview(
     Color card,
     Color title,
     Color muted,
-    bool isDark,
   ) {
-    if (_loading && _folders.isEmpty) {
-      return _emptyCard(card, muted, 'Loading folders…');
+    if (_loading && _recentFiles.isEmpty) {
+      return _emptyCard(card, muted, 'Loading files…');
     }
-    if (_folders.isEmpty) {
+    if (_recentFiles.isEmpty) {
       return _emptyCard(
         card,
         muted,
-        'No folders yet. Create one to start uploading.',
+        'Files you add will appear here.',
       );
     }
-    final preview = _folders.take(4).toList();
     return Column(
       children: [
-        for (final folder in preview)
+        for (final file in _recentFiles)
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: Material(
               color: card,
               borderRadius: BorderRadius.circular(16),
               child: ListTile(
-                onTap: () => _openBrowser(
-                  folderId: folder.folderId,
-                  folderName: folder.name,
-                ),
+                onTap: () => _openRecentFile(file),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
                 leading: CircleAvatar(
-                  backgroundColor: folder.color.withOpacity(0.16),
-                  child: Icon(Icons.folder_rounded, color: folder.color),
+                  backgroundColor: _fileTypeColor(file.type).withOpacity(0.16),
+                  child: Icon(
+                    _fileTypeIcon(file.type),
+                    color: _fileTypeColor(file.type),
+                  ),
                 ),
                 title: Text(
-                  folder.name,
+                  file.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(fontWeight: FontWeight.w700, color: title),
                 ),
                 subtitle: Text(
-                  '${folder.fileCount} file${folder.fileCount == 1 ? '' : 's'}',
+                  '${file.type} · ${file.size} · ${file.date}',
                   style: TextStyle(color: muted),
                 ),
                 trailing: Icon(Icons.chevron_right_rounded, color: muted),
@@ -596,23 +596,60 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
     );
   }
 
-  Widget _viewAllButton() {
-    return FilledButton.icon(
-      onPressed: () => _openBrowser(),
-      style: FilledButton.styleFrom(
-        backgroundColor: _accent,
-        foregroundColor: Colors.white,
-        minimumSize: const Size.fromHeight(54),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
+  Future<void> _openRecentFile(StudyMaterial file) async {
+    HapticFeedback.lightImpact();
+    if (file.downloadUrl == null || file.downloadUrl!.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('File URL not available')),
+      );
+      return;
+    }
+    if (!await NoInternetScreen.ensureOnline(context)) return;
+    if (!mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => WebViewScreen(
+          url: file.downloadUrl!,
+          title: file.name,
+          subject: _client.name,
         ),
       ),
-      icon: const Icon(Icons.folder_open_rounded),
-      label: const Text(
-        'View all files',
-        style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-      ),
     );
+  }
+
+  IconData _fileTypeIcon(String type) {
+    switch (type) {
+      case 'PDF':
+        return Icons.picture_as_pdf_rounded;
+      case 'DOC':
+        return Icons.description_rounded;
+      case 'PPT':
+        return Icons.slideshow_rounded;
+      case 'XLS':
+        return Icons.table_chart_rounded;
+      case 'IMG':
+        return Icons.image_rounded;
+      default:
+        return Icons.insert_drive_file_rounded;
+    }
+  }
+
+  Color _fileTypeColor(String type) {
+    switch (type) {
+      case 'PDF':
+        return const Color(0xFFEF4444);
+      case 'DOC':
+        return _accent;
+      case 'PPT':
+        return _amber;
+      case 'XLS':
+        return _mint;
+      case 'IMG':
+        return const Color(0xFF8B5CF6);
+      default:
+        return const Color(0xFF64748B);
+    }
   }
 
   Widget _emptyCard(Color card, Color muted, String text) {

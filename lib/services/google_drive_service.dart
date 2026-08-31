@@ -269,6 +269,56 @@ class GoogleDriveService {
     final items = await getFolderContents(folderId);
     return items.where((item) => item.isFolder).length;
   }
+
+  static Future<List<StudyMaterial>> getRecentFiles(
+    String folderId, {
+    int limit = 4,
+    int maxDepth = 3,
+  }) async {
+    if (folderId.isEmpty || limit <= 0) return const [];
+    final items = await _collectFiles(folderId, maxDepth: maxDepth);
+    items.sort((a, b) {
+      final aTime = DateTime.tryParse(a.modifiedTime ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0);
+      final bTime = DateTime.tryParse(b.modifiedTime ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0);
+      return bTime.compareTo(aTime);
+    });
+    return items.take(limit).map((item) {
+      return StudyMaterial(
+        id: item.id,
+        name: item.name,
+        type: _getFileType(item.name),
+        size: _formatFileSize(item.size),
+        date: _formatDate(item.modifiedTime),
+        downloadUrl: item.webViewLink,
+        thumbnailUrl: item.thumbnailLink,
+      );
+    }).toList();
+  }
+
+  static Future<List<DriveItem>> _collectFiles(
+    String folderId, {
+    required int maxDepth,
+  }) async {
+    if (folderId.isEmpty || maxDepth < 0) return [];
+    final items = await getFolderContents(folderId);
+    final files = <DriveItem>[];
+    final nested = <DriveItem>[];
+    for (final item in items) {
+      if (item.isFolder) {
+        nested.add(item);
+      } else {
+        files.add(item);
+      }
+    }
+    if (maxDepth > 0) {
+      for (final folder in nested) {
+        files.addAll(await _collectFiles(folder.id, maxDepth: maxDepth - 1));
+      }
+    }
+    return files;
+  }
   
   // ============================================================================
   // BACKWARD COMPATIBILITY: Keep old method for existing Semester 4 code
