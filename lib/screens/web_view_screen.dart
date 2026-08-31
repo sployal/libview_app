@@ -363,6 +363,12 @@ try {
     Navigator.maybePop(context);
   }
 
+  /// Height of the overlaying tab bar, with no extra list/FAB gap.
+  double _bottomNavInset(BuildContext context) {
+    return MediaQuery.viewPaddingOf(context).bottom +
+        kBottomNavigationBarHeight;
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -403,9 +409,11 @@ try {
           ),
         ],
       ),
-      body: Stack(
-        children: [
-          WebViewWidget(controller: _controller),
+      body: Padding(
+        padding: EdgeInsets.only(bottom: _bottomNavInset(context)),
+        child: Stack(
+          children: [
+            WebViewWidget(controller: _controller),
           if (isLoading)
             ColoredBox(
               color: background,
@@ -507,6 +515,7 @@ try {
               ),
             ),
         ],
+        ),
       ),
     );
   }
