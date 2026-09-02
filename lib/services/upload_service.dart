@@ -185,6 +185,35 @@ class UploadService {
     }
   }
 
+  Future<DriveOAuthStatus> fetchDriveOAuthStatus() async {
+    final token = await _idToken();
+
+    try {
+      final response = await _dio.get(
+        '/drive-oauth-status',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      );
+
+      final data = response.data;
+      if (data is Map<String, dynamic>) {
+        return DriveOAuthStatus.fromJson(data);
+      }
+      if (data is Map) {
+        return DriveOAuthStatus.fromJson(Map<String, dynamic>.from(data));
+      }
+      throw UploadException('Unexpected response from server');
+    } on DioException catch (e) {
+      throw UploadException(
+        _messageFromDio(e, action: 'oauth'),
+        statusCode: e.response?.statusCode,
+      );
+    }
+  }
+
   Future<DriveStorageSnapshot> fetchDriveStorage({bool refresh = false}) async {
     final token = await _idToken();
 
@@ -618,9 +647,44 @@ class UploadService {
         return 'Could not update the client workspace.';
       case 'storage':
         return 'Could not load storage.';
+      case 'oauth':
+        return 'Could not load token status.';
       default:
         return 'File upload failed.';
     }
+  }
+}
+
+class DriveOAuthStatus {
+  final bool stored;
+  final bool expired;
+  final int? daysLeft;
+  final DateTime? updatedAt;
+  final DateTime? expiresAt;
+  final int ttlDays;
+
+  DriveOAuthStatus({
+    required this.stored,
+    required this.expired,
+    required this.daysLeft,
+    required this.updatedAt,
+    required this.expiresAt,
+    required this.ttlDays,
+  });
+
+  factory DriveOAuthStatus.fromJson(Map<String, dynamic> json) {
+    return DriveOAuthStatus(
+      stored: json['stored'] == true,
+      expired: json['expired'] == true,
+      daysLeft: json['daysLeft'] is num
+          ? (json['daysLeft'] as num).round()
+          : int.tryParse(json['daysLeft']?.toString() ?? ''),
+      updatedAt: DateTime.tryParse(json['updatedAt']?.toString() ?? ''),
+      expiresAt: DateTime.tryParse(json['expiresAt']?.toString() ?? ''),
+      ttlDays: json['ttlDays'] is num
+          ? (json['ttlDays'] as num).round()
+          : int.tryParse(json['ttlDays']?.toString() ?? '') ?? 7,
+    );
   }
 }
 

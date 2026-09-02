@@ -363,12 +363,39 @@ async function assertClientStorageAllows(folderId, incomingBytes) {
 // Where the refresh token lives in Firestore, instead of an env var.
 // A single document under a "config" collection.
 const OAUTH_DOC_REF = firestore.collection('config').doc('googleDriveOAuth');
+const REFRESH_TOKEN_TTL_DAYS = 7;
+const REFRESH_TOKEN_TTL_MS = REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000;
+
+function firestoreTimeToMs(value) {
+  if (!value) return null;
+  if (typeof value.toMillis === 'function') return value.toMillis();
+  if (value instanceof Date) return value.getTime();
+  if (typeof value === 'string') {
+    const parsed = Date.parse(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  if (typeof value._seconds === 'number') {
+    return value._seconds * 1000 + Math.floor((value._nanoseconds || 0) / 1e6);
+  }
+  return null;
+}
+
+function firestoreTimeToIso(value) {
+  const ms = firestoreTimeToMs(value);
+  return ms == null ? null : new Date(ms).toISOString();
+}
 
 async function saveRefreshToken(refreshToken) {
+  const now = admin.firestore.Timestamp.now();
+  const expiresAt = admin.firestore.Timestamp.fromMillis(
+    now.toMillis() + REFRESH_TOKEN_TTL_MS
+  );
   await OAUTH_DOC_REF.set(
     {
       refreshToken,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      updatedAt: now,
+      expiresAt,
+      ttlDays: REFRESH_TOKEN_TTL_DAYS,
     },
     { merge: true }
   );
@@ -383,6 +410,63 @@ async function loadRefreshToken() {
     console.error('Failed to load refresh token from Firestore:', err.message);
     return null;
   }
+}
+
+function oauthStatusFromData(data) {
+  const stored = Boolean(data && data.refreshToken);
+  if (!stored) {
+    return {
+      stored: false,
+      expired: false,
+      daysLeft: null,
+      updatedAt: null,
+      expiresAt: null,
+      ttlDays: REFRESH_TOKEN_TTL_DAYS,
+    };
+  }
+
+  const updatedAtMs = firestoreTimeToMs(data.updatedAt);
+  const expiresAtMs =
+    firestoreTimeToMs(data.expiresAt) ??
+    (updatedAtMs == null ? null : updatedAtMs + REFRESH_TOKEN_TTL_MS);
+  const remainingMs = expiresAtMs == null ? null : expiresAtMs - Date.now();
+  const expired = remainingMs != null && remainingMs <= 0;
+  const daysLeft =
+    remainingMs == null
+      ? null
+      : remainingMs <= 0
+        ? 0
+        : Math.ceil(remainingMs / (24 * 60 * 60 * 1000));
+
+  return {
+    stored: true,
+    expired,
+    daysLeft,
+    updatedAt: firestoreTimeToIso(data.updatedAt),
+    expiresAt: expiresAtMs == null ? null : new Date(expiresAtMs).toISOString(),
+    ttlDays: Number(data.ttlDays) || REFRESH_TOKEN_TTL_DAYS,
+  };
+}
+
+async function loadOAuthStatus() {
+  const snap = await OAUTH_DOC_REF.get();
+  if (!snap.exists) return oauthStatusFromData(null);
+  const data = snap.data() || {};
+  const status = oauthStatusFromData(data);
+  if (status.stored && !data.expiresAt && status.expiresAt) {
+    try {
+      await OAUTH_DOC_REF.set(
+        {
+          expiresAt: admin.firestore.Timestamp.fromDate(new Date(status.expiresAt)),
+          ttlDays: REFRESH_TOKEN_TTL_DAYS,
+        },
+        { merge: true }
+      );
+    } catch (err) {
+      console.warn('Could not backfill OAuth expiry fields:', err.message);
+    }
+  }
+  return status;
 }
 
 // =========================================================================
@@ -1156,6 +1240,16 @@ app.get('/drive-storage', requireAuth, requireSystemAdmin, async (req, res) => {
   } catch (e) {
     console.error('Drive storage query failed:', e);
     res.status(500).json({ error: 'Could not load storage' });
+  }
+});
+
+app.get('/drive-oauth-status', requireAuth, requireSystemAdmin, async (req, res) => {
+  try {
+    const status = await loadOAuthStatus();
+    res.json(status);
+  } catch (e) {
+    console.error('Drive OAuth status query failed:', e);
+    res.status(500).json({ error: 'Could not load token status' });
   }
 });
 

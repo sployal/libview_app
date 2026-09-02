@@ -33,7 +33,8 @@ class SystemAdminDashboard extends StatefulWidget {
   State<SystemAdminDashboard> createState() => _SystemAdminDashboardState();
 }
 
-class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
+class _SystemAdminDashboardState extends State<SystemAdminDashboard>
+    with WidgetsBindingObserver {
   final _firestore = FirebaseFirestore.instance;
 
   int _peopleTab = 0;
@@ -63,6 +64,9 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
   String _restrictionMessage = AuthService.defaultSignupRestrictionMessage;
   bool _savingAccountPolicy = false;
   bool _isRefreshing = false;
+  DriveOAuthStatus? _oauthStatus;
+  bool _isLoadingOAuthStatus = true;
+  String? _oauthStatusError;
 
   static const _userRoles = [
     'student',
@@ -133,7 +137,21 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _guardAndLoad();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _loadOAuthStatus();
+    }
   }
 
   Future<void> _guardAndLoad() async {
@@ -156,6 +174,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
     await _loadClients();
     await _loadStorage();
     await _loadAccountCreationSettings();
+    await _loadOAuthStatus();
   }
 
   Future<void> _refreshDashboard() async {
@@ -169,6 +188,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
         _loadClients(silent: true),
         _loadStorage(refresh: true),
         _loadAccountCreationSettings(),
+        _loadOAuthStatus(),
       ]);
     } finally {
       if (mounted) setState(() => _isRefreshing = false);
@@ -2489,12 +2509,61 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard> {
     ];
   }
 
+  Future<void> _loadOAuthStatus() async {
+    if (mounted) {
+      setState(() {
+        _isLoadingOAuthStatus = true;
+        _oauthStatusError = null;
+      });
+    }
+    try {
+      final status = await UploadService.instance.fetchDriveOAuthStatus();
+      if (!mounted) return;
+      setState(() {
+        _oauthStatus = status;
+        _isLoadingOAuthStatus = false;
+        _oauthStatusError = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoadingOAuthStatus = false;
+        _oauthStatusError = e.toString();
+      });
+    }
+  }
+
+  String _oauthStatusSubtitle() {
+    if (_isLoadingOAuthStatus && _oauthStatus == null) {
+      return 'Checking days left...';
+    }
+    if (_oauthStatusError != null && _oauthStatus == null) {
+      return 'Could not load days left';
+    }
+    final status = _oauthStatus;
+    if (status == null || !status.stored) {
+      return 'No token stored · tap to sign in';
+    }
+    if (status.expired || (status.daysLeft != null && status.daysLeft! <= 0)) {
+      return 'Expired · tap to renew';
+    }
+    if (status.daysLeft == null) {
+      return 'Token stored · tap to renew';
+    }
+    if (status.daysLeft == 1) {
+      return '1 day left';
+    }
+    return '${status.daysLeft} days left';
+  }
+
   Widget _buildTokenRefreshSection() {
+    final expired = _oauthStatus?.expired == true ||
+        (_oauthStatus?.daysLeft != null && _oauthStatus!.daysLeft! <= 0);
     return _settingsRow(
       icon: CupertinoIcons.refresh,
-      iconColor: const Color(0xFF6366F1),
+      iconColor: expired ? const Color(0xFFEF4444) : const Color(0xFF6366F1),
       title: 'Refresh Token',
-      subtitle: 'Open Google sign-in in Chrome',
+      subtitle: _oauthStatusSubtitle(),
       showChevron: true,
       onTap: _openRefreshTokenInChrome,
     );
