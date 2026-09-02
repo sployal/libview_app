@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+enum FileSortKind { files, folders }
+
 enum FileSortMode {
   nameAz,
   nameZa,
@@ -15,7 +17,9 @@ enum FileSortMode {
 extension FileSortModeX on FileSortMode {
   String get storageValue => name;
 
-  String get label {
+  String get label => labelFor(FileSortKind.files);
+
+  String labelFor(FileSortKind kind) {
     switch (this) {
       case FileSortMode.nameAz:
         return 'Name · A to Z';
@@ -26,9 +30,13 @@ extension FileSortModeX on FileSortMode {
       case FileSortMode.dateOldest:
         return 'Date · Oldest';
       case FileSortMode.sizeLargest:
-        return 'Size · Largest';
+        return kind == FileSortKind.folders
+            ? 'Files · Most'
+            : 'Size · Largest';
       case FileSortMode.sizeSmallest:
-        return 'Size · Smallest';
+        return kind == FileSortKind.folders
+            ? 'Files · Least'
+            : 'Size · Smallest';
       case FileSortMode.typeAz:
         return 'Type · A to Z';
       case FileSortMode.typeZa:
@@ -147,6 +155,7 @@ class FileSort {
 Future<FileSortMode?> showFileSortSheet({
   required BuildContext context,
   required FileSortMode selected,
+  FileSortKind kind = FileSortKind.files,
 }) {
   HapticFeedback.selectionClick();
   return showModalBottomSheet<FileSortMode>(
@@ -154,14 +163,19 @@ Future<FileSortMode?> showFileSortSheet({
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
     barrierColor: Colors.black.withValues(alpha: 0.45),
-    builder: (context) => FileSortSheet(selected: selected),
+    builder: (context) => FileSortSheet(selected: selected, kind: kind),
   );
 }
 
 class FileSortSheet extends StatelessWidget {
-  const FileSortSheet({super.key, required this.selected});
+  const FileSortSheet({
+    super.key,
+    required this.selected,
+    this.kind = FileSortKind.files,
+  });
 
   final FileSortMode selected;
+  final FileSortKind kind;
 
   @override
   Widget build(BuildContext context) {
@@ -226,7 +240,9 @@ class FileSortSheet extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Sort files',
+                            kind == FileSortKind.folders
+                                ? 'Sort folders'
+                                : 'Sort files',
                             style: TextStyle(
                               color: titleColor,
                               fontSize: 20,
@@ -235,7 +251,9 @@ class FileSortSheet extends StatelessWidget {
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            'Choose how this folder is ordered',
+                            kind == FileSortKind.folders
+                                ? 'Choose how folders are ordered'
+                                : 'Choose how this folder is ordered',
                             style: TextStyle(
                               color: muted,
                               fontSize: 13,
@@ -275,33 +293,49 @@ class FileSortSheet extends StatelessWidget {
                   selected: selected,
                 ),
                 const SizedBox(height: 10),
-                _SortGroup(
-                  icon: Icons.sd_storage_rounded,
-                  iconColor: const Color(0xFF10B981),
-                  title: 'File size',
-                  card: card,
-                  titleColor: titleColor,
-                  muted: muted,
-                  options: const [
-                    (FileSortMode.sizeLargest, 'Largest'),
-                    (FileSortMode.sizeSmallest, 'Smallest'),
-                  ],
-                  selected: selected,
-                ),
-                const SizedBox(height: 10),
-                _SortGroup(
-                  icon: Icons.category_rounded,
-                  iconColor: const Color(0xFFF59E0B),
-                  title: 'Type',
-                  card: card,
-                  titleColor: titleColor,
-                  muted: muted,
-                  options: const [
-                    (FileSortMode.typeAz, 'A to Z'),
-                    (FileSortMode.typeZa, 'Z to A'),
-                  ],
-                  selected: selected,
-                ),
+                if (kind == FileSortKind.folders)
+                  _SortGroup(
+                    icon: Icons.folder_copy_rounded,
+                    iconColor: const Color(0xFF10B981),
+                    title: 'Files inside',
+                    card: card,
+                    titleColor: titleColor,
+                    muted: muted,
+                    options: const [
+                      (FileSortMode.sizeLargest, 'Most first'),
+                      (FileSortMode.sizeSmallest, 'Least first'),
+                    ],
+                    selected: selected,
+                  )
+                else ...[
+                  _SortGroup(
+                    icon: Icons.sd_storage_rounded,
+                    iconColor: const Color(0xFF10B981),
+                    title: 'File size',
+                    card: card,
+                    titleColor: titleColor,
+                    muted: muted,
+                    options: const [
+                      (FileSortMode.sizeLargest, 'Largest'),
+                      (FileSortMode.sizeSmallest, 'Smallest'),
+                    ],
+                    selected: selected,
+                  ),
+                  const SizedBox(height: 10),
+                  _SortGroup(
+                    icon: Icons.category_rounded,
+                    iconColor: const Color(0xFFF59E0B),
+                    title: 'Type',
+                    card: card,
+                    titleColor: titleColor,
+                    muted: muted,
+                    options: const [
+                      (FileSortMode.typeAz, 'A to Z'),
+                      (FileSortMode.typeZa, 'Z to A'),
+                    ],
+                    selected: selected,
+                  ),
+                ],
               ],
             ),
           ),

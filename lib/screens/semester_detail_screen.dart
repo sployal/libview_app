@@ -58,6 +58,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
   String _role = 'student';
   bool _useLargeIcons = true;
   FileSortMode _fileSort = FileSortMode.nameAz;
+  FileSortMode _folderSort = FileSortMode.nameAz;
   bool _unitsAsGrid = false;
   String _unitQuery = '';
   final TextEditingController _unitSearchController = TextEditingController();
@@ -70,6 +71,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
   static const _filesViewPrefKey = 'semester_files_view_grid';
   static const _filesSortPrefKey = 'semester_files_sort_mode';
   static const _unitsViewPrefKey = 'semester_units_view_list';
+  static const _unitsSortPrefKey = 'semester_units_sort_mode';
 
   bool get _canManageFolders => _role != 'student';
 
@@ -93,6 +95,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     setState(() {
       _useLargeIcons = prefs.getBool(_filesViewPrefKey) ?? true;
       _fileSort = FileSortModeX.fromStorage(prefs.getString(_filesSortPrefKey));
+      _folderSort = FileSortModeX.fromStorage(prefs.getString(_unitsSortPrefKey));
       _unitsAsGrid = prefs.getBool(_unitsViewPrefKey) ?? false;
     });
   }
@@ -129,6 +132,20 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     await prefs.setString(_filesSortPrefKey, next.storageValue);
   }
 
+  Future<void> _openFolderSort() async {
+    final next = await showFileSortSheet(
+      context: context,
+      selected: _folderSort,
+      kind: FileSortKind.folders,
+    );
+    if (next == null || !mounted || next == _folderSort) return;
+    setState(() {
+      _folderSort = next;
+    });
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_unitsSortPrefKey, next.storageValue);
+  }
+
   Future<void> _toggleUnitsView() async {
     HapticFeedback.selectionClick();
     setState(() {
@@ -140,13 +157,19 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
 
   List<Subject> get _visibleUnits {
     final query = _unitQuery.trim().toLowerCase();
-    final sorted = [...subjects]
-      ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-    if (query.isEmpty) return sorted;
-    return sorted.where((subject) {
-      return subject.name.toLowerCase().contains(query) ||
-          subject.code.toLowerCase().contains(query);
-    }).toList();
+    final filtered = query.isEmpty
+        ? subjects
+        : subjects.where((subject) {
+            return subject.name.toLowerCase().contains(query) ||
+                subject.code.toLowerCase().contains(query);
+          });
+    return FileSort.apply(
+      filtered,
+      mode: _folderSort,
+      nameOf: (subject) => subject.name,
+      sizeOf: (subject) => subject.fileCount,
+      dateOf: (subject) => subject.modifiedAt,
+    );
   }
 
   int get _totalUnitFiles =>
@@ -2038,7 +2061,12 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                 ),
               ),
               actions: [
-                if (!isLoading && subjects.isNotEmpty)
+                if (!isLoading && subjects.isNotEmpty) ...[
+                  IconButton(
+                    tooltip: 'Sort · ${_folderSort.labelFor(FileSortKind.folders)}',
+                    icon: const Icon(Icons.sort_rounded),
+                    onPressed: _openFolderSort,
+                  ),
                   IconButton(
                     tooltip: _unitsAsGrid ? 'List view' : 'Grid view',
                     icon: Icon(
@@ -2048,6 +2076,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                     ),
                     onPressed: _toggleUnitsView,
                   ),
+                ],
                 IconButton(
                   icon: const Icon(Icons.refresh_rounded),
                   onPressed: _isMutatingFolder ? null : _refreshSubjects,

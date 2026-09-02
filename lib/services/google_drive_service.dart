@@ -212,6 +212,7 @@ class GoogleDriveService {
             folderId: item.id,
             color: colors[colorIndex % colors.length],
             fileCount: fileCount,
+            modifiedAt: DateTime.tryParse(item.modifiedTime ?? ''),
           ));
           
           colorIndex++;
@@ -466,6 +467,7 @@ class Subject {
   final String folderId;
   final Color color;
   int fileCount;
+  final DateTime? modifiedAt;
   
   Subject({
     required this.id,
@@ -474,6 +476,7 @@ class Subject {
     required this.folderId,
     required this.color,
     this.fileCount = 0,
+    this.modifiedAt,
   });
 }
 
