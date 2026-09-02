@@ -292,6 +292,8 @@ class GoogleDriveService {
                 date: _formatDate(item.modifiedTime),
                 downloadUrl: item.webViewLink,
                 thumbnailUrl: item.thumbnailLink,
+                sizeBytes: int.tryParse(item.size ?? ''),
+                modifiedAt: DateTime.tryParse(item.modifiedTime ?? ''),
               ))
           .toList();
     } catch (e) {
@@ -483,6 +485,8 @@ class StudyMaterial {
   final String date;
   final String? downloadUrl;
   final String? thumbnailUrl;
+  final int? sizeBytes;
+  final DateTime? modifiedAt;
   
   StudyMaterial({
     required this.id,
@@ -492,5 +496,31 @@ class StudyMaterial {
     required this.date,
     this.downloadUrl,
     this.thumbnailUrl,
+    this.sizeBytes,
+    this.modifiedAt,
   });
+
+  StudyMaterial copyWith({
+    String? id,
+    String? name,
+    String? type,
+    String? size,
+    String? date,
+    String? downloadUrl,
+    String? thumbnailUrl,
+    int? sizeBytes,
+    DateTime? modifiedAt,
+  }) {
+    return StudyMaterial(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      type: type ?? this.type,
+      size: size ?? this.size,
+      date: date ?? this.date,
+      downloadUrl: downloadUrl ?? this.downloadUrl,
+      thumbnailUrl: thumbnailUrl ?? this.thumbnailUrl,
+      sizeBytes: sizeBytes ?? this.sizeBytes,
+      modifiedAt: modifiedAt ?? this.modifiedAt,
+    );
+  }
 }

@@ -8,6 +8,7 @@ import 'package:timeago/timeago.dart' as timeago;
 
 import '../services/phone_document_service.dart';
 import '../ui/adaptive_layout.dart';
+import '../ui/file_sort.dart';
 
 class PhonePdfScreen extends StatefulWidget {
   const PhonePdfScreen({super.key});
@@ -21,6 +22,7 @@ class _PhonePdfScreenState extends State<PhonePdfScreen>
   static const int _maxSelection = 5;
   static const _kinds = ['All', 'PDF', 'Word', 'Excel', 'PowerPoint'];
   static const _filesViewPrefKey = 'phone_pdf_view_large_icons';
+  static const _filesSortPrefKey = 'phone_pdf_sort_mode';
 
   final TextEditingController _searchController = TextEditingController();
   final Map<String, PhoneDocument> _selected = {};
@@ -28,6 +30,7 @@ class _PhonePdfScreenState extends State<PhonePdfScreen>
   bool _isLoading = true;
   bool _isPreparing = false;
   bool _useLargeIcons = false;
+  FileSortMode _fileSort = FileSortMode.nameAz;
   String? _errorMessage;
   String _query = '';
   String _kindFilter = 'All';
@@ -48,6 +51,7 @@ class _PhonePdfScreenState extends State<PhonePdfScreen>
     if (!mounted) return;
     setState(() {
       _useLargeIcons = prefs.getBool(_filesViewPrefKey) ?? false;
+      _fileSort = FileSortModeX.fromStorage(prefs.getString(_filesSortPrefKey));
     });
   }
 
@@ -57,6 +61,19 @@ class _PhonePdfScreenState extends State<PhonePdfScreen>
     });
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_filesViewPrefKey, _useLargeIcons);
+  }
+
+  Future<void> _openFileSort() async {
+    final next = await showFileSortSheet(
+      context: context,
+      selected: _fileSort,
+    );
+    if (next == null || !mounted || next == _fileSort) return;
+    setState(() {
+      _fileSort = next;
+    });
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_filesSortPrefKey, next.storageValue);
   }
 
   @override
@@ -103,7 +120,7 @@ class _PhonePdfScreenState extends State<PhonePdfScreen>
 
   List<PhoneDocument> get _filtered {
     final query = _query.trim().toLowerCase();
-    return _documents.where((doc) {
+    final filtered = _documents.where((doc) {
       if (_kindFilter != 'All' && doc.kind != _kindFilter) {
         return false;
       }
@@ -113,7 +130,15 @@ class _PhonePdfScreenState extends State<PhonePdfScreen>
       return doc.name.toLowerCase().contains(query) ||
           doc.kind.toLowerCase().contains(query) ||
           doc.extension.contains(query);
-    }).toList(growable: false);
+    });
+    return FileSort.apply(
+      filtered,
+      mode: _fileSort,
+      nameOf: (doc) => doc.name,
+      typeOf: (doc) => doc.kind,
+      sizeOf: (doc) => doc.sizeBytes,
+      dateOf: (doc) => DateTime.fromMillisecondsSinceEpoch(doc.modifiedMs),
+    );
   }
 
   void _clearSelection() {
@@ -585,6 +610,11 @@ class _PhonePdfScreenState extends State<PhonePdfScreen>
           ),
           actions: [
             if (!_selectionMode) ...[
+              IconButton(
+                tooltip: 'Sort · ${_fileSort.label}',
+                icon: const Icon(Icons.sort_rounded),
+                onPressed: _openFileSort,
+              ),
               IconButton(
                 tooltip: _useLargeIcons ? 'Details view' : 'Large icons',
                 icon: Icon(

@@ -12,6 +12,7 @@ import '../services/download_service.dart';
 import '../services/phone_document_service.dart';
 import '../services/upload_service.dart';
 import '../ui/adaptive_layout.dart';
+import '../ui/file_sort.dart';
 import 'no_internet_screen.dart';
 import 'phone_pdf.dart';
 import 'web_view_screen.dart';
@@ -56,6 +57,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
   bool _isMutatingFolder = false;
   String _role = 'student';
   bool _useLargeIcons = true;
+  FileSortMode _fileSort = FileSortMode.nameAz;
   bool _unitsAsGrid = false;
   String _unitQuery = '';
   final TextEditingController _unitSearchController = TextEditingController();
@@ -66,6 +68,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
   final FocusNode _fileSearchFocus = FocusNode();
   static const _fileTypeFilters = ['All', 'PDF', 'DOC', 'PPT', 'IMG'];
   static const _filesViewPrefKey = 'semester_files_view_grid';
+  static const _filesSortPrefKey = 'semester_files_sort_mode';
   static const _unitsViewPrefKey = 'semester_units_view_list';
 
   bool get _canManageFolders => _role != 'student';
@@ -89,6 +92,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     if (!mounted) return;
     setState(() {
       _useLargeIcons = prefs.getBool(_filesViewPrefKey) ?? true;
+      _fileSort = FileSortModeX.fromStorage(prefs.getString(_filesSortPrefKey));
       _unitsAsGrid = prefs.getBool(_unitsViewPrefKey) ?? false;
     });
   }
@@ -110,6 +114,19 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     });
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_filesViewPrefKey, _useLargeIcons);
+  }
+
+  Future<void> _openFileSort() async {
+    final next = await showFileSortSheet(
+      context: context,
+      selected: _fileSort,
+    );
+    if (next == null || !mounted || next == _fileSort) return;
+    setState(() {
+      _fileSort = next;
+    });
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_filesSortPrefKey, next.storageValue);
   }
 
   Future<void> _toggleUnitsView() async {
@@ -137,13 +154,21 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
 
   List<StudyMaterial> get _visibleFiles {
     final query = _fileQuery.trim().toLowerCase();
-    return currentFiles.where((file) {
+    final filtered = currentFiles.where((file) {
       if (_fileTypeFilter != 'All' && file.type != _fileTypeFilter) {
         return false;
       }
       if (query.isEmpty) return true;
       return file.name.toLowerCase().contains(query);
-    }).toList();
+    });
+    return FileSort.apply(
+      filtered,
+      mode: _fileSort,
+      nameOf: (file) => file.name,
+      typeOf: (file) => file.type,
+      sizeOf: (file) => file.sizeBytes ?? FileSort.parseSizeBytes(file.size),
+      dateOf: (file) => file.modifiedAt ?? FileSort.parseDate(file.date),
+    );
   }
 
   void _resetFileSearch() {
@@ -226,6 +251,9 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     final id = result.id.isNotEmpty
         ? result.id
         : 'local-${DateTime.now().microsecondsSinceEpoch}';
+    final parsedSize = int.tryParse(result.size ?? '');
+    final sizeBytes =
+        parsedSize != null && parsedSize > 0 ? parsedSize : file.sizeBytes;
     final material = StudyMaterial(
       id: id,
       name: name,
@@ -233,6 +261,8 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
       size: _displayFileSize(result.size, file.sizeBytes),
       date: 'Just now',
       downloadUrl: result.webViewLink,
+      sizeBytes: sizeBytes,
+      modifiedAt: DateTime.now(),
     );
 
     setState(() {
@@ -561,15 +591,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
         final index = currentFiles.indexWhere((item) => item.id == material.id);
         if (index != -1) {
           final existing = currentFiles[index];
-          currentFiles[index] = StudyMaterial(
-            id: existing.id,
-            name: savedName,
-            type: existing.type,
-            size: existing.size,
-            date: existing.date,
-            downloadUrl: existing.downloadUrl,
-            thumbnailUrl: existing.thumbnailUrl,
-          );
+          currentFiles[index] = existing.copyWith(name: savedName);
         }
       });
       _showMessage('Renamed to "$savedName"');
@@ -1604,6 +1626,11 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
           ],
         ),
         actions: [
+          IconButton(
+            tooltip: 'Sort · ${_fileSort.label}',
+            icon: const Icon(Icons.sort_rounded),
+            onPressed: _openFileSort,
+          ),
           IconButton(
             tooltip: _useLargeIcons ? 'Details view' : 'Large icons',
             icon: Icon(

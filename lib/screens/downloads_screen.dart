@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/download_service.dart';
 import '../services/phone_document_service.dart';
 import '../ui/adaptive_layout.dart';
+import '../ui/file_sort.dart';
 import 'document_reader.dart';
 
 class DownloadsScreen extends StatefulWidget {
@@ -18,6 +19,7 @@ class DownloadsScreen extends StatefulWidget {
 
 class _DownloadsScreenState extends State<DownloadsScreen> {
   static const _filesViewPrefKey = 'downloads_view_large_icons';
+  static const _filesSortPrefKey = 'downloads_sort_mode';
 
   List<DownloadItem> downloads = [];
   final Map<String, DownloadItem> _selected = {};
@@ -25,6 +27,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
   final FocusNode _searchFocus = FocusNode();
   bool isLoading = true;
   bool _useLargeIcons = false;
+  FileSortMode _fileSort = FileSortMode.dateRecent;
   String _query = '';
   String _typeFilter = 'All';
   static const _typeFilters = ['All', 'PDF', 'DOC', 'PPT', 'IMG'];
@@ -52,6 +55,10 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
     if (!mounted) return;
     setState(() {
       _useLargeIcons = prefs.getBool(_filesViewPrefKey) ?? false;
+      _fileSort = FileSortModeX.fromStorage(
+        prefs.getString(_filesSortPrefKey),
+        fallback: FileSortMode.dateRecent,
+      );
     });
   }
 
@@ -62,6 +69,19 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
     });
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_filesViewPrefKey, _useLargeIcons);
+  }
+
+  Future<void> _openFileSort() async {
+    final next = await showFileSortSheet(
+      context: context,
+      selected: _fileSort,
+    );
+    if (next == null || !mounted || next == _fileSort) return;
+    setState(() {
+      _fileSort = next;
+    });
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_filesSortPrefKey, next.storageValue);
   }
 
   @override
@@ -139,12 +159,20 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
 
   List<DownloadItem> get _visibleDownloads {
     final query = _query.trim().toLowerCase();
-    return downloads.where((item) {
+    final filtered = downloads.where((item) {
       if (_typeFilter != 'All' && item.type != _typeFilter) return false;
       if (query.isEmpty) return true;
       return item.name.toLowerCase().contains(query) ||
           item.subject.toLowerCase().contains(query);
-    }).toList();
+    });
+    return FileSort.apply(
+      filtered,
+      mode: _fileSort,
+      nameOf: (item) => item.name,
+      typeOf: (item) => item.type,
+      sizeOf: (item) => item.size,
+      dateOf: _parsedDate,
+    );
   }
 
   Future<void> _openFile(DownloadItem download) async {
@@ -431,7 +459,14 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
     final selectedCount = _selected.length;
     final pagePad = AdaptiveLayout.pagePadding(context);
     final bottomPad = AdaptiveLayout.bottomClearance(context);
-    final sections = _sectionsFor(visible);
+    final useDateSections = _fileSort == FileSortMode.dateRecent ||
+        _fileSort == FileSortMode.dateOldest;
+    var sections = useDateSections
+        ? _sectionsFor(visible)
+        : [_DownloadSection('', visible)];
+    if (_fileSort == FileSortMode.dateOldest) {
+      sections = sections.reversed.toList();
+    }
 
     return PopScope(
       canPop: !_selectionMode,
@@ -488,6 +523,12 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                       onPressed: () => _selectAll(visible),
                     )
                   else ...[
+                    if (downloads.isNotEmpty)
+                      IconButton(
+                        tooltip: 'Sort · ${_fileSort.label}',
+                        icon: const Icon(Icons.sort_rounded),
+                        onPressed: _openFileSort,
+                      ),
                     if (downloads.isNotEmpty)
                       IconButton(
                         tooltip:
@@ -584,20 +625,21 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                   final section = entry.value;
                   final isLast = entry.key == sections.length - 1;
                   return [
-                    SliverPadding(
-                      padding: pagePad.copyWith(top: 12, bottom: 6),
-                      sliver: SliverToBoxAdapter(
-                        child: Text(
-                          section.title.toUpperCase(),
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.8,
-                            color: muted,
+                    if (section.title.isNotEmpty)
+                      SliverPadding(
+                        padding: pagePad.copyWith(top: 12, bottom: 6),
+                        sliver: SliverToBoxAdapter(
+                          child: Text(
+                            section.title.toUpperCase(),
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.8,
+                              color: muted,
+                            ),
                           ),
                         ),
                       ),
-                    ),
                     SliverPadding(
                       padding: pagePad.copyWith(
                         top: 0,

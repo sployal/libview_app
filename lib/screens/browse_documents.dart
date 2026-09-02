@@ -8,6 +8,7 @@ import 'package:timeago/timeago.dart' as timeago;
 
 import '../services/phone_document_service.dart';
 import '../ui/adaptive_layout.dart';
+import '../ui/file_sort.dart';
 import 'document_reader.dart';
 
 class BrowseDocumentsScreen extends StatefulWidget {
@@ -21,12 +22,14 @@ class _BrowseDocumentsScreenState extends State<BrowseDocumentsScreen>
     with WidgetsBindingObserver {
   static const _kinds = ['All', 'PDF', 'Word', 'Excel', 'PowerPoint'];
   static const _filesViewPrefKey = 'browse_documents_view_large_icons';
+  static const _filesSortPrefKey = 'browse_documents_sort_mode';
 
   final TextEditingController _searchController = TextEditingController();
   List<PhoneDocument> _documents = [];
   bool _isLoading = true;
   bool _isOpening = false;
   bool _useLargeIcons = false;
+  FileSortMode _fileSort = FileSortMode.nameAz;
   String? _errorMessage;
   String _query = '';
   String _kindFilter = 'All';
@@ -48,6 +51,7 @@ class _BrowseDocumentsScreenState extends State<BrowseDocumentsScreen>
     if (!mounted) return;
     setState(() {
       _useLargeIcons = prefs.getBool(_filesViewPrefKey) ?? false;
+      _fileSort = FileSortModeX.fromStorage(prefs.getString(_filesSortPrefKey));
     });
   }
 
@@ -57,6 +61,19 @@ class _BrowseDocumentsScreenState extends State<BrowseDocumentsScreen>
     });
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_filesViewPrefKey, _useLargeIcons);
+  }
+
+  Future<void> _openFileSort() async {
+    final next = await showFileSortSheet(
+      context: context,
+      selected: _fileSort,
+    );
+    if (next == null || !mounted || next == _fileSort) return;
+    setState(() {
+      _fileSort = next;
+    });
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_filesSortPrefKey, next.storageValue);
   }
 
   @override
@@ -105,7 +122,7 @@ class _BrowseDocumentsScreenState extends State<BrowseDocumentsScreen>
 
   List<PhoneDocument> get _filtered {
     final query = _query.trim().toLowerCase();
-    return _documents.where((doc) {
+    final filtered = _documents.where((doc) {
       if (_kindFilter != 'All' && doc.kind != _kindFilter) {
         return false;
       }
@@ -115,7 +132,15 @@ class _BrowseDocumentsScreenState extends State<BrowseDocumentsScreen>
       return doc.name.toLowerCase().contains(query) ||
           doc.kind.toLowerCase().contains(query) ||
           doc.extension.contains(query);
-    }).toList(growable: false);
+    });
+    return FileSort.apply(
+      filtered,
+      mode: _fileSort,
+      nameOf: (doc) => doc.name,
+      typeOf: (doc) => doc.kind,
+      sizeOf: (doc) => doc.sizeBytes,
+      dateOf: (doc) => DateTime.fromMillisecondsSinceEpoch(doc.modifiedMs),
+    );
   }
 
   void _clearSelection() {
@@ -687,6 +712,11 @@ class _BrowseDocumentsScreenState extends State<BrowseDocumentsScreen>
               onPressed: _selectAll,
             )
           else ...[
+            IconButton(
+              tooltip: 'Sort · ${_fileSort.label}',
+              icon: const Icon(Icons.sort_rounded),
+              onPressed: _openFileSort,
+            ),
             IconButton(
               tooltip: _useLargeIcons ? 'Details view' : 'Large icons',
               icon: Icon(
