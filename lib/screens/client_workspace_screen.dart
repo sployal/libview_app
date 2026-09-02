@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/auth_service.dart';
 import '../services/client_service.dart';
 import '../services/google_drive_service.dart';
 import '../services/upload_service.dart';
+import '../ui/file_sort.dart';
 import 'client_files_browser_screen.dart';
 
 class ClientWorkspaceScreen extends StatelessWidget {
@@ -60,6 +62,8 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
   static const _accent = Color(0xFF0EA5E9);
   static const _mint = Color(0xFF14B8A6);
   static const _amber = Color(0xFFF59E0B);
+  static const _folderSortPrefKey = 'client_folders_sort_mode';
+  static const _maxPreviewFolders = 6;
 
   DriveFolderSummary _summary = const DriveFolderSummary();
   List<Subject> _folders = [];
@@ -70,6 +74,7 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
   String? _openFolderId;
   String? _openFolderName;
   String _displayName = '';
+  FileSortMode _folderSort = FileSortMode.nameAz;
 
   ClientWorkspace get _client => widget.client;
 
@@ -77,7 +82,40 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
   void initState() {
     super.initState();
     _loadGreeting();
+    _loadFolderSort();
     _refresh();
+  }
+
+  Future<void> _loadFolderSort() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      _folderSort = FileSortModeX.fromStorage(prefs.getString(_folderSortPrefKey));
+    });
+  }
+
+  Future<void> _openFolderSort() async {
+    final next = await showFileSortSheet(
+      context: context,
+      selected: _folderSort,
+      kind: FileSortKind.folders,
+    );
+    if (next == null || !mounted || next == _folderSort) return;
+    setState(() {
+      _folderSort = next;
+    });
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_folderSortPrefKey, next.storageValue);
+  }
+
+  List<Subject> get _sortedFolders {
+    return FileSort.apply(
+      _folders,
+      mode: _folderSort,
+      nameOf: (folder) => folder.name,
+      sizeOf: (folder) => folder.fileCount,
+      dateOf: (folder) => folder.modifiedAt,
+    );
   }
 
   Future<void> _loadGreeting() async {
@@ -227,7 +265,7 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
               const SizedBox(height: 10),
               _recentSection(card, title, muted, isDark),
               const SizedBox(height: 22),
-              _sectionLabel('Your folders', title),
+              _foldersHeader(title),
               const SizedBox(height: 10),
               _foldersPreview(card, title, muted, isDark),
               const SizedBox(height: 20),
@@ -471,6 +509,32 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
     );
   }
 
+  Widget _foldersHeader(Color title) {
+    return Row(
+      children: [
+        Expanded(child: _sectionLabel('Your folders', title)),
+        if (_folders.isNotEmpty)
+          GestureDetector(
+            onTap: _openFolderSort,
+            child: Row(
+              children: [
+                const Icon(Icons.sort_rounded, color: _accent, size: 20),
+                const SizedBox(width: 4),
+                Text(
+                  'Sort',
+                  style: const TextStyle(
+                    color: _accent,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 16,
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
   Widget _recentHeader(Color title) {
     return Row(
       children: [
@@ -585,7 +649,9 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
         'No folders yet. Create one to start uploading.',
       );
     }
-    final preview = _folders.take(4).toList();
+    final sorted = _sortedFolders;
+    final preview = sorted.take(_maxPreviewFolders).toList();
+    final remaining = sorted.length - preview.length;
     return Column(
       children: [
         for (final folder in preview)
@@ -615,6 +681,21 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
                   style: TextStyle(color: muted),
                 ),
                 trailing: Icon(Icons.chevron_right_rounded, color: muted),
+              ),
+            ),
+          ),
+        if (remaining > 0)
+          Padding(
+            padding: const EdgeInsets.only(top: 2, bottom: 4),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                '+$remaining more ${remaining == 1 ? 'folder' : 'folders'}',
+                style: TextStyle(
+                  color: muted,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
               ),
             ),
           ),
