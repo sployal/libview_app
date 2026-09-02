@@ -1275,38 +1275,6 @@ app.get('/drive-oauth-status', requireAuth, requireSystemAdmin, async (req, res)
   }
 });
 
-app.post('/auth/google/native', requireAuth, requireSystemAdmin, async (req, res) => {
-  const code = String(req.body?.code || '').trim();
-  if (!code) {
-    return res.status(400).json({ error: 'Missing authorization code' });
-  }
-  if (!CONFIG.GOOGLE_OAUTH_CLIENT_ID || !CONFIG.GOOGLE_OAUTH_CLIENT_SECRET) {
-    return res.status(500).json({ error: 'OAuth client is not configured' });
-  }
-
-  try {
-    // Google Sign-In server auth codes use an empty redirect URI.
-    const nativeOauth2Client = new google.auth.OAuth2(
-      CONFIG.GOOGLE_OAUTH_CLIENT_ID,
-      CONFIG.GOOGLE_OAUTH_CLIENT_SECRET,
-      ''
-    );
-    const { tokens } = await nativeOauth2Client.getToken(code);
-    const applied = await applyDriveOAuthTokens(tokens);
-    if (!applied.ok) {
-      return res.status(400).json({
-        error:
-          'Google did not return a refresh token. Choose the Drive account, grant all permissions, and try again.',
-      });
-    }
-    const status = await loadOAuthStatus();
-    return res.json({ ok: true, ...status });
-  } catch (e) {
-    console.error('Native Google token exchange failed:', e.message);
-    return res.status(500).json({ error: 'Could not save Drive access' });
-  }
-});
-
 // --- One-time OAuth2 setup routes ---------------------------------------
 //
 // These exist ONLY to generate a refresh token once. After you've

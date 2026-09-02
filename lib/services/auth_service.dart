@@ -432,35 +432,6 @@ class AuthService {
     return userCredential;
   }
 
-  /// Native Google account picker for Drive/Gmail offline access.
-  /// Returns a server auth code, or null if the user cancelled.
-  Future<String?> requestDriveRefreshAuthCode() async {
-    final driveSignIn = GoogleSignIn(
-      scopes: const [
-        'email',
-        'https://www.googleapis.com/auth/drive',
-        'https://www.googleapis.com/auth/gmail.send',
-      ],
-      serverClientId: _googleServerClientId,
-      forceCodeForRefreshToken: true,
-    );
-
-    try {
-      await driveSignIn.signOut();
-    } catch (_) {}
-
-    final account = await driveSignIn.signIn();
-    if (account == null) return null;
-
-    final code = account.serverAuthCode?.trim() ?? '';
-    if (code.isEmpty) {
-      throw StateError(
-        'Google did not return a server auth code. Try again and grant all permissions.',
-      );
-    }
-    return code;
-  }
-
   /// Writes the Google photo onto an existing profile so other screens can
   /// fall back to it. Does not create a stub profile for unfinished sign-ups.
   Future<void> _syncGooglePhotoToProfile(User? user, {String? photoUrl}) async {

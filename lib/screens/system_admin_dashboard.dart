@@ -1,7 +1,10 @@
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../services/auth_service.dart';
 import '../services/client_service.dart';
@@ -1984,64 +1987,53 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard>
     ]);
   }
 
-  Future<void> _openRefreshTokenInApp() async {
+  static const _googleAuthUrl = 'https://edupal-backend.onrender.com/auth/google';
+
+  Future<void> _openRefreshTokenInChrome() async {
     try {
-      final code = await AuthService.instance.requestDriveRefreshAuthCode();
-      if (!mounted || code == null) return;
+      var launched = false;
 
-      showDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => const Center(
-          child: CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
-          ),
-        ),
-      );
-
-      DriveOAuthStatus? status;
-      Object? submitError;
-      try {
-        status = await UploadService.instance.submitDriveOAuthCode(code);
-      } catch (error) {
-        submitError = error;
+      if (Platform.isAndroid) {
+        try {
+          launched = await launchUrl(
+            Uri.parse('googlechrome://navigate?url=$_googleAuthUrl'),
+            mode: LaunchMode.externalApplication,
+          );
+        } catch (_) {
+          launched = false;
+        }
+      } else if (Platform.isIOS) {
+        final chromeUri = Uri.parse(
+          'googlechromes://edupal-backend.onrender.com/auth/google',
+        );
+        if (await canLaunchUrl(chromeUri)) {
+          launched = await launchUrl(
+            chromeUri,
+            mode: LaunchMode.externalApplication,
+          );
+        }
       }
 
-      if (mounted) Navigator.of(context, rootNavigator: true).pop();
-      if (!mounted) return;
+      if (!launched) {
+        launched = await launchUrl(
+          Uri.parse(_googleAuthUrl),
+          mode: LaunchMode.externalApplication,
+        );
+      }
 
-      if (submitError != null) {
+      if (!launched && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(submitError.toString()),
-            backgroundColor: const Color(0xFFEF4444),
+          const SnackBar(
+            content: Text('Could not open Google Chrome.'),
+            backgroundColor: Color(0xFFEF4444),
           ),
         );
-        await _loadOAuthStatus();
-        return;
       }
-
-      setState(() {
-        _oauthStatus = status;
-        _isLoadingOAuthStatus = false;
-        _oauthStatusError = null;
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Drive access saved. Days left has been updated.'),
-          backgroundColor: Color(0xFF10B981),
-        ),
-      );
-    } catch (error) {
-      final message = error.toString();
-      if (message.contains('sign_in_canceled') ||
-          message.contains('sign_in_cancelled')) {
-        return;
-      }
+    } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(message),
+          content: Text('Could not open Google Chrome: $e'),
           backgroundColor: const Color(0xFFEF4444),
         ),
       );
@@ -2573,7 +2565,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard>
       title: 'Refresh Token',
       subtitle: _oauthStatusSubtitle(),
       showChevron: true,
-      onTap: _openRefreshTokenInApp,
+      onTap: _openRefreshTokenInChrome,
     );
   }
 
