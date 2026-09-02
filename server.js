@@ -493,6 +493,28 @@ const publicDrive = google.drive({ version: 'v3' });
 // a confusing Drive error when the token isn't ready yet.
 let driveReady = false;
 
+async function applyDriveOAuthTokens(tokens) {
+  if (!tokens?.refresh_token) {
+    return { ok: false, reason: 'missing_token' };
+  }
+
+  await saveRefreshToken(tokens.refresh_token);
+  oauth2Client.setCredentials(tokens);
+  driveReady = true;
+
+  try {
+    await syncEngineeringCourseToFirestore();
+    await loadSemesterIdsFromFirestore();
+    await ensureClientsRootFolder();
+    await loadClientWorkspaceIdsFromFirestore();
+  } catch (err) {
+    console.error('Failed to sync Engineering Drive folders after OAuth:', err.message);
+  }
+
+  console.log('Google Drive OAuth refresh token saved to Firestore (config/googleDriveOAuth).');
+  return { ok: true };
+}
+
 function driveIsConfigured() {
   return driveReady;
 }
@@ -1253,6 +1275,38 @@ app.get('/drive-oauth-status', requireAuth, requireSystemAdmin, async (req, res)
   }
 });
 
+app.post('/auth/google/native', requireAuth, requireSystemAdmin, async (req, res) => {
+  const code = String(req.body?.code || '').trim();
+  if (!code) {
+    return res.status(400).json({ error: 'Missing authorization code' });
+  }
+  if (!CONFIG.GOOGLE_OAUTH_CLIENT_ID || !CONFIG.GOOGLE_OAUTH_CLIENT_SECRET) {
+    return res.status(500).json({ error: 'OAuth client is not configured' });
+  }
+
+  try {
+    // Google Sign-In server auth codes use an empty redirect URI.
+    const nativeOauth2Client = new google.auth.OAuth2(
+      CONFIG.GOOGLE_OAUTH_CLIENT_ID,
+      CONFIG.GOOGLE_OAUTH_CLIENT_SECRET,
+      ''
+    );
+    const { tokens } = await nativeOauth2Client.getToken(code);
+    const applied = await applyDriveOAuthTokens(tokens);
+    if (!applied.ok) {
+      return res.status(400).json({
+        error:
+          'Google did not return a refresh token. Choose the Drive account, grant all permissions, and try again.',
+      });
+    }
+    const status = await loadOAuthStatus();
+    return res.json({ ok: true, ...status });
+  } catch (e) {
+    console.error('Native Google token exchange failed:', e.message);
+    return res.status(500).json({ error: 'Could not save Drive access' });
+  }
+});
+
 // --- One-time OAuth2 setup routes ---------------------------------------
 //
 // These exist ONLY to generate a refresh token once. After you've
@@ -1260,6 +1314,43 @@ app.get('/drive-oauth-status', requireAuth, requireSystemAdmin, async (req, res)
 // in your .env / Render environment variables, you should remove these
 // two routes (or at minimum keep AUTH_SETUP_SECRET set so randoms can't
 // trigger the consent flow against your app).
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function oauthResultPage({ status, title, message }) {
+  const allowed = new Set(['success', 'failed', 'missing_token']);
+  const safeStatus = allowed.has(status) ? status : 'failed';
+  const safeTitle = escapeHtml(title || 'Authorization');
+  const safeMessage = escapeHtml(message || '');
+  return `<!DOCTYPE html>
+<html lang="en" data-edupal-oauth="${safeStatus}">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${safeTitle}</title>
+  <style>
+    body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0f172a; color: #f8fafc; padding: 24px; }
+    .card { max-width: 420px; text-align: center; }
+    h1 { font-size: 22px; margin: 0 0 12px; }
+    p { margin: 0; color: #94a3b8; line-height: 1.5; }
+  </style>
+</head>
+<body data-edupal-oauth="${safeStatus}">
+  <div class="card">
+    <h1>${safeTitle}</h1>
+    <p>${safeMessage}</p>
+  </div>
+</body>
+</html>`;
+}
 
 app.get('/auth/google', (req, res) => {
   if (CONFIG.AUTH_SETUP_SECRET && req.query.secret !== CONFIG.AUTH_SETUP_SECRET) {
@@ -1282,54 +1373,44 @@ app.get('/auth/google/callback', async (req, res) => {
   const { code, error } = req.query;
 
   if (error) {
-    return res.status(400).send(`Authorization failed: ${error}`);
+    return res.status(400).send(oauthResultPage({
+      status: 'failed',
+      title: 'Authorization failed',
+      message: String(error),
+    }));
   }
   if (!code) {
-    return res.status(400).send('Missing "code" query parameter');
+    return res.status(400).send(oauthResultPage({
+      status: 'failed',
+      title: 'Authorization failed',
+      message: 'Missing authorization code. Close this screen and try again.',
+    }));
   }
 
   try {
     const { tokens } = await oauth2Client.getToken(code);
-
-    if (!tokens.refresh_token) {
-      return res
-        .status(200)
-        .send(
-          'Signed in, but Google did not return a refresh_token (it only returns one the ' +
-          'first time you consent, or when prompt=consent is used and any prior grant was ' +
-          'revoked first). Go to https://myaccount.google.com/permissions, remove access for ' +
-          'this app, then visit /auth/google again.'
-        );
+    const applied = await applyDriveOAuthTokens(tokens);
+    if (!applied.ok) {
+      return res.status(200).send(oauthResultPage({
+        status: 'missing_token',
+        title: 'No refresh token',
+        message:
+          'Google did not return a refresh token. Remove this app at myaccount.google.com/permissions, then try again.',
+      }));
     }
 
-    // Persist to Firestore so it survives restarts/redeploys and every
-    // server instance (if you ever scale beyond one) can read it — no
-    // manual copy-pasting into env vars required.
-    await saveRefreshToken(tokens.refresh_token);
-
-    // Wire it up immediately so this running server instance can use it
-    // right away too, without waiting for a restart.
-    oauth2Client.setCredentials(tokens);
-    driveReady = true;
-
-    try {
-      await syncEngineeringCourseToFirestore();
-      await loadSemesterIdsFromFirestore();
-      await ensureClientsRootFolder();
-      await loadClientWorkspaceIdsFromFirestore();
-    } catch (err) {
-      console.error('Failed to sync Engineering Drive folders after OAuth:', err.message);
-    }
-
-    console.log('Google Drive OAuth refresh token saved to Firestore (config/googleDriveOAuth).');
-
-    res.send(
-      'Success. Drive access has been authorized and saved. You can now remove or lock down ' +
-      'the /auth/google and /auth/google/callback routes.'
-    );
+    res.send(oauthResultPage({
+      status: 'success',
+      title: 'Drive connected',
+      message: 'Access has been saved. You can return to Edupal.',
+    }));
   } catch (e) {
     console.error('Token exchange failed:', e);
-    res.status(500).send('Token exchange failed. Check server logs.');
+    res.status(500).send(oauthResultPage({
+      status: 'failed',
+      title: 'Token exchange failed',
+      message: 'Check server logs, then try again.',
+    }));
   }
 });
 

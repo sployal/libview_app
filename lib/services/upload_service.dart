@@ -214,6 +214,40 @@ class UploadService {
     }
   }
 
+  Future<DriveOAuthStatus> submitDriveOAuthCode(String code) async {
+    final token = await _idToken();
+    final authCode = code.trim();
+    if (authCode.isEmpty) {
+      throw UploadException('Missing authorization code');
+    }
+
+    try {
+      final response = await _dio.post(
+        '/auth/google/native',
+        data: {'code': authCode},
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      );
+
+      final data = response.data;
+      if (data is Map<String, dynamic>) {
+        return DriveOAuthStatus.fromJson(data);
+      }
+      if (data is Map) {
+        return DriveOAuthStatus.fromJson(Map<String, dynamic>.from(data));
+      }
+      throw UploadException('Unexpected response from server');
+    } on DioException catch (e) {
+      throw UploadException(
+        _messageFromDio(e, action: 'oauth'),
+        statusCode: e.response?.statusCode,
+      );
+    }
+  }
+
   Future<DriveStorageSnapshot> fetchDriveStorage({bool refresh = false}) async {
     final token = await _idToken();
 
