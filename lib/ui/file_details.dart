@@ -26,6 +26,8 @@ class FileDetailsInfo {
     this.modifiedAt,
     this.createdAt,
     this.thumbnailUrl,
+    this.accentColor,
+    this.isFolder = false,
     this.fields = const [],
   });
 
@@ -36,9 +38,14 @@ class FileDetailsInfo {
   final DateTime? modifiedAt;
   final DateTime? createdAt;
   final String? thumbnailUrl;
+  final Color? accentColor;
+  final bool isFolder;
   final List<FileDetailField> fields;
 
-  factory FileDetailsInfo.fromStudyMaterial(StudyMaterial file) {
+  factory FileDetailsInfo.fromStudyMaterial(
+    StudyMaterial file, {
+    String? folderName,
+  }) {
     final modified = file.modifiedAt ?? FileSort.parseDate(file.date);
     final extension = _extensionOf(file.name);
     return FileDetailsInfo(
@@ -51,8 +58,29 @@ class FileDetailsInfo {
       thumbnailUrl: file.thumbnailUrl,
       fields: [
         FileDetailField(label: 'Kind', value: _kindLabel(file.type, extension)),
+        if (folderName != null && folderName.trim().isNotEmpty)
+          FileDetailField(label: 'Folder', value: folderName.trim()),
         if (extension != null)
           FileDetailField(label: 'Extension', value: '.$extension'),
+      ],
+    );
+  }
+
+  factory FileDetailsInfo.fromSubject(Subject folder) {
+    final files = folder.fileCount;
+    return FileDetailsInfo(
+      name: folder.name,
+      type: 'Folder',
+      sizeLabel: files == 1 ? '1 file' : '$files files',
+      dateLabel: '',
+      modifiedAt: folder.modifiedAt,
+      createdAt: folder.createdAt,
+      isFolder: true,
+      accentColor: folder.color,
+      fields: [
+        const FileDetailField(label: 'Kind', value: 'Folder'),
+        if (folder.code.trim().isNotEmpty)
+          FileDetailField(label: 'Code', value: folder.code),
       ],
     );
   }
@@ -125,7 +153,7 @@ class FileDetailsDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final accent = fileTypeColor(info.type);
+    final accent = info.accentColor ?? fileTypeColor(info.type);
     final sheet = isDark ? const Color(0xFF151B28) : Colors.white;
     final titleColor =
         isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
@@ -171,6 +199,7 @@ class FileDetailsDialog extends StatelessWidget {
                         type: info.type,
                         accent: accent,
                         thumbnailUrl: info.thumbnailUrl,
+                        isFolder: info.isFolder,
                       ),
                       Flexible(
                         child: SingleChildScrollView(
@@ -208,8 +237,10 @@ class FileDetailsDialog extends StatelessWidget {
                                 children: [
                                   Expanded(
                                     child: _StatCard(
-                                      icon: Icons.sd_storage_rounded,
-                                      label: 'Size',
+                                      icon: info.isFolder
+                                          ? Icons.folder_rounded
+                                          : Icons.sd_storage_rounded,
+                                      label: info.isFolder ? 'Files' : 'Size',
                                       value: info.sizeLabel,
                                       color: accent,
                                       background: card,
@@ -307,11 +338,13 @@ class _Header extends StatelessWidget {
     required this.type,
     required this.accent,
     this.thumbnailUrl,
+    this.isFolder = false,
   });
 
   final String type;
   final Color accent;
   final String? thumbnailUrl;
+  final bool isFolder;
 
   @override
   Widget build(BuildContext context) {
@@ -391,21 +424,23 @@ class _Header extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
-                const Column(
+                Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'File information',
-                      style: TextStyle(
+                      isFolder ? 'Folder information' : 'File information',
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 18,
                         fontWeight: FontWeight.w800,
                       ),
                     ),
-                    SizedBox(height: 2),
+                    const SizedBox(height: 2),
                     Text(
-                      'Name, size, type, and more',
-                      style: TextStyle(
+                      isFolder
+                          ? 'Name, files, and more'
+                          : 'Name, size, type, and more',
+                      style: const TextStyle(
                         color: Colors.white70,
                         fontSize: 13,
                       ),
@@ -593,6 +628,8 @@ class _DetailRow extends StatelessWidget {
 
 IconData fileTypeIcon(String type) {
   switch (type.toUpperCase()) {
+    case 'FOLDER':
+      return Icons.folder_rounded;
     case 'PDF':
       return Icons.picture_as_pdf_rounded;
     case 'DOC':
@@ -610,6 +647,8 @@ IconData fileTypeIcon(String type) {
 
 Color fileTypeColor(String type) {
   switch (type.toUpperCase()) {
+    case 'FOLDER':
+      return const Color(0xFF6366F1);
     case 'PDF':
       return const Color(0xFFEF4444);
     case 'DOC':
@@ -643,6 +682,8 @@ String? _extensionOf(String name) {
 
 String _kindLabel(String type, String? extension) {
   switch (type.toUpperCase()) {
+    case 'FOLDER':
+      return 'Folder';
     case 'PDF':
       return 'PDF document';
     case 'DOC':

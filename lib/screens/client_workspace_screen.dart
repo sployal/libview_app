@@ -193,6 +193,7 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
               name: savedName,
               colorIndex: _folders.length,
               modifiedAt: DateTime.now(),
+              createdAt: DateTime.now(),
             ),
           );
           _summary = DriveFolderSummary(

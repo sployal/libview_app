@@ -200,6 +200,7 @@ class GoogleDriveService {
             colorIndex: colorIndex,
             fileCount: fileCount,
             modifiedAt: DateTime.tryParse(item.modifiedTime ?? ''),
+            createdAt: DateTime.tryParse(item.createdTime ?? ''),
           ));
           
           colorIndex++;
@@ -313,6 +314,7 @@ class GoogleDriveService {
     required int colorIndex,
     int fileCount = 0,
     DateTime? modifiedAt,
+    DateTime? createdAt,
   }) {
     return Subject(
       id: id,
@@ -322,6 +324,7 @@ class GoogleDriveService {
       color: folderColors[colorIndex % folderColors.length],
       fileCount: fileCount,
       modifiedAt: modifiedAt,
+      createdAt: createdAt,
     );
   }
 
@@ -488,6 +491,7 @@ class Subject {
   final Color color;
   int fileCount;
   final DateTime? modifiedAt;
+  final DateTime? createdAt;
   
   Subject({
     required this.id,
@@ -497,6 +501,7 @@ class Subject {
     required this.color,
     this.fileCount = 0,
     this.modifiedAt,
+    this.createdAt,
   });
 
   Subject copyWith({
@@ -507,6 +512,7 @@ class Subject {
     Color? color,
     int? fileCount,
     DateTime? modifiedAt,
+    DateTime? createdAt,
   }) {
     return Subject(
       id: id ?? this.id,
@@ -516,6 +522,7 @@ class Subject {
       color: color ?? this.color,
       fileCount: fileCount ?? this.fileCount,
       modifiedAt: modifiedAt ?? this.modifiedAt,
+      createdAt: createdAt ?? this.createdAt,
     );
   }
 }

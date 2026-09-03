@@ -262,6 +262,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
           name: name,
           colorIndex: subjects.length,
           modifiedAt: DateTime.now(),
+          createdAt: DateTime.now(),
         ),
       );
       errorMessage = null;
@@ -1323,7 +1324,10 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
           if (value == 'info') {
             showFileDetailsDialog(
               context: context,
-              info: FileDetailsInfo.fromStudyMaterial(file),
+              info: FileDetailsInfo.fromStudyMaterial(
+                file,
+                folderName: selectedSubject?.name,
+              ),
             );
           } else if (value == 'rename') {
             _renameMaterial(file);
@@ -2407,7 +2411,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
   }
 
   Widget? _unitFolderMenu(Subject subject) {
-    if (!_isLiveFolder || !_canManageFolders) return null;
+    if (!_isLiveFolder) return null;
     return PopupMenuButton<String>(
       tooltip: 'Folder options',
       enabled: !_isMutatingFolder,
@@ -2419,40 +2423,60 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
             : const Color(0xFF6B7280),
       ),
       onSelected: (value) {
-        if (value == 'rename') {
-          _renameUnitFolder(subject);
-        } else if (value == 'delete') {
-          _confirmDeleteUnitFolder(subject);
-        }
+        Future<void>.delayed(const Duration(milliseconds: 150), () {
+          if (!mounted) return;
+          if (value == 'info') {
+            showFileDetailsDialog(
+              context: context,
+              info: FileDetailsInfo.fromSubject(subject),
+            );
+          } else if (value == 'rename') {
+            _renameUnitFolder(subject);
+          } else if (value == 'delete') {
+            _confirmDeleteUnitFolder(subject);
+          }
+        });
       },
-      itemBuilder: (context) => const [
-        PopupMenuItem(
-          value: 'rename',
+      itemBuilder: (context) => [
+        const PopupMenuItem(
+          value: 'info',
           child: Row(
             children: [
-              Icon(Icons.drive_file_rename_outline_rounded, size: 18),
+              Icon(Icons.info_outline_rounded, size: 18, color: Color(0xFF6366F1)),
               SizedBox(width: 10),
-              Text('Rename folder'),
+              Text('Folder info'),
             ],
           ),
         ),
-        PopupMenuItem(
-          value: 'delete',
-          child: Row(
-            children: [
-              Icon(
-                Icons.delete_rounded,
-                size: 18,
-                color: Color(0xFFEF4444),
-              ),
-              SizedBox(width: 10),
-              Text(
-                'Delete folder',
-                style: TextStyle(color: Color(0xFFEF4444)),
-              ),
-            ],
+        if (_canManageFolders) ...const [
+          PopupMenuItem(
+            value: 'rename',
+            child: Row(
+              children: [
+                Icon(Icons.drive_file_rename_outline_rounded, size: 18),
+                SizedBox(width: 10),
+                Text('Rename folder'),
+              ],
+            ),
           ),
-        ),
+          PopupMenuItem(
+            value: 'delete',
+            child: Row(
+              children: [
+                Icon(
+                  Icons.delete_rounded,
+                  size: 18,
+                  color: Color(0xFFEF4444),
+                ),
+                SizedBox(width: 10),
+                Text(
+                  'Delete folder',
+                  style: TextStyle(color: Color(0xFFEF4444)),
+                ),
+              ],
+            ),
+          ),
+        ],
       ],
     );
   }
