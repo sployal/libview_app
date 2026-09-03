@@ -396,6 +396,8 @@ class ClientRecentFolder {
 }
 
 class ClientRecentFolders {
+  static const int maxRecent = 6;
+
   static String _key(String clientId) => 'client_recent_folders_$clientId';
 
   static Future<List<ClientRecentFolder>> load(String clientId) async {
@@ -412,6 +414,7 @@ class ClientRecentFolders {
                 Map<String, dynamic>.from(item),
               ))
           .where((item) => item.folderId.isNotEmpty)
+          .take(maxRecent)
           .toList();
     } catch (_) {
       return const [];
@@ -432,7 +435,7 @@ class ClientRecentFolders {
         openedAt: DateTime.now(),
       ),
       ...current.where((item) => item.folderId != folderId),
-    ].take(8).toList();
+    ].take(maxRecent).toList();
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
       _key(clientId),
