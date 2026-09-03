@@ -1306,6 +1306,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
         ),
       );
     }
+    if (!_canManageFolders) return const SizedBox.shrink();
     return PopupMenuButton<String>(
       tooltip: 'File options',
       enabled: !isDownloading,
@@ -1329,8 +1330,8 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
           }
         });
       },
-      itemBuilder: (context) => [
-        const PopupMenuItem(
+      itemBuilder: (context) => const [
+        PopupMenuItem(
           value: 'info',
           child: Row(
             children: [
@@ -1340,35 +1341,33 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
             ],
           ),
         ),
-        if (_canManageFolders) ...const [
-          PopupMenuItem(
-            value: 'rename',
-            child: Row(
-              children: [
-                Icon(Icons.drive_file_rename_outline_rounded, size: 18),
-                SizedBox(width: 10),
-                Text('Rename file'),
-              ],
-            ),
+        PopupMenuItem(
+          value: 'rename',
+          child: Row(
+            children: [
+              Icon(Icons.drive_file_rename_outline_rounded, size: 18),
+              SizedBox(width: 10),
+              Text('Rename file'),
+            ],
           ),
-          PopupMenuItem(
-            value: 'delete',
-            child: Row(
-              children: [
-                Icon(
-                  Icons.delete_rounded,
-                  size: 18,
-                  color: Color(0xFFEF4444),
-                ),
-                SizedBox(width: 10),
-                Text(
-                  'Delete',
-                  style: TextStyle(color: Color(0xFFEF4444)),
-                ),
-              ],
-            ),
+        ),
+        PopupMenuItem(
+          value: 'delete',
+          child: Row(
+            children: [
+              Icon(
+                Icons.delete_rounded,
+                size: 18,
+                color: Color(0xFFEF4444),
+              ),
+              SizedBox(width: 10),
+              Text(
+                'Delete',
+                style: TextStyle(color: Color(0xFFEF4444)),
+              ),
+            ],
           ),
-        ],
+        ),
       ],
     );
   }
