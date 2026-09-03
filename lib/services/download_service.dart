@@ -355,6 +355,78 @@ class DownloadService {
       _cancelTokens.remove(fileId);
     }
   }
+
+  /// Download any HTTP(S) file (e.g. a notification image) into public Downloads.
+  static Future<DownloadResult> downloadFromUrl({
+    required String url,
+    required String fileName,
+    String subject = 'Notifications',
+  }) async {
+    String? tempPath;
+    try {
+      final hasPermission = await requestStoragePermission();
+      if (!hasPermission) {
+        return DownloadResult(
+          success: false,
+          message: 'Storage permission denied',
+        );
+      }
+
+      var safeName = fileName.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_').trim();
+      if (safeName.isEmpty) safeName = 'notification.jpg';
+      if (!safeName.contains('.')) {
+        safeName = '$safeName.jpg';
+      }
+
+      final tempDir = await getTemporaryDirectory();
+      tempPath = '${tempDir.path}/$safeName';
+
+      await _dio.download(
+        url,
+        tempPath,
+        options: Options(
+          responseType: ResponseType.bytes,
+          followRedirects: true,
+          validateStatus: (status) => status != null && status < 500,
+        ),
+      );
+
+      final tempFile = File(tempPath);
+      if (!await tempFile.exists() || await tempFile.length() == 0) {
+        return DownloadResult(
+          success: false,
+          message: 'Image download failed',
+        );
+      }
+
+      final fileSize = await tempFile.length();
+      final saved = await _saveToPublicDownloads(
+        sourcePath: tempPath,
+        fileName: safeName,
+      );
+      await _deleteQuietly(tempPath);
+
+      await _saveDownloadMetadata(
+        fileName: safeName,
+        subject: subject,
+        size: fileSize,
+        filePath: saved.filePath,
+        contentUri: saved.contentUri,
+      );
+
+      return DownloadResult(
+        success: true,
+        message: 'Saved to Downloads',
+        filePath: saved.filePath,
+      );
+    } catch (e) {
+      if (tempPath != null) await _deleteQuietly(tempPath);
+      return DownloadResult(
+        success: false,
+        message: 'Download failed: $e',
+      );
+    }
+  }
   
   // Save download metadata to SharedPreferences
   static Future<void> _saveDownloadMetadata({
