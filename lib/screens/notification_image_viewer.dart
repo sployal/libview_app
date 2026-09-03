@@ -84,13 +84,14 @@ class _NotificationImageViewerState extends State<NotificationImageViewer> {
   @override
   Widget build(BuildContext context) {
     final title = (widget.title ?? '').trim();
+    const barColor = Color(0xFF111111);
     return Scaffold(
       backgroundColor: Colors.black,
-      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        backgroundColor: Colors.black.withOpacity(0.45),
+        backgroundColor: barColor,
         foregroundColor: Colors.white,
         elevation: 0,
+        scrolledUnderElevation: 0,
         systemOverlayStyle: SystemUiOverlayStyle.light,
         title: title.isEmpty
             ? null
@@ -104,19 +105,26 @@ class _NotificationImageViewerState extends State<NotificationImageViewer> {
                 ),
               ),
         actions: [
-          IconButton(
-            tooltip: 'Save to Downloads',
+          TextButton(
             onPressed: _saving ? null : _save,
-            icon: _saving
-                ? const SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.white,
-                    ),
-                  )
-                : const Icon(CupertinoIcons.arrow_down_to_line),
+            style: TextButton.styleFrom(foregroundColor: Colors.white),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(_saving ? 'Saving…' : 'Save'),
+                const SizedBox(width: 6),
+                _saving
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Icon(CupertinoIcons.arrow_down_to_line, size: 20),
+              ],
+            ),
           ),
         ],
       ),
@@ -127,6 +135,7 @@ class _NotificationImageViewerState extends State<NotificationImageViewer> {
           transformationController: _transform,
           minScale: 1,
           maxScale: 5,
+          constrained: true,
           child: Center(
             child: Hero(
               tag: widget.heroTag,
@@ -164,6 +173,13 @@ class _NotificationImageViewerState extends State<NotificationImageViewer> {
             ),
           ),
         ),
+      ),
+      bottomNavigationBar: const BottomAppBar(
+        color: barColor,
+        elevation: 0,
+        padding: EdgeInsets.zero,
+        height: 40,
+        child: SizedBox.shrink(),
       ),
     );
   }
