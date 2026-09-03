@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:timeago/timeago.dart' as timeago;
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/auth_service.dart';
@@ -32,29 +33,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   String? currentUserRole;
   String _courseFilter = 'all';
   final Set<String> _expandedIds = {};
-  final ScrollController _scrollController = ScrollController();
-  String? _editingNotificationId;
-  final Map<String, TextEditingController> _editTitleControllers = {};
-  final Map<String, TextEditingController> _editMessageControllers = {};
-  final Map<String, String> _editTypes = {};
 
   @override
   void initState() {
     super.initState();
-    _checkUserRole();
     _loadNotifications();
-  }
-
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    for (final controller in _editTitleControllers.values) {
-      controller.dispose();
-    }
-    for (final controller in _editMessageControllers.values) {
-      controller.dispose();
-    }
-    super.dispose();
+    _checkUserRole();
   }
 
   Future<void> _checkUserRole() async {
@@ -70,13 +54,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         );
       }
       if (!mounted) return;
-      final canCreate = !AuthService.isClientRole(role) &&
-          (role != 'student' || isSystemAdmin);
       setState(() {
         currentUserRole = role;
         _isSystemAdmin = isSystemAdmin;
         _courses = courses;
-        canCreateNotifications = canCreate;
+        canCreateNotifications = !AuthService.isClientRole(role) &&
+            (role != 'student' || isSystemAdmin);
       });
     } catch (e) {
       debugPrint('Error checking user role: $e');
@@ -107,7 +90,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   }
 
   Future<void> _loadNotifications() async {
-    setState(() => isLoading = true);
+    setState(() {
+      isLoading = true;
+    });
 
     try {
       final notificationsList =
@@ -123,13 +108,16 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       if (mounted) {
         _showSnack('Error loading notifications: $e', _danger);
       }
-      setState(() => isLoading = false);
+      setState(() {
+        isLoading = false;
+      });
     }
   }
 
   Future<void> _markAsRead(String notificationId) async {
     try {
       await NotificationService.instance.markAsRead(notificationId);
+
       setState(() {
         final index = notifications.indexWhere((n) => n.id == notificationId);
         if (index != -1) {
@@ -143,18 +131,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
   Future<void> _markAllAsRead() async {
     try {
-      final unread = _visibleNotifications.where((n) => !n.isRead).toList();
-      if (unread.isEmpty) return;
       await NotificationService.instance.markAllAsRead(
-        unread.map((n) => n.id).toList(),
+        _visibleNotifications.map((n) => n.id).toList(),
       );
-      if (!mounted) return;
-      setState(() {
-        notifications = [
-          for (final item in notifications) item.copyWith(isRead: true),
-        ];
-      });
-      _showSnack('All notifications marked as read', _success);
+
+      _loadNotifications();
+
+      if (mounted) {
+        _showSnack('All notifications marked as read', _success);
+      }
     } catch (e) {
       debugPrint('Error marking all as read: $e');
     }
@@ -166,18 +151,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         content: Text(message),
         backgroundColor: color,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
-  }
-
-  Future<void> _openComposer() async {
-    if (!await NoInternetScreen.ensureOnline(context)) return;
-    if (!mounted) return;
-    await Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const CreateNotificationScreen()),
-    );
-    _loadNotifications();
   }
 
   void _openImage(AppNotification notification) {
@@ -215,60 +191,260 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
-  void _startEditing(AppNotification notification) {
-    _cancelEditing(_editingNotificationId);
-    setState(() {
-      _editingNotificationId = notification.id;
-      _editTitleControllers[notification.id] =
-          TextEditingController(text: notification.title);
-      _editMessageControllers[notification.id] =
-          TextEditingController(text: notification.message);
-      _editTypes[notification.id] = notification.type;
-    });
+  Future<void> _editNotification(AppNotification notification) async {
+    final titleController = TextEditingController(text: notification.title);
+    final messageController = TextEditingController(text: notification.message);
+    String selectedType = notification.type;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final sheet = isDark ? const Color(0xFF1F2937) : Colors.white;
+    final titleColor =
+        isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
+    final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => Padding(
+          padding: EdgeInsets.only(bottom: _sheetBottomInset(context)),
+          child: Container(
+            clipBehavior: Clip.antiAlias,
+            decoration: BoxDecoration(
+              color: sheet,
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(
+                color: isDark
+                    ? const Color(0xFF374151)
+                    : const Color(0xFFE5E7EB),
+              ),
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    height: 6,
+                    width: double.infinity,
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [_accent, Color(0xFF8B5CF6)],
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Center(
+                          child: Container(
+                            width: 36,
+                            height: 5,
+                            decoration: BoxDecoration(
+                              color: muted.withOpacity(0.35),
+                              borderRadius: BorderRadius.circular(99),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        Text(
+                          'Edit Notification',
+                          style: TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.4,
+                            color: titleColor,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        _iosField(
+                          controller: titleController,
+                          label: 'Title',
+                          titleColor: titleColor,
+                          muted: muted,
+                          isDark: isDark,
+                        ),
+                        const SizedBox(height: 12),
+                        _iosField(
+                          controller: messageController,
+                          label: 'Message',
+                          titleColor: titleColor,
+                          muted: muted,
+                          isDark: isDark,
+                          maxLines: 4,
+                        ),
+                        const SizedBox(height: 12),
+                        DropdownButtonFormField<String>(
+                          value: selectedType,
+                          style: TextStyle(color: titleColor, fontSize: 16),
+                          dropdownColor: sheet,
+                          decoration: _fieldDecoration('Type', muted, isDark),
+                          items: const [
+                            DropdownMenuItem(
+                              value: 'general',
+                              child: Text('General'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'announcement',
+                              child: Text('Announcement'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'assignment',
+                              child: Text('Assignment'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'exam',
+                              child: Text('Exam'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'event',
+                              child: Text('Event'),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            if (value != null) {
+                              setModalState(() => selectedType = value);
+                            }
+                          },
+                        ),
+                        const SizedBox(height: 24),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: () => Navigator.of(context).pop(),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: titleColor,
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 16),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  side: BorderSide(
+                                    color: muted.withOpacity(0.3),
+                                  ),
+                                ),
+                                child: const Text(
+                                  'Cancel',
+                                  style: TextStyle(fontWeight: FontWeight.w700),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: ElevatedButton(
+                                onPressed: () async {
+                                  if (messageController.text.trim().isEmpty) {
+                                    _showSnack(
+                                      'Please enter a message',
+                                      _danger,
+                                    );
+                                    return;
+                                  }
+
+                                  try {
+                                    await NotificationService.instance.update(
+                                      id: notification.id,
+                                      title: titleController.text.trim(),
+                                      message: messageController.text.trim(),
+                                      type: selectedType,
+                                    );
+
+                                    if (context.mounted) {
+                                      Navigator.of(context).pop();
+                                    }
+                                    if (!mounted) return;
+                                    _loadNotifications();
+                                    _showSnack(
+                                      'Notification updated successfully',
+                                      _success,
+                                    );
+                                  } catch (e) {
+                                    if (mounted) {
+                                      _showSnack('Error updating: $e', _danger);
+                                    }
+                                  }
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: _accent,
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 16),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                ),
+                                child: const Text(
+                                  'Update',
+                                  style: TextStyle(fontWeight: FontWeight.w700),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 
-  void _cancelEditing(String? notificationId) {
-    if (notificationId == null) return;
-    _editTitleControllers[notificationId]?.dispose();
-    _editMessageControllers[notificationId]?.dispose();
-    _editTitleControllers.remove(notificationId);
-    _editMessageControllers.remove(notificationId);
-    _editTypes.remove(notificationId);
-    if (_editingNotificationId == notificationId) {
-      setState(() => _editingNotificationId = null);
-    }
+  double _sheetBottomInset(BuildContext sheetContext) {
+    final keyboard = MediaQuery.viewInsetsOf(sheetContext).bottom;
+    final host = context;
+    final nested =
+        Navigator.of(host) != Navigator.of(host, rootNavigator: true);
+    final navClearance = nested
+        ? AdaptiveLayout.bottomClearance(host)
+        : MediaQuery.viewPaddingOf(host).bottom;
+    return keyboard > navClearance ? keyboard : navClearance;
   }
 
-  Future<void> _saveEdited(AppNotification notification) async {
-    final title = _editTitleControllers[notification.id]?.text.trim() ?? '';
-    final message =
-        _editMessageControllers[notification.id]?.text.trim() ?? '';
-    final type = _editTypes[notification.id] ?? notification.type;
-    if (message.isEmpty) {
-      _showSnack('Please enter a message', _danger);
-      return;
-    }
-    try {
-      await NotificationService.instance.update(
-        id: notification.id,
-        title: title,
-        message: message,
-        type: type,
-      );
-      _cancelEditing(notification.id);
-      await _loadNotifications();
-      if (mounted) {
-        _showSnack('Notification updated successfully!', _success);
-      }
-    } catch (e) {
-      _showSnack('Failed to update notification: $e', _danger);
-    }
+  InputDecoration _fieldDecoration(String label, Color muted, bool isDark) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: TextStyle(color: muted),
+      filled: true,
+      fillColor: isDark ? const Color(0xFF111827) : const Color(0xFFF8FAFC),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: BorderSide.none,
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(14),
+        borderSide: const BorderSide(color: _accent, width: 1.5),
+      ),
+    );
+  }
+
+  Widget _iosField({
+    required TextEditingController controller,
+    required String label,
+    required Color titleColor,
+    required Color muted,
+    required bool isDark,
+    int maxLines = 1,
+  }) {
+    return TextField(
+      controller: controller,
+      maxLines: maxLines,
+      style: TextStyle(color: titleColor, fontSize: 16),
+      decoration: _fieldDecoration(label, muted, isDark),
+    );
   }
 
   Future<void> _deleteNotification(String notificationId) async {
     try {
       await NotificationService.instance.delete(notificationId);
-      _cancelEditing(notificationId);
       _loadNotifications();
       if (mounted) {
         _showSnack('Notification deleted', _success);
@@ -291,6 +467,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       case 'announcement':
         return const Color(0xFFF59E0B);
       case 'general':
+        return _accent;
       default:
         return _accent;
     }
@@ -363,67 +540,29 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
-  String _getTimeAgo(DateTime dateTime) {
-    final difference = DateTime.now().difference(dateTime);
-    if (difference.inMinutes < 1) return 'Just now';
-    if (difference.inHours < 1) return '${difference.inMinutes}m ago';
-    if (difference.inDays < 1) return '${difference.inHours}h ago';
-    if (difference.inDays < 7) return '${difference.inDays}d ago';
-    if (difference.inDays < 30) {
-      return '${(difference.inDays / 7).floor()}w ago';
-    }
-    return '${(difference.inDays / 30).floor()}mo ago';
+  String _sectionFor(DateTime date) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final day = DateTime(date.year, date.month, date.day);
+    final diff = today.difference(day).inDays;
+    if (diff == 0) return 'Today';
+    if (diff == 1) return 'Yesterday';
+    if (diff < 7) return 'This Week';
+    return 'Earlier';
   }
 
-  Future<void> _confirmDelete(
-    AppNotification notification,
-    bool isOwnNotification,
-  ) async {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final card = isDark ? const Color(0xFF1F2937) : Colors.white;
-    final titleColor =
-        isDark ? const Color(0xFFF9FAFB) : const Color(0xFF1E293B);
-    final preview = notification.message.length > 50
-        ? '${notification.message.substring(0, 50)}...'
-        : notification.message;
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: card,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(
-          'Delete Notification',
-          style: TextStyle(fontWeight: FontWeight.bold, color: titleColor),
-        ),
-        content: Text(
-          isOwnNotification
-              ? 'Are you sure you want to delete this notification?\n\n"$preview"'
-              : 'You are about to delete ${notification.senderName}\'s notification.\n\n"$preview"',
-          style: TextStyle(color: titleColor.withOpacity(0.8)),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text('Cancel', style: TextStyle(color: Colors.grey[600])),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true) {
-      _deleteNotification(notification.id);
+  List<({String label, List<AppNotification> items})> _grouped(
+    List<AppNotification> items,
+  ) {
+    const order = ['Today', 'Yesterday', 'This Week', 'Earlier'];
+    final map = <String, List<AppNotification>>{};
+    for (final item in items) {
+      map.putIfAbsent(_sectionFor(item.createdAt), () => []).add(item);
     }
+    return [
+      for (final label in order)
+        if (map[label]?.isNotEmpty == true) (label: label, items: map[label]!),
+    ];
   }
 
   @override
@@ -436,8 +575,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
     final card = isDark ? const Color(0xFF1F2937) : Colors.white;
     final divider = isDark ? const Color(0xFF374151) : const Color(0xFFE5E7EB);
+
     final visible = _visibleNotifications;
     final unreadCount = visible.where((n) => !n.isRead).length;
+    final groups = _grouped(visible);
     final nested =
         Navigator.of(context) != Navigator.of(context, rootNavigator: true);
     final bottomPad = nested
@@ -457,13 +598,13 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               color: _accent,
               onRefresh: _refreshNotifications,
               child: CustomScrollView(
-                controller: _scrollController,
                 physics: const AlwaysScrollableScrollPhysics(
                   parent: BouncingScrollPhysics(),
                 ),
                 slivers: [
                   SliverAppBar(
                     pinned: true,
+                    stretch: true,
                     elevation: 0,
                     scrolledUnderElevation: 0,
                     backgroundColor: background,
@@ -471,24 +612,43 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         ? SystemUiOverlayStyle.light
                         : SystemUiOverlayStyle.dark,
                     leading: IconButton(
-                      icon: Icon(CupertinoIcons.back, color: titleColor),
+                      icon: Icon(
+                        CupertinoIcons.back,
+                        color: titleColor,
+                      ),
                       onPressed: () => Navigator.of(context).pop(),
                     ),
                     actions: [
                       if (unreadCount > 0)
-                        TextButton(
-                          onPressed: _markAllAsRead,
-                          child: const Text(
-                            'Read all',
-                            style: TextStyle(
-                              color: _accent,
-                              fontWeight: FontWeight.w600,
+                        Padding(
+                          padding: const EdgeInsets.only(right: 4),
+                          child: TextButton(
+                            onPressed: _markAllAsRead,
+                            child: const Text(
+                              'Clear All',
+                              style: TextStyle(
+                                color: _accent,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                              ),
                             ),
                           ),
                         ),
                       if (canCreateNotifications)
                         IconButton(
-                          onPressed: _openComposer,
+                          onPressed: () async {
+                            if (!await NoInternetScreen.ensureOnline(context)) {
+                              return;
+                            }
+                            if (!context.mounted) return;
+                            await Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (ctx) =>
+                                    const CreateNotificationScreen(),
+                              ),
+                            );
+                            _loadNotifications();
+                          },
                           icon: const Icon(
                             CupertinoIcons.add_circled_solid,
                             color: _accent,
@@ -534,6 +694,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       child: _buildCourseFilterBar(
                         card,
                         titleColor,
+                        muted,
                         divider,
                       ),
                     ),
@@ -543,23 +704,45 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       child: _buildEmptyState(titleColor, muted),
                     )
                   else
-                    SliverPadding(
-                      padding: EdgeInsets.fromLTRB(16, 8, 16, bottomPad),
-                      sliver: SliverList(
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) {
-                            return _buildNotificationCard(
-                              visible[index],
-                              isDark: isDark,
-                              titleColor: titleColor,
-                              muted: muted,
-                              card: card,
-                            );
-                          },
-                          childCount: visible.length,
+                    ...groups.expand((group) {
+                      return [
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(28, 22, 20, 8),
+                            child: Text(
+                              group.label.toUpperCase(),
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.6,
+                                color: muted,
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
+                        SliverPadding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          sliver: SliverToBoxAdapter(
+                            child: Column(
+                              children: [
+                                for (final item in group.items)
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 12),
+                                    child: _buildNotificationRow(
+                                      item,
+                                      titleColor: titleColor,
+                                      muted: muted,
+                                      isDark: isDark,
+                                      card: card,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ];
+                    }),
+                  SliverToBoxAdapter(child: SizedBox(height: bottomPad)),
                 ],
               ),
             ),
@@ -569,37 +752,42 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Widget _buildCourseFilterBar(
     Color card,
     Color titleColor,
+    Color muted,
     Color divider,
   ) {
-    return SizedBox(
-      height: 44,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-        children: [
-          _filterChip('All', 'all', card, titleColor, divider),
-          ..._courses.map(
-            (course) => _filterChip(
-              course.name,
-              course.id,
-              card,
-              titleColor,
-              divider,
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: SizedBox(
+        height: 36,
+        child: ListView(
+          scrollDirection: Axis.horizontal,
+          children: [
+            _buildFilterChip('All', 'all', card, titleColor, muted, divider),
+            ..._courses.map(
+              (course) => _buildFilterChip(
+                course.name,
+                course.id,
+                card,
+                titleColor,
+                muted,
+                divider,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _filterChip(
+  Widget _buildFilterChip(
     String label,
     String value,
     Color card,
     Color titleColor,
+    Color muted,
     Color divider,
   ) {
-    final selected = _courseFilter == value;
+    final isSelected = _courseFilter == value;
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: GestureDetector(
@@ -608,16 +796,18 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
           duration: const Duration(milliseconds: 180),
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
-            color: selected ? _accent : card,
+            color: isSelected ? _accent : card,
             borderRadius: BorderRadius.circular(99),
-            border: Border.all(color: selected ? _accent : divider),
+            border: Border.all(
+              color: isSelected ? _accent : divider,
+            ),
           ),
           child: Text(
             label,
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: selected ? Colors.white : titleColor,
+              color: isSelected ? Colors.white : titleColor,
             ),
           ),
         ),
@@ -632,7 +822,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(CupertinoIcons.bell_slash, size: 56, color: muted.withOpacity(0.7)),
+            Icon(
+              CupertinoIcons.bell_slash,
+              size: 56,
+              color: muted.withOpacity(0.7),
+            ),
             const SizedBox(height: 16),
             Text(
               _isSystemAdmin && _courseFilter != 'all'
@@ -648,11 +842,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              canCreateNotifications
-                  ? 'Tap + to send your first notification.'
+              _isSystemAdmin && _courseFilter != 'all'
+                  ? 'Try All to see campus-wide posts as well'
                   : 'When something new arrives, it will show up here.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 14, color: muted),
+              style: TextStyle(
+                fontSize: 15,
+                height: 1.4,
+                color: muted,
+              ),
             ),
           ],
         ),
@@ -660,72 +858,89 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  Widget _buildNotificationCard(
+  Widget _buildNotificationRow(
     AppNotification notification, {
-    required bool isDark,
     required Color titleColor,
     required Color muted,
+    required bool isDark,
     required Color card,
   }) {
-    final currentUserId = AuthService.instance.currentUser?.uid;
-    final isOwn = notification.senderId == currentUserId;
-    final canDelete =
-        isOwn || currentUserRole == 'admin' || _isSystemAdmin;
-    final canEdit = isOwn;
     final typeColor = _getTypeColor(notification.type);
     final roleColor = _getRoleColor(notification.senderRole);
-    final typeLabel =
-        '${notification.type[0].toUpperCase()}${notification.type.substring(1)}';
+    final currentUserId = AuthService.instance.currentUser?.uid;
+    final isOwnNotification = notification.senderId == currentUserId;
+    final canDelete =
+        isOwnNotification || currentUserRole == 'admin' || _isSystemAdmin;
+    final canEdit = isOwnNotification;
     final hasImage =
         notification.imageUrl != null && notification.imageUrl!.isNotEmpty;
-    final isEditing = _editingNotificationId == notification.id;
+    final typeLabel =
+        '${notification.type[0].toUpperCase()}${notification.type.substring(1)}';
     final inner = isDark ? const Color(0xFF111827) : const Color(0xFFF8FAFC);
-    final cardColor = notification.isRead
-        ? card
-        : Color.alphaBlend(
-            _accent.withOpacity(isDark ? 0.16 : 0.08),
-            card,
-          );
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          if (!isDark)
-            BoxShadow(
-              color: Colors.black.withOpacity(0.06),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+    return Material(
+      color: notification.isRead
+          ? card
+          : Color.alphaBlend(
+              _accent.withOpacity(isDark ? 0.16 : 0.08),
+              card,
             ),
-        ],
-        border: Border.all(
-          color: notification.isRead
-              ? (isDark ? const Color(0xFF374151) : const Color(0xFFE5E7EB))
-              : _accent.withOpacity(0.35),
-        ),
+      elevation: isDark ? 0 : 1,
+      shadowColor: Colors.black.withOpacity(0.12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
       ),
+      clipBehavior: Clip.antiAlias,
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(14, 14, 8, 14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: typeColor,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    _getTypeIcon(notification.type),
-                    color: Colors.white,
-                    size: 20,
-                  ),
+                Stack(
+                  children: [
+                    Container(
+                      width: 46,
+                      height: 46,
+                      decoration: BoxDecoration(
+                        color: typeColor,
+                        borderRadius: BorderRadius.circular(13),
+                        boxShadow: [
+                          BoxShadow(
+                            color: typeColor.withOpacity(0.28),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        _getTypeIcon(notification.type),
+                        color: Colors.white,
+                        size: 22,
+                      ),
+                    ),
+                    if (!notification.isRead)
+                      Positioned(
+                        right: -1,
+                        top: -1,
+                        child: Container(
+                          width: 10,
+                          height: 10,
+                          decoration: BoxDecoration(
+                            color: _accent,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isDark
+                                  ? const Color(0xFF1F2937)
+                                  : Colors.white,
+                              width: 1.5,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -749,8 +964,8 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                             '• ${_formatRole(notification.senderRole)}',
                             style: TextStyle(
                               fontSize: 12,
-                              color: roleColor,
                               fontWeight: FontWeight.w600,
+                              color: roleColor,
                             ),
                           ),
                           if (!notification.isRead)
@@ -776,65 +991,25 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '${_getTimeAgo(notification.createdAt)}  ·  $typeLabel  ·  ${_audienceLabel(notification)}',
-                        style: TextStyle(fontSize: 12, color: muted),
+                        '${timeago.format(notification.createdAt)}  ·  $typeLabel  ·  ${_audienceLabel(notification)}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: muted,
+                        ),
                       ),
                     ],
                   ),
                 ),
                 if (canEdit || canDelete)
-                  PopupMenuButton<String>(
-                    color: card,
-                    surfaceTintColor: Colors.transparent,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    onSelected: (value) {
-                      if (value == 'edit') {
-                        _startEditing(notification);
-                      } else if (value == 'delete') {
-                        _confirmDelete(notification, isOwn);
-                      }
-                    },
-                    itemBuilder: (context) => [
-                      if (canEdit)
-                        PopupMenuItem(
-                          value: 'edit',
-                          child: Row(
-                            children: [
-                              const Icon(
-                                CupertinoIcons.pencil,
-                                color: _accent,
-                                size: 18,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Edit',
-                                style: TextStyle(color: titleColor),
-                              ),
-                            ],
-                          ),
-                        ),
-                      if (canDelete)
-                        const PopupMenuItem(
-                          value: 'delete',
-                          child: Row(
-                            children: [
-                              Icon(
-                                CupertinoIcons.trash,
-                                color: _danger,
-                                size: 18,
-                              ),
-                              SizedBox(width: 8),
-                              Text(
-                                'Delete',
-                                style: TextStyle(color: _danger),
-                              ),
-                            ],
-                          ),
-                        ),
-                    ],
-                    child: Icon(CupertinoIcons.ellipsis, color: muted, size: 18),
+                  _notificationMenu(
+                    notification: notification,
+                    canEdit: canEdit,
+                    canDelete: canDelete,
+                    isOwnNotification: isOwnNotification,
+                    isDark: isDark,
+                    muted: muted,
+                    titleColor: titleColor,
                   ),
               ],
             ),
@@ -846,66 +1021,68 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                 color: inner,
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: isEditing
-                  ? _buildInlineEditor(notification, isDark, titleColor, muted)
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (notification.title.trim().isNotEmpty) ...[
-                          Text(
-                            notification.title.trim(),
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: titleColor,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                        ],
-                        if (notification.message.trim().isNotEmpty)
-                          _ExpandableLinkedText(
-                            text: notification.message.trim(),
-                            color: titleColor.withOpacity(0.88),
-                            linkColor: _accent,
-                            moreColor: _accent,
-                            expanded: _expandedIds.contains(notification.id),
-                            onToggle: () {
-                              setState(() {
-                                if (_expandedIds.contains(notification.id)) {
-                                  _expandedIds.remove(notification.id);
-                                } else {
-                                  _expandedIds.add(notification.id);
-                                }
-                              });
-                            },
-                            onLinkTap: _openLink,
-                          ),
-                        if (hasImage) ...[
-                          const SizedBox(height: 12),
-                          GestureDetector(
-                            onTap: () => _openImage(notification),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(12),
-                              child: AspectRatio(
-                                aspectRatio: 16 / 10,
-                                child: Image.network(
-                                  notification.imageUrl!,
-                                  fit: BoxFit.cover,
-                                  width: double.infinity,
-                                  errorBuilder: (_, __, ___) => ColoredBox(
-                                    color: muted.withOpacity(0.15),
-                                    child: Icon(
-                                      CupertinoIcons.photo,
-                                      color: muted,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (notification.title.trim().isNotEmpty) ...[
+                    Text(
+                      notification.title.trim(),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: notification.isRead
+                            ? FontWeight.w600
+                            : FontWeight.w800,
+                        letterSpacing: -0.2,
+                        color: titleColor,
+                      ),
                     ),
+                    const SizedBox(height: 8),
+                  ],
+                  if (notification.message.trim().isNotEmpty)
+                    _ExpandableLinkedText(
+                      text: notification.message.trim(),
+                      color: titleColor.withOpacity(0.82),
+                      linkColor: _accent,
+                      moreColor: _accent,
+                      expanded: _expandedIds.contains(notification.id),
+                      onToggle: () {
+                        setState(() {
+                          if (_expandedIds.contains(notification.id)) {
+                            _expandedIds.remove(notification.id);
+                          } else {
+                            _expandedIds.add(notification.id);
+                          }
+                        });
+                        if (!notification.isRead) {
+                          _markAsRead(notification.id);
+                        }
+                      },
+                      onLinkTap: _openLink,
+                    ),
+                  if (hasImage) ...[
+                    const SizedBox(height: 12),
+                    GestureDetector(
+                      onTap: () => _openImage(notification),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.network(
+                          notification.imageUrl!,
+                          height: 140,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => ColoredBox(
+                            color: muted.withOpacity(0.15),
+                            child: SizedBox(
+                              height: 92,
+                              child: Icon(CupertinoIcons.photo, color: muted),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ),
           ],
         ),
@@ -913,93 +1090,199 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     );
   }
 
-  Widget _buildInlineEditor(
-    AppNotification notification,
-    bool isDark,
-    Color titleColor,
-    Color muted,
-  ) {
-    final fill = isDark ? const Color(0xFF1F2937) : Colors.white;
-    InputDecoration decoration(String hint) {
-      return InputDecoration(
-        hintText: hint,
-        hintStyle: TextStyle(color: muted),
-        filled: true,
-        fillColor: fill,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide.none,
+  Widget _notificationMenu({
+    required AppNotification notification,
+    required bool canEdit,
+    required bool canDelete,
+    required bool isOwnNotification,
+    required bool isDark,
+    required Color muted,
+    required Color titleColor,
+  }) {
+    final menu = isDark ? const Color(0xFF1F2937) : Colors.white;
+    return PopupMenuButton<String>(
+      tooltip: 'Notification options',
+      padding: EdgeInsets.zero,
+      offset: const Offset(0, 8),
+      elevation: 10,
+      color: menu,
+      surfaceTintColor: Colors.transparent,
+      shadowColor: Colors.black.withOpacity(isDark ? 0.45 : 0.16),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: isDark ? const Color(0xFF374151) : const Color(0xFFE5E7EB),
         ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide: const BorderSide(color: _accent, width: 1.5),
-        ),
-        contentPadding: const EdgeInsets.all(12),
-      );
-    }
+      ),
+      icon: Icon(CupertinoIcons.ellipsis, color: muted, size: 18),
+      onSelected: (value) {
+        if (value == 'edit') {
+          _editNotification(notification);
+        } else if (value == 'delete') {
+          _confirmDelete(notification, isOwnNotification);
+        }
+      },
+      itemBuilder: (context) => [
+        if (canEdit)
+          PopupMenuItem(
+            value: 'edit',
+            child: _menuRow(
+              icon: CupertinoIcons.pencil,
+              label: 'Edit',
+              color: titleColor,
+              accent: _accent,
+            ),
+          ),
+        if (canDelete)
+          PopupMenuItem(
+            value: 'delete',
+            child: _menuRow(
+              icon: CupertinoIcons.trash,
+              label: 'Delete',
+              color: _danger,
+              accent: _danger,
+            ),
+          ),
+      ],
+    );
+  }
 
-    return Column(
+  Widget _menuRow({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required Color accent,
+  }) {
+    return Row(
       children: [
-        TextField(
-          controller: _editTitleControllers[notification.id],
-          style: TextStyle(fontSize: 15, color: titleColor),
-          decoration: decoration('Title (optional)'),
+        Container(
+          width: 30,
+          height: 30,
+          decoration: BoxDecoration(
+            color: accent.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(9),
+          ),
+          child: Icon(icon, size: 15, color: accent),
         ),
-        const SizedBox(height: 8),
-        TextField(
-          controller: _editMessageControllers[notification.id],
-          maxLines: 4,
-          style: TextStyle(fontSize: 15, height: 1.5, color: titleColor),
-          decoration: decoration('Edit your notification...'),
-        ),
-        const SizedBox(height: 8),
-        DropdownButtonFormField<String>(
-          value: _editTypes[notification.id] ?? notification.type,
-          dropdownColor: fill,
-          style: TextStyle(color: titleColor, fontSize: 15),
-          decoration: decoration('Type'),
-          items: const [
-            DropdownMenuItem(value: 'general', child: Text('General')),
-            DropdownMenuItem(
-              value: 'announcement',
-              child: Text('Announcement'),
-            ),
-            DropdownMenuItem(value: 'assignment', child: Text('Assignment')),
-            DropdownMenuItem(value: 'exam', child: Text('Exam')),
-            DropdownMenuItem(value: 'event', child: Text('Event')),
-          ],
-          onChanged: (value) {
-            if (value == null) return;
-            setState(() => _editTypes[notification.id] = value);
-          },
-        ),
-        const SizedBox(height: 12),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            TextButton(
-              onPressed: () => _cancelEditing(notification.id),
-              child: Text('Cancel', style: TextStyle(color: muted)),
-            ),
-            const SizedBox(width: 8),
-            ElevatedButton.icon(
-              onPressed: () => _saveEdited(notification),
-              icon: const Icon(CupertinoIcons.checkmark_alt, size: 16),
-              label: const Text('Save'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _accent,
-                foregroundColor: Colors.white,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            ),
-          ],
+        const SizedBox(width: 12),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: FontWeight.w600,
+            color: color,
+          ),
         ),
       ],
     );
+  }
+
+  Future<void> _confirmDelete(
+    AppNotification notification,
+    bool isOwnNotification,
+  ) async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final card = isDark ? const Color(0xFF1F2937) : Colors.white;
+    final titleColor =
+        isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
+    final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: card,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+        contentPadding: const EdgeInsets.fromLTRB(24, 24, 24, 8),
+        actionsPadding: const EdgeInsets.fromLTRB(20, 8, 20, 18),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: _danger.withOpacity(isDark ? 0.18 : 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                CupertinoIcons.trash_fill,
+                color: _danger,
+                size: 24,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Delete notification?',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                letterSpacing: -0.4,
+                color: titleColor,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              isOwnNotification
+                  ? 'This notification will be removed for everyone who received it.'
+                  : 'You are about to delete ${notification.senderName}\'s notification.',
+              textAlign: TextAlign.center,
+              style: TextStyle(fontSize: 15, height: 1.4, color: muted),
+            ),
+          ],
+        ),
+        actions: [
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => Navigator.of(ctx).pop(false),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: titleColor,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    side: BorderSide(
+                      color: isDark
+                          ? const Color(0xFF374151)
+                          : const Color(0xFFE5E7EB),
+                    ),
+                  ),
+                  child: const Text(
+                    'Cancel',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => Navigator.of(ctx).pop(true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _danger,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                  child: const Text(
+                    'Delete',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      _deleteNotification(notification.id);
+    }
   }
 }
 
@@ -1040,13 +1323,13 @@ class _ExpandableLinkedText extends StatelessWidget {
       children: [
         Text.rich(
           TextSpan(children: _spans(visible)),
-          style: TextStyle(fontSize: 15, height: 1.5, color: color),
+          style: TextStyle(fontSize: 15, height: 1.35, color: color),
         ),
         if (needsCollapse)
           GestureDetector(
             onTap: onToggle,
             child: Padding(
-              padding: const EdgeInsets.only(top: 4),
+              padding: const EdgeInsets.only(top: 2),
               child: Text(
                 expanded ? 'Read less' : 'Read more',
                 style: TextStyle(
@@ -1079,7 +1362,7 @@ class _ExpandableLinkedText extends StatelessWidget {
               link,
               style: TextStyle(
                 fontSize: 15,
-                height: 1.5,
+                height: 1.35,
                 color: linkColor,
                 decoration: TextDecoration.underline,
                 decorationColor: linkColor,
