@@ -24,7 +24,6 @@ import 'login/auth_screen.dart';
 import 'login/onboarding_screen.dart';
 import 'screens/app_update_screen.dart';
 import 'screens/suspend_account.dart';
-import 'ui/app_splash_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -88,9 +87,7 @@ class StudyApp extends StatelessWidget {
             splashFactory: NoSplash.splashFactory,
           ),
           themeMode: ThemeController.instance.mode,
-          home: const SplashGate(
-            child: AppUpdateGate(child: AuthGate()),
-          ),
+          home: const AppUpdateGate(child: AuthGate()),
         );
       },
     );
@@ -101,11 +98,9 @@ class StudyApp extends StatelessWidget {
 class AuthGate extends StatelessWidget {
   const AuthGate({super.key});
 
-  static void _revealAfterFirstFrame() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      StartupOverlay.instance.revealDestination();
-    });
-  }
+  static const _loading = Scaffold(
+    body: Center(child: CircularProgressIndicator()),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -114,8 +109,7 @@ class AuthGate extends StatelessWidget {
       builder: (context, snapshot) {
         // Show loading while checking auth state
         if (snapshot.connectionState == ConnectionState.waiting) {
-          StartupOverlay.instance.setProgress(0.22);
-          return const StartupHold();
+          return _loading;
         }
 
         final user = snapshot.data;
@@ -126,19 +120,16 @@ class AuthGate extends StatelessWidget {
             builder: (context, profileSnapshot) {
               if (profileSnapshot.connectionState == ConnectionState.waiting &&
                   !profileSnapshot.hasData) {
-                StartupOverlay.instance.setProgress(0.36);
-                return const StartupHold();
+                return _loading;
               }
 
               final profileData = profileSnapshot.data?.data();
               if (AuthService.isAccountSuspended(profileData)) {
-                _revealAfterFirstFrame();
                 return SuspendedAccountScreen(
                   message: AuthService.suspensionMessageFor(profileData),
                 );
               }
               if (!AuthService.instance.isProfileDataComplete(profileData)) {
-                _revealAfterFirstFrame();
                 return const AuthScreen(needsProfileCompletion: true);
               }
 
@@ -148,7 +139,6 @@ class AuthGate extends StatelessWidget {
                       AuthService.isClientRole(role);
 
               if (exemptFromCourseLock) {
-                StartupOverlay.instance.expectHome();
                 return const MainScreen();
               }
 
@@ -158,8 +148,7 @@ class AuthGate extends StatelessWidget {
                   if (coursesSnapshot.connectionState ==
                           ConnectionState.waiting &&
                       !coursesSnapshot.hasData) {
-                    StartupOverlay.instance.setProgress(0.42);
-                    return const StartupHold();
+                    return _loading;
                   }
 
                   final admission =
@@ -170,7 +159,6 @@ class AuthGate extends StatelessWidget {
                     coursesSnapshot.data ?? const [],
                   );
                   if (suspendedCourse != null) {
-                    _revealAfterFirstFrame();
                     final topic = suspendedCourse.suspensionTopic.isEmpty
                         ? CourseService.defaultSuspensionTopic
                         : suspendedCourse.suspensionTopic;
@@ -183,7 +171,6 @@ class AuthGate extends StatelessWidget {
                     );
                   }
 
-                  StartupOverlay.instance.expectHome();
                   return const MainScreen();
                 },
               );
@@ -235,12 +222,8 @@ class _OnboardingGateState extends State<OnboardingGate> {
   @override
   Widget build(BuildContext context) {
     if (_seen == null) {
-      StartupOverlay.instance.setProgress(0.28);
-      return const StartupHold();
+      return AuthGate._loading;
     }
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      StartupOverlay.instance.revealDestination();
-    });
     if (!_seen!) {
       return OnboardingScreen(
         onGetStarted: () => _finish(authTab: 1),
