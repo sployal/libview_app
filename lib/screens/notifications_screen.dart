@@ -899,15 +899,15 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         notification.imageUrl != null && notification.imageUrl!.isNotEmpty;
     final typeLabel =
         '${notification.type[0].toUpperCase()}${notification.type.substring(1)}';
-    final inner = isDark ? const Color(0xFF111827) : const Color(0xFFF8FAFC);
+    final cardColor = notification.isRead
+        ? card
+        : Color.alphaBlend(
+            _accent.withOpacity(isDark ? 0.16 : 0.08),
+            card,
+          );
 
     return Material(
-      color: notification.isRead
-          ? card
-          : Color.alphaBlend(
-              _accent.withOpacity(isDark ? 0.16 : 0.08),
-              card,
-            ),
+      color: cardColor,
       elevation: isDark ? 0 : 1,
       shadowColor: Colors.black.withOpacity(0.12),
       shape: RoundedRectangleBorder(
@@ -1041,7 +1041,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: inner,
+                color: cardColor,
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Column(
