@@ -145,6 +145,24 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
     }
   }
 
+  Future<void> _openCreateNotification() async {
+    if (!await NoInternetScreen.ensureOnline(context)) return;
+    if (!mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const CreateNotificationScreen()),
+    );
+    _loadNotifications();
+  }
+
+  double _fabNavLift(BuildContext context) {
+    final nested =
+        Navigator.of(context) != Navigator.of(context, rootNavigator: true);
+    if (!nested) return 16;
+    return MediaQuery.viewPaddingOf(context).bottom +
+        kBottomNavigationBarHeight +
+        12;
+  }
+
   void _showSnack(String message, Color color) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -587,6 +605,19 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
 
     return Scaffold(
       backgroundColor: background,
+      floatingActionButton: canCreateNotifications
+          ? Padding(
+              padding: EdgeInsets.only(bottom: _fabNavLift(context)),
+              child: FloatingActionButton(
+                onPressed: _openCreateNotification,
+                backgroundColor: _accent,
+                foregroundColor: Colors.white,
+                elevation: isDark ? 0 : 4,
+                tooltip: 'Create notification',
+                child: const Icon(CupertinoIcons.add, size: 28),
+              ),
+            )
+          : null,
       body: isLoading
           ? Center(
               child: CupertinoActivityIndicator(
@@ -636,19 +667,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         ),
                       if (canCreateNotifications)
                         IconButton(
-                          onPressed: () async {
-                            if (!await NoInternetScreen.ensureOnline(context)) {
-                              return;
-                            }
-                            if (!context.mounted) return;
-                            await Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (ctx) =>
-                                    const CreateNotificationScreen(),
-                              ),
-                            );
-                            _loadNotifications();
-                          },
+                          onPressed: _openCreateNotification,
                           icon: const Icon(
                             CupertinoIcons.add_circled_solid,
                             color: _accent,
@@ -742,7 +761,11 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                         ),
                       ];
                     }),
-                  SliverToBoxAdapter(child: SizedBox(height: bottomPad)),
+                  SliverToBoxAdapter(
+                    child: SizedBox(
+                      height: bottomPad + (canCreateNotifications ? 72 : 0),
+                    ),
+                  ),
                 ],
               ),
             ),
