@@ -1047,6 +1047,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
       uploadProgress = 0.0;
     });
     _showUploadProgressDialog();
+    await WidgetsBinding.instance.endOfFrame;
     await Future<void>.delayed(Duration.zero);
 
     var uploaded = 0;
@@ -2871,6 +2872,8 @@ class _FolderNameDialogState extends State<_FolderNameDialog> {
 }
 
 class _UploadProgressSession extends ChangeNotifier {
+  static const double _sendShare = 0.85;
+
   bool cancelling = false;
   int index = 0;
   int total = 0;
@@ -2879,6 +2882,7 @@ class _UploadProgressSession extends ChangeNotifier {
   int fileBytes = 0;
   int sentBytes = 0;
   double fileProgress = 0;
+  bool awaitingServer = false;
   bool _disposed = false;
 
   double get overallProgress {
@@ -2895,6 +2899,7 @@ class _UploadProgressSession extends ChangeNotifier {
     fileBytes = 0;
     sentBytes = 0;
     fileProgress = 0;
+    awaitingServer = false;
     _notify();
   }
 
@@ -2904,34 +2909,36 @@ class _UploadProgressSession extends ChangeNotifier {
     fileBytes = size;
     sentBytes = 0;
     fileProgress = 0;
+    awaitingServer = false;
     _notify();
   }
 
   void updateFileProgress(double progress) {
-    final next = progress.clamp(0.0, 1.0);
+    final send = progress.clamp(0.0, 1.0);
+    final next = send >= 1.0 ? _sendShare : send * _sendShare;
+    final becameAwaiting = send >= 1.0 && !awaitingServer;
+    awaitingServer = send >= 1.0;
     final prevPct = (fileProgress * 100).floor();
     final nextPct = (next * 100).floor();
     fileProgress = next;
-    if (nextPct == prevPct) return;
+    if (nextPct == prevPct && !becameAwaiting) return;
     _notify();
   }
 
   void updateBytes(int sent, int totalBytes) {
     final previous = sentBytes;
-    sentBytes = sent;
-    if (totalBytes > 0) {
-      fileBytes = totalBytes;
-    }
-    final step = fileBytes > 0
-        ? (fileBytes / 100).clamp(4096, 256 * 1024)
-        : 32768;
-    if ((sent - previous).abs() < step && sent != fileBytes) return;
+    final cap = fileBytes > 0 ? fileBytes : (totalBytes > 0 ? totalBytes : sent);
+    sentBytes = sent.clamp(0, cap);
+    final step = cap > 0 ? (cap / 100).clamp(4096, 256 * 1024) : 32768;
+    if ((sentBytes - previous).abs() < step && sentBytes != cap) return;
     _notify();
   }
 
   void markCompleted() {
     completed++;
-    fileProgress = 1;
+    fileProgress = 0;
+    sentBytes = fileBytes;
+    awaitingServer = false;
     _notify();
   }
 
@@ -3060,7 +3067,9 @@ class _UploadProgressDialog extends StatelessWidget {
               ClipRRect(
                 borderRadius: BorderRadius.circular(99),
                 child: LinearProgressIndicator(
-                  value: overall > 0 ? overall : null,
+                  value: session.fileName.isEmpty && overall == 0
+                      ? null
+                      : overall,
                   minHeight: 8,
                   backgroundColor: isDark
                       ? const Color(0xFF374151)

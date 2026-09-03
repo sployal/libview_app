@@ -102,6 +102,12 @@ class UploadService {
       'folderId': folderId,
       'file': multipart,
     });
+    final knownLength = bytes?.length ??
+        (filePath != null && filePath.isNotEmpty
+            ? await File(filePath).length()
+            : 0);
+    onProgress?.call(0);
+    onBytes?.call(0, knownLength);
 
     try {
       final response = await _dio.post(
@@ -114,11 +120,13 @@ class UploadService {
           },
         ),
         onSendProgress: (sent, total) {
-          if (onBytes != null) {
-            onBytes(sent, total);
-          }
-          if (total > 0 && onProgress != null) {
-            onProgress(sent / total);
+          final bodyTotal = total > 0 ? total : knownLength;
+          onBytes?.call(
+            sent,
+            knownLength > 0 ? knownLength : bodyTotal,
+          );
+          if (bodyTotal > 0) {
+            onProgress?.call((sent / bodyTotal).clamp(0.0, 1.0));
           }
         },
       );
