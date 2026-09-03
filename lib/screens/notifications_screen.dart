@@ -1036,10 +1036,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                   ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
               decoration: BoxDecoration(
                 color: cardColor,
                 borderRadius: BorderRadius.circular(14),
