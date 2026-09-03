@@ -128,7 +128,10 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
   }
 
   Future<void> _refresh() async {
-    setState(() => _loading = true);
+    final showFullPage = _folders.isEmpty;
+    if (showFullPage) {
+      setState(() => _loading = true);
+    }
     try {
       final folderId = _client.driveFolderId;
       final results = await Future.wait([
@@ -175,12 +178,30 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
     if (name == null || name.isEmpty) return;
     setState(() => _creating = true);
     try {
-      await UploadService.instance.createFolder(
+      final result = await UploadService.instance.createFolder(
         parentFolderId: _client.driveFolderId,
         name: name,
       );
       if (!mounted) return;
-      await _refresh();
+      final savedName = result.name.isNotEmpty ? result.name : name;
+      if (result.id.isNotEmpty) {
+        setState(() {
+          _folders.removeWhere((folder) => folder.folderId == result.id);
+          _folders.add(
+            GoogleDriveService.subjectFromFolder(
+              id: result.id,
+              name: savedName,
+              colorIndex: _folders.length,
+              modifiedAt: DateTime.now(),
+            ),
+          );
+          _summary = DriveFolderSummary(
+            bytes: _summary.bytes,
+            fileCount: _summary.fileCount,
+            folderCount: _summary.folderCount + 1,
+          );
+        });
+      }
     } on UploadException catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

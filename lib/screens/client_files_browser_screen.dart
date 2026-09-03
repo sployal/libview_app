@@ -224,8 +224,9 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
   }
 
   Future<void> _loadSubjects() async {
+    final showFullPage = subjects.isEmpty;
     setState(() {
-      isLoading = true;
+      if (showFullPage) isLoading = true;
       errorMessage = null;
     });
 
@@ -246,10 +247,62 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     } catch (e) {
       setState(() {
         errorMessage = 'Failed to load folders. Please check your internet connection.';
-        subjects = [];
+        if (subjects.isEmpty) {
+          subjects = [];
+        }
         isLoading = false;
       });
     }
+  }
+
+  void _insertCreatedFolder(UploadResult result, String fallbackName) {
+    final id = result.id;
+    final name = result.name.isNotEmpty ? result.name : fallbackName;
+    if (id.isEmpty || name.isEmpty) return;
+    setState(() {
+      subjects.removeWhere((subject) => subject.folderId == id);
+      subjects.add(
+        GoogleDriveService.subjectFromFolder(
+          id: id,
+          name: name,
+          colorIndex: subjects.length,
+          modifiedAt: DateTime.now(),
+        ),
+      );
+      errorMessage = null;
+    });
+  }
+
+  void _applyFolderRename(Subject subject, String name) {
+    final code = GoogleDriveService.subjectCodeFromName(name);
+    final now = DateTime.now();
+    setState(() {
+      final index = subjects.indexWhere((item) => item.folderId == subject.folderId);
+      if (index != -1) {
+        subjects[index] = subjects[index].copyWith(
+          name: name,
+          code: code,
+          modifiedAt: now,
+        );
+      }
+      if (selectedSubject?.folderId == subject.folderId) {
+        selectedSubject = selectedSubject!.copyWith(
+          name: name,
+          code: code,
+          modifiedAt: now,
+        );
+      }
+    });
+  }
+
+  void _removeFolder(Subject subject) {
+    setState(() {
+      subjects.removeWhere((item) => item.folderId == subject.folderId);
+      if (selectedSubject?.folderId == subject.folderId) {
+        selectedSubject = null;
+        currentFiles = [];
+      }
+    });
   }
 
   void _openInitialFolderIfNeeded(List<Subject> folders) {
@@ -794,13 +847,13 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     });
 
     try {
-      await UploadService.instance.createFolder(
+      final result = await UploadService.instance.createFolder(
         parentFolderId: widget.folderId!,
         name: name,
       );
       if (!mounted) return;
-      _showMessage('Created "$name"');
-      await _loadSubjects();
+      _insertCreatedFolder(result, name);
+      _showMessage('Created "${result.name.isNotEmpty ? result.name : name}"');
     } on UploadException catch (e) {
       _showMessage(e.message, isError: true);
     } catch (_) {
@@ -834,13 +887,14 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     });
 
     try {
-      await UploadService.instance.renameFile(
+      final result = await UploadService.instance.renameFile(
         fileId: subject.folderId,
         name: name,
       );
       if (!mounted) return;
-      _showMessage('Renamed to "$name"');
-      await _loadSubjects();
+      final savedName = result.name.isNotEmpty ? result.name : name;
+      _applyFolderRename(subject, savedName);
+      _showMessage('Renamed to "$savedName"');
     } on UploadException catch (e) {
       _showMessage(e.message, isError: true);
     } catch (_) {
@@ -908,8 +962,8 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     try {
       await UploadService.instance.deleteFile(subject.folderId);
       if (!mounted) return;
+      _removeFolder(subject);
       _showMessage('Deleted "${subject.name}"');
-      await _loadSubjects();
     } on UploadException catch (e) {
       _showMessage(e.message, isError: true);
     } catch (_) {

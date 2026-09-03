@@ -181,17 +181,6 @@ class GoogleDriveService {
       
       // Convert folders to subjects
       final List<Subject> subjects = [];
-      final colors = [
-        const Color(0xFF6366F1),
-        const Color(0xFF10B981),
-        const Color(0xFFEF4444),
-        const Color(0xFFF59E0B),
-        const Color(0xFF8B5CF6),
-        const Color(0xFF06B6D4),
-        const Color(0xFFEC4899),
-        const Color(0xFF84CC16),
-      ];
-      
       int colorIndex = 0;
       
       for (var item in items) {
@@ -205,12 +194,10 @@ class GoogleDriveService {
             fileCount = 0;
           }
           
-          subjects.add(Subject(
+          subjects.add(subjectFromFolder(
             id: item.id,
             name: item.name,
-            code: _extractSubjectCode(item.name),
-            folderId: item.id,
-            color: colors[colorIndex % colors.length],
+            colorIndex: colorIndex,
             fileCount: fileCount,
             modifiedAt: DateTime.tryParse(item.modifiedTime ?? ''),
           ));
@@ -308,7 +295,36 @@ class GoogleDriveService {
   // ============================================================================
   
   // Extract subject code from folder name (e.g., "CS101 Data Structures" -> "CS101")
-  static String _extractSubjectCode(String folderName) {
+  static const List<Color> folderColors = [
+    Color(0xFF6366F1),
+    Color(0xFF10B981),
+    Color(0xFFEF4444),
+    Color(0xFFF59E0B),
+    Color(0xFF8B5CF6),
+    Color(0xFF06B6D4),
+    Color(0xFFEC4899),
+    Color(0xFF84CC16),
+  ];
+
+  static Subject subjectFromFolder({
+    required String id,
+    required String name,
+    required int colorIndex,
+    int fileCount = 0,
+    DateTime? modifiedAt,
+  }) {
+    return Subject(
+      id: id,
+      name: name,
+      code: subjectCodeFromName(name),
+      folderId: id,
+      color: folderColors[colorIndex % folderColors.length],
+      fileCount: fileCount,
+      modifiedAt: modifiedAt,
+    );
+  }
+
+  static String subjectCodeFromName(String folderName) {
     // Try to extract code like "CS101" or "EENG 483" from the folder name
     final regExp = RegExp(r'[A-Z]{2,4}\s?\d{3}');
     final match = regExp.firstMatch(folderName);
@@ -478,6 +494,26 @@ class Subject {
     this.fileCount = 0,
     this.modifiedAt,
   });
+
+  Subject copyWith({
+    String? id,
+    String? name,
+    String? code,
+    String? folderId,
+    Color? color,
+    int? fileCount,
+    DateTime? modifiedAt,
+  }) {
+    return Subject(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      code: code ?? this.code,
+      folderId: folderId ?? this.folderId,
+      color: color ?? this.color,
+      fileCount: fileCount ?? this.fileCount,
+      modifiedAt: modifiedAt ?? this.modifiedAt,
+    );
+  }
 }
 
 class StudyMaterial {
