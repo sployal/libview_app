@@ -286,30 +286,6 @@ class FileDetailsDialog extends StatelessWidget {
                                   ],
                                 ),
                               ),
-                              const SizedBox(height: 16),
-                              SizedBox(
-                                width: double.infinity,
-                                child: FilledButton(
-                                  onPressed: () => Navigator.of(context).pop(),
-                                  style: FilledButton.styleFrom(
-                                    backgroundColor: accent,
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 14,
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(16),
-                                    ),
-                                  ),
-                                  child: const Text(
-                                    'Done',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 15,
-                                    ),
-                                  ),
-                                ),
-                              ),
                             ],
                           ),
                         ),
