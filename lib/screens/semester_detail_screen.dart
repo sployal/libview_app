@@ -12,6 +12,7 @@ import '../services/download_service.dart';
 import '../services/phone_document_service.dart';
 import '../services/upload_service.dart';
 import '../ui/adaptive_layout.dart';
+import '../ui/file_details.dart';
 import '../ui/file_sort.dart';
 import 'no_internet_screen.dart';
 import 'phone_pdf.dart';
@@ -1305,7 +1306,6 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
         ),
       );
     }
-    if (!_canManageFolders) return const SizedBox.shrink();
     return PopupMenuButton<String>(
       tooltip: 'File options',
       enabled: !isDownloading,
@@ -1317,41 +1317,58 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
       onSelected: (value) {
         Future<void>.delayed(const Duration(milliseconds: 150), () {
           if (!mounted) return;
-          if (value == 'rename') {
+          if (value == 'info') {
+            showFileDetailsDialog(
+              context: context,
+              info: FileDetailsInfo.fromStudyMaterial(file),
+            );
+          } else if (value == 'rename') {
             _renameMaterial(file);
           } else if (value == 'delete') {
             _confirmDelete(file);
           }
         });
       },
-      itemBuilder: (context) => const [
-        PopupMenuItem(
-          value: 'rename',
+      itemBuilder: (context) => [
+        const PopupMenuItem(
+          value: 'info',
           child: Row(
             children: [
-              Icon(Icons.drive_file_rename_outline_rounded, size: 18),
+              Icon(Icons.info_outline_rounded, size: 18, color: Color(0xFF6366F1)),
               SizedBox(width: 10),
-              Text('Rename file'),
+              Text('File info'),
             ],
           ),
         ),
-        PopupMenuItem(
-          value: 'delete',
-          child: Row(
-            children: [
-              Icon(
-                Icons.delete_rounded,
-                size: 18,
-                color: Color(0xFFEF4444),
-              ),
-              SizedBox(width: 10),
-              Text(
-                'Delete',
-                style: TextStyle(color: Color(0xFFEF4444)),
-              ),
-            ],
+        if (_canManageFolders) ...const [
+          PopupMenuItem(
+            value: 'rename',
+            child: Row(
+              children: [
+                Icon(Icons.drive_file_rename_outline_rounded, size: 18),
+                SizedBox(width: 10),
+                Text('Rename file'),
+              ],
+            ),
           ),
-        ),
+          PopupMenuItem(
+            value: 'delete',
+            child: Row(
+              children: [
+                Icon(
+                  Icons.delete_rounded,
+                  size: 18,
+                  color: Color(0xFFEF4444),
+                ),
+                SizedBox(width: 10),
+                Text(
+                  'Delete',
+                  style: TextStyle(color: Color(0xFFEF4444)),
+                ),
+              ],
+            ),
+          ),
+        ],
       ],
     );
   }

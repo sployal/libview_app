@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/download_service.dart';
 import '../services/phone_document_service.dart';
 import '../ui/adaptive_layout.dart';
+import '../ui/file_details.dart';
 import '../ui/file_sort.dart';
 import 'document_reader.dart';
 
@@ -361,6 +362,12 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
       icon: Icon(Icons.more_horiz_rounded, color: muted),
       onSelected: (value) {
         switch (value) {
+          case 'info':
+            showFileDetailsDialog(
+              context: context,
+              info: FileDetailsInfo.fromDownload(download),
+            );
+            break;
           case 'open':
             _openFile(download);
             break;
@@ -373,6 +380,16 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
         }
       },
       itemBuilder: (context) => const [
+        PopupMenuItem(
+          value: 'info',
+          child: Row(
+            children: [
+              Icon(Icons.info_outline_rounded, size: 18, color: Color(0xFF6366F1)),
+              SizedBox(width: 12),
+              Text('File info'),
+            ],
+          ),
+        ),
         PopupMenuItem(
           value: 'open',
           child: Row(
