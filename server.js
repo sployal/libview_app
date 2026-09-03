@@ -703,6 +703,20 @@ const FOLDER_MIME = 'application/vnd.google-apps.folder';
 const STORAGE_CACHE_TTL_MS = 5 * 60 * 1000;
 let storageCache = { at: 0, data: null };
 
+function asListedDriveItem(item) {
+  return {
+    id: item.id,
+    name: item.name,
+    mimeType: item.mimeType,
+    size: item.size,
+    modifiedTime: item.modifiedTime,
+    createdTime: item.createdTime,
+    webViewLink: item.webViewLink,
+    thumbnailLink: item.thumbnailLink,
+    fileCount: item.fileCount,
+  };
+}
+
 async function listDirectChildren(parentId, { apiKey } = {}) {
   const client = apiKey ? publicDrive : drive;
   const files = [];
@@ -710,7 +724,7 @@ async function listDirectChildren(parentId, { apiKey } = {}) {
   do {
     const res = await client.files.list({
       q: `'${parentId}' in parents and trashed = false`,
-      fields: 'nextPageToken, files(id, name, mimeType, size, modifiedTime, webViewLink, thumbnailLink)',
+      fields: 'nextPageToken, files(id, name, mimeType, size, modifiedTime, createdTime, webViewLink, thumbnailLink)',
       pageSize: 1000,
       pageToken,
       supportsAllDrives: true,
@@ -2006,8 +2020,9 @@ app.get('/folders/:folderId', requireAuth, async (req, res) => {
     const folders = [];
     const files = [];
     for (const item of children) {
-      if (item.mimeType === FOLDER_MIME) folders.push(item);
-      else files.push(item);
+      const listed = asListedDriveItem(item);
+      if (item.mimeType === FOLDER_MIME) folders.push(listed);
+      else files.push(listed);
     }
 
     if (String(req.query.counts || '') === '1') {
