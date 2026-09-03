@@ -376,6 +376,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     final parsedSize = int.tryParse(result.size ?? '');
     final sizeBytes =
         parsedSize != null && parsedSize > 0 ? parsedSize : file.sizeBytes;
+    final now = DateTime.now();
     final material = StudyMaterial(
       id: id,
       name: name,
@@ -384,7 +385,8 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
       date: 'Just now',
       downloadUrl: result.webViewLink,
       sizeBytes: sizeBytes,
-      modifiedAt: DateTime.now(),
+      modifiedAt: now,
+      createdAt: now,
     );
 
     setState(() {

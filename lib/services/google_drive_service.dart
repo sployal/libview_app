@@ -24,7 +24,7 @@ class GoogleDriveService {
     try {
       final queryParameters = <String, String>{
         'q': '\u0027$folderId\u0027 in parents and trashed = false',
-        'fields': 'files(id,name,mimeType,size,modifiedTime,webViewLink,thumbnailLink)',
+        'fields': 'files(id,name,mimeType,size,createdTime,modifiedTime,webViewLink,thumbnailLink)',
         'spaces': 'drive',
         'supportsAllDrives': 'true',
         'includeItemsFromAllDrives': 'true',
@@ -282,6 +282,7 @@ class GoogleDriveService {
                 thumbnailUrl: item.thumbnailLink,
                 sizeBytes: int.tryParse(item.size ?? ''),
                 modifiedAt: DateTime.tryParse(item.modifiedTime ?? ''),
+                createdAt: DateTime.tryParse(item.createdTime ?? ''),
               ))
           .toList();
     } catch (e) {
@@ -447,6 +448,7 @@ class DriveItem {
   final String name;
   final String mimeType;
   final String? size;
+  final String? createdTime;
   final String? modifiedTime;
   final String? webViewLink;
   final String? thumbnailLink;
@@ -456,6 +458,7 @@ class DriveItem {
     required this.name,
     required this.mimeType,
     this.size,
+    this.createdTime,
     this.modifiedTime,
     this.webViewLink,
     this.thumbnailLink,
@@ -469,6 +472,7 @@ class DriveItem {
       name: json['name'] ?? '',
       mimeType: json['mimeType'] ?? '',
       size: json['size'],
+      createdTime: json['createdTime'],
       modifiedTime: json['modifiedTime'],
       webViewLink: json['webViewLink'],
       thumbnailLink: json['thumbnailLink'],
@@ -526,6 +530,7 @@ class StudyMaterial {
   final String? thumbnailUrl;
   final int? sizeBytes;
   final DateTime? modifiedAt;
+  final DateTime? createdAt;
   
   StudyMaterial({
     required this.id,
@@ -537,6 +542,7 @@ class StudyMaterial {
     this.thumbnailUrl,
     this.sizeBytes,
     this.modifiedAt,
+    this.createdAt,
   });
 
   StudyMaterial copyWith({
@@ -549,6 +555,7 @@ class StudyMaterial {
     String? thumbnailUrl,
     int? sizeBytes,
     DateTime? modifiedAt,
+    DateTime? createdAt,
   }) {
     return StudyMaterial(
       id: id ?? this.id,
@@ -560,6 +567,7 @@ class StudyMaterial {
       thumbnailUrl: thumbnailUrl ?? this.thumbnailUrl,
       sizeBytes: sizeBytes ?? this.sizeBytes,
       modifiedAt: modifiedAt ?? this.modifiedAt,
+      createdAt: createdAt ?? this.createdAt,
     );
   }
 }

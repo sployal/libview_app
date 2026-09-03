@@ -24,6 +24,7 @@ class FileDetailsInfo {
     required this.sizeLabel,
     required this.dateLabel,
     this.modifiedAt,
+    this.createdAt,
     this.thumbnailUrl,
     this.fields = const [],
   });
@@ -33,6 +34,7 @@ class FileDetailsInfo {
   final String sizeLabel;
   final String dateLabel;
   final DateTime? modifiedAt;
+  final DateTime? createdAt;
   final String? thumbnailUrl;
   final List<FileDetailField> fields;
 
@@ -45,16 +47,12 @@ class FileDetailsInfo {
       sizeLabel: _sizeLabel(file.size, file.sizeBytes),
       dateLabel: file.date,
       modifiedAt: modified,
+      createdAt: file.createdAt,
       thumbnailUrl: file.thumbnailUrl,
       fields: [
         FileDetailField(label: 'Kind', value: _kindLabel(file.type, extension)),
         if (extension != null)
           FileDetailField(label: 'Extension', value: '.$extension'),
-        if (file.sizeBytes != null && file.sizeBytes! > 0)
-          FileDetailField(
-            label: 'Exact size',
-            value: '${_formatCount(file.sizeBytes!)} bytes',
-          ),
       ],
     );
   }
@@ -77,11 +75,6 @@ class FileDetailsInfo {
           FileDetailField(label: 'Folder', value: file.subject),
         if (extension != null)
           FileDetailField(label: 'Extension', value: '.$extension'),
-        if (file.size > 0)
-          FileDetailField(
-            label: 'Exact size',
-            value: '${_formatCount(file.size)} bytes',
-          ),
         if (location.isNotEmpty)
           FileDetailField(
             label: 'Location',
@@ -140,6 +133,9 @@ class FileDetailsDialog extends StatelessWidget {
     final card = isDark ? const Color(0xFF1F2937) : const Color(0xFFF3F4F6);
     final dateText = _prettyDate(info.modifiedAt) ?? _readableDate(info.dateLabel);
     final relative = _relativeDate(info.modifiedAt);
+    final uploadedText = _prettyDate(info.createdAt);
+    final uploadedRelative = _relativeDate(info.createdAt);
+    final hasUploaded = uploadedRelative != null || uploadedText != null;
 
     return SafeArea(
       child: Center(
@@ -224,9 +220,14 @@ class FileDetailsDialog extends StatelessWidget {
                                   const SizedBox(width: 10),
                                   Expanded(
                                     child: _StatCard(
-                                      icon: Icons.schedule_rounded,
-                                      label: 'Updated',
-                                      value: relative ?? dateText,
+                                      icon: hasUploaded
+                                          ? Icons.cloud_upload_rounded
+                                          : Icons.schedule_rounded,
+                                      label: hasUploaded ? 'Uploaded' : 'Updated',
+                                      value: uploadedRelative ??
+                                          uploadedText ??
+                                          relative ??
+                                          dateText,
                                       color: accent,
                                       background: card,
                                       titleColor: titleColor,
@@ -260,6 +261,13 @@ class FileDetailsDialog extends StatelessWidget {
                                       titleColor: titleColor,
                                       copyable: true,
                                     ),
+                                    if (uploadedText != null)
+                                      _DetailRow(
+                                        label: 'Uploaded',
+                                        value: uploadedText,
+                                        muted: muted,
+                                        titleColor: titleColor,
+                                      ),
                                     _DetailRow(
                                       label: 'Modified',
                                       value: dateText,
@@ -672,17 +680,6 @@ String _kindLabel(String type, String? extension) {
     default:
       return extension == null ? 'File' : '$extension file';
   }
-}
-
-String _formatCount(int value) {
-  final raw = value.toString();
-  final buffer = StringBuffer();
-  for (var i = 0; i < raw.length; i++) {
-    final fromEnd = raw.length - i;
-    buffer.write(raw[i]);
-    if (fromEnd > 1 && fromEnd % 3 == 1) buffer.write(',');
-  }
-  return buffer.toString();
 }
 
 String _readableDate(String raw) {

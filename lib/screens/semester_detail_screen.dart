@@ -331,6 +331,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     final parsedSize = int.tryParse(result.size ?? '');
     final sizeBytes =
         parsedSize != null && parsedSize > 0 ? parsedSize : file.sizeBytes;
+    final now = DateTime.now();
     final material = StudyMaterial(
       id: id,
       name: name,
@@ -339,7 +340,8 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
       date: 'Just now',
       downloadUrl: result.webViewLink,
       sizeBytes: sizeBytes,
-      modifiedAt: DateTime.now(),
+      modifiedAt: now,
+      createdAt: now,
     );
 
     setState(() {
