@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../services/auth_service.dart';
+import '../ui/app_splash_screen.dart';
 import '../services/download_service.dart';
 import '../services/notification_service.dart';
 import '../services/streak_service.dart';
@@ -97,12 +98,7 @@ class _HomeScreenState extends State<HomeScreen>
     DownloadService.listVersion.addListener(_loadDownloads);
     TodoService.instance.addListener(_onTodosChanged);
     _setupNotificationSubscription();
-    _loadTodos();
-    _loadDownloads();
-    _recordAndLoadStreak();
-    _loadGreetingName();
-    _loadWeather();
-    _loadUnreadNotificationCount();
+    _bootstrapHome();
   }
 
   @override
@@ -117,6 +113,7 @@ class _HomeScreenState extends State<HomeScreen>
     _notificationsSub?.cancel();
     _readsSub?.cancel();
     _slideController.dispose();
+    StartupOverlay.instance.completeIfAwaitingHome();
     super.dispose();
   }
 
@@ -126,6 +123,46 @@ class _HomeScreenState extends State<HomeScreen>
 
   Future<void> _loadTodos() async {
     await TodoService.instance.load();
+  }
+
+  Future<void> _trackedStep(
+    double progress,
+    Future<void> Function() load,
+  ) async {
+    try {
+      await load();
+    } finally {
+      StartupOverlay.instance.setProgress(progress);
+    }
+  }
+
+  Future<void> _bootstrapHome() async {
+    StartupOverlay.instance.setProgress(0.55);
+    try {
+      await Future.wait([
+        _trackedStep(0.68, _loadTodos),
+        _trackedStep(0.78, _loadDownloads),
+        _trackedStep(0.84, _recordAndLoadStreak),
+        _trackedStep(0.90, _loadGreetingName),
+        _trackedStep(0.96, _loadWeather),
+        _trackedStep(0.97, _loadUnreadNotificationCount),
+      ]).timeout(const Duration(seconds: 12));
+    } catch (e) {
+      debugPrint('Home bootstrap timed out or failed: $e');
+    }
+    if (!mounted) {
+      StartupOverlay.instance.completeIfAwaitingHome();
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) {
+        StartupOverlay.instance.completeIfAwaitingHome();
+        return;
+      }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        StartupOverlay.instance.complete();
+      });
+    });
   }
 
   @override
