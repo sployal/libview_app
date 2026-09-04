@@ -24,7 +24,7 @@ class GoogleDriveService {
     try {
       final queryParameters = <String, String>{
         'q': '\u0027$folderId\u0027 in parents and trashed = false',
-        'fields': 'files(id,name,mimeType,size,createdTime,modifiedTime,webViewLink,thumbnailLink)',
+        'fields': 'files(id,name,mimeType,size,createdTime,modifiedTime,webViewLink,thumbnailLink,properties)',
         'spaces': 'drive',
         'supportsAllDrives': 'true',
         'includeItemsFromAllDrives': 'true',
@@ -278,12 +278,12 @@ class GoogleDriveService {
                 name: item.name,
                 type: _getFileType(item.name),
                 size: _formatFileSize(item.size),
-                date: _formatDate(item.modifiedTime),
+                date: formatDate(item.modifiedTime),
                 downloadUrl: item.webViewLink,
                 thumbnailUrl: item.thumbnailLink,
                 sizeBytes: int.tryParse(item.size ?? ''),
                 modifiedAt: DateTime.tryParse(item.modifiedTime ?? ''),
-                createdAt: DateTime.tryParse(item.createdTime ?? ''),
+                createdAt: DateTime.tryParse(item.uploadedAt ?? item.createdTime ?? ''),
               ))
           .toList();
     } catch (e) {
@@ -390,7 +390,7 @@ class GoogleDriveService {
     return '${(size / (1024 * 1024)).toStringAsFixed(1)}MB';
   }
   
-  static String _formatDate(String? dateTime) {
+  static String formatDate(String? dateTime) {
     if (dateTime == null) return 'Unknown';
     
     try {
@@ -466,6 +466,7 @@ class DriveItem {
   final String? size;
   final String? createdTime;
   final String? modifiedTime;
+  final String? uploadedAt;
   final String? webViewLink;
   final String? thumbnailLink;
   
@@ -476,6 +477,7 @@ class DriveItem {
     this.size,
     this.createdTime,
     this.modifiedTime,
+    this.uploadedAt,
     this.webViewLink,
     this.thumbnailLink,
   });
@@ -483,6 +485,10 @@ class DriveItem {
   bool get isFolder => mimeType == 'application/vnd.google-apps.folder';
   
   factory DriveItem.fromJson(Map<String, dynamic> json) {
+    final properties = json['properties'];
+    final uploadedAt = properties is Map
+        ? properties['uploadedAt']?.toString()
+        : null;
     return DriveItem(
       id: json['id'] ?? '',
       name: json['name'] ?? '',
@@ -490,6 +496,7 @@ class DriveItem {
       size: json['size'],
       createdTime: json['createdTime'],
       modifiedTime: json['modifiedTime'],
+      uploadedAt: uploadedAt,
       webViewLink: json['webViewLink'],
       thumbnailLink: json['thumbnailLink'],
     );

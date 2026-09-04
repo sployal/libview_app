@@ -224,6 +224,15 @@ class _PhonePdfScreenState extends State<PhonePdfScreen>
 
   Future<void> _browseWithPicker() async {
     if (_isPreparing) return;
+    if (Platform.isAndroid) {
+      final safPicked = await PhoneDocumentService.instance.pickForUpload(
+        mimeTypes: PhoneDocumentService.documentUploadMimeTypes,
+      );
+      if (!mounted) return;
+      if (safPicked.isEmpty) return;
+      Navigator.pop(context, safPicked.take(_maxSelection).toList());
+      return;
+    }
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowMultiple: true,
@@ -252,7 +261,7 @@ class _PhonePdfScreenState extends State<PhonePdfScreen>
       final path = file.path;
       if (path == null || path.isEmpty) continue;
       picked.add(
-        PhonePickedDocument(
+        await PhonePickedDocument.fromFile(
           name: file.name,
           path: path,
           sizeBytes: file.size,

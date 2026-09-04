@@ -69,12 +69,44 @@ class PhonePickedDocument {
   final String name;
   final String path;
   final int sizeBytes;
+  final DateTime? modifiedAt;
 
   const PhonePickedDocument({
     required this.name,
     required this.path,
     required this.sizeBytes,
+    this.modifiedAt,
   });
+
+  static DateTime? modifiedAtFromMs(int modifiedMs) {
+    if (modifiedMs <= 0) return null;
+    return DateTime.fromMillisecondsSinceEpoch(modifiedMs);
+  }
+
+  static bool looksLikeCopyTime(DateTime date) {
+    return DateTime.now().difference(date).abs().inMinutes < 2;
+  }
+
+  static Future<PhonePickedDocument> fromFile({
+    required String name,
+    required String path,
+    required int sizeBytes,
+    String? uri,
+    DateTime? modifiedAt,
+  }) async {
+    return PhonePickedDocument(
+      name: name,
+      path: path,
+      sizeBytes: sizeBytes,
+      modifiedAt: await PhoneDocumentService.instance.resolveModifiedAt(
+        name: name,
+        path: path,
+        uri: uri,
+        sizeBytes: sizeBytes,
+        hint: modifiedAt,
+      ),
+    );
+  }
 }
 
 class PhoneDocumentService {
@@ -84,6 +116,101 @@ class PhoneDocumentService {
 
   static const MethodChannel _channel =
       MethodChannel('com.example.libview/phone_documents');
+
+  static const List<String> imageUploadMimeTypes = ['image/*'];
+  static const List<String> documentUploadMimeTypes = [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.ms-powerpoint',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'text/plain',
+    'text/rtf',
+    'application/rtf',
+    'text/csv',
+    'application/vnd.oasis.opendocument.text',
+    'application/vnd.oasis.opendocument.spreadsheet',
+    'application/vnd.oasis.opendocument.presentation',
+  ];
+
+  Future<List<PhonePickedDocument>> pickForUpload({
+    required List<String> mimeTypes,
+  }) async {
+    if (!Platform.isAndroid) return const [];
+    try {
+      final raw = await _channel.invokeMethod<List<dynamic>>(
+        'pickUploadFiles',
+        {'mimeTypes': mimeTypes},
+      );
+      if (raw == null || raw.isEmpty) return const [];
+      final picked = <PhonePickedDocument>[];
+      for (final entry in raw) {
+        if (entry is! Map) continue;
+        final map = Map<String, dynamic>.from(entry);
+        final path = map['path']?.toString() ?? '';
+        final name = map['name']?.toString() ?? 'file';
+        if (path.isEmpty) continue;
+        final size = (map['sizeBytes'] as num?)?.toInt() ?? 0;
+        final modifiedMs = (map['modifiedMs'] as num?)?.toInt() ?? 0;
+        picked.add(
+          PhonePickedDocument(
+            name: name,
+            path: path,
+            sizeBytes: size,
+            modifiedAt: PhonePickedDocument.modifiedAtFromMs(modifiedMs) ??
+                await resolveModifiedAt(
+                  name: name,
+                  path: path,
+                  uri: map['uri']?.toString(),
+                  sizeBytes: size,
+                ),
+          ),
+        );
+      }
+      return picked;
+    } on PlatformException {
+      return const [];
+    }
+  }
+
+  Future<DateTime?> resolveModifiedAt({
+    String? name,
+    String? path,
+    String? uri,
+    int sizeBytes = 0,
+    DateTime? hint,
+  }) async {
+    if (hint != null && !PhonePickedDocument.looksLikeCopyTime(hint)) {
+      return hint;
+    }
+
+    if (Platform.isAndroid) {
+      try {
+        final ms = await _channel.invokeMethod<int>('resolveModifiedMs', {
+          'uri': uri,
+          'path': path,
+          'fileName': name,
+          'sizeBytes': sizeBytes,
+        });
+        final parsed = PhonePickedDocument.modifiedAtFromMs(ms ?? 0);
+        if (parsed != null) return parsed;
+      } catch (_) {}
+    } else if (path != null && path.isNotEmpty) {
+      try {
+        final fromFile = await File(path).lastModified();
+        if (!PhonePickedDocument.looksLikeCopyTime(fromFile)) {
+          return fromFile;
+        }
+      } catch (_) {}
+    }
+
+    if (hint != null && !PhonePickedDocument.looksLikeCopyTime(hint)) {
+      return hint;
+    }
+    return null;
+  }
 
   Future<bool> requestAccess() async {
     if (!Platform.isAndroid) {
@@ -278,6 +405,13 @@ class PhoneDocumentService {
         name: document.name,
         path: path,
         sizeBytes: document.sizeBytes,
+        modifiedAt: await resolveModifiedAt(
+          name: document.name,
+          path: path,
+          uri: document.uri,
+          sizeBytes: document.sizeBytes,
+          hint: PhonePickedDocument.modifiedAtFromMs(document.modifiedMs),
+        ),
       );
     }
 
@@ -295,6 +429,13 @@ class PhoneDocumentService {
       name: document.name,
       path: copied,
       sizeBytes: await file.length(),
+      modifiedAt: await resolveModifiedAt(
+        name: document.name,
+        path: document.path ?? copied,
+        uri: document.uri,
+        sizeBytes: document.sizeBytes,
+        hint: PhonePickedDocument.modifiedAtFromMs(document.modifiedMs),
+      ),
     );
   }
 

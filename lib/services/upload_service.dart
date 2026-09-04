@@ -25,6 +25,8 @@ class UploadResult {
   final String? webViewLink;
   final String? size;
   final String? createdTime;
+  final String? modifiedTime;
+  final String? uploadedAt;
 
   UploadResult({
     required this.id,
@@ -32,6 +34,8 @@ class UploadResult {
     this.webViewLink,
     this.size,
     this.createdTime,
+    this.modifiedTime,
+    this.uploadedAt,
   });
 
   factory UploadResult.fromJson(Map<String, dynamic> json) {
@@ -41,8 +45,18 @@ class UploadResult {
       webViewLink: json['webViewLink']?.toString(),
       size: json['size']?.toString(),
       createdTime: json['createdTime']?.toString(),
+      modifiedTime: json['modifiedTime']?.toString(),
+      uploadedAt: json['uploadedAt']?.toString() ??
+          (json['properties'] is Map
+              ? (json['properties'] as Map)['uploadedAt']?.toString()
+              : null),
     );
   }
+
+  DateTime? get createdAt =>
+      DateTime.tryParse(uploadedAt ?? '') ?? DateTime.tryParse(createdTime ?? '');
+
+  DateTime? get modifiedAt => DateTime.tryParse(modifiedTime ?? '');
 }
 
 class UploadService {
@@ -75,11 +89,17 @@ class UploadService {
     return token;
   }
 
+  static String? rfc3339(DateTime? date) {
+    if (date == null) return null;
+    return date.toUtc().toIso8601String();
+  }
+
   Future<UploadResult> uploadFile({
     required String folderId,
     required String fileName,
     String? filePath,
     List<int>? bytes,
+    DateTime? modifiedAt,
     CancelToken? cancelToken,
     void Function(double progress)? onProgress,
     void Function(int sent, int total)? onBytes,
@@ -98,9 +118,11 @@ class UploadService {
     );
 
     final token = await _idToken();
+    final modifiedMs = modifiedAt?.millisecondsSinceEpoch;
     final form = FormData.fromMap({
       'folderId': folderId,
       'file': multipart,
+      if (modifiedMs != null && modifiedMs > 0) 'modifiedMs': '$modifiedMs',
     });
     final knownLength = bytes?.length ??
         (filePath != null && filePath.isNotEmpty

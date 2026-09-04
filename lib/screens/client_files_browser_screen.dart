@@ -377,17 +377,18 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     final parsedSize = int.tryParse(result.size ?? '');
     final sizeBytes =
         parsedSize != null && parsedSize > 0 ? parsedSize : file.sizeBytes;
-    final now = DateTime.now();
+    final createdAt = result.createdAt ?? DateTime.now();
+    final modifiedAt = result.modifiedAt ?? file.modifiedAt ?? createdAt;
     final material = StudyMaterial(
       id: id,
       name: name,
       type: _typeFromFileName(name),
       size: _displayFileSize(result.size, file.sizeBytes),
-      date: 'Just now',
+      date: GoogleDriveService.formatDate(modifiedAt.toUtc().toIso8601String()),
       downloadUrl: result.webViewLink,
       sizeBytes: sizeBytes,
-      modifiedAt: now,
-      createdAt: now,
+      modifiedAt: modifiedAt,
+      createdAt: createdAt,
     );
 
     setState(() {
@@ -1032,6 +1033,22 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
       return;
     }
 
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      final picked = await PhoneDocumentService.instance.pickForUpload(
+        mimeTypes: PhoneDocumentService.imageUploadMimeTypes,
+      );
+      if (picked.isEmpty || !mounted) return;
+      if (picked.length > _maxImageUploadSelection) {
+        _showMessage(
+          'You can upload up to $_maxImageUploadSelection images at a time',
+          isError: true,
+        );
+        return;
+      }
+      await _uploadPickedFiles(subject.folderId, picked);
+      return;
+    }
+
     _enableAndroidPhotoPicker();
     List<XFile> images;
     try {
@@ -1061,7 +1078,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
       final name = _uniquePickedName(image.name, usedNames);
       usedNames.add(name);
       picked.add(
-        PhonePickedDocument(
+        await PhonePickedDocument.fromFile(
           name: name,
           path: image.path,
           sizeBytes: await image.length(),
@@ -1149,6 +1166,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
             fileName: file.name,
             filePath: file.path.isEmpty ? null : file.path,
             bytes: bytesByName?[file.name],
+            modifiedAt: file.modifiedAt,
             cancelToken: cancelToken,
             onProgress: (progress) {
               if (!mounted) return;

@@ -610,22 +610,93 @@ async function isValidSubjectFolder(folderId) {
   return valid;
 }
 
-async function uploadFile({ fileName, buffer, folderId, uploadedBy, mimeType }) {
+function parseDriveDateTime(value) {
+  if (value == null || value === '') return undefined;
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    const ms = value < 10_000_000_000 ? value * 1000 : value;
+    const date = new Date(ms);
+    if (Number.isNaN(date.getTime())) return undefined;
+    const min = Date.UTC(1980, 0, 1);
+    const max = Date.now() + 24 * 60 * 60 * 1000;
+    if (date.getTime() < min || date.getTime() > max) return undefined;
+    return date.toISOString();
+  }
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+  if (/^-?\d+(\.\d+)?$/.test(trimmed)) {
+    return parseDriveDateTime(Number(trimmed));
+  }
+  const date = new Date(trimmed);
+  if (Number.isNaN(date.getTime())) return undefined;
+  const min = Date.UTC(1980, 0, 1);
+  const max = Date.now() + 24 * 60 * 60 * 1000;
+  if (date.getTime() < min || date.getTime() > max) return undefined;
+  return date.toISOString();
+}
+
+async function uploadFile({
+  fileName,
+  buffer,
+  folderId,
+  uploadedBy,
+  mimeType,
+  modifiedTime,
+}) {
   const safeName = sanitizeFileName(fileName);
-  const res = await drive.files.create({
-    requestBody: {
-      name: safeName,
-      parents: [folderId],
-      appProperties: uploadedBy ? { uploadedBy } : undefined,
-    },
-    media: {
-      mimeType: mimeType || mimeFromFileName(safeName),
-      body: Readable.from(buffer),
-    },
-    fields: 'id, name, webViewLink, size, createdTime',
+  const uploadedAt = new Date().toISOString();
+  const originalModified = parseDriveDateTime(modifiedTime);
+  const mime = mimeType || mimeFromFileName(safeName);
+  const requestBody = {
+    name: safeName,
+    parents: [folderId],
+    properties: { uploadedAt },
+    appProperties: uploadedBy ? { uploadedBy } : undefined,
+  };
+  if (originalModified) {
+    // Drive rejects modifiedTime earlier than createdTime. Pin both to the
+    // phone's file date (same as the Drive app), and keep the real upload
+    // instant in properties.uploadedAt for the Edupal UI.
+    requestBody.createdTime = originalModified;
+    requestBody.modifiedTime = originalModified;
+  }
+
+  const created = await drive.files.create({
+    requestBody,
+    fields: 'id',
     supportsAllDrives: true,
   });
-  return res.data;
+  const fileId = created.data?.id;
+  if (!fileId) {
+    throw new Error('Drive did not return a file id');
+  }
+
+  await drive.files.update({
+    fileId,
+    media: {
+      mimeType: mime,
+      body: Readable.from(buffer),
+    },
+    supportsAllDrives: true,
+  });
+
+  if (originalModified) {
+    await drive.files.update({
+      fileId,
+      requestBody: { modifiedTime: originalModified },
+      supportsAllDrives: true,
+    });
+  }
+
+  const res = await drive.files.get({
+    fileId,
+    fields: 'id, name, webViewLink, size, createdTime, modifiedTime, properties',
+    supportsAllDrives: true,
+  });
+  return {
+    ...res.data,
+    uploadedAt: res.data.properties?.uploadedAt || uploadedAt,
+  };
 }
 
 function isSemesterFolder(folderId) {
@@ -710,6 +781,7 @@ function asListedDriveItem(item) {
     size: item.size,
     modifiedTime: item.modifiedTime,
     createdTime: item.createdTime,
+    uploadedAt: item.properties?.uploadedAt || item.createdTime,
     webViewLink: item.webViewLink,
     thumbnailLink: item.thumbnailLink,
     fileCount: item.fileCount,
@@ -723,7 +795,7 @@ async function listDirectChildren(parentId, { apiKey } = {}) {
   do {
     const res = await client.files.list({
       q: `'${parentId}' in parents and trashed = false`,
-      fields: 'nextPageToken, files(id, name, mimeType, size, modifiedTime, createdTime, webViewLink, thumbnailLink)',
+      fields: 'nextPageToken, files(id, name, mimeType, size, modifiedTime, createdTime, webViewLink, thumbnailLink, properties)',
       pageSize: 1000,
       pageToken,
       supportsAllDrives: true,
@@ -1448,6 +1520,7 @@ app.post('/upload', requireAuth, (req, res) => {
         folderId,
         uploadedBy: req.user.uid,
         mimeType: mimeFromFileName(req.file.originalname, req.file.mimetype),
+        modifiedTime: req.body?.modifiedMs || req.body?.modifiedTime,
       });
       res.json(result);
     } catch (e) {

@@ -13,8 +13,11 @@ import android.os.Build
 import android.os.Environment
 import android.os.Handler
 import android.os.Looper
+import android.media.ExifInterface
 import android.os.ParcelFileDescriptor
+import android.provider.DocumentsContract
 import android.provider.MediaStore
+import android.provider.OpenableColumns
 import android.webkit.MimeTypeMap
 import androidx.core.content.FileProvider
 import io.flutter.embedding.android.FlutterActivity
@@ -30,6 +33,11 @@ class MainActivity : FlutterActivity() {
     private val downloadsChannel = "com.example.libview/downloads"
     private val documentsChannel = "com.example.libview/phone_documents"
     private val mainHandler = Handler(Looper.getMainLooper())
+    private var pickResult: MethodChannel.Result? = null
+
+    companion object {
+        private const val PICK_UPLOAD_REQUEST = 0x51F1
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -96,6 +104,35 @@ class MainActivity : FlutterActivity() {
                             result.success(deleteDownload(uri, path))
                         } catch (e: Exception) {
                             result.error("DELETE_ERROR", e.message, null)
+                        }
+                    }
+                    "pickUploadFiles" -> {
+                        if (pickResult != null) {
+                            result.error("BUSY", "A file picker is already open", null)
+                            return@setMethodCallHandler
+                        }
+                        val mimeTypes = call.argument<List<String>>("mimeTypes")
+                            ?: listOf("*/*")
+                        try {
+                            pickResult = result
+                            startUploadPicker(mimeTypes)
+                        } catch (e: Exception) {
+                            pickResult = null
+                            result.error("PICK_ERROR", e.message, null)
+                        }
+                    }
+                    "resolveModifiedMs" -> {
+                        val uri = call.argument<String>("uri")
+                        val path = call.argument<String>("path")
+                        val fileName = call.argument<String>("fileName")
+                        val sizeBytes = call.argument<Number>("sizeBytes")?.toLong() ?: 0L
+                        thread {
+                            try {
+                                val modifiedMs = resolveModifiedMs(uri, path, fileName, sizeBytes)
+                                mainHandler.post { result.success(modifiedMs) }
+                            } catch (_: Exception) {
+                                mainHandler.post { result.success(0L) }
+                            }
                         }
                     }
                     "documentThumbnail" -> {
@@ -171,6 +208,108 @@ class MainActivity : FlutterActivity() {
                     result.error("DOWNLOADS_ERROR", e.message, null)
                 }
             }
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (requestCode != PICK_UPLOAD_REQUEST) {
+            super.onActivityResult(requestCode, resultCode, data)
+            return
+        }
+        val pending = pickResult
+        pickResult = null
+        if (pending == null) return
+        if (resultCode != RESULT_OK || data == null) {
+            pending.success(emptyList<Map<String, Any?>>())
+            return
+        }
+        val uris = mutableListOf<Uri>()
+        val clip = data.clipData
+        if (clip != null) {
+            for (i in 0 until clip.itemCount) {
+                clip.getItemAt(i).uri?.let { uris.add(it) }
+            }
+        } else {
+            data.data?.let { uris.add(it) }
+        }
+        thread {
+            try {
+                val items = uris.map { describePickedUri(it) }
+                mainHandler.post { pending.success(items) }
+            } catch (e: Exception) {
+                mainHandler.post { pending.error("PICK_ERROR", e.message, null) }
+            }
+        }
+    }
+
+    private fun startUploadPicker(mimeTypes: List<String>) {
+        val types = mimeTypes.map { it.trim() }.filter { it.isNotEmpty() }.ifEmpty { listOf("*/*") }
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            putExtra(Intent.EXTRA_ALLOW_MULTIPLE, true)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            if (types.size == 1) {
+                type = types[0]
+            } else {
+                type = "*/*"
+                putExtra(Intent.EXTRA_MIME_TYPES, types.toTypedArray())
+            }
+        }
+        startActivityForResult(intent, PICK_UPLOAD_REQUEST)
+    }
+
+    private fun describePickedUri(uri: Uri): Map<String, Any?> {
+        try {
+            contentResolver.takePersistableUriPermission(
+                uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION,
+            )
+        } catch (_: Exception) {
+        }
+
+        var name = "file"
+        var size = 0L
+        var modifiedMs = queryUriModifiedMs(uri)
+        try {
+            contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                if (cursor.moveToFirst()) {
+                    val nameIdx = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                    if (nameIdx >= 0) {
+                        val display = cursor.getString(nameIdx)
+                        if (!display.isNullOrBlank()) name = display
+                    }
+                    val sizeIdx = cursor.getColumnIndex(OpenableColumns.SIZE)
+                    if (sizeIdx >= 0) size = cursor.getLong(sizeIdx)
+                    if (modifiedMs <= 0L) {
+                        modifiedMs = firstColumnMs(
+                            cursor,
+                            DocumentsContract.Document.COLUMN_LAST_MODIFIED,
+                            MediaStore.MediaColumns.DATE_MODIFIED,
+                            MediaStore.Images.Media.DATE_TAKEN,
+                            MediaStore.MediaColumns.DATE_ADDED,
+                        )
+                    }
+                }
+            }
+        } catch (_: Exception) {
+        }
+
+        if (modifiedMs <= 0L) {
+            modifiedMs = resolveModifiedMs(uri.toString(), null, name, size)
+        }
+
+        val copied = copyDocumentToCache(uri.toString(), null, name)
+        val copiedFile = File(copied)
+        if (size <= 0L && copiedFile.exists()) {
+            size = copiedFile.length()
+        }
+        return mapOf(
+            "name" to name,
+            "path" to copied,
+            "uri" to uri.toString(),
+            "sizeBytes" to size,
+            "modifiedMs" to modifiedMs,
+        )
     }
 
     private fun saveToDownloads(sourcePath: String, fileName: String, mimeType: String): Map<String, String> {
@@ -743,6 +882,200 @@ class MainActivity : FlutterActivity() {
             "size" to size,
             "modifiedMs" to modifiedMs,
         )
+    }
+
+    private fun resolveModifiedMs(
+        uriString: String?,
+        path: String?,
+        fileName: String?,
+        sizeBytes: Long,
+    ): Long {
+        val uri = parseContentUri(uriString)
+        val fromUri = uri?.let { queryUriModifiedMs(it) } ?: 0L
+        val fromData = if (!path.isNullOrBlank() && !isAppCachePath(path)) {
+            queryMediaStoreModifiedByData(path)
+        } else {
+            0L
+        }
+        val fromFile = if (!path.isNullOrBlank() && !isAppCachePath(path)) {
+            File(path).takeIf { it.exists() }?.lastModified() ?: 0L
+        } else {
+            0L
+        }
+        val fromName = if (!fileName.isNullOrBlank()) {
+            queryMediaStoreModifiedByName(fileName, sizeBytes)
+        } else {
+            0L
+        }
+        val fromExif = when {
+            !path.isNullOrBlank() -> exifDateMs(path)
+            uri != null -> exifDateMsFromUri(uri)
+            else -> 0L
+        }
+        return firstOriginalMs(fromUri, fromData, fromFile, fromName, fromExif)
+    }
+
+    private fun firstOriginalMs(vararg values: Long): Long {
+        val valid = values.filter { it > 0L }
+        return valid.firstOrNull { !isRecentMs(it) } ?: valid.firstOrNull() ?: 0L
+    }
+
+    private fun isRecentMs(value: Long): Boolean {
+        return kotlin.math.abs(System.currentTimeMillis() - value) < 2 * 60 * 1000L
+    }
+
+    private fun parseContentUri(uriString: String?): Uri? {
+        if (uriString.isNullOrBlank()) return null
+        return try {
+            Uri.parse(uriString).takeIf { it.scheme.equals("content", ignoreCase = true) }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun isAppCachePath(path: String): Boolean {
+        val lowered = path.lowercase(Locale.US)
+        val cache = cacheDir.absolutePath
+        val extCache = externalCacheDir?.absolutePath
+        return path.startsWith(cache) ||
+            (extCache != null && path.startsWith(extCache)) ||
+            lowered.contains("/cache/file_picker") ||
+            lowered.contains("/cache/image_picker") ||
+            lowered.contains("/cache/phone_documents")
+    }
+
+    private fun queryUriModifiedMs(uri: Uri): Long {
+        return try {
+            contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                if (!cursor.moveToFirst()) return 0L
+                firstColumnMs(
+                    cursor,
+                    DocumentsContract.Document.COLUMN_LAST_MODIFIED,
+                    MediaStore.MediaColumns.DATE_MODIFIED,
+                    MediaStore.Images.Media.DATE_TAKEN,
+                    MediaStore.MediaColumns.DATE_ADDED,
+                )
+            } ?: 0L
+        } catch (_: Exception) {
+            0L
+        }
+    }
+
+    private fun queryMediaStoreModifiedByData(path: String): Long {
+        return queryMediaStoreModified(
+            "${MediaStore.MediaColumns.DATA}=?",
+            arrayOf(path),
+        )
+    }
+
+    private fun queryMediaStoreModifiedByName(fileName: String, sizeBytes: Long): Long {
+        if (sizeBytes > 0L) {
+            val withSize = queryMediaStoreModified(
+                "${MediaStore.MediaColumns.DISPLAY_NAME}=? AND ${MediaStore.MediaColumns.SIZE}=?",
+                arrayOf(fileName, sizeBytes.toString()),
+            )
+            if (withSize > 0L) return withSize
+        }
+        return queryMediaStoreModified(
+            "${MediaStore.MediaColumns.DISPLAY_NAME}=?",
+            arrayOf(fileName),
+        )
+    }
+
+    @Suppress("DEPRECATION")
+    private fun queryMediaStoreModified(selection: String, args: Array<String>): Long {
+        val collections = mutableListOf(
+            MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+            MediaStore.Video.Media.EXTERNAL_CONTENT_URI,
+            MediaStore.Files.getContentUri("external"),
+        )
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            collections.add(MediaStore.Downloads.EXTERNAL_CONTENT_URI)
+        }
+        for (collection in collections) {
+            val isImage = collection == MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+            val projection = if (isImage) {
+                arrayOf(
+                    MediaStore.MediaColumns.DATE_MODIFIED,
+                    MediaStore.Images.Media.DATE_TAKEN,
+                    MediaStore.MediaColumns.DATE_ADDED,
+                )
+            } else {
+                arrayOf(
+                    MediaStore.MediaColumns.DATE_MODIFIED,
+                    MediaStore.MediaColumns.DATE_ADDED,
+                )
+            }
+            try {
+                contentResolver.query(
+                    collection,
+                    projection,
+                    selection,
+                    args,
+                    "${MediaStore.MediaColumns.DATE_MODIFIED} DESC",
+                )?.use { cursor ->
+                    if (cursor.moveToFirst()) {
+                        val value = firstColumnMs(
+                            cursor,
+                            MediaStore.MediaColumns.DATE_MODIFIED,
+                            MediaStore.Images.Media.DATE_TAKEN,
+                            MediaStore.MediaColumns.DATE_ADDED,
+                        )
+                        if (value > 0L) return value
+                    }
+                }
+            } catch (_: Exception) {
+            }
+        }
+        return 0L
+    }
+
+    private fun firstColumnMs(cursor: android.database.Cursor, vararg columns: String): Long {
+        for (column in columns) {
+            val index = cursor.getColumnIndex(column)
+            if (index < 0) continue
+            val raw = cursor.getLong(index)
+            val ms = normalizeEpochMs(raw)
+            if (ms > 0L) return ms
+        }
+        return 0L
+    }
+
+    private fun normalizeEpochMs(value: Long): Long {
+        if (value <= 0L) return 0L
+        return if (value < 10_000_000_000L) value * 1000L else value
+    }
+
+    private fun exifDateMs(path: String): Long {
+        return try {
+            parseExifDate(ExifInterface(path))
+        } catch (_: Exception) {
+            0L
+        }
+    }
+
+    private fun exifDateMsFromUri(uri: Uri): Long {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return 0L
+        return try {
+            contentResolver.openInputStream(uri)?.use { input ->
+                parseExifDate(ExifInterface(input))
+            } ?: 0L
+        } catch (_: Exception) {
+            0L
+        }
+    }
+
+    private fun parseExifDate(exif: ExifInterface): Long {
+        val raw = exif.getAttribute(ExifInterface.TAG_DATETIME_ORIGINAL)
+            ?: exif.getAttribute(ExifInterface.TAG_DATETIME)
+            ?: return 0L
+        return try {
+            val format = java.text.SimpleDateFormat("yyyy:MM:dd HH:mm:ss", Locale.US)
+            format.timeZone = java.util.TimeZone.getDefault()
+            format.parse(raw)?.time ?: 0L
+        } catch (_: Exception) {
+            0L
+        }
     }
 
     private fun isDocumentFile(name: String): Boolean {
