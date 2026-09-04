@@ -41,7 +41,10 @@ const ADMIN_UIDS = new Set(
 
 const CONFIG = {
   PORT: parseInt(process.env.PORT || '3000', 10),
-  ALLOWED_ORIGINS: (process.env.ALLOWED_ORIGINS || '*').split(',').map((s) => s.trim()),
+  ALLOWED_ORIGINS: (process.env.ALLOWED_ORIGINS || 'https://edupal-web.vercel.app')
+    .split(',')
+    .map((s) => s.trim().replace(/\/$/, ''))
+    .filter(Boolean),
 
   // --- Google OAuth2 (replaces the old service-account key) ---
   // Client ID/secret/redirect stay as env vars (they're not secrets that
@@ -1319,13 +1322,46 @@ function requireSystemAdmin(req, res, next) {
 
 const app = express();
 
+function normalizeOrigin(origin) {
+  return String(origin || '').trim().replace(/\/$/, '');
+}
+
+function isAllowedOrigin(origin) {
+  if (!origin) return true;
+  if (CONFIG.ALLOWED_ORIGINS.includes('*')) return true;
+  return CONFIG.ALLOWED_ORIGINS.includes(normalizeOrigin(origin));
+}
+
+function isOriginExemptPath(path) {
+  return (
+    path === '/health' ||
+    path === '/auth/google' ||
+    path === '/auth/google/callback'
+  );
+}
+
 app.use(
   cors({
-    origin: CONFIG.ALLOWED_ORIGINS.includes('*') ? '*' : CONFIG.ALLOWED_ORIGINS,
+    origin(origin, callback) {
+      if (isAllowedOrigin(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(null, false);
+    },
     // Let the web app read the download filename from Content-Disposition.
     exposedHeaders: ['Content-Disposition', 'Content-Type'],
   })
 );
+
+app.use((req, res, next) => {
+  if (isOriginExemptPath(req.path)) return next();
+  const origin = req.headers.origin;
+  if (isAllowedOrigin(origin)) return next();
+  console.warn(`Blocked request from origin ${origin} ${req.method} ${req.path}`);
+  return res.status(403).json({ error: 'Origin not allowed' });
+});
+
 app.use(express.json({ limit: '12mb' }));
 
 const upload = multer({
