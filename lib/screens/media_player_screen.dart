@@ -1,4 +1,10 @@
+import 'dart:io';
+
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:open_file/open_file.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:video_player/video_player.dart';
 
 import '../services/download_service.dart';
@@ -27,6 +33,7 @@ class MediaPlayerScreen extends StatefulWidget {
 class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
   VideoPlayerController? _controller;
   bool _loading = true;
+  String? _status;
   String? _error;
   bool _isDownloading = false;
   double _downloadProgress = 0.0;
@@ -34,6 +41,11 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
 
   static const _darkBg = Color(0xFF111827);
   static const _lightBg = Color(0xFFF8FAFC);
+
+  bool get _usePlatformView =>
+      !widget.isAudio &&
+      !kIsWeb &&
+      defaultTargetPlatform == TargetPlatform.android;
 
   @override
   void initState() {
@@ -43,6 +55,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
 
   @override
   void dispose() {
+    _controller?.removeListener(_onTick);
     _controller?.dispose();
     super.dispose();
   }
@@ -51,14 +64,66 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
     setState(() {
       _loading = true;
       _error = null;
+      _status = 'Loading...';
     });
     try {
       final headers = await UploadService.instance.authHeaders();
-      final controller = VideoPlayerController.networkUrl(
-        Uri.parse(UploadService.mediaStreamUrl(widget.fileId)),
-        httpHeaders: headers,
+      await _startController(
+        VideoPlayerController.networkUrl(
+          Uri.parse(UploadService.mediaStreamUrl(widget.fileId)),
+          httpHeaders: headers,
+          viewType: _usePlatformView
+              ? VideoViewType.platformView
+              : VideoViewType.textureView,
+        ),
       );
+      return;
+    } catch (_) {}
+
+    if (widget.isAudio) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = 'Could not play this audio file';
+      });
+      return;
+    }
+
+    try {
+      setState(() => _status = 'Preparing a local copy...');
+      final path = await _cacheForPlayback();
+      if (!mounted) return;
+      await _startController(
+        VideoPlayerController.file(
+          File(path),
+          viewType: _usePlatformView
+              ? VideoViewType.platformView
+              : VideoViewType.textureView,
+        ),
+      );
+      return;
+    } catch (_) {}
+
+    try {
+      setState(() => _status = 'Opening in the phone player...');
+      await _openInSystemPlayer();
+      if (!mounted) return;
+      _handleBack();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _error = 'Could not play this video on this phone';
+      });
+    }
+  }
+
+  Future<void> _startController(VideoPlayerController controller) async {
+    try {
       await controller.initialize();
+      if (controller.value.hasError) {
+        throw StateError(controller.value.errorDescription ?? 'decode failed');
+      }
       controller.addListener(_onTick);
       await controller.play();
       if (!mounted) {
@@ -66,23 +131,61 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
         return;
       }
       setState(() {
+        _controller?.removeListener(_onTick);
         _controller?.dispose();
         _controller = controller;
         _loading = false;
+        _error = null;
       });
     } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _loading = false;
-        _error = widget.isAudio
-            ? 'Could not play this audio file'
-            : 'Could not play this video';
-      });
+      controller.dispose();
+      rethrow;
     }
   }
 
   void _onTick() {
-    if (mounted) setState(() {});
+    final controller = _controller;
+    if (controller == null || !mounted) return;
+    if (controller.value.hasError && _error == null) {
+      setState(() {
+        _error = widget.isAudio
+            ? 'Could not play this audio file'
+            : 'Could not play this video on this phone';
+      });
+      return;
+    }
+    setState(() {});
+  }
+
+  Future<String> _cacheForPlayback() async {
+    final headers = await UploadService.instance.authHeaders();
+    final dir = await getTemporaryDirectory();
+    final safe = widget.title.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+    final path = '${dir.path}/play_${widget.fileId}_$safe';
+    final file = File(path);
+    if (await file.exists() && await file.length() > 0) {
+      return path;
+    }
+    await Dio().download(
+      UploadService.mediaStreamUrl(widget.fileId),
+      path,
+      options: Options(
+        headers: headers,
+        receiveTimeout: const Duration(minutes: 20),
+      ),
+    );
+    return path;
+  }
+
+  Future<void> _openInSystemPlayer() async {
+    final path = await _cacheForPlayback();
+    final result = await OpenFile.open(
+      path,
+      type: widget.isAudio ? 'audio/*' : 'video/*',
+    );
+    if (result.type != ResultType.done) {
+      throw Exception(result.message);
+    }
   }
 
   void _handleBack() {
@@ -194,7 +297,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'Loading...',
+                      _status ?? 'Loading...',
                       style: TextStyle(color: muted),
                     ),
                   ],
@@ -225,6 +328,30 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
                             onPressed: _prepare,
                             child: const Text('Try again'),
                           ),
+                          if (!widget.isAudio) ...[
+                            const SizedBox(height: 10),
+                            TextButton(
+                              onPressed: () async {
+                                setState(() {
+                                  _loading = true;
+                                  _error = null;
+                                  _status = 'Opening in the phone player...';
+                                });
+                                try {
+                                  await _openInSystemPlayer();
+                                  if (mounted) _handleBack();
+                                } catch (_) {
+                                  if (!mounted) return;
+                                  setState(() {
+                                    _loading = false;
+                                    _error =
+                                        'Could not open this video in another app';
+                                  });
+                                }
+                              },
+                              child: const Text('Open in phone player'),
+                            ),
+                          ],
                         ],
                       ),
                     ),
