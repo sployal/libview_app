@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -232,26 +231,30 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
     required String title,
     required String message,
   }) async {
-    final confirmed = await showCupertinoDialog<bool>(
+    HapticFeedback.mediumImpact();
+    final confirmed = await showGeneralDialog<bool>(
       context: context,
-      builder: (context) => CupertinoAlertDialog(
-        title: Text(title),
-        content: Padding(
-          padding: const EdgeInsets.only(top: 8),
-          child: Text(message),
-        ),
-        actions: [
-          CupertinoDialogAction(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+      barrierDismissible: true,
+      barrierLabel: 'Dismiss',
+      barrierColor: Colors.black.withValues(alpha: 0.55),
+      transitionDuration: const Duration(milliseconds: 280),
+      pageBuilder: (context, animation, secondaryAnimation) {
+        return _DownloadsConfirmDialog(title: title, message: message);
+      },
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        final curved = CurvedAnimation(
+          parent: animation,
+          curve: Curves.easeOutCubic,
+          reverseCurve: Curves.easeInCubic,
+        );
+        return FadeTransition(
+          opacity: curved,
+          child: ScaleTransition(
+            scale: Tween<double>(begin: 0.92, end: 1).animate(curved),
+            child: child,
           ),
-          CupertinoDialogAction(
-            isDestructiveAction: true,
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
+        );
+      },
     );
     return confirmed == true;
   }
@@ -356,10 +359,26 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
     );
   }
 
-  Widget _overflowMenu(DownloadItem download, Color muted) {
+  Widget _overflowMenu(DownloadItem download, Color muted, {required bool isDark}) {
+    const accent = Color(0xFF6366F1);
+    final menu = isDark ? const Color(0xFF151B28) : Colors.white;
+    final titleColor =
+        isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
+    final border = isDark ? const Color(0xFF374151) : const Color(0xFFE5E7EB);
+
     return PopupMenuButton<String>(
       tooltip: 'File options',
       padding: EdgeInsets.zero,
+      offset: const Offset(0, 8),
+      color: menu,
+      elevation: 18,
+      shadowColor: accent.withValues(alpha: 0.28),
+      surfaceTintColor: Colors.transparent,
+      menuPadding: const EdgeInsets.symmetric(vertical: 8),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: border),
+      ),
       icon: Icon(Icons.more_horiz_rounded, color: muted),
       onSelected: (value) {
         switch (value) {
@@ -380,45 +399,50 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
             break;
         }
       },
-      itemBuilder: (context) => const [
+      itemBuilder: (context) => [
         PopupMenuItem(
           value: 'info',
-          child: Row(
-            children: [
-              Icon(Icons.info_outline_rounded, size: 18, color: Color(0xFF6366F1)),
-              SizedBox(width: 12),
-              Text('File info'),
-            ],
+          height: 52,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: _OverflowMenuRow(
+            icon: Icons.info_outline_rounded,
+            label: 'File info',
+            color: accent,
+            titleColor: titleColor,
           ),
         ),
         PopupMenuItem(
           value: 'open',
-          child: Row(
-            children: [
-              Icon(Icons.open_in_new_rounded, size: 18),
-              SizedBox(width: 12),
-              Text('Open'),
-            ],
+          height: 52,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: _OverflowMenuRow(
+            icon: Icons.open_in_new_rounded,
+            label: 'Open',
+            color: const Color(0xFF0EA5E9),
+            titleColor: titleColor,
           ),
         ),
         PopupMenuItem(
           value: 'share',
-          child: Row(
-            children: [
-              Icon(Icons.ios_share_rounded, size: 18, color: Color(0xFF6366F1)),
-              SizedBox(width: 12),
-              Text('Share', style: TextStyle(color: Color(0xFF6366F1))),
-            ],
+          height: 52,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: _OverflowMenuRow(
+            icon: Icons.ios_share_rounded,
+            label: 'Share',
+            color: accent,
+            titleColor: titleColor,
           ),
         ),
+        const PopupMenuDivider(height: 10),
         PopupMenuItem(
           value: 'delete',
-          child: Row(
-            children: [
-              Icon(Icons.delete_rounded, size: 18, color: Colors.red),
-              SizedBox(width: 12),
-              Text('Delete', style: TextStyle(color: Colors.red)),
-            ],
+          height: 52,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: _OverflowMenuRow(
+            icon: Icons.delete_rounded,
+            label: 'Delete',
+            color: const Color(0xFFEF4444),
+            titleColor: const Color(0xFFEF4444),
           ),
         ),
       ],
@@ -913,7 +937,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                   ),
                 ),
                 if (!_selectionMode) ...[
-                  _overflowMenu(download, muted),
+                  _overflowMenu(download, muted, isDark: isDark),
                   Icon(
                     Icons.arrow_forward_ios_rounded,
                     size: 14,
@@ -995,7 +1019,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                                 ],
                               ),
                             )
-                          : _overflowMenu(download, muted),
+                          : _overflowMenu(download, muted, isDark: isDark),
                     ),
                   ],
                 ),
@@ -1027,6 +1051,219 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _OverflowMenuRow extends StatelessWidget {
+  const _OverflowMenuRow({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.titleColor,
+  });
+
+  final IconData icon;
+  final String label;
+  final Color color;
+  final Color titleColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, size: 18, color: color),
+        ),
+        const SizedBox(width: 12),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: titleColor,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _DownloadsConfirmDialog extends StatelessWidget {
+  const _DownloadsConfirmDialog({
+    required this.title,
+    required this.message,
+  });
+
+  final String title;
+  final String message;
+
+  static const _accent = Color(0xFFEF4444);
+  static const _accentDeep = Color(0xFFB91C1C);
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final card = isDark ? const Color(0xFF151B28) : Colors.white;
+    final titleColor =
+        isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
+    final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
+    final cancelFill = isDark ? const Color(0xFF1F2937) : const Color(0xFFF3F4F6);
+
+    return SafeArea(
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 24),
+          child: Material(
+            color: Colors.transparent,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 400),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: card,
+                  borderRadius: BorderRadius.circular(28),
+                  boxShadow: [
+                    BoxShadow(
+                      color: _accent.withValues(alpha: 0.22),
+                      blurRadius: 36,
+                      offset: const Offset(0, 16),
+                    ),
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.2),
+                      blurRadius: 28,
+                      offset: const Offset(0, 12),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(28),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        height: 6,
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [_accent, _accentDeep],
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(22, 22, 22, 20),
+                        child: Column(
+                          children: [
+                            Container(
+                              width: 72,
+                              height: 72,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                gradient: const LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [_accent, _accentDeep],
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: _accent.withValues(alpha: 0.38),
+                                    blurRadius: 18,
+                                    spreadRadius: 1,
+                                  ),
+                                ],
+                              ),
+                              child: const Icon(
+                                Icons.delete_rounded,
+                                color: Colors.white,
+                                size: 32,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              title,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: titleColor,
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              message,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: muted,
+                                fontSize: 14,
+                                height: 1.4,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 22),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(context, false),
+                                    style: TextButton.styleFrom(
+                                      backgroundColor: cancelFill,
+                                      foregroundColor: titleColor,
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 14,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                    ),
+                                    child: const Text(
+                                      'Cancel',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: TextButton(
+                                    onPressed: () =>
+                                        Navigator.pop(context, true),
+                                    style: TextButton.styleFrom(
+                                      backgroundColor: _accent,
+                                      foregroundColor: Colors.white,
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 14,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(16),
+                                      ),
+                                    ),
+                                    child: const Text(
+                                      'Delete',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           ),
         ),
       ),
