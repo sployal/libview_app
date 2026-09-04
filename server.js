@@ -2,6 +2,7 @@ require('dotenv').config();
 
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const https = require('https');
 const express = require('express');
 const cors = require('cors');
@@ -335,6 +336,77 @@ async function userCanWriteClientFolder(user, folderId) {
   const workspaceId = await resolveClientWorkspaceId(folderId);
   if (!workspaceId) return false;
   return clientWorkspaceAllowsUser(workspaceId, user);
+}
+
+const FOLDER_LOCKS = () => firestore.collection('folder_locks');
+const FOLDER_PASSWORD_MIN = 4;
+const FOLDER_PASSWORD_MAX = 64;
+const FOLDER_LOCK_SCRYPT_KEYLEN = 32;
+
+function normalizeFolderPassword(value) {
+  if (typeof value !== 'string') return '';
+  return value;
+}
+
+function folderPasswordLengthOk(password) {
+  const length = [...password].length;
+  return length >= FOLDER_PASSWORD_MIN && length <= FOLDER_PASSWORD_MAX;
+}
+
+function scryptFolderPassword(password, salt) {
+  return new Promise((resolve, reject) => {
+    crypto.scrypt(password, salt, FOLDER_LOCK_SCRYPT_KEYLEN, { N: 16384, r: 8, p: 1 }, (err, derived) => {
+      if (err) return reject(err);
+      resolve(derived);
+    });
+  });
+}
+
+async function hashFolderPassword(password) {
+  const salt = crypto.randomBytes(16);
+  const hash = await scryptFolderPassword(password, salt);
+  return {
+    salt: salt.toString('base64'),
+    hash: hash.toString('base64'),
+  };
+}
+
+async function folderPasswordMatches(record, password) {
+  if (!record?.salt || !record?.hash) return false;
+  try {
+    const salt = Buffer.from(record.salt, 'base64');
+    const expected = Buffer.from(record.hash, 'base64');
+    const derived = await scryptFolderPassword(password, salt);
+    if (expected.length !== derived.length) return false;
+    return crypto.timingSafeEqual(expected, derived);
+  } catch (_) {
+    return false;
+  }
+}
+
+async function forgetFolderLock(folderId) {
+  if (!folderId) return;
+  try {
+    await FOLDER_LOCKS().doc(folderId).delete();
+  } catch (_) {}
+}
+
+async function assertLockableClientFolder(user, folderId) {
+  if (!folderId || typeof folderId !== 'string') {
+    return { ok: false, status: 400, error: 'Folder not found' };
+  }
+  if (isClientWorkspaceFolder(folderId)) {
+    return { ok: false, status: 403, error: 'The workspace root cannot be locked' };
+  }
+  const allowed = await userCanWriteClientFolder(user, folderId);
+  if (!allowed) {
+    return { ok: false, status: 403, error: 'You do not have permission.' };
+  }
+  const workspaceId = await resolveClientWorkspaceId(folderId);
+  if (!workspaceId) {
+    return { ok: false, status: 403, error: 'You do not have permission.' };
+  }
+  return { ok: true, workspaceId };
 }
 
 const DEFAULT_CLIENT_STORAGE_LIMIT = 1024 * 1024 * 1024;
@@ -732,6 +804,33 @@ function normalizeFolderName(name) {
     .replace(/[^a-z0-9]/g, '');
 }
 
+function androidNameKey(name) {
+  const cleaned = String(name || '')
+    .trim()
+    .replace(/[\/\\:*?"<>|\x00-\x1f]/g, '_')
+    .slice(0, 200)
+    .replace(/[. ]+$/g, '');
+  return cleaned.toLowerCase();
+}
+
+function keysMatch(left, right, keyOf) {
+  const a = keyOf(left);
+  const b = keyOf(right);
+  if (!a || !b) {
+    return String(left || '').trim().toLowerCase() === String(right || '').trim().toLowerCase();
+  }
+  return a === b;
+}
+
+function fileNamesClash(left, right) {
+  return keysMatch(left, right, androidNameKey);
+}
+
+function folderNamesClash(left, right) {
+  if (fileNamesClash(left, right)) return true;
+  return keysMatch(left, right, normalizeFolderName);
+}
+
 async function listChildFolders(parentId) {
   const folders = [];
   let pageToken;
@@ -772,6 +871,40 @@ async function resolveEdupalFolderId() {
 const FOLDER_MIME = 'application/vnd.google-apps.folder';
 const STORAGE_CACHE_TTL_MS = 5 * 60 * 1000;
 let storageCache = { at: 0, data: null };
+
+function childNamesClash(existingName, existingMime, wantedName, wantedIsFolder) {
+  const existingIsFolder = existingMime === FOLDER_MIME;
+  if (existingIsFolder || wantedIsFolder) {
+    return folderNamesClash(existingName, wantedName);
+  }
+  return fileNamesClash(existingName, wantedName);
+}
+
+async function listChildItems(parentId) {
+  const items = [];
+  let pageToken;
+  do {
+    const res = await drive.files.list({
+      q: `'${parentId}' in parents and trashed = false`,
+      fields: 'nextPageToken, files(id, name, mimeType)',
+      pageSize: 100,
+      pageToken,
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true,
+    });
+    items.push(...(res.data.files || []));
+    pageToken = res.data.nextPageToken;
+  } while (pageToken);
+  return items;
+}
+
+async function nameTakenInFolder(parentId, name, { ignoreId, isFolder } = {}) {
+  const siblings = await listChildItems(parentId);
+  return siblings.some((item) => {
+    if (ignoreId && item.id === ignoreId) return false;
+    return childNamesClash(item.name, item.mimeType, name, Boolean(isFolder));
+  });
+}
 
 function asListedDriveItem(item) {
   return {
@@ -1514,6 +1647,11 @@ app.post('/upload', requireAuth, (req, res) => {
     }
 
     try {
+      const safeName = sanitizeFileName(req.file.originalname);
+      if (await nameTakenInFolder(folderId, safeName, { isFolder: false })) {
+        return res.status(409).json({ error: 'A file with that name already exists' });
+      }
+
       const result = await uploadFile({
         fileName: req.file.originalname,
         buffer: req.file.buffer,
@@ -1554,16 +1692,7 @@ app.post('/folders', requireAuth, async (req, res) => {
 
   try {
     const safeName = sanitizeFileName(name);
-    const wanted = normalizeFolderName(safeName);
-    const siblings = await listChildFolders(parentFolderId);
-    const nameTaken = siblings.some((folder) => {
-      const existing = normalizeFolderName(folder.name);
-      if (!wanted || !existing) {
-        return String(folder.name || '').trim().toLowerCase() === safeName.toLowerCase();
-      }
-      return existing === wanted;
-    });
-    if (nameTaken) {
+    if (await nameTakenInFolder(parentFolderId, safeName, { isFolder: true })) {
       return res.status(409).json({ error: 'A folder with that name already exists' });
     }
 
@@ -2034,6 +2163,24 @@ app.patch('/files/:fileId', requireAuth, requireAdmin, async (req, res) => {
   }
 
   try {
+    const current = await drive.files.get({
+      fileId,
+      fields: 'id, name, mimeType, parents',
+      supportsAllDrives: true,
+    });
+    const safeName = sanitizeFileName(name);
+    const isFolder = current.data.mimeType === FOLDER_MIME;
+    const parents = current.data.parents || [];
+    for (const parentId of parents) {
+      if (await nameTakenInFolder(parentId, safeName, { ignoreId: fileId, isFolder })) {
+        return res.status(409).json({
+          error: isFolder
+            ? 'A folder with that name already exists'
+            : 'A file with that name already exists',
+        });
+      }
+    }
+
     const result = await renameItem(fileId, name);
     res.json(result);
   } catch (e) {
@@ -2066,6 +2213,7 @@ app.delete('/files/:fileId', requireAuth, requireAdmin, async (req, res) => {
 
   try {
     await deleteItem(fileId);
+    await forgetFolderLock(fileId);
     res.json({ deleted: true });
   } catch (e) {
     console.error('Delete failed:', e);
@@ -2079,6 +2227,88 @@ app.delete('/files/:fileId', requireAuth, requireAdmin, async (req, res) => {
 // screens call this authenticated route, which uses the same key. Writes
 // (upload, create, rename, delete) stay on OAuth above.
 // =========================================================================
+
+app.get('/client-folder-locks', requireAuth, async (req, res) => {
+  const workspaceFolderId = String(req.query.workspaceFolderId || '');
+  if (!(await userCanWriteClientFolder(req.user, workspaceFolderId))) {
+    return res.status(403).json({ error: 'Could not load folder locks' });
+  }
+  const workspaceId = await resolveClientWorkspaceId(workspaceFolderId);
+  if (!workspaceId) {
+    return res.status(403).json({ error: 'Could not load folder locks' });
+  }
+  try {
+    const snap = await FOLDER_LOCKS().where('workspaceId', '==', workspaceId).get();
+    res.json({ folderIds: snap.docs.map((doc) => doc.id) });
+  } catch (e) {
+    console.error('Folder lock list failed:', e);
+    res.status(500).json({ error: 'Could not load folder locks' });
+  }
+});
+
+app.post('/client-folders/:folderId/lock', requireAuth, async (req, res) => {
+  const { folderId } = req.params;
+  const password = normalizeFolderPassword(req.body?.password);
+  const access = await assertLockableClientFolder(req.user, folderId);
+  if (!access.ok) {
+    return res.status(access.status).json({ error: access.error });
+  }
+  if (!folderPasswordLengthOk(password)) {
+    return res.status(400).json({
+      error: `Password must be ${FOLDER_PASSWORD_MIN}–${FOLDER_PASSWORD_MAX} characters`,
+    });
+  }
+
+  try {
+    const existing = await FOLDER_LOCKS().doc(folderId).get();
+    if (existing.exists) {
+      return res.status(409).json({ error: 'This folder is already locked' });
+    }
+    const hashed = await hashFolderPassword(password);
+    await FOLDER_LOCKS().doc(folderId).set({
+      workspaceId: access.workspaceId,
+      salt: hashed.salt,
+      hash: hashed.hash,
+      lockedBy: req.user.uid,
+      lockedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+    res.json({ locked: true, folderId });
+  } catch (e) {
+    console.error('Folder lock failed:', e);
+    res.status(500).json({ error: 'Could not lock this folder' });
+  }
+});
+
+app.post('/client-folders/:folderId/unlock', requireAuth, async (req, res) => {
+  const { folderId } = req.params;
+  const password = normalizeFolderPassword(req.body?.password);
+  const removeLock = req.body?.remove === true || req.body?.remove === 'true';
+  const access = await assertLockableClientFolder(req.user, folderId);
+  if (!access.ok) {
+    return res.status(access.status).json({ error: access.error });
+  }
+
+  try {
+    const snap = await FOLDER_LOCKS().doc(folderId).get();
+    if (!snap.exists) {
+      return res.json({ locked: false, folderId, unlocked: true });
+    }
+    if (!password) {
+      return res.status(400).json({ error: 'Enter the folder password' });
+    }
+    if (!(await folderPasswordMatches(snap.data(), password))) {
+      return res.status(403).json({ error: 'Incorrect password' });
+    }
+    if (removeLock) {
+      await FOLDER_LOCKS().doc(folderId).delete();
+      return res.json({ locked: false, folderId, unlocked: true });
+    }
+    res.json({ locked: true, folderId, unlocked: true });
+  } catch (e) {
+    console.error('Folder unlock check failed:', e);
+    res.status(500).json({ error: 'Could not unlock this folder' });
+  }
+});
 
 app.get('/folders/:folderId', requireAuth, async (req, res) => {
   if (!driveReadIsConfigured()) {

@@ -655,11 +655,22 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
       confirmLabel: 'Rename',
       initial: _fileStem(material.name),
       fieldLabel: 'File name',
+      takenNames: currentFiles
+          .where((file) => file.id != material.id)
+          .map((file) => file.name)
+          .toList(),
+      takenError: 'A file with that name already exists',
+      clashAsFile: true,
+      extensionFrom: material.name,
     );
     if (name == null) return;
 
     final nextName = _fileNameWithExtension(name, material.name);
     if (nextName == material.name) return;
+    if (_fileNameTaken(nextName, ignoreId: material.id)) {
+      _showMessage('A file named "$nextName" already exists', isError: true);
+      return;
+    }
 
     try {
       final result = await UploadService.instance.renameFile(
@@ -748,6 +759,26 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     });
   }
 
+  bool _fileNameTaken(String name, {String? ignoreId}) {
+    if (name.trim().isEmpty) return false;
+    return currentFiles.any((file) {
+      if (ignoreId != null && file.id == ignoreId) return false;
+      return GoogleDriveService.fileNamesClash(file.name, name);
+    });
+  }
+
+  String? _firstDuplicateUploadName(Iterable<String> names) {
+    final seen = <String>[];
+    for (final name in names) {
+      if (_fileNameTaken(name) ||
+          seen.any((existing) => GoogleDriveService.fileNamesClash(existing, name))) {
+        return name;
+      }
+      seen.add(name);
+    }
+    return null;
+  }
+
   Future<String?> _promptFolderName({
     required String title,
     required String confirmLabel,
@@ -755,6 +786,9 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     String fieldLabel = 'Folder name',
     String? helperText,
     List<String> takenNames = const [],
+    String takenError = 'A folder with that name already exists',
+    bool clashAsFile = false,
+    String? extensionFrom,
   }) async {
     final result = await showDialog<String>(
       context: context,
@@ -768,6 +802,9 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
           fieldLabel: fieldLabel,
           helperText: helperText,
           takenNames: takenNames,
+          takenError: takenError,
+          clashAsFile: clashAsFile,
+          extensionFrom: extensionFrom,
         );
       },
     );
@@ -854,8 +891,16 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
       title: 'Rename folder',
       confirmLabel: 'Rename',
       initial: subject.name,
+      takenNames: subjects
+          .where((item) => item.folderId != subject.folderId)
+          .map((item) => item.name)
+          .toList(),
     );
     if (name == null || name == subject.name) return;
+    if (_folderNameTaken(name, ignoreId: subject.folderId)) {
+      _showMessage('A folder named "$name" already exists', isError: true);
+      return;
+    }
 
     setState(() {
       _isMutatingFolder = true;
@@ -1046,13 +1091,15 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
   }
 
   String _uniquePickedName(String fileName, Iterable<String> usedNames) {
-    if (!usedNames.contains(fileName)) return fileName;
+    bool taken(String name) =>
+        usedNames.any((used) => GoogleDriveService.fileNamesClash(used, name));
+    if (!taken(fileName)) return fileName;
     final dot = fileName.lastIndexOf('.');
     final stem = dot > 0 ? fileName.substring(0, dot) : fileName;
     final ext = dot > 0 ? fileName.substring(dot) : '';
     var n = 2;
     var candidate = '${stem}_$n$ext';
-    while (usedNames.contains(candidate)) {
+    while (taken(candidate)) {
       n++;
       candidate = '${stem}_$n$ext';
     }
@@ -1065,6 +1112,12 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     Map<String, List<int>>? bytesByName,
   }) async {
     if (isUploading || files.isEmpty) return;
+
+    final duplicate = _firstDuplicateUploadName(files.map((file) => file.name));
+    if (duplicate != null) {
+      _showMessage('A file named "$duplicate" already exists', isError: true);
+      return;
+    }
 
     final cancelToken = CancelToken();
     _uploadCancelToken = cancelToken;
@@ -2872,6 +2925,9 @@ class _FolderNameDialog extends StatefulWidget {
   final String fieldLabel;
   final String? helperText;
   final List<String> takenNames;
+  final String takenError;
+  final bool clashAsFile;
+  final String? extensionFrom;
 
   const _FolderNameDialog({
     required this.title,
@@ -2880,6 +2936,9 @@ class _FolderNameDialog extends StatefulWidget {
     this.fieldLabel = 'Folder name',
     this.helperText,
     this.takenNames = const [],
+    this.takenError = 'A folder with that name already exists',
+    this.clashAsFile = false,
+    this.extensionFrom,
   });
 
   @override
@@ -2902,10 +2961,14 @@ class _FolderNameDialogState extends State<_FolderNameDialog> {
     super.dispose();
   }
 
-  bool _isTaken(String name) {
-    return widget.takenNames.any(
-      (taken) => GoogleDriveService.folderNamesClash(taken, name),
-    );
+  bool _isTaken(String typed) {
+    final name = widget.extensionFrom == null
+        ? typed.trim()
+        : GoogleDriveService.fileNameWithExtension(typed, widget.extensionFrom!);
+    final clash = widget.clashAsFile
+        ? GoogleDriveService.fileNamesClash
+        : GoogleDriveService.folderNamesClash;
+    return widget.takenNames.any((taken) => clash(taken, name));
   }
 
   void _submit() {
@@ -2913,7 +2976,7 @@ class _FolderNameDialogState extends State<_FolderNameDialog> {
     if (name.isEmpty) return;
     if (_isTaken(name)) {
       setState(() {
-        _error = 'A folder with that name already exists';
+        _error = widget.takenError;
       });
       return;
     }

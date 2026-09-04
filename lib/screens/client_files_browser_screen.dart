@@ -14,6 +14,7 @@ import '../services/upload_service.dart';
 import '../ui/adaptive_layout.dart';
 import '../ui/file_details.dart';
 import '../ui/file_sort.dart';
+import '../ui/folder_lock_dialog.dart';
 import 'no_internet_screen.dart';
 import 'phone_pdf.dart';
 import 'web_view_screen.dart';
@@ -63,6 +64,8 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
   bool _uploadDialogVisible = false;
   BuildContext? _uploadDialogContext;
   bool _isMutatingFolder = false;
+  final Set<String> _lockedFolderIds = {};
+  final Set<String> _sessionUnlockedFolderIds = {};
   bool _useLargeIcons = true;
   FileSortMode _fileSort = FileSortMode.nameAz;
   FileSortMode _folderSort = FileSortMode.nameAz;
@@ -206,7 +209,12 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     _fileTypeFilter = 'All';
   }
 
-  void _openUnit(Subject subject) {
+  Future<void> _openUnit(Subject subject) async {
+    final locked = subject.isLocked || _lockedFolderIds.contains(subject.folderId);
+    if (locked && !_sessionUnlockedFolderIds.contains(subject.folderId)) {
+      final opened = await _promptOpenLockedFolder(subject);
+      if (!opened || !mounted) return;
+    }
     HapticFeedback.lightImpact();
     final clientId = widget.clientId;
     if (clientId != null && clientId.isNotEmpty) {
@@ -234,11 +242,25 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     try {
       if (widget.folderId != null && widget.folderId!.isNotEmpty) {
         final loadedSubjects = await GoogleDriveService.getSubjectsFromFolder(widget.folderId!);
+        var lockedIds = <String>{};
+        try {
+          lockedIds = await UploadService.instance.fetchLockedFolderIds(widget.folderId!);
+        } catch (_) {}
+        final withLocks = loadedSubjects
+            .map(
+              (subject) => subject.copyWith(
+                isLocked: lockedIds.contains(subject.folderId),
+              ),
+            )
+            .toList();
         setState(() {
-          subjects = loadedSubjects;
+          subjects = withLocks;
+          _lockedFolderIds
+            ..clear()
+            ..addAll(lockedIds);
           isLoading = false;
         });
-        _openInitialFolderIfNeeded(loadedSubjects);
+        _openInitialFolderIfNeeded(withLocks);
       } else {
         setState(() {
           subjects = _getSampleSubjects();
@@ -300,6 +322,8 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
   void _removeFolder(Subject subject) {
     setState(() {
       subjects.removeWhere((item) => item.folderId == subject.folderId);
+      _lockedFolderIds.remove(subject.folderId);
+      _sessionUnlockedFolderIds.remove(subject.folderId);
       if (selectedSubject?.folderId == subject.folderId) {
         selectedSubject = null;
         currentFiles = [];
@@ -325,6 +349,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
       code: '',
       folderId: targetId,
       color: const Color(0xFF0EA5E9),
+      isLocked: _lockedFolderIds.contains(targetId),
     );
     _openUnit(match);
   }
@@ -700,11 +725,22 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
       confirmLabel: 'Rename',
       initial: _fileStem(material.name),
       fieldLabel: 'File name',
+      takenNames: currentFiles
+          .where((file) => file.id != material.id)
+          .map((file) => file.name)
+          .toList(),
+      takenError: 'A file with that name already exists',
+      clashAsFile: true,
+      extensionFrom: material.name,
     );
     if (name == null) return;
 
     final nextName = _fileNameWithExtension(name, material.name);
     if (nextName == material.name) return;
+    if (_fileNameTaken(nextName, ignoreId: material.id)) {
+      _showMessage('A file named "$nextName" already exists', isError: true);
+      return;
+    }
 
     try {
       final result = await UploadService.instance.renameFile(
@@ -793,6 +829,26 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     });
   }
 
+  bool _fileNameTaken(String name, {String? ignoreId}) {
+    if (name.trim().isEmpty) return false;
+    return currentFiles.any((file) {
+      if (ignoreId != null && file.id == ignoreId) return false;
+      return GoogleDriveService.fileNamesClash(file.name, name);
+    });
+  }
+
+  String? _firstDuplicateUploadName(Iterable<String> names) {
+    final seen = <String>[];
+    for (final name in names) {
+      if (_fileNameTaken(name) ||
+          seen.any((existing) => GoogleDriveService.fileNamesClash(existing, name))) {
+        return name;
+      }
+      seen.add(name);
+    }
+    return null;
+  }
+
   Future<String?> _promptFolderName({
     required String title,
     required String confirmLabel,
@@ -800,6 +856,9 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     String fieldLabel = 'Folder name',
     String? helperText,
     List<String> takenNames = const [],
+    String takenError = 'A folder with that name already exists',
+    bool clashAsFile = false,
+    String? extensionFrom,
   }) async {
     final result = await showDialog<String>(
       context: context,
@@ -813,6 +872,9 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
           fieldLabel: fieldLabel,
           helperText: helperText,
           takenNames: takenNames,
+          takenError: takenError,
+          clashAsFile: clashAsFile,
+          extensionFrom: extensionFrom,
         );
       },
     );
@@ -899,8 +961,16 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
       title: 'Rename folder',
       confirmLabel: 'Rename',
       initial: subject.name,
+      takenNames: subjects
+          .where((item) => item.folderId != subject.folderId)
+          .map((item) => item.name)
+          .toList(),
     );
     if (name == null || name == subject.name) return;
+    if (_folderNameTaken(name, ignoreId: subject.folderId)) {
+      _showMessage('A folder named "$name" already exists', isError: true);
+      return;
+    }
 
     setState(() {
       _isMutatingFolder = true;
@@ -969,6 +1039,128 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
 
     if (confirmed == true) {
       await _deleteUnitFolder(subject);
+    }
+  }
+
+  void _setFolderLocked(String folderId, bool locked) {
+    if (locked) {
+      _lockedFolderIds.add(folderId);
+    } else {
+      _lockedFolderIds.remove(folderId);
+      _sessionUnlockedFolderIds.remove(folderId);
+    }
+    final index = subjects.indexWhere((item) => item.folderId == folderId);
+    if (index != -1) {
+      subjects[index] = subjects[index].copyWith(isLocked: locked);
+    }
+    if (selectedSubject?.folderId == folderId) {
+      selectedSubject = selectedSubject!.copyWith(isLocked: locked);
+    }
+  }
+
+  Future<bool> _promptOpenLockedFolder(Subject subject) async {
+    final password = await showFolderLockDialog(
+      context: context,
+      mode: FolderLockDialogMode.enter,
+      folderName: subject.name,
+    );
+    if (password == null || !mounted) return false;
+    try {
+      await UploadService.instance.verifyClientFolderPassword(
+        folderId: subject.folderId,
+        password: password,
+      );
+      if (!mounted) return false;
+      _sessionUnlockedFolderIds.add(subject.folderId);
+      return true;
+    } on UploadException catch (e) {
+      _showMessage(e.message, isError: true);
+      return false;
+    } catch (_) {
+      _showMessage('Could not open this folder', isError: true);
+      return false;
+    }
+  }
+
+  Future<void> _lockUnitFolder(Subject subject) async {
+    if (!_canManageFolders) return;
+    if (!_isLiveFolder || subject.folderId.isEmpty) {
+      _showMessage('This folder is not connected to Drive', isError: true);
+      return;
+    }
+    if (_isMutatingFolder) return;
+
+    final password = await showFolderLockDialog(
+      context: context,
+      mode: FolderLockDialogMode.lock,
+      folderName: subject.name,
+    );
+    if (password == null || !mounted) return;
+
+    setState(() {
+      _isMutatingFolder = true;
+    });
+    try {
+      await UploadService.instance.lockClientFolder(
+        folderId: subject.folderId,
+        password: password,
+      );
+      if (!mounted) return;
+      setState(() {
+        _setFolderLocked(subject.folderId, true);
+      });
+      _showMessage('“${subject.name}” is locked');
+    } on UploadException catch (e) {
+      _showMessage(e.message, isError: true);
+    } catch (_) {
+      _showMessage('Failed to lock folder', isError: true);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isMutatingFolder = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _unlockUnitFolder(Subject subject) async {
+    if (!_canManageFolders) return;
+    if (!_isLiveFolder || subject.folderId.isEmpty) {
+      _showMessage('This folder is not connected to Drive', isError: true);
+      return;
+    }
+    if (_isMutatingFolder) return;
+
+    final password = await showFolderLockDialog(
+      context: context,
+      mode: FolderLockDialogMode.unlock,
+      folderName: subject.name,
+    );
+    if (password == null || !mounted) return;
+
+    setState(() {
+      _isMutatingFolder = true;
+    });
+    try {
+      await UploadService.instance.unlockClientFolder(
+        folderId: subject.folderId,
+        password: password,
+      );
+      if (!mounted) return;
+      setState(() {
+        _setFolderLocked(subject.folderId, false);
+      });
+      _showMessage('“${subject.name}” is unlocked');
+    } on UploadException catch (e) {
+      _showMessage(e.message, isError: true);
+    } catch (_) {
+      _showMessage('Failed to unlock folder', isError: true);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isMutatingFolder = false;
+        });
+      }
     }
   }
 
@@ -1091,13 +1283,15 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
   }
 
   String _uniquePickedName(String fileName, Iterable<String> usedNames) {
-    if (!usedNames.contains(fileName)) return fileName;
+    bool taken(String name) =>
+        usedNames.any((used) => GoogleDriveService.fileNamesClash(used, name));
+    if (!taken(fileName)) return fileName;
     final dot = fileName.lastIndexOf('.');
     final stem = dot > 0 ? fileName.substring(0, dot) : fileName;
     final ext = dot > 0 ? fileName.substring(dot) : '';
     var n = 2;
     var candidate = '${stem}_$n$ext';
-    while (usedNames.contains(candidate)) {
+    while (taken(candidate)) {
       n++;
       candidate = '${stem}_$n$ext';
     }
@@ -1110,6 +1304,12 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     Map<String, List<int>>? bytesByName,
   }) async {
     if (isUploading || files.isEmpty) return;
+
+    final duplicate = _firstDuplicateUploadName(files.map((file) => file.name));
+    if (duplicate != null) {
+      _showMessage('A file named "$duplicate" already exists', isError: true);
+      return;
+    }
 
     final cancelToken = CancelToken();
     _uploadCancelToken = cancelToken;
@@ -1792,13 +1992,27 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              selectedSubject!.name,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-                color: titleColor,
-              ),
+            Row(
+              children: [
+                Flexible(
+                  child: Text(
+                    selectedSubject!.name,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      color: titleColor,
+                    ),
+                  ),
+                ),
+                if (selectedSubject!.isLocked) ...[
+                  const SizedBox(width: 8),
+                  const Icon(
+                    Icons.lock_rounded,
+                    size: 16,
+                    color: Color(0xFFF59E0B),
+                  ),
+                ],
+              ],
             ),
             Text(
               selectedSubject!.code,
@@ -2517,6 +2731,10 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
             );
           } else if (value == 'rename') {
             _renameUnitFolder(subject);
+          } else if (value == 'lock') {
+            _lockUnitFolder(subject);
+          } else if (value == 'unlock') {
+            _unlockUnitFolder(subject);
           } else if (value == 'delete') {
             _confirmDeleteUnitFolder(subject);
           }
@@ -2533,8 +2751,30 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
             ],
           ),
         ),
-        if (_canManageFolders) ...const [
-          PopupMenuItem(
+        if (_canManageFolders) ...[
+          if (subject.isLocked)
+            const PopupMenuItem(
+              value: 'unlock',
+              child: Row(
+                children: [
+                  Icon(Icons.lock_open_rounded, size: 18, color: Color(0xFF10B981)),
+                  SizedBox(width: 10),
+                  Text('Unlock folder'),
+                ],
+              ),
+            )
+          else
+            const PopupMenuItem(
+              value: 'lock',
+              child: Row(
+                children: [
+                  Icon(Icons.lock_rounded, size: 18, color: Color(0xFFF59E0B)),
+                  SizedBox(width: 10),
+                  Text('Lock folder'),
+                ],
+              ),
+            ),
+          const PopupMenuItem(
             value: 'rename',
             child: Row(
               children: [
@@ -2544,7 +2784,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
               ],
             ),
           ),
-          PopupMenuItem(
+          const PopupMenuItem(
             value: 'delete',
             child: Row(
               children: [
@@ -2683,7 +2923,11 @@ class _UnitFolderTile extends StatelessWidget {
                   padding: const EdgeInsets.fromLTRB(14, 12, 8, 12),
                   child: Row(
                     children: [
-                      _FolderGlyph(color: subject.color, size: 46),
+                      _FolderGlyph(
+                        color: subject.color,
+                        size: 46,
+                        locked: subject.isLocked,
+                      ),
                       const SizedBox(width: 14),
                       Expanded(
                         child: Column(
@@ -2723,7 +2967,11 @@ class _UnitFolderTile extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          _FolderGlyph(color: subject.color, size: 54),
+                          _FolderGlyph(
+                            color: subject.color,
+                            size: 54,
+                            locked: subject.isLocked,
+                          ),
                           const Spacer(),
                           if (menu != null) menu!,
                         ],
@@ -2759,10 +3007,15 @@ class _UnitFolderTile extends StatelessWidget {
 }
 
 class _FolderGlyph extends StatelessWidget {
-  const _FolderGlyph({required this.color, required this.size});
+  const _FolderGlyph({
+    required this.color,
+    required this.size,
+    this.locked = false,
+  });
 
   final Color color;
   final double size;
+  final bool locked;
 
   @override
   Widget build(BuildContext context) {
@@ -2771,6 +3024,7 @@ class _FolderGlyph extends StatelessWidget {
       height: size,
       child: Stack(
         alignment: Alignment.center,
+        clipBehavior: Clip.none,
         children: [
           Transform.translate(
             offset: const Offset(5, 6),
@@ -2784,6 +3038,31 @@ class _FolderGlyph extends StatelessWidget {
             ),
           ),
           Icon(Icons.folder_rounded, color: color, size: size * 0.78),
+          if (locked)
+            Positioned(
+              right: 0,
+              bottom: 0,
+              child: Container(
+                width: size * 0.38,
+                height: size * 0.38,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF59E0B),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 1.5),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFF59E0B).withOpacity(0.4),
+                      blurRadius: 6,
+                    ),
+                  ],
+                ),
+                child: Icon(
+                  Icons.lock_rounded,
+                  color: Colors.white,
+                  size: size * 0.22,
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -2932,6 +3211,9 @@ class _FolderNameDialog extends StatefulWidget {
   final String fieldLabel;
   final String? helperText;
   final List<String> takenNames;
+  final String takenError;
+  final bool clashAsFile;
+  final String? extensionFrom;
 
   const _FolderNameDialog({
     required this.title,
@@ -2940,6 +3222,9 @@ class _FolderNameDialog extends StatefulWidget {
     this.fieldLabel = 'Folder name',
     this.helperText,
     this.takenNames = const [],
+    this.takenError = 'A folder with that name already exists',
+    this.clashAsFile = false,
+    this.extensionFrom,
   });
 
   @override
@@ -2962,10 +3247,14 @@ class _FolderNameDialogState extends State<_FolderNameDialog> {
     super.dispose();
   }
 
-  bool _isTaken(String name) {
-    return widget.takenNames.any(
-      (taken) => GoogleDriveService.folderNamesClash(taken, name),
-    );
+  bool _isTaken(String typed) {
+    final name = widget.extensionFrom == null
+        ? typed.trim()
+        : GoogleDriveService.fileNameWithExtension(typed, widget.extensionFrom!);
+    final clash = widget.clashAsFile
+        ? GoogleDriveService.fileNamesClash
+        : GoogleDriveService.folderNamesClash;
+    return widget.takenNames.any((taken) => clash(taken, name));
   }
 
   void _submit() {
@@ -2973,7 +3262,7 @@ class _FolderNameDialogState extends State<_FolderNameDialog> {
     if (name.isEmpty) return;
     if (_isTaken(name)) {
       setState(() {
-        _error = 'A folder with that name already exists';
+        _error = widget.takenError;
       });
       return;
     }

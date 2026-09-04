@@ -118,6 +118,12 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
     );
   }
 
+  bool _folderIsLocked(String folderId) {
+    return _folders.any(
+      (folder) => folder.folderId == folderId && folder.isLocked,
+    );
+  }
+
   Future<void> _loadGreeting() async {
     final uid = AuthService.instance.currentUser?.uid;
     if (uid == null) return;
@@ -138,11 +144,24 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
         GoogleDriveService.summarizeFolder(folderId),
         GoogleDriveService.getSubjectsFromFolder(folderId),
         ClientRecentFolders.load(_client.id),
+        () async {
+          try {
+            return await UploadService.instance.fetchLockedFolderIds(folderId);
+          } catch (_) {
+            return <String>{};
+          }
+        }(),
       ]);
       if (!mounted) return;
+      final lockedIds = results[3] as Set<String>;
+      final folders = (results[1] as List<Subject>)
+          .map(
+            (folder) => folder.copyWith(isLocked: lockedIds.contains(folder.folderId)),
+          )
+          .toList();
       setState(() {
         _summary = results[0] as DriveFolderSummary;
-        _folders = results[1] as List<Subject>;
+        _folders = folders;
         _recents = results[2] as List<ClientRecentFolder>;
         _loading = false;
       });
@@ -669,7 +688,12 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.folder_rounded, color: _accent),
+                  Icon(
+                    _folderIsLocked(recent.folderId)
+                        ? Icons.folder_special_rounded
+                        : Icons.folder_rounded,
+                    color: _accent,
+                  ),
                   const Spacer(),
                   Text(
                     recent.name,
@@ -730,7 +754,22 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
                 ),
                 leading: CircleAvatar(
                   backgroundColor: folder.color.withOpacity(0.16),
-                  child: Icon(Icons.folder_rounded, color: folder.color),
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Icon(Icons.folder_rounded, color: folder.color),
+                      if (folder.isLocked)
+                        const Positioned(
+                          right: -4,
+                          bottom: -4,
+                          child: Icon(
+                            Icons.lock_rounded,
+                            size: 14,
+                            color: Color(0xFFF59E0B),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
                 title: Text(
                   folder.name,

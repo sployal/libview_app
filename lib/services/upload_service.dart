@@ -215,6 +215,112 @@ class UploadService {
     }
   }
 
+  Future<Set<String>> fetchLockedFolderIds(String workspaceFolderId) async {
+    if (workspaceFolderId.isEmpty) return {};
+    final token = await _idToken();
+    try {
+      final response = await _dio.get(
+        '/client-folder-locks',
+        queryParameters: {'workspaceFolderId': workspaceFolderId},
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      );
+      final data = response.data;
+      final ids = data is Map ? data['folderIds'] : null;
+      if (ids is! List) return {};
+      return ids.map((id) => id.toString()).where((id) => id.isNotEmpty).toSet();
+    } on DioException catch (e) {
+      throw UploadException(
+        _messageFromDio(e, action: 'folder'),
+        statusCode: e.response?.statusCode,
+      );
+    }
+  }
+
+  Future<void> lockClientFolder({
+    required String folderId,
+    required String password,
+  }) async {
+    if (folderId.isEmpty) {
+      throw UploadException('No folder selected');
+    }
+    final token = await _idToken();
+    try {
+      await _dio.post(
+        '/client-folders/${Uri.encodeComponent(folderId)}/lock',
+        data: {'password': password},
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      );
+    } on DioException catch (e) {
+      throw UploadException(
+        _messageFromDio(e, action: 'folder'),
+        statusCode: e.response?.statusCode,
+      );
+    }
+  }
+
+  Future<void> verifyClientFolderPassword({
+    required String folderId,
+    required String password,
+  }) async {
+    if (folderId.isEmpty) {
+      throw UploadException('No folder selected');
+    }
+    final token = await _idToken();
+    try {
+      await _dio.post(
+        '/client-folders/${Uri.encodeComponent(folderId)}/unlock',
+        data: {'password': password},
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      );
+    } on DioException catch (e) {
+      throw UploadException(
+        _messageFromDio(e, action: 'folder'),
+        statusCode: e.response?.statusCode,
+      );
+    }
+  }
+
+  Future<void> unlockClientFolder({
+    required String folderId,
+    required String password,
+  }) async {
+    if (folderId.isEmpty) {
+      throw UploadException('No folder selected');
+    }
+    final token = await _idToken();
+    try {
+      await _dio.post(
+        '/client-folders/${Uri.encodeComponent(folderId)}/unlock',
+        data: {
+          'password': password,
+          'remove': true,
+        },
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      );
+    } on DioException catch (e) {
+      throw UploadException(
+        _messageFromDio(e, action: 'folder'),
+        statusCode: e.response?.statusCode,
+      );
+    }
+  }
+
   Future<DriveOAuthStatus> fetchDriveOAuthStatus() async {
     final token = await _idToken();
 

@@ -315,6 +315,7 @@ class GoogleDriveService {
     int fileCount = 0,
     DateTime? modifiedAt,
     DateTime? createdAt,
+    bool isLocked = false,
   }) {
     return Subject(
       id: id,
@@ -325,6 +326,7 @@ class GoogleDriveService {
       fileCount: fileCount,
       modifiedAt: modifiedAt,
       createdAt: createdAt,
+      isLocked: isLocked,
     );
   }
 
@@ -332,13 +334,53 @@ class GoogleDriveService {
     return name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
   }
 
-  static bool folderNamesClash(String left, String right) {
-    final a = folderNameKey(left);
-    final b = folderNameKey(right);
+  // Android FAT / emulated storage: invalid chars become `_`, then names
+  // are compared case-insensitively with trailing dots and spaces ignored.
+  static String androidNameKey(String name) {
+    final cleaned = name.trim().replaceAll(RegExp(r'[\/\\:*?"<>|\x00-\x1f]'), '_');
+    final clipped = cleaned.length > 200 ? cleaned.substring(0, 200) : cleaned;
+    return clipped.replaceAll(RegExp(r'[. ]+$'), '').toLowerCase();
+  }
+
+  static bool _keysMatch(String left, String right, String Function(String) keyOf) {
+    final a = keyOf(left);
+    final b = keyOf(right);
     if (a.isEmpty || b.isEmpty) {
       return left.trim().toLowerCase() == right.trim().toLowerCase();
     }
     return a == b;
+  }
+
+  static bool fileNamesClash(String left, String right) {
+    return _keysMatch(left, right, androidNameKey);
+  }
+
+  static bool folderNamesClash(String left, String right) {
+    if (fileNamesClash(left, right)) return true;
+    return _keysMatch(left, right, folderNameKey);
+  }
+
+  static String fileExtension(String name) {
+    final trimmed = name.trim();
+    final dot = trimmed.lastIndexOf('.');
+    if (dot <= 0 || dot == trimmed.length - 1) return '';
+    final extension = trimmed.substring(dot);
+    final suffix = extension.substring(1);
+    if (suffix.contains(' ') || suffix.length > 8) return '';
+    return extension;
+  }
+
+  static String fileStem(String name) {
+    final trimmed = name.trim();
+    final extension = fileExtension(trimmed);
+    if (extension.isEmpty) return trimmed;
+    return trimmed.substring(0, trimmed.length - extension.length);
+  }
+
+  static String fileNameWithExtension(String nextName, String originalName) {
+    final extension = fileExtension(originalName);
+    if (extension.isEmpty) return nextName.trim();
+    return '${fileStem(nextName)}$extension';
   }
 
   static String subjectCodeFromName(String folderName) {
@@ -512,6 +554,7 @@ class Subject {
   int fileCount;
   final DateTime? modifiedAt;
   final DateTime? createdAt;
+  final bool isLocked;
   
   Subject({
     required this.id,
@@ -522,6 +565,7 @@ class Subject {
     this.fileCount = 0,
     this.modifiedAt,
     this.createdAt,
+    this.isLocked = false,
   });
 
   Subject copyWith({
@@ -533,6 +577,7 @@ class Subject {
     int? fileCount,
     DateTime? modifiedAt,
     DateTime? createdAt,
+    bool? isLocked,
   }) {
     return Subject(
       id: id ?? this.id,
@@ -543,6 +588,7 @@ class Subject {
       fileCount: fileCount ?? this.fileCount,
       modifiedAt: modifiedAt ?? this.modifiedAt,
       createdAt: createdAt ?? this.createdAt,
+      isLocked: isLocked ?? this.isLocked,
     );
   }
 }
