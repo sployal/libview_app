@@ -443,6 +443,26 @@ class ClientRecentFolders {
     );
   }
 
+  static Future<void> remove({
+    required String clientId,
+    required String folderId,
+  }) async {
+    if (clientId.isEmpty || folderId.isEmpty) return;
+    final current = await load(clientId);
+    final next =
+        current.where((item) => item.folderId != folderId).toList();
+    if (next.length == current.length) return;
+    final prefs = await SharedPreferences.getInstance();
+    if (next.isEmpty) {
+      await prefs.remove(_key(clientId));
+      return;
+    }
+    await prefs.setString(
+      _key(clientId),
+      jsonEncode(next.map((item) => item.toJson()).toList()),
+    );
+  }
+
   static Future<void> clear(String clientId) async {
     if (clientId.isEmpty) return;
     final prefs = await SharedPreferences.getInstance();

@@ -640,6 +640,17 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
     setState(() => _recents = []);
   }
 
+  Future<void> _removeRecent(String folderId) async {
+    await ClientRecentFolders.remove(
+      clientId: _client.id,
+      folderId: folderId,
+    );
+    if (!mounted) return;
+    setState(() {
+      _recents = _recents.where((item) => item.folderId != folderId).toList();
+    });
+  }
+
   Widget _recentSection(
     Color card,
     Color title,
@@ -667,48 +678,100 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
         separatorBuilder: (_, __) => const SizedBox(width: 10),
         itemBuilder: (context, index) {
           final recent = _recents[index];
-          return InkWell(
-            onTap: () => _openBrowser(
-              folderId: recent.folderId,
-              folderName: recent.name,
-            ),
+          return Material(
+            color: card,
             borderRadius: BorderRadius.circular(18),
-            child: Container(
-              width: 148,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: card,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(
-                  color: isDark
-                      ? Colors.white.withOpacity(0.06)
-                      : const Color(0xFFE2E8F0),
-                ),
+            child: InkWell(
+              onTap: () => _openBrowser(
+                folderId: recent.folderId,
+                folderName: recent.name,
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(
-                    _folderIsLocked(recent.folderId)
-                        ? Icons.folder_special_rounded
-                        : Icons.folder_rounded,
-                    color: _accent,
+              borderRadius: BorderRadius.circular(18),
+              child: Ink(
+                width: 148,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(
+                    color: isDark
+                        ? Colors.white.withOpacity(0.06)
+                        : const Color(0xFFE2E8F0),
                   ),
-                  const Spacer(),
-                  Text(
-                    recent.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: title,
+                ),
+                child: Stack(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 12, 28, 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            _folderIsLocked(recent.folderId)
+                                ? Icons.folder_special_rounded
+                                : Icons.folder_rounded,
+                            color: _accent,
+                          ),
+                          const Spacer(),
+                          Text(
+                            recent.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: title,
+                            ),
+                          ),
+                          Text(
+                            _relativeTime(recent.openedAt),
+                            style: TextStyle(fontSize: 12, color: muted),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                  Text(
-                    _relativeTime(recent.openedAt),
-                    style: TextStyle(fontSize: 12, color: muted),
-                  ),
-                ],
+                    Positioned(
+                      top: 0,
+                      right: 0,
+                      child: PopupMenuButton<String>(
+                        tooltip: 'Folder options',
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints.tightFor(
+                          width: 32,
+                          height: 32,
+                        ),
+                        iconSize: 18,
+                        splashRadius: 16,
+                        icon: Icon(
+                          Icons.more_vert_rounded,
+                          color: muted,
+                          size: 18,
+                        ),
+                        onSelected: (value) {
+                          if (value == 'remove') {
+                            _removeRecent(recent.folderId);
+                          }
+                        },
+                        itemBuilder: (context) => [
+                          PopupMenuItem(
+                            value: 'remove',
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.close_rounded,
+                                  size: 18,
+                                  color: muted,
+                                ),
+                                const SizedBox(width: 10),
+                                Text(
+                                  'Remove',
+                                  style: TextStyle(color: title),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           );
