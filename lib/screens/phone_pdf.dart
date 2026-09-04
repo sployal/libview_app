@@ -67,6 +67,7 @@ class _PhonePdfScreenState extends State<PhonePdfScreen>
     final next = await showFileSortSheet(
       context: context,
       selected: _fileSort,
+      includeUploaded: false,
     );
     if (next == null || !mounted || next == _fileSort) return;
     setState(() {

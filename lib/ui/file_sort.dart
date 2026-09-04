@@ -8,6 +8,8 @@ enum FileSortMode {
   nameZa,
   dateRecent,
   dateOldest,
+  uploadedRecent,
+  uploadedOldest,
   sizeLargest,
   sizeSmallest,
   typeAz,
@@ -26,9 +28,13 @@ extension FileSortModeX on FileSortMode {
       case FileSortMode.nameZa:
         return 'Name · Z to A';
       case FileSortMode.dateRecent:
-        return 'Date · Recent';
+        return 'Date modified · Recent';
       case FileSortMode.dateOldest:
-        return 'Date · Oldest';
+        return 'Date modified · Oldest';
+      case FileSortMode.uploadedRecent:
+        return 'Date uploaded · Recent';
+      case FileSortMode.uploadedOldest:
+        return 'Date uploaded · Oldest';
       case FileSortMode.sizeLargest:
         return kind == FileSortKind.folders
             ? 'Files · Most'
@@ -107,6 +113,7 @@ class FileSort {
     String Function(T item)? typeOf,
     int Function(T item)? sizeOf,
     DateTime? Function(T item)? dateOf,
+    DateTime? Function(T item)? uploadedOf,
   }) {
     final list = [...items];
     int cmpName(T a, T b) =>
@@ -123,12 +130,19 @@ class FileSort {
       return size != 0 ? size : cmpName(a, b);
     }
 
-    int cmpDate(T a, T b) {
-      final da = dateOf?.call(a) ?? DateTime.fromMillisecondsSinceEpoch(0);
-      final db = dateOf?.call(b) ?? DateTime.fromMillisecondsSinceEpoch(0);
+    int cmpByDate(
+      T a,
+      T b,
+      DateTime? Function(T item)? of,
+    ) {
+      final da = of?.call(a) ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final db = of?.call(b) ?? DateTime.fromMillisecondsSinceEpoch(0);
       final date = da.compareTo(db);
       return date != 0 ? date : cmpName(a, b);
     }
+
+    int cmpDate(T a, T b) => cmpByDate(a, b, dateOf);
+    int cmpUploaded(T a, T b) => cmpByDate(a, b, uploadedOf);
 
     switch (mode) {
       case FileSortMode.nameAz:
@@ -139,6 +153,10 @@ class FileSort {
         list.sort((a, b) => cmpDate(b, a));
       case FileSortMode.dateOldest:
         list.sort(cmpDate);
+      case FileSortMode.uploadedRecent:
+        list.sort((a, b) => cmpUploaded(b, a));
+      case FileSortMode.uploadedOldest:
+        list.sort(cmpUploaded);
       case FileSortMode.sizeLargest:
         list.sort((a, b) => cmpSize(b, a));
       case FileSortMode.sizeSmallest:
@@ -156,6 +174,7 @@ Future<FileSortMode?> showFileSortSheet({
   required BuildContext context,
   required FileSortMode selected,
   FileSortKind kind = FileSortKind.files,
+  bool includeUploaded = true,
 }) {
   HapticFeedback.selectionClick();
   return showModalBottomSheet<FileSortMode>(
@@ -163,7 +182,11 @@ Future<FileSortMode?> showFileSortSheet({
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
     barrierColor: Colors.black.withValues(alpha: 0.45),
-    builder: (context) => FileSortSheet(selected: selected, kind: kind),
+    builder: (context) => FileSortSheet(
+      selected: selected,
+      kind: kind,
+      includeUploaded: includeUploaded,
+    ),
   );
 }
 
@@ -172,10 +195,12 @@ class FileSortSheet extends StatelessWidget {
     super.key,
     required this.selected,
     this.kind = FileSortKind.files,
+    this.includeUploaded = true,
   });
 
   final FileSortMode selected;
   final FileSortKind kind;
+  final bool includeUploaded;
 
   @override
   Widget build(BuildContext context) {
@@ -292,6 +317,22 @@ class FileSortSheet extends StatelessWidget {
                   ],
                   selected: selected,
                 ),
+                if (includeUploaded) ...[
+                  const SizedBox(height: 10),
+                  _SortGroup(
+                    icon: Icons.cloud_upload_rounded,
+                    iconColor: const Color(0xFF8B5CF6),
+                    title: 'Date uploaded',
+                    card: card,
+                    titleColor: titleColor,
+                    muted: muted,
+                    options: const [
+                      (FileSortMode.uploadedRecent, 'Recent first'),
+                      (FileSortMode.uploadedOldest, 'Oldest first'),
+                    ],
+                    selected: selected,
+                  ),
+                ],
                 const SizedBox(height: 10),
                 if (kind == FileSortKind.folders)
                   _SortGroup(

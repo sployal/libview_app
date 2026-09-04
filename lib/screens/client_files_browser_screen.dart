@@ -178,6 +178,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
       nameOf: (subject) => subject.name,
       sizeOf: (subject) => subject.fileCount,
       dateOf: (subject) => subject.modifiedAt,
+      uploadedOf: (subject) => subject.createdAt,
     );
   }
 
@@ -200,6 +201,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
       typeOf: (file) => file.type,
       sizeOf: (file) => file.sizeBytes ?? FileSort.parseSizeBytes(file.size),
       dateOf: (file) => file.modifiedAt ?? FileSort.parseDate(file.date),
+      uploadedOf: (file) => file.createdAt,
     );
   }
 

@@ -170,6 +170,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
       nameOf: (subject) => subject.name,
       sizeOf: (subject) => subject.fileCount,
       dateOf: (subject) => subject.modifiedAt,
+      uploadedOf: (subject) => subject.createdAt,
     );
   }
 
@@ -192,6 +193,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
       typeOf: (file) => file.type,
       sizeOf: (file) => file.sizeBytes ?? FileSort.parseSizeBytes(file.size),
       dateOf: (file) => file.modifiedAt ?? FileSort.parseDate(file.date),
+      uploadedOf: (file) => file.createdAt,
     );
   }
 

@@ -76,6 +76,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
     final next = await showFileSortSheet(
       context: context,
       selected: _fileSort,
+      includeUploaded: false,
     );
     if (next == null || !mounted || next == _fileSort) return;
     setState(() {

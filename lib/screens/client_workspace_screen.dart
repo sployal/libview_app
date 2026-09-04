@@ -115,6 +115,7 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
       nameOf: (folder) => folder.name,
       sizeOf: (folder) => folder.fileCount,
       dateOf: (folder) => folder.modifiedAt,
+      uploadedOf: (folder) => folder.createdAt,
     );
   }
 
