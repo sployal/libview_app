@@ -16,6 +16,7 @@ import '../ui/adaptive_layout.dart';
 import '../ui/file_details.dart';
 import '../ui/file_sort.dart';
 import '../ui/folder_lock_dialog.dart';
+import '../ui/move_file_dialog.dart';
 import '../ui/preview_overlay_icon.dart';
 import '../ui/drive_thumbnail.dart';
 import 'no_internet_screen.dart';
@@ -61,6 +62,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
   Map<String, bool> downloadingFiles = {};
   Map<String, double> downloadProgress = {};
   final Set<String> _deletingIds = {};
+  final Set<String> _movingIds = {};
   bool isUploading = false;
   double uploadProgress = 0.0;
   static const int _maxImageUploadSelection = 10;
@@ -936,6 +938,89 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
       if (ignoreId != null && subject.folderId == ignoreId) return false;
       return GoogleDriveService.folderNamesClash(subject.name, name);
     });
+  }
+
+  bool _canOfferMove(StudyMaterial file) {
+    if (file.isFolder) return false;
+    return _moveTargets().isNotEmpty;
+  }
+
+  List<MoveFileTarget> _moveTargets() {
+    final folders = currentFiles.where((file) => file.isFolder).toList()
+      ..sort(
+        (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+      );
+    final targets = <MoveFileTarget>[];
+    if (_folderTrail.isNotEmpty) {
+      final main = _folderTrail.first;
+      if (main.folderId.isNotEmpty &&
+          main.folderId != selectedSubject?.folderId) {
+        targets.add(
+          MoveFileTarget(
+            id: main.folderId,
+            name: main.name,
+            isMain: true,
+          ),
+        );
+      }
+    }
+    for (final folder in folders) {
+      if (folder.id.isEmpty) continue;
+      targets.add(MoveFileTarget(id: folder.id, name: folder.name));
+    }
+    return targets;
+  }
+
+  Future<void> _moveMaterial(StudyMaterial material) async {
+    if (!_canManageFolders || material.isFolder) return;
+    if (_movingIds.contains(material.id) || _deletingIds.contains(material.id)) {
+      return;
+    }
+    final targets = _moveTargets();
+    if (targets.isEmpty) return;
+
+    final destination = await showMoveFileDialog(
+      context: context,
+      fileName: material.name,
+      targets: targets,
+    );
+    if (destination == null || !mounted) return;
+
+    setState(() {
+      _movingIds.add(material.id);
+    });
+
+    try {
+      await UploadService.instance.moveFile(
+        fileId: material.id,
+        parentFolderId: destination.id,
+      );
+      if (!mounted) return;
+      setState(() {
+        currentFiles.removeWhere((item) => item.id == material.id);
+        _movingIds.remove(material.id);
+        if (selectedSubject != null && selectedSubject!.fileCount > 0) {
+          selectedSubject!.fileCount -= 1;
+        }
+      });
+      _showMessage(
+        destination.isMain
+            ? 'Moved to ${destination.name}'
+            : 'Moved to "${destination.name}"',
+      );
+    } on UploadException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _movingIds.remove(material.id);
+      });
+      _showMessage(e.message, isError: true);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _movingIds.remove(material.id);
+      });
+      _showMessage('Failed to move ${material.name}', isError: true);
+    }
   }
 
   bool _fileNameTaken(String name, {String? ignoreId}) {
@@ -1880,7 +1965,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     required bool isDownloading,
     bool onPreview = false,
   }) {
-    if (_deletingIds.contains(file.id)) {
+    if (_deletingIds.contains(file.id) || _movingIds.contains(file.id)) {
       return const Padding(
         padding: EdgeInsets.symmetric(horizontal: 12),
         child: SizedBox(
@@ -1888,13 +1973,14 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
           height: 20,
           child: CircularProgressIndicator(
             strokeWidth: 2,
-            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFEF4444)),
+            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
           ),
         ),
       );
     }
     if (!_canManageFolders) return const SizedBox.shrink();
     final itemLabel = file.isFolder ? 'folder' : 'file';
+    final canMove = _canOfferMove(file);
     return PopupMenuButton<String>(
       tooltip: file.isFolder ? 'Folder options' : 'File options',
       enabled: !isDownloading,
@@ -1918,6 +2004,8 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
             );
           } else if (value == 'rename') {
             _renameMaterial(file);
+          } else if (value == 'move') {
+            _moveMaterial(file);
           } else if (value == 'delete') {
             _confirmDelete(file);
           }
@@ -1944,6 +2032,17 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
             ],
           ),
         ),
+        if (canMove)
+          const PopupMenuItem(
+            value: 'move',
+            child: Row(
+              children: [
+                Icon(Icons.drive_file_move_rounded, size: 18, color: Color(0xFF6366F1)),
+                SizedBox(width: 10),
+                Text('Move file'),
+              ],
+            ),
+          ),
         PopupMenuItem(
           value: 'delete',
           child: Row(

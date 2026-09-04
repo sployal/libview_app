@@ -1135,6 +1135,71 @@ async function forgetCourseSemesterIds(courseFolderId) {
   }
 }
 
+async function moveItem(fileId, newParentId) {
+  const current = await drive.files.get({
+    fileId,
+    fields: 'id, name, mimeType, parents',
+    supportsAllDrives: true,
+  });
+  if (current.data.mimeType === FOLDER_MIME) {
+    const error = new Error('Folders cannot be moved');
+    error.statusCode = 400;
+    throw error;
+  }
+  const dest = await drive.files.get({
+    fileId: newParentId,
+    fields: 'id, mimeType, trashed',
+    supportsAllDrives: true,
+  });
+  if (dest.data.trashed || dest.data.mimeType !== FOLDER_MIME) {
+    const error = new Error('That folder is not available');
+    error.statusCode = 400;
+    throw error;
+  }
+  const oldParents = current.data.parents || [];
+  if (oldParents.includes(newParentId)) {
+    return { id: current.data.id, name: current.data.name, parentFolderId: newParentId };
+  }
+  if (await nameTakenInFolder(newParentId, current.data.name, { isFolder: false })) {
+    const error = new Error('A file with that name already exists');
+    error.statusCode = 409;
+    throw error;
+  }
+  const res = await drive.files.update({
+    fileId,
+    addParents: newParentId,
+    removeParents: oldParents.join(','),
+    fields: 'id, name, parents',
+    supportsAllDrives: true,
+  });
+  return {
+    id: res.data.id,
+    name: res.data.name,
+    parentFolderId: newParentId,
+  };
+}
+
+async function userCanMoveFile(user, fileId, destFolderId) {
+  if (!fileId || !destFolderId || fileId === destFolderId) return false;
+  if (
+    isClientWorkspaceFolder(destFolderId) ||
+    destFolderId === CONFIG.EDUPAL_FOLDER_ID ||
+    destFolderId === clientsRootFolderId
+  ) {
+    return false;
+  }
+  const fileWorkspace = await resolveClientWorkspaceId(fileId);
+  const destWorkspace = await resolveClientWorkspaceId(destFolderId);
+  if (fileWorkspace && destWorkspace && fileWorkspace === destWorkspace) {
+    return clientWorkspaceAllowsUser(fileWorkspace, user);
+  }
+  const adminOk =
+    CONFIG.ADMIN_UIDS.size === 0 || CONFIG.ADMIN_UIDS.has(user.uid);
+  if (!adminOk) return false;
+  if (!(await isManagedItem(fileId))) return false;
+  return isValidCreateParent(destFolderId);
+}
+
 async function renameItem(fileId, newName) {
   const res = await drive.files.update({
     fileId,
@@ -2340,6 +2405,45 @@ app.get('/files/:fileId/download', requireAuth, async (req, res) => {
     if (!res.headersSent) {
       res.status(500).json({ error: 'Download failed' });
     }
+  }
+});
+
+// --- Move a file into another folder ------------------------------------
+
+app.post('/files/:fileId/move', requireAuth, async (req, res) => {
+  if (!driveIsConfigured()) {
+    console.warn('Move rejected: Drive OAuth is not configured');
+    return res.status(503).json({ error: 'Could not move the file' });
+  }
+
+  const { fileId } = req.params;
+  const parentFolderId = String(req.body?.parentFolderId || '').trim();
+
+  if (!fileId || !parentFolderId) {
+    console.warn('Move rejected: missing file or destination');
+    return res.status(400).json({ error: 'Could not move the file' });
+  }
+  if (isSemesterFolder(fileId) || isClientWorkspaceFolder(fileId)) {
+    console.warn(`Move rejected: protected item ${fileId}`);
+    return res.status(403).json({ error: 'Could not move the file' });
+  }
+  if (!(await userCanMoveFile(req.user, fileId, parentFolderId))) {
+    console.warn(`Move rejected: no access to ${fileId} -> ${parentFolderId}`);
+    return res.status(403).json({ error: 'Could not move the file' });
+  }
+
+  try {
+    const result = await moveItem(fileId, parentFolderId);
+    res.json(result);
+  } catch (e) {
+    if (e.statusCode === 409) {
+      return res.status(409).json({ error: e.message });
+    }
+    if (e.statusCode === 400) {
+      return res.status(400).json({ error: e.message });
+    }
+    console.error('Move failed:', e);
+    res.status(500).json({ error: 'Could not move the file' });
   }
 });
 

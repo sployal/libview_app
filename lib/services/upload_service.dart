@@ -613,6 +613,48 @@ class UploadService {
     }
   }
 
+  Future<UploadResult> moveFile({
+    required String fileId,
+    required String parentFolderId,
+  }) async {
+    if (fileId.isEmpty) {
+      throw UploadException('No file selected');
+    }
+    if (parentFolderId.isEmpty) {
+      throw UploadException('No destination folder selected');
+    }
+
+    final token = await _idToken();
+
+    try {
+      final response = await _dio.post(
+        '/files/${Uri.encodeComponent(fileId)}/move',
+        data: {'parentFolderId': parentFolderId},
+        options: Options(
+          contentType: Headers.jsonContentType,
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
+
+      final data = response.data;
+      if (data is Map<String, dynamic>) {
+        return UploadResult.fromJson(data);
+      }
+      if (data is Map) {
+        return UploadResult.fromJson(Map<String, dynamic>.from(data));
+      }
+      throw UploadException('Unexpected response from server');
+    } on DioException catch (e) {
+      throw UploadException(
+        _messageFromDio(e, action: 'move'),
+        statusCode: e.response?.statusCode,
+      );
+    }
+  }
+
   Future<UploadResult> renameFile({
     required String fileId,
     required String name,
@@ -863,6 +905,8 @@ class UploadService {
         return 'Delete failed.';
       case 'rename':
         return 'Rename failed.';
+      case 'move':
+        return 'Could not move the file.';
       case 'folder':
         return 'Could not create the folder.';
       case 'course':
