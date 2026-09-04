@@ -121,6 +121,21 @@ class MainActivity : FlutterActivity() {
                             result.error("PICK_ERROR", e.message, null)
                         }
                     }
+                    "pickMediaFiles" -> {
+                        if (pickResult != null) {
+                            result.error("BUSY", "A file picker is already open", null)
+                            return@setMethodCallHandler
+                        }
+                        val kind = call.argument<String>("kind") ?: "video"
+                        val maxSelection = call.argument<Number>("maxSelection")?.toInt() ?: 5
+                        try {
+                            pickResult = result
+                            startMediaPicker(kind, maxSelection)
+                        } catch (e: Exception) {
+                            pickResult = null
+                            result.error("PICK_ERROR", e.message, null)
+                        }
+                    }
                     "resolveModifiedMs" -> {
                         val uri = call.argument<String>("uri")
                         val path = call.argument<String>("path")
@@ -256,6 +271,61 @@ class MainActivity : FlutterActivity() {
             }
         }
         startActivityForResult(intent, PICK_UPLOAD_REQUEST)
+    }
+
+    private fun startMediaPicker(kind: String, maxSelection: Int) {
+        val max = maxSelection.coerceAtLeast(1)
+        val intent = if (kind.equals("audio", ignoreCase = true)) {
+            audioPickerIntent(max)
+        } else {
+            videoPickerIntent(max)
+        }
+        startActivityForResult(intent, PICK_UPLOAD_REQUEST)
+    }
+
+    private fun videoPickerIntent(maxSelection: Int): Intent {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            val limit = MediaStore.getPickImagesMaxLimit().coerceAtLeast(1)
+            val max = maxSelection.coerceIn(1, limit)
+            val photoPicker = Intent(MediaStore.ACTION_PICK_IMAGES).apply {
+                type = "video/*"
+                if (max > 1) {
+                    putExtra(MediaStore.EXTRA_PICK_IMAGES_MAX, max)
+                }
+            }
+            if (photoPicker.resolveActivity(packageManager) != null) {
+                return photoPicker
+            }
+        }
+        val gallery = Intent(Intent.ACTION_PICK, MediaStore.Video.Media.EXTERNAL_CONTENT_URI).apply {
+            type = "video/*"
+            putExtra(Intent.EXTRA_ALLOW_MULTIPLE, maxSelection > 1)
+        }
+        if (gallery.resolveActivity(packageManager) != null) {
+            return gallery
+        }
+        return Intent(Intent.ACTION_GET_CONTENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "video/*"
+            putExtra(Intent.EXTRA_ALLOW_MULTIPLE, maxSelection > 1)
+            putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("video/*"))
+        }
+    }
+
+    private fun audioPickerIntent(maxSelection: Int): Intent {
+        val library = Intent(Intent.ACTION_PICK, MediaStore.Audio.Media.EXTERNAL_CONTENT_URI).apply {
+            type = "audio/*"
+            putExtra(Intent.EXTRA_ALLOW_MULTIPLE, maxSelection > 1)
+        }
+        if (library.resolveActivity(packageManager) != null) {
+            return library
+        }
+        return Intent(Intent.ACTION_GET_CONTENT).apply {
+            addCategory(Intent.CATEGORY_OPENABLE)
+            type = "audio/*"
+            putExtra(Intent.EXTRA_ALLOW_MULTIPLE, maxSelection > 1)
+            putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("audio/*"))
+        }
     }
 
     private fun describePickedUri(uri: Uri): Map<String, Any?> {

@@ -1280,7 +1280,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     if (source == _UploadSource.videos) {
       await _pickAndUploadMedia(
         folderId: subject.folderId,
-        mimeTypes: PhoneDocumentService.videoUploadMimeTypes,
+        kind: 'video',
         pickerType: FileType.video,
         maxSelection: _maxVideoUploadSelection,
         pickerTitle: 'Select videos to upload',
@@ -1291,7 +1291,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     if (source == _UploadSource.audio) {
       await _pickAndUploadMedia(
         folderId: subject.folderId,
-        mimeTypes: PhoneDocumentService.audioUploadMimeTypes,
+        kind: 'audio',
         pickerType: FileType.audio,
         maxSelection: _maxAudioUploadSelection,
         pickerTitle: 'Select audio to upload',
@@ -1350,7 +1350,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
 
   Future<void> _pickAndUploadMedia({
     required String folderId,
-    required List<String> mimeTypes,
+    required String kind,
     required FileType pickerType,
     required int maxSelection,
     required String pickerTitle,
@@ -1358,8 +1358,9 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     List<PhonePickedDocument> raw = const [];
     try {
       if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
-        raw = await PhoneDocumentService.instance.pickForUpload(
-          mimeTypes: mimeTypes,
+        raw = await PhoneDocumentService.instance.pickMediaForUpload(
+          kind: kind,
+          maxSelection: maxSelection,
         );
       } else {
         final result = await FilePicker.platform.pickFiles(
@@ -3303,7 +3304,7 @@ class _UploadSourceSheet extends StatelessWidget {
               icon: Icons.videocam_rounded,
               iconColor: const Color(0xFF0EA5E9),
               title: 'Videos',
-              subtitle: 'MP4, MOV, MKV, WebM, and other video types',
+              subtitle: 'Same gallery picker as photos, videos only',
               onTap: () => Navigator.pop(context, _UploadSource.videos),
             ),
             const SizedBox(height: 10),
@@ -3311,7 +3312,7 @@ class _UploadSourceSheet extends StatelessWidget {
               icon: Icons.audiotrack_rounded,
               iconColor: const Color(0xFFEC4899),
               title: 'Audio',
-              subtitle: 'MP3, WAV, AAC, M4A, FLAC, and other audio types',
+              subtitle: 'Pick from music and recordings on this phone',
               onTap: () => Navigator.pop(context, _UploadSource.audio),
             ),
           ],

@@ -146,35 +146,59 @@ class PhoneDocumentService {
         'pickUploadFiles',
         {'mimeTypes': mimeTypes},
       );
-      if (raw == null || raw.isEmpty) return const [];
-      final picked = <PhonePickedDocument>[];
-      for (final entry in raw) {
-        if (entry is! Map) continue;
-        final map = Map<String, dynamic>.from(entry);
-        final path = map['path']?.toString() ?? '';
-        final name = map['name']?.toString() ?? 'file';
-        if (path.isEmpty) continue;
-        final size = (map['sizeBytes'] as num?)?.toInt() ?? 0;
-        final modifiedMs = (map['modifiedMs'] as num?)?.toInt() ?? 0;
-        picked.add(
-          PhonePickedDocument(
-            name: name,
-            path: path,
-            sizeBytes: size,
-            modifiedAt: PhonePickedDocument.modifiedAtFromMs(modifiedMs) ??
-                await resolveModifiedAt(
-                  name: name,
-                  path: path,
-                  uri: map['uri']?.toString(),
-                  sizeBytes: size,
-                ),
-          ),
-        );
-      }
-      return picked;
+      return _mapPicked(raw);
     } on PlatformException {
       return const [];
     }
+  }
+
+  /// Gallery / music library pickers — not the Downloads document UI.
+  Future<List<PhonePickedDocument>> pickMediaForUpload({
+    required String kind,
+    int maxSelection = 5,
+  }) async {
+    if (!Platform.isAndroid) return const [];
+    try {
+      final raw = await _channel.invokeMethod<List<dynamic>>(
+        'pickMediaFiles',
+        {
+          'kind': kind,
+          'maxSelection': maxSelection,
+        },
+      );
+      return _mapPicked(raw);
+    } on PlatformException {
+      return const [];
+    }
+  }
+
+  Future<List<PhonePickedDocument>> _mapPicked(List<dynamic>? raw) async {
+    if (raw == null || raw.isEmpty) return const [];
+    final picked = <PhonePickedDocument>[];
+    for (final entry in raw) {
+      if (entry is! Map) continue;
+      final map = Map<String, dynamic>.from(entry);
+      final path = map['path']?.toString() ?? '';
+      final name = map['name']?.toString() ?? 'file';
+      if (path.isEmpty) continue;
+      final size = (map['sizeBytes'] as num?)?.toInt() ?? 0;
+      final modifiedMs = (map['modifiedMs'] as num?)?.toInt() ?? 0;
+      picked.add(
+        PhonePickedDocument(
+          name: name,
+          path: path,
+          sizeBytes: size,
+          modifiedAt: PhonePickedDocument.modifiedAtFromMs(modifiedMs) ??
+              await resolveModifiedAt(
+                name: name,
+                path: path,
+                uri: map['uri']?.toString(),
+                sizeBytes: size,
+              ),
+        ),
+      );
+    }
+    return picked;
   }
 
   Future<DateTime?> resolveModifiedAt({
