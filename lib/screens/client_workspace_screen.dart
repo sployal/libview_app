@@ -734,12 +734,14 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
                       child: PopupMenuButton<String>(
                         tooltip: 'Folder options',
                         padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints.tightFor(
-                          width: 32,
-                          height: 32,
-                        ),
                         iconSize: 18,
                         splashRadius: 16,
+                        style: IconButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          minimumSize: const Size(32, 32),
+                          padding: EdgeInsets.zero,
+                        ),
                         icon: Icon(
                           Icons.more_vert_rounded,
                           color: muted,
@@ -754,6 +756,7 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
                           PopupMenuItem(
                             value: 'remove',
                             child: Row(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
                                 Icon(
                                   Icons.close_rounded,
