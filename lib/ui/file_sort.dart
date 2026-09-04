@@ -287,6 +287,11 @@ class FileSortSheet extends StatelessWidget {
                         ],
                       ),
                     ),
+                    IconButton(
+                      tooltip: 'Close',
+                      onPressed: () => Navigator.pop(context),
+                      icon: Icon(Icons.close_rounded, color: muted),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 16),
