@@ -318,6 +318,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
           colorIndex: subjects.length,
           modifiedAt: DateTime.now(),
           createdAt: DateTime.now(),
+          isLocked: _lockedFolderIds.contains(id),
         ),
       );
       errorMessage = null;
@@ -953,6 +954,54 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     return _moveTargets().isNotEmpty;
   }
 
+  List<MoveFileTarget> _moveFolderTargets({
+    required String folderId,
+    required bool fromFiles,
+  }) {
+    final targets = <MoveFileTarget>[];
+    if (fromFiles) {
+      final rootId = widget.folderId;
+      if (rootId != null && rootId.isNotEmpty && rootId != folderId) {
+        targets.add(
+          MoveFileTarget(
+            id: rootId,
+            name: widget.workspaceName,
+            isMain: true,
+          ),
+        );
+      }
+      final folders = currentFiles
+          .where((file) => file.isFolder && file.id != folderId)
+          .toList()
+        ..sort(
+          (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+        );
+      for (final folder in folders) {
+        if (folder.id.isEmpty) continue;
+        targets.add(MoveFileTarget(id: folder.id, name: folder.name));
+      }
+      return targets;
+    }
+
+    final folders = [...subjects]
+      ..sort(
+        (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+      );
+    for (final subject in folders) {
+      if (subject.folderId.isEmpty || subject.folderId == folderId) continue;
+      targets.add(MoveFileTarget(id: subject.folderId, name: subject.name));
+    }
+    return targets;
+  }
+
+  bool _canOfferMoveFolder({
+    required String folderId,
+    required bool fromFiles,
+  }) {
+    return _moveFolderTargets(folderId: folderId, fromFiles: fromFiles)
+        .isNotEmpty;
+  }
+
   List<MoveFileTarget> _moveTargets() {
     final folders = currentFiles.where((file) => file.isFolder).toList()
       ..sort(
@@ -1028,6 +1077,106 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
         _movingIds.remove(material.id);
       });
       _showMessage('Failed to move ${material.name}', isError: true);
+    }
+  }
+
+  Future<void> _moveUnitFolder(Subject subject) async {
+    if (!_canManageFolders) return;
+    if (_isMutatingFolder) return;
+    final targets = _moveFolderTargets(
+      folderId: subject.folderId,
+      fromFiles: false,
+    );
+    if (targets.isEmpty) return;
+
+    final destination = await showMoveFileDialog(
+      context: context,
+      fileName: subject.name,
+      targets: targets,
+      isFolder: true,
+    );
+    if (destination == null || !mounted) return;
+
+    setState(() {
+      _isMutatingFolder = true;
+    });
+    try {
+      await UploadService.instance.moveFile(
+        fileId: subject.folderId,
+        parentFolderId: destination.id,
+      );
+      if (!mounted) return;
+      setState(() {
+        subjects.removeWhere((item) => item.folderId == subject.folderId);
+        if (selectedSubject?.folderId == subject.folderId) {
+          selectedSubject = null;
+          currentFiles = [];
+          _folderTrail.clear();
+        }
+      });
+      _showMessage('Moved to "${destination.name}"');
+    } on UploadException catch (e) {
+      _showMessage(e.message, isError: true);
+    } catch (_) {
+      _showMessage('Failed to move "${subject.name}"', isError: true);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isMutatingFolder = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _moveListedFolder(StudyMaterial folder) async {
+    if (!_canManageFolders || !folder.isFolder) return;
+    if (_movingIds.contains(folder.id) || _deletingIds.contains(folder.id)) {
+      return;
+    }
+    final targets = _moveFolderTargets(folderId: folder.id, fromFiles: true);
+    if (targets.isEmpty) return;
+
+    final destination = await showMoveFileDialog(
+      context: context,
+      fileName: folder.name,
+      targets: targets,
+      isFolder: true,
+    );
+    if (destination == null || !mounted) return;
+
+    setState(() {
+      _movingIds.add(folder.id);
+    });
+    try {
+      final result = await UploadService.instance.moveFile(
+        fileId: folder.id,
+        parentFolderId: destination.id,
+      );
+      if (!mounted) return;
+      setState(() {
+        currentFiles.removeWhere((item) => item.id == folder.id);
+        _movingIds.remove(folder.id);
+      });
+      if (destination.isMain) {
+        _insertCreatedFolder(result, folder.name);
+      }
+      _showMessage(
+        destination.isMain
+            ? 'Moved to the main folders'
+            : 'Moved to "${destination.name}"',
+      );
+    } on UploadException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _movingIds.remove(folder.id);
+      });
+      _showMessage(e.message, isError: true);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _movingIds.remove(folder.id);
+      });
+      _showMessage('Failed to move "${folder.name}"', isError: true);
     }
   }
 
@@ -1994,7 +2143,9 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     }
     if (!_canManageFolders) return const SizedBox.shrink();
     final itemLabel = file.isFolder ? 'folder' : 'file';
-    final canMove = _canOfferMove(file);
+    final canMove = file.isFolder
+        ? _canOfferMoveFolder(folderId: file.id, fromFiles: true)
+        : _canOfferMove(file);
     return PopupMenuButton<String>(
       tooltip: file.isFolder ? 'Folder options' : 'File options',
       enabled: !isDownloading && !_isMutatingFolder,
@@ -2023,7 +2174,11 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
           } else if (value == 'unlock') {
             _unlockUnitFolder(_subjectFromListedFolder(file));
           } else if (value == 'move') {
-            _moveMaterial(file);
+            if (file.isFolder) {
+              _moveListedFolder(file);
+            } else {
+              _moveMaterial(file);
+            }
           } else if (value == 'delete') {
             _confirmDelete(file);
           }
@@ -2073,13 +2228,13 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
                   ),
                 ),
         if (canMove)
-          const PopupMenuItem(
+          PopupMenuItem(
             value: 'move',
             child: Row(
               children: [
-                Icon(Icons.drive_file_move_rounded, size: 18, color: Color(0xFF6366F1)),
-                SizedBox(width: 10),
-                Text('Move file'),
+                const Icon(Icons.drive_file_move_rounded, size: 18, color: Color(0xFF6366F1)),
+                const SizedBox(width: 10),
+                Text(file.isFolder ? 'Move folder' : 'Move file'),
               ],
             ),
           ),
@@ -3253,6 +3408,8 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
             _lockUnitFolder(subject);
           } else if (value == 'unlock') {
             _unlockUnitFolder(subject);
+          } else if (value == 'move') {
+            _moveUnitFolder(subject);
           } else if (value == 'delete') {
             _confirmDeleteUnitFolder(subject);
           }
@@ -3302,6 +3459,17 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
               ],
             ),
           ),
+          if (_canOfferMoveFolder(folderId: subject.folderId, fromFiles: false))
+            const PopupMenuItem(
+              value: 'move',
+              child: Row(
+                children: [
+                  Icon(Icons.drive_file_move_rounded, size: 18, color: Color(0xFF6366F1)),
+                  SizedBox(width: 10),
+                  Text('Move folder'),
+                ],
+              ),
+            ),
           const PopupMenuItem(
             value: 'delete',
             child: Row(

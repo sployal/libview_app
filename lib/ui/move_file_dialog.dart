@@ -17,6 +17,7 @@ Future<MoveFileTarget?> showMoveFileDialog({
   required BuildContext context,
   required String fileName,
   required List<MoveFileTarget> targets,
+  bool isFolder = false,
 }) {
   if (targets.isEmpty) return Future.value(null);
   HapticFeedback.lightImpact();
@@ -24,7 +25,7 @@ Future<MoveFileTarget?> showMoveFileDialog({
     context: context,
     useRootNavigator: true,
     barrierDismissible: true,
-    barrierLabel: 'Move file',
+    barrierLabel: isFolder ? 'Move folder' : 'Move file',
     barrierColor: Colors.black.withValues(alpha: 0.55),
     transitionDuration: const Duration(milliseconds: 280),
     pageBuilder: (dialogContext, animation, secondaryAnimation) {
@@ -33,6 +34,7 @@ Future<MoveFileTarget?> showMoveFileDialog({
         child: MoveFileDialog(
           fileName: fileName,
           targets: targets,
+          isFolder: isFolder,
         ),
       );
     },
@@ -64,10 +66,12 @@ class MoveFileDialog extends StatelessWidget {
     super.key,
     required this.fileName,
     required this.targets,
+    this.isFolder = false,
   });
 
   final String fileName;
   final List<MoveFileTarget> targets;
+  final bool isFolder;
 
   static const _accent = Color(0xFF6366F1);
 
@@ -112,7 +116,7 @@ class MoveFileDialog extends StatelessWidget {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      _Header(fileName: fileName),
+                      _Header(fileName: fileName, isFolder: isFolder),
                       Flexible(
                         child: ListView(
                           shrinkWrap: true,
@@ -133,6 +137,7 @@ class MoveFileDialog extends StatelessWidget {
                                 titleColor: titleColor,
                                 muted: muted,
                                 background: card,
+                                isFolder: isFolder,
                               ),
                               if (folders.isNotEmpty) const SizedBox(height: 8),
                             ],
@@ -156,6 +161,7 @@ class MoveFileDialog extends StatelessWidget {
                                     titleColor: titleColor,
                                     muted: muted,
                                     background: card,
+                                    isFolder: isFolder,
                                   ),
                                 ),
                             ],
@@ -191,9 +197,10 @@ class MoveFileDialog extends StatelessWidget {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.fileName});
+  const _Header({required this.fileName, required this.isFolder});
 
   final String fileName;
+  final bool isFolder;
 
   @override
   Widget build(BuildContext context) {
@@ -227,9 +234,9 @@ class _Header extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Move file',
-                  style: TextStyle(
+                Text(
+                  isFolder ? 'Move folder' : 'Move file',
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
@@ -266,12 +273,14 @@ class _FolderTile extends StatelessWidget {
     required this.titleColor,
     required this.muted,
     required this.background,
+    required this.isFolder,
   });
 
   final MoveFileTarget target;
   final Color titleColor;
   final Color muted;
   final Color background;
+  final bool isFolder;
 
   @override
   Widget build(BuildContext context) {
@@ -319,7 +328,9 @@ class _FolderTile extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       target.isMain
-                          ? 'Move this file back to ${target.name}'
+                          ? (isFolder
+                              ? 'Move back to the main folders'
+                              : 'Move this file back to ${target.name}')
                           : 'Move into this folder',
                       style: TextStyle(
                         color: muted,

@@ -1135,17 +1135,36 @@ async function forgetCourseSemesterIds(courseFolderId) {
   }
 }
 
+async function isFolderInside(maybeChildId, ancestorId) {
+  let current = maybeChildId;
+  const seen = new Set();
+  while (current && !seen.has(current)) {
+    if (current === ancestorId) return true;
+    seen.add(current);
+    if (
+      isClientWorkspaceFolder(current) ||
+      current === CONFIG.EDUPAL_FOLDER_ID ||
+      current === clientsRootFolderId
+    ) {
+      return false;
+    }
+    const meta = await drive.files.get({
+      fileId: current,
+      fields: 'id, parents',
+      supportsAllDrives: true,
+    });
+    current = (meta.data.parents || [])[0] || '';
+  }
+  return false;
+}
+
 async function moveItem(fileId, newParentId) {
   const current = await drive.files.get({
     fileId,
     fields: 'id, name, mimeType, parents',
     supportsAllDrives: true,
   });
-  if (current.data.mimeType === FOLDER_MIME) {
-    const error = new Error('Folders cannot be moved');
-    error.statusCode = 400;
-    throw error;
-  }
+  const isFolder = current.data.mimeType === FOLDER_MIME;
   const dest = await drive.files.get({
     fileId: newParentId,
     fields: 'id, mimeType, trashed',
@@ -1156,12 +1175,21 @@ async function moveItem(fileId, newParentId) {
     error.statusCode = 400;
     throw error;
   }
+  if (isFolder && (await isFolderInside(newParentId, fileId))) {
+    const error = new Error('A folder cannot be moved into itself');
+    error.statusCode = 400;
+    throw error;
+  }
   const oldParents = current.data.parents || [];
   if (oldParents.includes(newParentId)) {
     return { id: current.data.id, name: current.data.name, parentFolderId: newParentId };
   }
-  if (await nameTakenInFolder(newParentId, current.data.name, { isFolder: false })) {
-    const error = new Error('A file with that name already exists');
+  if (await nameTakenInFolder(newParentId, current.data.name, { isFolder })) {
+    const error = new Error(
+      isFolder
+        ? 'A folder with that name already exists'
+        : 'A file with that name already exists',
+    );
     error.statusCode = 409;
     throw error;
   }
@@ -1181,15 +1209,13 @@ async function moveItem(fileId, newParentId) {
 
 async function userCanMoveFile(user, fileId, destFolderId) {
   if (!fileId || !destFolderId || fileId === destFolderId) return false;
-  if (
-    isClientWorkspaceFolder(destFolderId) ||
-    destFolderId === CONFIG.EDUPAL_FOLDER_ID ||
-    destFolderId === clientsRootFolderId
-  ) {
+  if (destFolderId === CONFIG.EDUPAL_FOLDER_ID || destFolderId === clientsRootFolderId) {
     return false;
   }
   const fileWorkspace = await resolveClientWorkspaceId(fileId);
-  const destWorkspace = await resolveClientWorkspaceId(destFolderId);
+  const destWorkspace = isClientWorkspaceFolder(destFolderId)
+    ? destFolderId
+    : await resolveClientWorkspaceId(destFolderId);
   if (fileWorkspace && destWorkspace && fileWorkspace === destWorkspace) {
     return clientWorkspaceAllowsUser(fileWorkspace, user);
   }
