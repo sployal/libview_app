@@ -328,6 +328,19 @@ class GoogleDriveService {
     );
   }
 
+  static String folderNameKey(String name) {
+    return name.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]'), '');
+  }
+
+  static bool folderNamesClash(String left, String right) {
+    final a = folderNameKey(left);
+    final b = folderNameKey(right);
+    if (a.isEmpty || b.isEmpty) {
+      return left.trim().toLowerCase() == right.trim().toLowerCase();
+    }
+    return a == b;
+  }
+
   static String subjectCodeFromName(String folderName) {
     // Try to extract code like "CS101" or "EENG 483" from the folder name
     final regExp = RegExp(r'[A-Z]{2,4}\s?\d{3}');

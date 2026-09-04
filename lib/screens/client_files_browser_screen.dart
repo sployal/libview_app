@@ -785,11 +785,10 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
   }
 
   bool _folderNameTaken(String name, {String? ignoreId}) {
-    final wanted = name.trim();
-    if (wanted.isEmpty) return false;
+    if (name.trim().isEmpty) return false;
     return subjects.any((subject) {
       if (ignoreId != null && subject.folderId == ignoreId) return false;
-      return subject.name.trim() == wanted;
+      return GoogleDriveService.folderNamesClash(subject.name, name);
     });
   }
 
@@ -2954,7 +2953,9 @@ class _FolderNameDialogState extends State<_FolderNameDialog> {
   }
 
   bool _isTaken(String name) {
-    return widget.takenNames.any((taken) => taken.trim() == name);
+    return widget.takenNames.any(
+      (taken) => GoogleDriveService.folderNamesClash(taken, name),
+    );
   }
 
   void _submit() {

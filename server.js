@@ -657,9 +657,8 @@ async function createFolder(folderName, parentFolderId, { cacheAsSubject = true 
 
 function normalizeFolderName(name) {
   return String(name || '')
-    .trim()
     .toLowerCase()
-    .replace(/\s+/g, ' ');
+    .replace(/[^a-z0-9]/g, '');
 }
 
 async function listChildFolders(parentId) {
@@ -1482,8 +1481,15 @@ app.post('/folders', requireAuth, async (req, res) => {
 
   try {
     const safeName = sanitizeFileName(name);
+    const wanted = normalizeFolderName(safeName);
     const siblings = await listChildFolders(parentFolderId);
-    const nameTaken = siblings.some((folder) => folder.name === safeName);
+    const nameTaken = siblings.some((folder) => {
+      const existing = normalizeFolderName(folder.name);
+      if (!wanted || !existing) {
+        return String(folder.name || '').trim().toLowerCase() === safeName.toLowerCase();
+      }
+      return existing === wanted;
+    });
     if (nameTaken) {
       return res.status(409).json({ error: 'A folder with that name already exists' });
     }

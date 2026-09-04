@@ -176,7 +176,7 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
       hint: '',
     );
     if (name == null || name.isEmpty) return;
-    if (_folders.any((folder) => folder.name.trim() == name)) {
+    if (_folders.any((folder) => GoogleDriveService.folderNamesClash(folder.name, name))) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('A folder named "$name" already exists')),
@@ -225,7 +225,7 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
     required String hint,
   }) {
     final controller = TextEditingController();
-    final takenNames = _folders.map((folder) => folder.name.trim()).toSet();
+    final takenNames = _folders.map((folder) => folder.name).toList();
     return showDialog<String>(
       context: context,
       builder: (context) {
@@ -236,7 +236,9 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
             void submit() {
               final name = controller.text.trim();
               if (name.isEmpty) return;
-              if (takenNames.contains(name)) {
+              if (takenNames.any(
+                (taken) => GoogleDriveService.folderNamesClash(taken, name),
+              )) {
                 setDialogState(() {
                   error = 'A folder with that name already exists';
                 });
