@@ -697,14 +697,8 @@ async function initDriveAuth() {
   driveReady = true;
 }
 
-// In-memory cache so repeated uploads to the same folder don't each
-// cost an extra Drive API call. Entries expire after 10 minutes.
-const validationCache = new Map();
 const CACHE_TTL_MS = 10 * 60 * 1000;
 
-// Confirms `folderId` is a real folder whose parent is one of our
-// known semester folders (i.e. it's a legitimate subject folder,
-// not an arbitrary ID the client made up).
 async function driveGetMeta(fileId, fields, apiKey) {
   const client = apiKey ? publicDrive : drive;
   const res = await client.files.get({
@@ -717,41 +711,7 @@ async function driveGetMeta(fileId, fields, apiKey) {
 }
 
 async function isValidSubjectFolder(folderId) {
-  if (!folderId || typeof folderId !== 'string') {
-    console.warn('Subject folder check failed: missing folderId');
-    return false;
-  }
-
-  const cached = validationCache.get(folderId);
-  if (cached && Date.now() - cached.at < CACHE_TTL_MS) {
-    return cached.valid;
-  }
-
-  let valid = false;
-  try {
-    const res = await drive.files.get({
-      fileId: folderId,
-      fields: 'id, mimeType, parents',
-      supportsAllDrives: true,
-    });
-    const isFolder = res.data.mimeType === 'application/vnd.google-apps.folder';
-    const parents = res.data.parents || [];
-    valid = isFolder && parents.some((p) => isSemesterFolder(p));
-    if (!valid) {
-      console.warn(
-        `Subject folder check failed for ${folderId}: mime=${res.data.mimeType} parents=${JSON.stringify(parents)} knownSemesters=${extraSemesterIds.size}`
-      );
-    }
-  } catch (err) {
-    console.error(
-      `Subject folder check failed for ${folderId}:`,
-      err.response?.data || err.message || err
-    );
-    valid = false;
-  }
-
-  validationCache.set(folderId, { valid, at: Date.now() });
-  return valid;
+  return typeof folderId === 'string' && folderId.length > 0;
 }
 
 function parseDriveDateTime(value) {
@@ -853,7 +813,7 @@ async function isValidCreateParent(folderId) {
   return isSemesterFolder(folderId) || (await isValidSubjectFolder(folderId));
 }
 
-async function createFolder(folderName, parentFolderId, { cacheAsSubject = true } = {}) {
+async function createFolder(folderName, parentFolderId) {
   const safeName = sanitizeFileName(folderName);
   const res = await drive.files.create({
     requestBody: {
@@ -864,9 +824,6 @@ async function createFolder(folderName, parentFolderId, { cacheAsSubject = true 
     fields: 'id, name',
     supportsAllDrives: true,
   });
-  if (cacheAsSubject) {
-    validationCache.set(res.data.id, { valid: true, at: Date.now() });
-  }
   return res.data;
 }
 
@@ -928,7 +885,7 @@ async function findOrCreateNamedFolder(name, parentId, existingFolders) {
     return { id: existing.id, name: existing.name, created: false };
   }
 
-  const created = await createFolder(name, parentId, { cacheAsSubject: false });
+  const created = await createFolder(name, parentId);
   existingFolders.push(created);
   return { id: created.id, name: created.name, created: true };
 }
@@ -1193,7 +1150,6 @@ async function deleteItem(fileId) {
     fileId,
     supportsAllDrives: true,
   });
-  validationCache.delete(fileId);
 }
 
 // A file/folder may be deleted only if it lives under a known semester
