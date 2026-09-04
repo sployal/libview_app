@@ -15,6 +15,7 @@ import '../ui/adaptive_layout.dart';
 import '../ui/file_details.dart';
 import '../ui/file_sort.dart';
 import '../ui/folder_lock_dialog.dart';
+import '../ui/preview_overlay_icon.dart';
 import 'no_internet_screen.dart';
 import 'phone_pdf.dart';
 import 'web_view_screen.dart';
@@ -1582,7 +1583,11 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     );
   }
 
-  Widget _fileOverflowMenu(StudyMaterial file, {required bool isDownloading}) {
+  Widget _fileOverflowMenu(
+    StudyMaterial file, {
+    required bool isDownloading,
+    bool onPreview = false,
+  }) {
     if (_deletingIds.contains(file.id)) {
       return const Padding(
         padding: EdgeInsets.symmetric(horizontal: 12),
@@ -1601,10 +1606,12 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
       tooltip: 'File options',
       enabled: !isDownloading,
       padding: EdgeInsets.zero,
-      icon: const Icon(
-        Icons.more_vert_rounded,
-        color: Color(0xFF6366F1),
-      ),
+      icon: onPreview
+          ? const PreviewOverlayIcon(icon: Icons.more_vert_rounded)
+          : const Icon(
+              Icons.more_vert_rounded,
+              color: Color(0xFF6366F1),
+            ),
       onSelected: (value) {
         Future<void>.delayed(const Duration(milliseconds: 150), () {
           if (!mounted) return;
@@ -1665,21 +1672,32 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     );
   }
 
-  Widget _downloadButton(StudyMaterial file, {required bool isDownloading}) {
+  Widget _downloadButton(
+    StudyMaterial file, {
+    required bool isDownloading,
+    bool onPreview = false,
+  }) {
     final fileColor = _getFileColor(file.type);
     if (isDownloading) {
       return IconButton(
-        icon: const Icon(Icons.close_rounded),
+        icon: onPreview
+            ? const PreviewOverlayIcon(
+                icon: Icons.close_rounded,
+                color: Color(0xFFEF4444),
+              )
+            : const Icon(Icons.close_rounded),
         color: const Color(0xFFEF4444),
         onPressed: () => _cancelDownload(file),
         tooltip: 'Cancel download',
       );
     }
     return IconButton(
-      icon: Icon(
-        Icons.download_rounded,
-        color: fileColor,
-      ),
+      icon: onPreview
+          ? const PreviewOverlayIcon(icon: Icons.download_rounded)
+          : Icon(
+              Icons.download_rounded,
+              color: fileColor,
+            ),
       onPressed: () => _downloadFile(file),
       tooltip: 'Download',
     );
@@ -1884,6 +1902,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
                               child: _fileOverflowMenu(
                                 file,
                                 isDownloading: isDownloading,
+                                onPreview: true,
                               ),
                             ),
                             Positioned(
@@ -1892,6 +1911,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
                               child: _downloadButton(
                                 file,
                                 isDownloading: isDownloading,
+                                onPreview: true,
                               ),
                             ),
                           ],

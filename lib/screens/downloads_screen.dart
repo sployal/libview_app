@@ -8,6 +8,7 @@ import '../services/phone_document_service.dart';
 import '../ui/adaptive_layout.dart';
 import '../ui/file_details.dart';
 import '../ui/file_sort.dart';
+import '../ui/preview_overlay_icon.dart';
 import 'document_reader.dart';
 
 class DownloadsScreen extends StatefulWidget {
@@ -359,7 +360,12 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
     );
   }
 
-  Widget _overflowMenu(DownloadItem download, Color muted, {required bool isDark}) {
+  Widget _overflowMenu(
+    DownloadItem download,
+    Color muted, {
+    required bool isDark,
+    bool onPreview = false,
+  }) {
     const accent = Color(0xFF6366F1);
     final menu = isDark ? const Color(0xFF151B28) : Colors.white;
     final titleColor =
@@ -379,7 +385,9 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
         borderRadius: BorderRadius.circular(20),
         side: BorderSide(color: border),
       ),
-      icon: Icon(Icons.more_horiz_rounded, color: muted),
+      icon: onPreview
+          ? const PreviewOverlayIcon(icon: Icons.more_horiz_rounded)
+          : Icon(Icons.more_horiz_rounded, color: muted),
       onSelected: (value) {
         switch (value) {
           case 'info':
@@ -1019,7 +1027,12 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                                 ],
                               ),
                             )
-                          : _overflowMenu(download, muted, isDark: isDark),
+                          : _overflowMenu(
+                              download,
+                              muted,
+                              isDark: isDark,
+                              onPreview: true,
+                            ),
                     ),
                   ],
                 ),
