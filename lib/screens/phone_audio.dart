@@ -1,9 +1,12 @@
+import 'dart:io';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timeago/timeago.dart' as timeago;
+import 'package:video_player/video_player.dart';
 
 import '../services/phone_document_service.dart';
 import '../ui/adaptive_layout.dart';
@@ -34,6 +37,11 @@ class _PhoneAudioScreenState extends State<PhoneAudioScreen>
   String _query = '';
   String _kindFilter = 'All';
   String? _preparingName;
+  VideoPlayerController? _preview;
+  String? _previewKey;
+  bool _previewLoading = false;
+  bool _previewSeeking = false;
+  double _previewSeekMs = 0;
 
   bool get _selectionMode => _selected.isNotEmpty;
 
@@ -80,11 +88,16 @@ class _PhoneAudioScreenState extends State<PhoneAudioScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _searchController.dispose();
+    _disposePreview();
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused) {
+      _preview?.pause();
+    }
     if (state == AppLifecycleState.resumed &&
         !_isLoading &&
         !_selectionMode &&
@@ -180,8 +193,178 @@ class _PhoneAudioScreenState extends State<PhoneAudioScreen>
     });
   }
 
+  void _onPreviewTick() {
+    if (!mounted || _previewSeeking) return;
+    setState(() {});
+    final controller = _preview;
+    if (controller != null &&
+        controller.value.isInitialized &&
+        controller.value.position >= controller.value.duration &&
+        controller.value.duration > Duration.zero &&
+        !controller.value.isPlaying) {
+      controller.seekTo(Duration.zero);
+    }
+  }
+
+  Future<void> _disposePreview() async {
+    final controller = _preview;
+    _preview = null;
+    _previewKey = null;
+    _previewLoading = false;
+    _previewSeeking = false;
+    if (controller == null) return;
+    controller.removeListener(_onPreviewTick);
+    await controller.pause();
+    await controller.dispose();
+  }
+
+  Future<void> _togglePreview(PhoneDocument file) async {
+    if (_isPreparing) return;
+    if (_previewKey == file.key && _preview != null) {
+      if (_preview!.value.isPlaying) {
+        await _preview!.pause();
+      } else {
+        await _preview!.play();
+      }
+      if (mounted) setState(() {});
+      return;
+    }
+
+    await _disposePreview();
+    if (!mounted) return;
+    setState(() {
+      _previewKey = file.key;
+      _previewLoading = true;
+    });
+
+    try {
+      final path = await PhoneDocumentService.instance.copyToReadablePath(
+        fileName: file.name,
+        path: file.path,
+        uri: file.uri,
+      );
+      final controller = VideoPlayerController.file(File(path));
+      await controller.initialize();
+      controller.addListener(_onPreviewTick);
+      await controller.play();
+      if (!mounted) {
+        await controller.dispose();
+        return;
+      }
+      setState(() {
+        _preview = controller;
+        _previewLoading = false;
+      });
+    } catch (_) {
+      await _disposePreview();
+      if (!mounted) return;
+      setState(() {});
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not play this audio'),
+          backgroundColor: Color(0xFFEF4444),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  bool _isPreviewing(PhoneDocument file) => _previewKey == file.key;
+
+  bool _isPreviewPlaying(PhoneDocument file) =>
+      _isPreviewing(file) && (_preview?.value.isPlaying ?? false);
+
+  String _formatClock(Duration value) {
+    final two = (int n) => n.toString().padLeft(2, '0');
+    return '${two(value.inMinutes.remainder(60))}:${two(value.inSeconds.remainder(60))}';
+  }
+
+  Widget _previewSlider({required Color accent, required Color muted}) {
+    final controller = _preview;
+    final ready = controller != null && controller.value.isInitialized;
+    final duration = ready ? controller.value.duration : Duration.zero;
+    final maxMs = duration.inMilliseconds <= 0 ? 1 : duration.inMilliseconds;
+    final position = !ready
+        ? 0.0
+        : (_previewSeeking
+              ? _previewSeekMs
+              : controller.value.position.inMilliseconds
+                    .clamp(0, maxMs)
+                    .toDouble());
+    return Column(
+      children: [
+        SliderTheme(
+          data: SliderTheme.of(context).copyWith(
+            trackHeight: 3,
+            thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
+            overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
+          ),
+          child: Slider(
+            value: position,
+            max: maxMs.toDouble(),
+            activeColor: accent,
+            inactiveColor: muted.withValues(alpha: 0.28),
+            onChanged: !ready
+                ? null
+                : (value) {
+                    setState(() {
+                      _previewSeeking = true;
+                      _previewSeekMs = value;
+                    });
+                  },
+            onChangeEnd: !ready
+                ? null
+                : (value) async {
+                    await controller.seekTo(
+                      Duration(milliseconds: value.round()),
+                    );
+                    if (!mounted) return;
+                    setState(() => _previewSeeking = false);
+                  },
+          ),
+        ),
+        Row(
+          children: [
+            Text(
+              _formatClock(
+                Duration(milliseconds: position.round()),
+              ),
+              style: TextStyle(color: muted, fontSize: 11),
+            ),
+            const Spacer(),
+            Text(
+              _formatClock(duration),
+              style: TextStyle(color: muted, fontSize: 11),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _playButton(PhoneDocument file, {required Color color}) {
+    final loading = _isPreviewing(file) && _previewLoading;
+    final playing = _isPreviewPlaying(file);
+    return IconButton(
+      tooltip: playing ? 'Pause' : 'Listen',
+      onPressed: _isPreparing ? null : () => _togglePreview(file),
+      icon: loading
+          ? SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(strokeWidth: 2, color: color),
+            )
+          : Icon(
+              playing ? Icons.pause_circle_filled_rounded : Icons.play_circle_filled_rounded,
+              color: color,
+              size: 34,
+            ),
+    );
+  }
+
   Future<void> _prepareFiles(List<PhoneDocument> files) async {
     if (_isPreparing || files.isEmpty) return;
+    await _disposePreview();
     setState(() {
       _isPreparing = true;
       _preparingName = files.first.name;
@@ -645,59 +828,68 @@ class _PhoneAudioScreenState extends State<PhoneAudioScreen>
               onLongPress: _isPreparing ? null : () => _onLongPress(file),
               borderRadius: BorderRadius.circular(20),
               child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Row(
+                padding: const EdgeInsets.fromLTRB(14, 12, 6, 12),
+                child: Column(
                   children: [
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: selected
-                            ? const Color(0xFFEC4899)
-                            : color.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: preparing
-                          ? const Padding(
-                              padding: EdgeInsets.all(12),
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Color(0xFFEC4899),
+                    Row(
+                      children: [
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: selected
+                                ? const Color(0xFFEC4899)
+                                : color.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: preparing
+                              ? const Padding(
+                                  padding: EdgeInsets.all(12),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Color(0xFFEC4899),
+                                  ),
+                                )
+                              : Icon(
+                                  selected
+                                      ? Icons.check_rounded
+                                      : Icons.audiotrack_rounded,
+                                  color: selected ? Colors.white : color,
+                                  size: 24,
+                                ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                file.name,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: titleColor,
+                                ),
                               ),
-                            )
-                          : Icon(
-                              selected
-                                  ? Icons.check_rounded
-                                  : Icons.audiotrack_rounded,
-                              color: selected ? Colors.white : color,
-                              size: 24,
-                            ),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            file.name,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: titleColor,
-                            ),
+                              const SizedBox(height: 4),
+                              Text(
+                                meta,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(fontSize: 13, color: muted),
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 4),
-                          Text(
-                            meta,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(fontSize: 13, color: muted),
-                          ),
-                        ],
-                      ),
+                        ),
+                        _playButton(file, color: color),
+                      ],
                     ),
+                    if (_isPreviewing(file)) ...[
+                      const SizedBox(height: 4),
+                      _previewSlider(accent: color, muted: muted),
+                    ],
                   ],
                 ),
               ),
@@ -723,7 +915,7 @@ class _PhoneAudioScreenState extends State<PhoneAudioScreen>
         crossAxisCount: 2,
         mainAxisSpacing: 12,
         crossAxisSpacing: 12,
-        childAspectRatio: 0.86,
+        childAspectRatio: 0.72,
       ),
       itemCount: filtered.length,
       itemBuilder: (context, index) {
@@ -755,7 +947,7 @@ class _PhoneAudioScreenState extends State<PhoneAudioScreen>
                                 : Icon(
                                     Icons.audiotrack_rounded,
                                     color: color,
-                                    size: 48,
+                                    size: 40,
                                   ),
                           ),
                         ),
@@ -771,21 +963,35 @@ class _PhoneAudioScreenState extends State<PhoneAudioScreen>
                                 : muted,
                           ),
                         ),
+                        Positioned(
+                          bottom: 4,
+                          left: 4,
+                          right: 4,
+                          child: Center(
+                            child: _playButton(file, color: color),
+                          ),
+                        ),
                       ],
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
-                    child: Text(
-                      file.name,
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: titleColor,
-                      ),
+                    padding: const EdgeInsets.fromLTRB(8, 8, 8, 8),
+                    child: Column(
+                      children: [
+                        Text(
+                          file.name,
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: titleColor,
+                          ),
+                        ),
+                        if (_isPreviewing(file))
+                          _previewSlider(accent: color, muted: muted),
+                      ],
                     ),
                   ),
                 ],
