@@ -2072,8 +2072,8 @@ app.delete('/users/:uid', requireAuth, requireSystemAdmin, async (req, res) => {
 // Drive thumbnailLink URLs expire and often 403 in the browser. Proxy them
 // through the backend so folder cards can show real file previews.
 app.get('/files/:fileId/thumbnail', requireAuth, async (req, res) => {
-  if (!driveReadIsConfigured()) {
-    console.warn('Thumbnail rejected: GOOGLE_DRIVE_API_KEY is missing');
+  if (!driveIsConfigured() && !driveReadIsConfigured()) {
+    console.warn('Thumbnail rejected: Drive is not configured');
     return res.status(503).json({ error: 'Could not load preview' });
   }
 
@@ -2084,8 +2084,23 @@ app.get('/files/:fileId/thumbnail', requireAuth, async (req, res) => {
   }
 
   try {
-    const meta = await driveGetMeta(fileId, 'thumbnailLink,hasThumbnail', driveReadKey());
-    const thumbnailLink = meta.thumbnailLink;
+    let thumbnailLink = '';
+    if (driveIsConfigured()) {
+      try {
+        const meta = await drive.files.get({
+          fileId,
+          fields: 'thumbnailLink,hasThumbnail',
+          supportsAllDrives: true,
+        });
+        thumbnailLink = meta.data.thumbnailLink || '';
+      } catch (err) {
+        console.warn(`OAuth thumbnail meta failed for ${fileId}:`, err.message);
+      }
+    }
+    if (!thumbnailLink && driveReadIsConfigured()) {
+      const meta = await driveGetMeta(fileId, 'thumbnailLink,hasThumbnail', driveReadKey());
+      thumbnailLink = meta.thumbnailLink || '';
+    }
     if (!thumbnailLink) {
       console.warn(`Thumbnail missing for ${fileId}`);
       return res.status(404).json({ error: 'Could not load preview' });
@@ -2177,8 +2192,8 @@ function downloadUrlFromMeta(meta, apiKey, exportMime) {
 }
 
 app.get('/files/:fileId/download', requireAuth, async (req, res) => {
-  if (!driveDownloadIsConfigured()) {
-    console.warn('Download rejected: GOOGLE_DRIVE_DOWNLOAD_API_KEY is missing');
+  if (!driveIsConfigured() && !driveDownloadIsConfigured()) {
+    console.warn('Download rejected: Drive is not configured');
     return res.status(503).json({ error: 'Download failed' });
   }
 
@@ -2188,7 +2203,8 @@ app.get('/files/:fileId/download', requireAuth, async (req, res) => {
     return res.status(400).json({ error: 'Download failed' });
   }
 
-  const apiKey = driveDownloadKey();
+  const apiKey = driveDownloadIsConfigured() ? driveDownloadKey() : '';
+  const range = req.headers.range;
 
   try {
     if (!(await isManagedItem(fileId))) {
@@ -2196,15 +2212,27 @@ app.get('/files/:fileId/download', requireAuth, async (req, res) => {
       return res.status(403).json({ error: 'Download failed' });
     }
 
-    const meta = await driveGetMeta(
-      fileId,
-      'id, name, mimeType, size, webContentLink, exportLinks',
-      apiKey
-    );
+    let meta;
+    if (driveIsConfigured()) {
+      const got = await drive.files.get({
+        fileId,
+        fields: 'id, name, mimeType, size, webContentLink, exportLinks',
+        supportsAllDrives: true,
+      });
+      meta = got.data;
+    } else {
+      meta = await driveGetMeta(
+        fileId,
+        'id, name, mimeType, size, webContentLink, exportLinks',
+        apiKey
+      );
+    }
 
     const sourceMime = meta.mimeType || 'application/octet-stream';
     const sourceName = meta.name || 'download';
     const isGoogleApp = sourceMime.startsWith('application/vnd.google-apps.');
+    const isMedia =
+      sourceMime.startsWith('video/') || sourceMime.startsWith('audio/');
 
     let downloadMime = sourceMime;
     let downloadName = sourceName;
@@ -2214,24 +2242,78 @@ app.get('/files/:fileId/download', requireAuth, async (req, res) => {
       downloadName = exported.name;
     }
 
+    const disposition = isMedia
+      ? `inline; filename="${sanitizeFileName(downloadName).replace(/"/g, '')}"`
+      : contentDispositionAttachment(downloadName);
+
+    if (driveIsConfigured() && !isGoogleApp) {
+      try {
+        const opts = { responseType: 'stream' };
+        if (range) opts.headers = { Range: range };
+        const driveRes = await drive.files.get(
+          { fileId, alt: 'media', supportsAllDrives: true },
+          opts
+        );
+        const status = driveRes.status || (range ? 206 : 200);
+        res.status(status);
+        res.setHeader('Content-Type', downloadMime);
+        res.setHeader('Content-Disposition', disposition);
+        res.setHeader('Accept-Ranges', 'bytes');
+        res.setHeader('Cache-Control', 'private, no-store');
+        const headers = driveRes.headers || {};
+        if (headers['content-range']) {
+          res.setHeader('Content-Range', headers['content-range']);
+        }
+        if (headers['content-length']) {
+          res.setHeader('Content-Length', headers['content-length']);
+        } else if (!range && meta.size) {
+          res.setHeader('Content-Length', String(meta.size));
+        }
+        driveRes.data.on('error', (error) => {
+          console.error('Download stream failed:', error);
+          if (!res.headersSent) {
+            res.status(500).json({ error: 'Download failed' });
+          } else {
+            res.destroy(error);
+          }
+        });
+        driveRes.data.pipe(res);
+        return;
+      } catch (err) {
+        console.warn(`OAuth media stream failed for ${fileId}:`, err.message);
+      }
+    }
+
     const downloadUrl = downloadUrlFromMeta(meta, apiKey, downloadMime);
     if (!downloadUrl) {
       console.warn(`Download rejected: no URL for ${fileId} mime=${sourceMime}`);
       return res.status(400).json({ error: 'Download failed' });
     }
 
-    let fileRes = await fetch(downloadUrl, { redirect: 'follow' });
+    const upstreamHeaders = {};
+    if (range) upstreamHeaders.Range = range;
+    let fileRes = await fetch(downloadUrl, {
+      redirect: 'follow',
+      headers: upstreamHeaders,
+    });
     const mediaUrl = driveMediaUrl(fileId, apiKey);
     if (!fileRes.ok && !isGoogleApp && downloadUrl !== mediaUrl) {
-      fileRes = await fetch(mediaUrl, { redirect: 'follow' });
+      fileRes = await fetch(mediaUrl, {
+        redirect: 'follow',
+        headers: upstreamHeaders,
+      });
     }
     if (!fileRes.ok) {
       console.error('Download upstream failed:', fileRes.status, await fileRes.text().catch(() => ''));
       return res.status(fileRes.status === 404 ? 404 : 502).json({ error: 'Download failed' });
     }
 
+    res.status(fileRes.status === 206 ? 206 : 200);
     res.setHeader('Content-Type', downloadMime);
-    res.setHeader('Content-Disposition', contentDispositionAttachment(downloadName));
+    res.setHeader('Content-Disposition', disposition);
+    res.setHeader('Accept-Ranges', 'bytes');
+    const contentRange = fileRes.headers.get('content-range');
+    if (contentRange) res.setHeader('Content-Range', contentRange);
     const length = fileRes.headers.get('content-length') || (!isGoogleApp && meta.size ? String(meta.size) : '');
     if (length) {
       res.setHeader('Content-Length', length);

@@ -97,6 +97,19 @@ class UploadService {
     return token;
   }
 
+  Future<Map<String, String>> authHeaders() async {
+    return {'Authorization': 'Bearer ${await _idToken()}'};
+  }
+
+  static String thumbnailUrl(String fileId) => '$baseUrl/files/$fileId/thumbnail';
+
+  static String mediaStreamUrl(String fileId) => '$baseUrl/files/$fileId/download';
+
+  static bool isPlayableMediaType(String type) {
+    final upper = type.toUpperCase();
+    return upper == 'VID' || upper == 'AUD';
+  }
+
   static String? rfc3339(DateTime? date) {
     if (date == null) return null;
     return date.toUtc().toIso8601String();

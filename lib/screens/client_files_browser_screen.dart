@@ -17,9 +17,11 @@ import '../ui/file_details.dart';
 import '../ui/file_sort.dart';
 import '../ui/folder_lock_dialog.dart';
 import '../ui/preview_overlay_icon.dart';
+import '../ui/drive_thumbnail.dart';
 import 'no_internet_screen.dart';
 import 'phone_pdf.dart';
 import 'web_view_screen.dart';
+import 'media_player_screen.dart';
 
 class ClientFilesBrowserScreen extends StatefulWidget {
   final String workspaceName;
@@ -1677,14 +1679,6 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     }
   }
 
-  String _previewUrl(StudyMaterial file) {
-    final thumbnail = file.thumbnailUrl;
-    if (thumbnail != null && thumbnail.isNotEmpty) {
-      return thumbnail.replaceFirst(RegExp(r'=s\d+'), '=s400');
-    }
-    return 'https://drive.google.com/thumbnail?id=${file.id}&sz=w400';
-  }
-
   BoxDecoration _fileCardDecoration({required bool isDark}) {
     return BoxDecoration(
       color: isDark ? const Color(0xFF1F2937) : Colors.white,
@@ -1715,19 +1709,37 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
   }
 
   Widget _filePreview(StudyMaterial file, {required double iconSize}) {
-    return Image.network(
-      _previewUrl(file),
-      key: ValueKey('preview-${file.id}'),
-      fit: BoxFit.cover,
-      width: double.infinity,
-      height: double.infinity,
-      gaplessPlayback: true,
-      cacheWidth: 400,
-      errorBuilder: (_, __, ___) => _fileTypeFallback(file, iconSize: iconSize),
-      frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
-        if (wasSynchronouslyLoaded || frame != null) return child;
-        return _fileTypeFallback(file, iconSize: iconSize);
-      },
+    final fallback = _fileTypeFallback(file, iconSize: iconSize);
+    final preview = DriveThumbnail(
+      fileId: file.id,
+      fallback: fallback,
+    );
+    if (file.type != 'VID' && file.type != 'AUD') {
+      return preview;
+    }
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        preview,
+        ColoredBox(color: Colors.black.withValues(alpha: 0.18)),
+        Center(
+          child: Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.55),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              file.type == 'AUD'
+                  ? Icons.graphic_eq_rounded
+                  : Icons.play_arrow_rounded,
+              color: Colors.white,
+              size: 28,
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -2099,13 +2111,22 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
         _onSystemBack();
       },
       child: openedMaterial != null
-          ? WebViewScreen(
-              key: ValueKey(openedMaterial!.id),
-              url: openedMaterial!.downloadUrl!,
-              title: openedMaterial!.name,
-              subject: selectedSubject?.name ?? 'Unknown',
-              onBack: _closeWebView,
-            )
+          ? (UploadService.isPlayableMediaType(openedMaterial!.type)
+              ? MediaPlayerScreen(
+                  key: ValueKey(openedMaterial!.id),
+                  fileId: openedMaterial!.id,
+                  title: openedMaterial!.name,
+                  isAudio: openedMaterial!.type == 'AUD',
+                  subject: selectedSubject?.name ?? 'Unknown',
+                  onBack: _closeWebView,
+                )
+              : WebViewScreen(
+                  key: ValueKey(openedMaterial!.id),
+                  url: openedMaterial!.downloadUrl!,
+                  title: openedMaterial!.name,
+                  subject: selectedSubject?.name ?? 'Unknown',
+                  onBack: _closeWebView,
+                ))
           : selectedSubject != null
               ? _buildFilesView()
               : _buildSubjectsView(),
