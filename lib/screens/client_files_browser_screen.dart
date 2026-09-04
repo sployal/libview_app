@@ -572,6 +572,21 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     }
   }
 
+  bool _isListedFolderLocked(StudyMaterial file) {
+    return file.isFolder && _lockedFolderIds.contains(file.id);
+  }
+
+  Subject _subjectFromListedFolder(StudyMaterial folder) {
+    return GoogleDriveService.subjectFromFolder(
+      id: folder.id,
+      name: folder.name,
+      colorIndex: _folderTrail.length + 1,
+      modifiedAt: folder.modifiedAt,
+      createdAt: folder.createdAt,
+      isLocked: _isListedFolderLocked(folder),
+    );
+  }
+
   Future<void> _openListedItem(StudyMaterial material) async {
     if (material.isFolder) {
       await _openNestedFolder(material);
@@ -581,14 +596,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
   }
 
   Future<void> _openNestedFolder(StudyMaterial folder) async {
-    final subject = GoogleDriveService.subjectFromFolder(
-      id: folder.id,
-      name: folder.name,
-      colorIndex: _folderTrail.length + 1,
-      modifiedAt: folder.modifiedAt,
-      createdAt: folder.createdAt,
-      isLocked: _lockedFolderIds.contains(folder.id),
-    );
+    final subject = _subjectFromListedFolder(folder);
     final locked =
         subject.isLocked || _lockedFolderIds.contains(subject.folderId);
     if (locked && !_sessionUnlockedFolderIds.contains(subject.folderId)) {
@@ -1913,11 +1921,17 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     return ColoredBox(
       color: fileColor.withOpacity(0.1),
       child: Center(
-        child: Icon(
-          _getFileIcon(file.type),
-          color: fileColor,
-          size: iconSize,
-        ),
+        child: file.isFolder
+            ? _FolderGlyph(
+                color: fileColor,
+                size: iconSize,
+                locked: _isListedFolderLocked(file),
+              )
+            : Icon(
+                _getFileIcon(file.type),
+                color: fileColor,
+                size: iconSize,
+              ),
       ),
     );
   }
@@ -1983,7 +1997,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     final canMove = _canOfferMove(file);
     return PopupMenuButton<String>(
       tooltip: file.isFolder ? 'Folder options' : 'File options',
-      enabled: !isDownloading,
+      enabled: !isDownloading && !_isMutatingFolder,
       padding: EdgeInsets.zero,
       icon: onPreview
           ? const PreviewOverlayIcon(icon: Icons.more_vert_rounded)
@@ -2004,6 +2018,10 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
             );
           } else if (value == 'rename') {
             _renameMaterial(file);
+          } else if (value == 'lock') {
+            _lockUnitFolder(_subjectFromListedFolder(file));
+          } else if (value == 'unlock') {
+            _unlockUnitFolder(_subjectFromListedFolder(file));
           } else if (value == 'move') {
             _moveMaterial(file);
           } else if (value == 'delete') {
@@ -2032,6 +2050,28 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
             ],
           ),
         ),
+        if (file.isFolder)
+          _isListedFolderLocked(file)
+              ? const PopupMenuItem(
+                  value: 'unlock',
+                  child: Row(
+                    children: [
+                      Icon(Icons.lock_open_rounded, size: 18, color: Color(0xFF10B981)),
+                      SizedBox(width: 10),
+                      Text('Unlock folder'),
+                    ],
+                  ),
+                )
+              : const PopupMenuItem(
+                  value: 'lock',
+                  child: Row(
+                    children: [
+                      Icon(Icons.lock_rounded, size: 18, color: Color(0xFFF59E0B)),
+                      SizedBox(width: 10),
+                      Text('Lock folder'),
+                    ],
+                  ),
+                ),
         if (canMove)
           const PopupMenuItem(
             value: 'move',
@@ -2134,11 +2174,17 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
                         color: fileColor.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(14),
                       ),
-                      child: Icon(
-                        _getFileIcon(file.type),
-                        color: fileColor,
-                        size: 24,
-                      ),
+                      child: file.isFolder
+                          ? _FolderGlyph(
+                              color: fileColor,
+                              size: 40,
+                              locked: _isListedFolderLocked(file),
+                            )
+                          : Icon(
+                              _getFileIcon(file.type),
+                              color: fileColor,
+                              size: 24,
+                            ),
                     ),
                     const SizedBox(width: 14),
                     Expanded(
@@ -2184,7 +2230,11 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
                           else
                             Text(
                               file.isFolder
-                                  ? file.date
+                                  ? (_isListedFolderLocked(file)
+                                      ? (file.date.isEmpty
+                                          ? 'Locked'
+                                          : 'Locked · ${file.date}')
+                                      : file.date)
                                   : '${file.type} • ${file.size} • ${file.date}',
                               style: TextStyle(
                                 fontSize: 13,
