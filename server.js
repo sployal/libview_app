@@ -28,6 +28,9 @@ const EDUPAL_FOLDER_ID =
 const SYSTEM_ADMIN_EMAIL = String(process.env.SYSTEM_ADMIN_EMAIL || '')
   .trim()
   .toLowerCase();
+const GOOGLE_DRIVE_EMAIL = String(process.env.GOOGLE_DRIVE_EMAIL || '')
+  .trim()
+  .toLowerCase();
 
 const ADMIN_UIDS = new Set(
   (process.env.ADMIN_UIDS || '')
@@ -47,6 +50,8 @@ const CONFIG = {
   GOOGLE_OAUTH_CLIENT_ID: process.env.GOOGLE_OAUTH_CLIENT_ID,
   GOOGLE_OAUTH_CLIENT_SECRET: process.env.GOOGLE_OAUTH_CLIENT_SECRET,
   GOOGLE_OAUTH_REDIRECT_URI: process.env.GOOGLE_OAUTH_REDIRECT_URI, // e.g. https://edupal-backend.onrender.com/auth/google/callback
+  // Only this Google account's OAuth token is accepted for Drive.
+  GOOGLE_DRIVE_EMAIL,
 
   // Optional shared secret to protect the /auth/google entry point so
   // random visitors can't kick off the consent flow against your app.
@@ -565,13 +570,54 @@ const publicDrive = google.drive({ version: 'v3' });
 // a confusing Drive error when the token isn't ready yet.
 let driveReady = false;
 
+async function fetchAuthorizedDriveEmail() {
+  const about = await drive.about.get({
+    fields: 'user(emailAddress,displayName)',
+  });
+  return String(about.data.user?.emailAddress || '').trim().toLowerCase();
+}
+
+async function restorePreviousDriveAuth() {
+  oauth2Client.setCredentials({});
+  driveReady = false;
+  await initDriveAuth();
+}
+
 async function applyDriveOAuthTokens(tokens) {
   if (!tokens?.refresh_token) {
     return { ok: false, reason: 'missing_token' };
   }
 
-  await saveRefreshToken(tokens.refresh_token);
+  if (!CONFIG.GOOGLE_DRIVE_EMAIL) {
+    console.error('GOOGLE_DRIVE_EMAIL is not set — refusing to save a Drive OAuth token.');
+    return { ok: false, reason: 'email_not_configured' };
+  }
+
   oauth2Client.setCredentials(tokens);
+
+  let accountEmail = '';
+  try {
+    accountEmail = await fetchAuthorizedDriveEmail();
+  } catch (err) {
+    console.error('Could not read Drive account email from OAuth token:', err.message);
+    await restorePreviousDriveAuth();
+    return { ok: false, reason: 'email_check_failed' };
+  }
+
+  if (accountEmail !== CONFIG.GOOGLE_DRIVE_EMAIL) {
+    console.warn(
+      `Rejected Drive OAuth for ${accountEmail || '(unknown)'} — expected ${CONFIG.GOOGLE_DRIVE_EMAIL}.`
+    );
+    await restorePreviousDriveAuth();
+    return {
+      ok: false,
+      reason: 'wrong_account',
+      email: accountEmail,
+      expected: CONFIG.GOOGLE_DRIVE_EMAIL,
+    };
+  }
+
+  await saveRefreshToken(tokens.refresh_token);
   driveReady = true;
 
   try {
@@ -583,8 +629,10 @@ async function applyDriveOAuthTokens(tokens) {
     console.error('Failed to sync Engineering Drive folders after OAuth:', err.message);
   }
 
-  console.log('Google Drive OAuth refresh token saved to Firestore (config/googleDriveOAuth).');
-  return { ok: true };
+  console.log(
+    `Google Drive OAuth refresh token saved for ${accountEmail} (config/googleDriveOAuth).`
+  );
+  return { ok: true, email: accountEmail };
 }
 
 function driveIsConfigured() {
@@ -617,12 +665,33 @@ function driveDownloadKey() {
 // callback succeeds, so a redeploy is never required.
 async function initDriveAuth() {
   const refreshToken = await loadRefreshToken();
-  if (refreshToken) {
-    oauth2Client.setCredentials({ refresh_token: refreshToken });
-    driveReady = true;
-  } else {
+  if (!refreshToken) {
     driveReady = false;
+    return;
   }
+
+  oauth2Client.setCredentials({ refresh_token: refreshToken });
+
+  if (CONFIG.GOOGLE_DRIVE_EMAIL) {
+    try {
+      const accountEmail = await fetchAuthorizedDriveEmail();
+      if (accountEmail && accountEmail !== CONFIG.GOOGLE_DRIVE_EMAIL) {
+        console.error(
+          `Stored Drive token belongs to ${accountEmail}, expected ${CONFIG.GOOGLE_DRIVE_EMAIL}. ` +
+            'Drive writes are disabled until /auth/google is completed with the correct account.'
+        );
+        oauth2Client.setCredentials({});
+        driveReady = false;
+        return;
+      }
+    } catch (err) {
+      console.warn('Could not verify stored Drive account email:', err.message);
+    }
+  } else {
+    console.warn('GOOGLE_DRIVE_EMAIL is not set — /auth/google will not save a new token.');
+  }
+
+  driveReady = true;
 }
 
 // In-memory cache so repeated uploads to the same folder don't each
@@ -1510,7 +1579,13 @@ function escapeHtml(value) {
 }
 
 function oauthResultPage({ status, title, message }) {
-  const allowed = new Set(['success', 'failed', 'missing_token']);
+  const allowed = new Set([
+    'success',
+    'failed',
+    'missing_token',
+    'wrong_account',
+    'email_not_configured',
+  ]);
   const safeStatus = allowed.has(status) ? status : 'failed';
   const safeTitle = escapeHtml(title || 'Authorization');
   const safeMessage = escapeHtml(message || '');
@@ -1550,6 +1625,7 @@ app.get('/auth/google', (req, res) => {
     access_type: 'offline', // required to get a refresh_token back
     prompt: 'consent',      // forces Google to re-issue a refresh_token even on repeat auth
     scope: DRIVE_SCOPES,
+    ...(CONFIG.GOOGLE_DRIVE_EMAIL ? { login_hint: CONFIG.GOOGLE_DRIVE_EMAIL } : {}),
   });
 
   res.redirect(url);
@@ -1577,6 +1653,30 @@ app.get('/auth/google/callback', async (req, res) => {
     const { tokens } = await oauth2Client.getToken(code);
     const applied = await applyDriveOAuthTokens(tokens);
     if (!applied.ok) {
+      if (applied.reason === 'wrong_account') {
+        return res.status(403).send(oauthResultPage({
+          status: 'wrong_account',
+          title: 'Wrong Google account',
+          message:
+            `This server only accepts Drive access from ${applied.expected}. ` +
+            `You signed in as ${applied.email || 'a different account'}. ` +
+            'Close this screen and authorize with the configured Drive email.',
+        }));
+      }
+      if (applied.reason === 'email_not_configured') {
+        return res.status(500).send(oauthResultPage({
+          status: 'email_not_configured',
+          title: 'Drive email not configured',
+          message: 'Set GOOGLE_DRIVE_EMAIL in the server .env, then try again.',
+        }));
+      }
+      if (applied.reason === 'email_check_failed') {
+        return res.status(500).send(oauthResultPage({
+          status: 'failed',
+          title: 'Could not verify account',
+          message: 'The token was received but the Drive account email could not be read. Try again.',
+        }));
+      }
       return res.status(200).send(oauthResultPage({
         status: 'missing_token',
         title: 'No refresh token',
@@ -1588,7 +1688,7 @@ app.get('/auth/google/callback', async (req, res) => {
     res.send(oauthResultPage({
       status: 'success',
       title: 'Drive connected',
-      message: 'Access has been saved. You can return to Edupal.',
+      message: `Access has been saved for ${applied.email || CONFIG.GOOGLE_DRIVE_EMAIL}. You can return to Edupal.`,
     }));
   } catch (e) {
     console.error('Token exchange failed:', e);
