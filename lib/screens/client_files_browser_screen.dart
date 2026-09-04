@@ -101,6 +101,11 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
   static const _unitsSortPrefKey = 'client_folders_sort_mode';
 
   bool get _canManageFolders => true;
+  final Map<String, StudyMaterial> _selectedItems = {};
+  final Map<String, Subject> _selectedUnits = {};
+
+  bool get _fileSelectionMode => _selectedItems.isNotEmpty;
+  bool get _folderSelectionMode => _selectedUnits.isNotEmpty;
 
   @override
   void initState() {
@@ -235,7 +240,150 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     _fileTypeFilter = 'All';
   }
 
+  void _clearFileSelection() {
+    if (_selectedItems.isEmpty) return;
+    HapticFeedback.selectionClick();
+    setState(_selectedItems.clear);
+  }
+
+  void _clearFolderSelection() {
+    if (_selectedUnits.isEmpty) return;
+    HapticFeedback.selectionClick();
+    setState(_selectedUnits.clear);
+  }
+
+  void _toggleSelectedFile(StudyMaterial file) {
+    HapticFeedback.selectionClick();
+    setState(() {
+      if (_selectedItems.containsKey(file.id)) {
+        _selectedItems.remove(file.id);
+      } else {
+        _selectedItems[file.id] = file;
+      }
+    });
+  }
+
+  void _toggleSelectedUnit(Subject subject) {
+    HapticFeedback.selectionClick();
+    setState(() {
+      if (_selectedUnits.containsKey(subject.folderId)) {
+        _selectedUnits.remove(subject.folderId);
+      } else {
+        _selectedUnits[subject.folderId] = subject;
+      }
+    });
+  }
+
+  void _onListedItemTap(StudyMaterial file, {required bool isDownloading}) {
+    if (_fileSelectionMode) {
+      _toggleSelectedFile(file);
+      return;
+    }
+    if (isDownloading) return;
+    _openListedItem(file);
+  }
+
+  void _onListedItemLongPress(StudyMaterial file) {
+    _toggleSelectedFile(file);
+  }
+
+  void _onUnitTap(Subject subject) {
+    if (_folderSelectionMode) {
+      _toggleSelectedUnit(subject);
+      return;
+    }
+    _openUnit(subject);
+  }
+
+  void _onUnitLongPress(Subject subject) {
+    _toggleSelectedUnit(subject);
+  }
+
+  void _selectAllVisibleFiles() {
+    final visible = _visibleFiles;
+    HapticFeedback.selectionClick();
+    setState(() {
+      if (_selectedItems.length == visible.length) {
+        _selectedItems.clear();
+        return;
+      }
+      for (final file in visible) {
+        _selectedItems[file.id] = file;
+      }
+    });
+  }
+
+  void _selectAllVisibleUnits() {
+    final visible = _visibleUnits;
+    HapticFeedback.selectionClick();
+    setState(() {
+      if (_selectedUnits.length == visible.length) {
+        _selectedUnits.clear();
+        return;
+      }
+      for (final subject in visible) {
+        _selectedUnits[subject.folderId] = subject;
+      }
+    });
+  }
+
+  List<StudyMaterial> get _selectedFileList => _selectedItems.values.toList();
+
+  List<Subject> get _selectedUnitList => _selectedUnits.values.toList();
+
+  List<MoveFileTarget> _commonMoveTargetsForFiles(List<StudyMaterial> items) {
+    if (items.isEmpty) return const [];
+    final selectedFolderIds = {
+      for (final item in items)
+        if (item.isFolder) item.id,
+    };
+    Set<String>? commonIds;
+    final byId = <String, MoveFileTarget>{};
+    for (final item in items) {
+      final targets = item.isFolder
+          ? _moveFolderTargets(folderId: item.id, fromFiles: true)
+          : _moveTargets();
+      for (final target in targets) {
+        byId[target.id] = target;
+      }
+      final ids = targets.map((target) => target.id).toSet()
+        ..removeAll(selectedFolderIds);
+      commonIds = commonIds == null ? ids : commonIds.intersection(ids);
+    }
+    if (commonIds == null || commonIds.isEmpty) return const [];
+    return [
+      for (final id in commonIds)
+        if (byId[id] != null) byId[id]!,
+    ];
+  }
+
+  List<MoveFileTarget> _commonMoveTargetsForUnits(List<Subject> items) {
+    if (items.isEmpty) return const [];
+    final selectedIds = {
+      for (final item in items) item.folderId,
+    };
+    Set<String>? commonIds;
+    final byId = <String, MoveFileTarget>{};
+    for (final item in items) {
+      final targets = _moveFolderTargets(
+        folderId: item.folderId,
+        fromFiles: false,
+      );
+      for (final target in targets) {
+        byId[target.id] = target;
+      }
+      final ids = targets.map((target) => target.id).toSet()..removeAll(selectedIds);
+      commonIds = commonIds == null ? ids : commonIds.intersection(ids);
+    }
+    if (commonIds == null || commonIds.isEmpty) return const [];
+    return [
+      for (final id in commonIds)
+        if (byId[id] != null) byId[id]!,
+    ];
+  }
+
   Future<void> _openUnit(Subject subject) async {
+    _selectedUnits.clear();
     final locked = subject.isLocked || _lockedFolderIds.contains(subject.folderId);
     if (locked && !_sessionUnlockedFolderIds.contains(subject.folderId)) {
       final opened = await _promptOpenLockedFolder(subject);
@@ -286,6 +434,8 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
             ..clear()
             ..addAll(lockedIds);
           isLoading = false;
+          final ids = withLocks.map((subject) => subject.folderId).toSet();
+          _selectedUnits.removeWhere((id, _) => !ids.contains(id));
         });
         _openInitialFolderIfNeeded(withLocks);
       } else {
@@ -350,6 +500,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
   void _removeFolder(Subject subject) {
     setState(() {
       subjects.removeWhere((item) => item.folderId == subject.folderId);
+      _selectedUnits.remove(subject.folderId);
       _lockedFolderIds.remove(subject.folderId);
       _sessionUnlockedFolderIds.remove(subject.folderId);
       if (selectedSubject?.folderId == subject.folderId) {
@@ -544,6 +695,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
       currentFiles = [];
       downloadingFiles.clear();
       downloadProgress.clear();
+      _selectedItems.clear();
       _resetFileSearch();
     });
 
@@ -668,7 +820,10 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
   }
 
   // NEW: Download individual file
-  Future<void> _downloadFile(StudyMaterial material) async {
+  Future<void> _downloadFile(
+    StudyMaterial material, {
+    bool notify = true,
+  }) async {
     if (material.downloadUrl == null || material.downloadUrl!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -740,6 +895,8 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
       downloadingFiles[material.id] = false;
       downloadProgress.remove(material.id);
     });
+
+    if (!notify) return;
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -1980,6 +2137,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
       currentFiles = [];
       downloadingFiles.clear();
       downloadProgress.clear();
+      _selectedItems.clear();
       _resetFileSearch();
     });
   }
@@ -1993,6 +2151,14 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
   }
 
   Future<void> _onSystemBack() async {
+    if (_fileSelectionMode) {
+      _clearFileSelection();
+      return;
+    }
+    if (_folderSelectionMode) {
+      _clearFolderSelection();
+      return;
+    }
     if (openedMaterial != null) {
       _closeWebView();
       return;
@@ -2050,10 +2216,20 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     }
   }
 
-  BoxDecoration _fileCardDecoration({required bool isDark}) {
+  BoxDecoration _fileCardDecoration({
+    required bool isDark,
+    bool selected = false,
+  }) {
     return BoxDecoration(
-      color: isDark ? const Color(0xFF1F2937) : Colors.white,
+      color: selected
+          ? (isDark
+              ? const Color(0xFF312E81).withOpacity(0.45)
+              : const Color(0xFFEEF2FF))
+          : (isDark ? const Color(0xFF1F2937) : Colors.white),
       borderRadius: BorderRadius.circular(20),
+      border: selected
+          ? Border.all(color: const Color(0xFF6366F1), width: 1.5)
+          : null,
       boxShadow: [
         if (!isDark)
           BoxShadow(
@@ -2123,6 +2299,530 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     );
   }
 
+  void _applyListedItemAction(StudyMaterial file, String value) {
+    if (value == 'select') {
+      _toggleSelectedFile(file);
+    } else if (value == 'open') {
+      _openListedItem(file);
+    } else if (value == 'info') {
+      showFileDetailsDialog(
+        context: context,
+        info: FileDetailsInfo.fromStudyMaterial(
+          file,
+          folderName: selectedSubject?.name,
+        ),
+      );
+    } else if (value == 'rename') {
+      _renameMaterial(file);
+    } else if (value == 'lock') {
+      _lockUnitFolder(_subjectFromListedFolder(file));
+    } else if (value == 'unlock') {
+      _unlockUnitFolder(_subjectFromListedFolder(file));
+    } else if (value == 'move') {
+      if (file.isFolder) {
+        _moveListedFolder(file);
+      } else {
+        _moveMaterial(file);
+      }
+    } else if (value == 'download') {
+      _downloadFile(file);
+    } else if (value == 'cancel') {
+      _cancelDownload(file);
+    } else if (value == 'delete') {
+      _confirmDelete(file);
+    }
+  }
+
+  void _applyUnitFolderAction(Subject subject, String value) {
+    if (value == 'select') {
+      _toggleSelectedUnit(subject);
+    } else if (value == 'open') {
+      _openUnit(subject);
+    } else if (value == 'info') {
+      showFileDetailsDialog(
+        context: context,
+        info: FileDetailsInfo.fromSubject(subject),
+      );
+    } else if (value == 'rename') {
+      _renameUnitFolder(subject);
+    } else if (value == 'lock') {
+      _lockUnitFolder(subject);
+    } else if (value == 'unlock') {
+      _unlockUnitFolder(subject);
+    } else if (value == 'move') {
+      _moveUnitFolder(subject);
+    } else if (value == 'delete') {
+      _confirmDeleteUnitFolder(subject);
+    }
+  }
+
+  Future<void> _downloadSelectedFiles() async {
+    final files = _selectedFileList.where((file) => !file.isFolder).toList();
+    if (files.isEmpty) {
+      _showMessage('Select files to download', isError: true);
+      return;
+    }
+    for (final file in files) {
+      if (!mounted) return;
+      await _downloadFile(file, notify: false);
+    }
+    if (!mounted) return;
+    _showMessage(
+      files.length == 1
+          ? 'Download finished for "${files.first.name}"'
+          : 'Finished downloading ${files.length} files',
+    );
+  }
+
+  Future<void> _moveSelectedFiles() async {
+    if (!_canManageFolders) return;
+    final items = _selectedFileList;
+    if (items.isEmpty) return;
+    final targets = _commonMoveTargetsForFiles(items);
+    if (targets.isEmpty) {
+      _showMessage('No shared destination for the selection', isError: true);
+      return;
+    }
+    final folders = items.where((item) => item.isFolder).length;
+    final files = items.length - folders;
+    final label = items.length == 1
+        ? items.first.name
+        : folders > 0 && files > 0
+            ? '${items.length} items'
+            : folders > 0
+                ? '$folders folders'
+                : '$files files';
+    final destination = await showMoveFileDialog(
+      context: context,
+      fileName: label,
+      targets: targets,
+      isFolder: files == 0,
+    );
+    if (destination == null || !mounted) return;
+
+    var moved = 0;
+    for (final item in List<StudyMaterial>.from(items)) {
+      if (!mounted) return;
+      try {
+        if (item.isFolder) {
+          await UploadService.instance.moveFile(
+            fileId: item.id,
+            parentFolderId: destination.id,
+          );
+        } else {
+          await UploadService.instance.moveFile(
+            fileId: item.id,
+            parentFolderId: destination.id,
+          );
+        }
+        moved += 1;
+        if (!mounted) return;
+        setState(() {
+          currentFiles.removeWhere((file) => file.id == item.id);
+          _selectedItems.remove(item.id);
+          if (!item.isFolder &&
+              selectedSubject != null &&
+              selectedSubject!.fileCount > 0) {
+            selectedSubject!.fileCount -= 1;
+          }
+        });
+      } on UploadException catch (e) {
+        _showMessage(e.message, isError: true);
+        return;
+      } catch (_) {
+        _showMessage('Failed to move "${item.name}"', isError: true);
+        return;
+      }
+    }
+    if (!mounted) return;
+    _showMessage(
+      destination.isMain
+          ? 'Moved $moved ${moved == 1 ? 'item' : 'items'} to ${destination.name}'
+          : 'Moved $moved ${moved == 1 ? 'item' : 'items'} to "${destination.name}"',
+    );
+  }
+
+  Future<void> _deleteSelectedFiles() async {
+    if (!_canManageFolders) return;
+    final items = _selectedFileList;
+    if (items.isEmpty) return;
+    final folders = items.where((item) => item.isFolder).length;
+    final files = items.length - folders;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      useRootNavigator: true,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Text(
+            items.length == 1
+                ? (items.first.isFolder ? 'Delete folder?' : 'Delete material?')
+                : 'Delete ${items.length} items?',
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          content: Text(
+            items.length == 1
+                ? (items.first.isFolder
+                    ? '“${items.first.name}” and everything inside it will be permanently removed.'
+                    : '“${items.first.name}” will be permanently removed from this folder.')
+                : 'This will permanently delete $files ${files == 1 ? 'file' : 'files'}'
+                    '${folders == 0 ? '' : ' and $folders ${folders == 1 ? 'folder' : 'folders'}'}'
+                    '${folders > 0 ? ', including folder contents' : ''}.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFFEF4444),
+              ),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirmed != true) return;
+    var deleted = 0;
+    for (final item in List<StudyMaterial>.from(items)) {
+      if (!mounted) return;
+      try {
+        if (_isLiveFolder) {
+          await UploadService.instance.deleteFile(item.id);
+        }
+        deleted += 1;
+        if (!mounted) return;
+        setState(() {
+          currentFiles.removeWhere((file) => file.id == item.id);
+          _selectedItems.remove(item.id);
+          _deletingIds.remove(item.id);
+          if (!item.isFolder &&
+              selectedSubject != null &&
+              selectedSubject!.fileCount > 0) {
+            selectedSubject!.fileCount -= 1;
+          }
+        });
+      } on UploadException catch (e) {
+        _showMessage(e.message, isError: true);
+        return;
+      } catch (_) {
+        _showMessage('Failed to delete ${item.name}', isError: true);
+        return;
+      }
+    }
+    if (!mounted) return;
+    _showMessage('Deleted $deleted ${deleted == 1 ? 'item' : 'items'}');
+  }
+
+  Future<void> _moveSelectedUnits() async {
+    if (!_canManageFolders) return;
+    final items = _selectedUnitList;
+    if (items.isEmpty) return;
+    final targets = _commonMoveTargetsForUnits(items);
+    if (targets.isEmpty) {
+      _showMessage('No shared destination for the selection', isError: true);
+      return;
+    }
+    final destination = await showMoveFileDialog(
+      context: context,
+      fileName: items.length == 1 ? items.first.name : '${items.length} folders',
+      targets: targets,
+      isFolder: true,
+    );
+    if (destination == null || !mounted) return;
+    var moved = 0;
+    for (final subject in List<Subject>.from(items)) {
+      if (!mounted) return;
+      try {
+        await UploadService.instance.moveFile(
+          fileId: subject.folderId,
+          parentFolderId: destination.id,
+        );
+        moved += 1;
+        if (!mounted) return;
+        setState(() {
+          subjects.removeWhere((item) => item.folderId == subject.folderId);
+          _selectedUnits.remove(subject.folderId);
+        });
+      } on UploadException catch (e) {
+        _showMessage(e.message, isError: true);
+        return;
+      } catch (_) {
+        _showMessage('Failed to move "${subject.name}"', isError: true);
+        return;
+      }
+    }
+    if (!mounted) return;
+    _showMessage('Moved $moved ${moved == 1 ? 'folder' : 'folders'} to "${destination.name}"');
+  }
+
+  Future<void> _deleteSelectedUnits() async {
+    if (!_canManageFolders) return;
+    final items = _selectedUnitList;
+    if (items.isEmpty) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Text(
+            items.length == 1 ? 'Delete folder' : 'Delete ${items.length} folders',
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          content: Text(
+            items.length == 1
+                ? 'This will permanently delete "${items.first.name}" and all files inside it.'
+                : 'This will permanently delete ${items.length} folders and everything inside them.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFFEF4444),
+              ),
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirmed != true) return;
+    var deleted = 0;
+    for (final subject in List<Subject>.from(items)) {
+      if (!mounted) return;
+      try {
+        await UploadService.instance.deleteFile(subject.folderId);
+        deleted += 1;
+        if (!mounted) return;
+        _selectedUnits.remove(subject.folderId);
+        _removeFolder(subject);
+      } on UploadException catch (e) {
+        _showMessage(e.message, isError: true);
+        return;
+      } catch (_) {
+        _showMessage('Failed to delete folder', isError: true);
+        return;
+      }
+    }
+    if (!mounted) return;
+    _showMessage('Deleted $deleted ${deleted == 1 ? 'folder' : 'folders'}');
+  }
+
+  List<_ItemActionChoice> _listedItemActions(
+    StudyMaterial file, {
+    required bool isDownloading,
+  }) {
+    final itemLabel = file.isFolder ? 'folder' : 'file';
+    final canMove = file.isFolder
+        ? _canOfferMoveFolder(folderId: file.id, fromFiles: true)
+        : _canOfferMove(file);
+    final fileColor = _getFileColor(file.type);
+    return [
+      if (!_fileSelectionMode)
+        const _ItemActionChoice(
+          value: 'select',
+          icon: Icons.check_circle_outline_rounded,
+          label: 'Select',
+          color: Color(0xFF6366F1),
+        ),
+      if (!isDownloading)
+        _ItemActionChoice(
+          value: 'open',
+          icon: file.isFolder
+              ? Icons.folder_open_rounded
+              : Icons.open_in_new_rounded,
+          label: file.isFolder ? 'Open folder' : 'Open file',
+        ),
+      _ItemActionChoice(
+        value: 'info',
+        icon: Icons.info_outline_rounded,
+        label: file.isFolder ? 'Folder info' : 'File info',
+        color: const Color(0xFF6366F1),
+      ),
+      if (!file.isFolder && isDownloading)
+        const _ItemActionChoice(
+          value: 'cancel',
+          icon: Icons.close_rounded,
+          label: 'Cancel download',
+          color: Color(0xFFEF4444),
+        ),
+      if (!file.isFolder && !isDownloading)
+        _ItemActionChoice(
+          value: 'download',
+          icon: Icons.download_rounded,
+          label: 'Download',
+          color: fileColor,
+        ),
+      if (_canManageFolders && !isDownloading) ...[
+        _ItemActionChoice(
+          value: 'rename',
+          icon: Icons.drive_file_rename_outline_rounded,
+          label: 'Rename $itemLabel',
+        ),
+        if (file.isFolder)
+          _isListedFolderLocked(file)
+              ? const _ItemActionChoice(
+                  value: 'unlock',
+                  icon: Icons.lock_open_rounded,
+                  label: 'Unlock folder',
+                  color: Color(0xFF10B981),
+                )
+              : const _ItemActionChoice(
+                  value: 'lock',
+                  icon: Icons.lock_rounded,
+                  label: 'Lock folder',
+                  color: Color(0xFFF59E0B),
+                ),
+        if (canMove)
+          _ItemActionChoice(
+            value: 'move',
+            icon: Icons.drive_file_move_rounded,
+            label: file.isFolder ? 'Move folder' : 'Move file',
+            color: const Color(0xFF6366F1),
+          ),
+        const _ItemActionChoice(
+          value: 'delete',
+          icon: Icons.delete_rounded,
+          label: 'Delete',
+          color: Color(0xFFEF4444),
+        ),
+      ],
+    ];
+  }
+
+  List<_ItemActionChoice> _unitFolderActions(Subject subject) {
+    return [
+      if (!_folderSelectionMode)
+        const _ItemActionChoice(
+          value: 'select',
+          icon: Icons.check_circle_outline_rounded,
+          label: 'Select',
+          color: Color(0xFF6366F1),
+        ),
+      const _ItemActionChoice(
+        value: 'open',
+        icon: Icons.folder_open_rounded,
+        label: 'Open folder',
+      ),
+      const _ItemActionChoice(
+        value: 'info',
+        icon: Icons.info_outline_rounded,
+        label: 'Folder info',
+        color: Color(0xFF6366F1),
+      ),
+      if (_canManageFolders) ...[
+        if (subject.isLocked)
+          const _ItemActionChoice(
+            value: 'unlock',
+            icon: Icons.lock_open_rounded,
+            label: 'Unlock folder',
+            color: Color(0xFF10B981),
+          )
+        else
+          const _ItemActionChoice(
+            value: 'lock',
+            icon: Icons.lock_rounded,
+            label: 'Lock folder',
+            color: Color(0xFFF59E0B),
+          ),
+        const _ItemActionChoice(
+          value: 'rename',
+          icon: Icons.drive_file_rename_outline_rounded,
+          label: 'Rename folder',
+        ),
+        if (_canOfferMoveFolder(folderId: subject.folderId, fromFiles: false))
+          const _ItemActionChoice(
+            value: 'move',
+            icon: Icons.drive_file_move_rounded,
+            label: 'Move folder',
+            color: Color(0xFF6366F1),
+          ),
+        const _ItemActionChoice(
+          value: 'delete',
+          icon: Icons.delete_rounded,
+          label: 'Delete folder',
+          color: Color(0xFFEF4444),
+        ),
+      ],
+    ];
+  }
+
+  Future<void> _showItemActionSheet({
+    required String title,
+    required String subtitle,
+    required IconData leadingIcon,
+    required Color leadingColor,
+    required List<_ItemActionChoice> actions,
+    required ValueChanged<String> onSelected,
+  }) async {
+    if (actions.isEmpty) return;
+    HapticFeedback.mediumImpact();
+    final value = await showModalBottomSheet<String>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.45),
+      builder: (context) => _ItemActionSheet(
+        title: title,
+        subtitle: subtitle,
+        leadingIcon: leadingIcon,
+        leadingColor: leadingColor,
+        actions: actions,
+      ),
+    );
+    if (value == null || !mounted) return;
+    onSelected(value);
+  }
+
+  Future<void> _showListedItemActions(
+    StudyMaterial file, {
+    required bool isDownloading,
+  }) async {
+    if (_deletingIds.contains(file.id) ||
+        _movingIds.contains(file.id) ||
+        _isMutatingFolder) {
+      return;
+    }
+    final fileColor = _getFileColor(file.type);
+    await _showItemActionSheet(
+      title: file.name,
+      subtitle: file.isFolder
+          ? (_isListedFolderLocked(file) ? 'Locked folder' : 'Folder')
+          : '${file.type} • ${file.size}',
+      leadingIcon: file.isFolder
+          ? Icons.folder_rounded
+          : _getFileIcon(file.type),
+      leadingColor: fileColor,
+      actions: _listedItemActions(file, isDownloading: isDownloading),
+      onSelected: (value) => _applyListedItemAction(file, value),
+    );
+  }
+
+  Future<void> _showUnitFolderActions(Subject subject) async {
+    if (_isMutatingFolder) return;
+    await _showItemActionSheet(
+      title: subject.name,
+      subtitle:
+          '${subject.fileCount} ${subject.fileCount == 1 ? 'file' : 'files'}'
+          '${subject.isLocked ? ' • Locked' : ''}',
+      leadingIcon: Icons.folder_rounded,
+      leadingColor: subject.color,
+      actions: _unitFolderActions(subject),
+      onSelected: (value) => _applyUnitFolderAction(subject, value),
+    );
+  }
+
   Widget _fileOverflowMenu(
     StudyMaterial file, {
     required bool isDownloading,
@@ -2142,6 +2842,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
       );
     }
     if (!_canManageFolders) return const SizedBox.shrink();
+    if (_fileSelectionMode) return const SizedBox.shrink();
     final itemLabel = file.isFolder ? 'folder' : 'file';
     final canMove = file.isFolder
         ? _canOfferMoveFolder(folderId: file.id, fromFiles: true)
@@ -2159,32 +2860,20 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
       onSelected: (value) {
         Future<void>.delayed(const Duration(milliseconds: 150), () {
           if (!mounted) return;
-          if (value == 'info') {
-            showFileDetailsDialog(
-              context: context,
-              info: FileDetailsInfo.fromStudyMaterial(
-                file,
-                folderName: selectedSubject?.name,
-              ),
-            );
-          } else if (value == 'rename') {
-            _renameMaterial(file);
-          } else if (value == 'lock') {
-            _lockUnitFolder(_subjectFromListedFolder(file));
-          } else if (value == 'unlock') {
-            _unlockUnitFolder(_subjectFromListedFolder(file));
-          } else if (value == 'move') {
-            if (file.isFolder) {
-              _moveListedFolder(file);
-            } else {
-              _moveMaterial(file);
-            }
-          } else if (value == 'delete') {
-            _confirmDelete(file);
-          }
+          _applyListedItemAction(file, value);
         });
       },
       itemBuilder: (context) => [
+        const PopupMenuItem(
+          value: 'select',
+          child: Row(
+            children: [
+              Icon(Icons.check_circle_outline_rounded, size: 18, color: Color(0xFF6366F1)),
+              SizedBox(width: 10),
+              Text('Select'),
+            ],
+          ),
+        ),
         PopupMenuItem(
           value: 'info',
           child: Row(
@@ -2300,7 +2989,8 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     return ListView.builder(
       padding: AdaptiveLayout.pagePadding(context).copyWith(
         top: 12,
-        bottom: AdaptiveLayout.bottomClearance(context),
+        bottom: AdaptiveLayout.bottomClearance(context) +
+            (_fileSelectionMode ? 96 : 0),
       ),
       itemCount: _visibleFiles.length,
       itemBuilder: (context, index) {
@@ -2308,15 +2998,20 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
         final fileColor = _getFileColor(file.type);
         final isDownloading = downloadingFiles[file.id] ?? false;
         final progress = downloadProgress[file.id] ?? 0.0;
+        final selected = _selectedItems.containsKey(file.id);
 
         return Container(
           key: ValueKey(file.id),
           margin: const EdgeInsets.only(bottom: 12),
-          decoration: _fileCardDecoration(isDark: isDark),
+          decoration: _fileCardDecoration(isDark: isDark, selected: selected),
           child: Material(
             color: Colors.transparent,
             child: InkWell(
-              onTap: isDownloading ? null : () => _openListedItem(file),
+              onTap: () => _onListedItemTap(
+                file,
+                isDownloading: isDownloading,
+              ),
+              onLongPress: () => _onListedItemLongPress(file),
               borderRadius: BorderRadius.circular(20),
               child: Padding(
                 padding: const EdgeInsets.all(14),
@@ -2326,20 +3021,28 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
                       width: 48,
                       height: 48,
                       decoration: BoxDecoration(
-                        color: fileColor.withOpacity(0.12),
+                        color: selected
+                            ? const Color(0xFF6366F1)
+                            : fileColor.withOpacity(0.12),
                         borderRadius: BorderRadius.circular(14),
                       ),
-                      child: file.isFolder
-                          ? _FolderGlyph(
-                              color: fileColor,
-                              size: 40,
-                              locked: _isListedFolderLocked(file),
-                            )
-                          : Icon(
-                              _getFileIcon(file.type),
-                              color: fileColor,
+                      child: selected
+                          ? const Icon(
+                              Icons.check_rounded,
+                              color: Colors.white,
                               size: 24,
-                            ),
+                            )
+                          : file.isFolder
+                              ? _FolderGlyph(
+                                  color: fileColor,
+                                  size: 40,
+                                  locked: _isListedFolderLocked(file),
+                                )
+                              : Icon(
+                                  _getFileIcon(file.type),
+                                  color: fileColor,
+                                  size: 24,
+                                ),
                     ),
                     const SizedBox(width: 14),
                     Expanded(
@@ -2400,13 +3103,24 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    _fileOverflowMenu(file, isDownloading: isDownloading),
-                    _downloadButton(file, isDownloading: isDownloading),
-                    Icon(
-                      Icons.arrow_forward_ios_rounded,
-                      size: 14,
-                      color: muted,
-                    ),
+                    if (_fileSelectionMode)
+                      Icon(
+                        selected
+                            ? Icons.check_circle_rounded
+                            : Icons.circle_outlined,
+                        color: selected
+                            ? const Color(0xFF6366F1)
+                            : const Color(0xFF9CA3AF),
+                      )
+                    else ...[
+                      _fileOverflowMenu(file, isDownloading: isDownloading),
+                      _downloadButton(file, isDownloading: isDownloading),
+                      Icon(
+                        Icons.arrow_forward_ios_rounded,
+                        size: 14,
+                        color: muted,
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -2428,7 +3142,8 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
         return GridView.builder(
           padding: AdaptiveLayout.pagePadding(context).copyWith(
         top: 12,
-        bottom: AdaptiveLayout.bottomClearance(context),
+        bottom: AdaptiveLayout.bottomClearance(context) +
+            (_fileSelectionMode ? 96 : 0),
       ),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: crossAxisCount,
@@ -2441,14 +3156,19 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
             final file = _visibleFiles[index];
             final isDownloading = downloadingFiles[file.id] ?? false;
             final progress = downloadProgress[file.id] ?? 0.0;
+            final selected = _selectedItems.containsKey(file.id);
 
             return Container(
               key: ValueKey(file.id),
-              decoration: _fileCardDecoration(isDark: isDark),
+              decoration: _fileCardDecoration(isDark: isDark, selected: selected),
               child: Material(
                 color: Colors.transparent,
                 child: InkWell(
-                  onTap: isDownloading ? null : () => _openListedItem(file),
+                  onTap: () => _onListedItemTap(
+                    file,
+                    isDownloading: isDownloading,
+                  ),
+                  onLongPress: () => _onListedItemLongPress(file),
                   borderRadius: BorderRadius.circular(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2496,24 +3216,45 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
                                   ),
                                 ),
                               ),
-                            Positioned(
-                              top: 0,
-                              right: 0,
-                              child: _fileOverflowMenu(
-                                file,
-                                isDownloading: isDownloading,
-                                onPreview: true,
+                            if (_fileSelectionMode)
+                              Positioned(
+                                top: 8,
+                                right: 8,
+                                child: Icon(
+                                  selected
+                                      ? Icons.check_circle_rounded
+                                      : Icons.circle_outlined,
+                                  color: selected
+                                      ? const Color(0xFF6366F1)
+                                      : Colors.white,
+                                  shadows: const [
+                                    Shadow(
+                                      color: Colors.black54,
+                                      blurRadius: 6,
+                                    ),
+                                  ],
+                                ),
+                              )
+                            else ...[
+                              Positioned(
+                                top: 0,
+                                right: 0,
+                                child: _fileOverflowMenu(
+                                  file,
+                                  isDownloading: isDownloading,
+                                  onPreview: true,
+                                ),
                               ),
-                            ),
-                            Positioned(
-                              bottom: 0,
-                              right: 0,
-                              child: _downloadButton(
-                                file,
-                                isDownloading: isDownloading,
-                                onPreview: true,
+                              Positioned(
+                                bottom: 0,
+                                right: 0,
+                                child: _downloadButton(
+                                  file,
+                                  isDownloading: isDownloading,
+                                  onPreview: true,
+                                ),
                               ),
-                            ),
+                            ],
                           ],
                         ),
                       ),
@@ -2545,7 +3286,11 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: widget.onBack == null && selectedSubject == null && openedMaterial == null,
+      canPop: !_fileSelectionMode &&
+          !_folderSelectionMode &&
+          widget.onBack == null &&
+          selectedSubject == null &&
+          openedMaterial == null,
       onPopInvokedWithResult: (didPop, _) {
         if (didPop) return;
         _onSystemBack();
@@ -2589,6 +3334,112 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     );
   }
 
+  Widget _buildSelectionBar({
+    required bool isDark,
+    required int count,
+    VoidCallback? onDownload,
+    VoidCallback? onMove,
+    VoidCallback? onDelete,
+    VoidCallback? onMore,
+  }) {
+    final card = isDark ? const Color(0xFF1F2937) : Colors.white;
+    final actions = <Widget>[
+      if (onDownload != null)
+        _selectionBarAction(
+          icon: Icons.download_rounded,
+          label: 'Download',
+          color: const Color(0xFF6366F1),
+          onTap: onDownload,
+        ),
+      if (onMove != null)
+        _selectionBarAction(
+          icon: Icons.drive_file_move_rounded,
+          label: 'Move',
+          color: const Color(0xFF6366F1),
+          onTap: onMove,
+        ),
+      if (onMore != null)
+        _selectionBarAction(
+          icon: Icons.more_horiz_rounded,
+          label: 'More',
+          color: const Color(0xFF6B7280),
+          onTap: onMore,
+        ),
+      if (onDelete != null)
+        _selectionBarAction(
+          icon: Icons.delete_rounded,
+          label: count == 1 ? 'Delete' : 'Delete $count',
+          color: const Color(0xFFEF4444),
+          onTap: onDelete,
+        ),
+    ];
+    return Padding(
+      padding: EdgeInsets.fromLTRB(16, 8, 16, _fabNavLift - 12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+        decoration: BoxDecoration(
+          color: card,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            if (!isDark)
+              BoxShadow(
+                color: Colors.black.withOpacity(0.06),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
+              ),
+          ],
+        ),
+        child: Row(
+          children: [
+            for (var i = 0; i < actions.length; i++) ...[
+              if (i > 0)
+                Container(
+                  width: 1,
+                  height: 28,
+                  color: isDark
+                      ? const Color(0xFF374151)
+                      : const Color(0xFFE5E7EB),
+                ),
+              Expanded(child: actions[i]),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _selectionBarAction({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: color),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: color,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildFilesView() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final background =
@@ -2616,6 +3467,29 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     return Scaffold(
       backgroundColor: background,
       resizeToAvoidBottomInset: false,
+      bottomNavigationBar: _fileSelectionMode
+          ? _buildSelectionBar(
+              isDark: isDark,
+              count: _selectedItems.length,
+              onDownload: _selectedFileList.any((file) => !file.isFolder)
+                  ? _downloadSelectedFiles
+                  : null,
+              onMove: _canManageFolders &&
+                      _commonMoveTargetsForFiles(_selectedFileList).isNotEmpty
+                  ? _moveSelectedFiles
+                  : null,
+              onDelete: _canManageFolders ? _deleteSelectedFiles : null,
+              onMore: _selectedItems.length == 1
+                  ? () {
+                      final file = _selectedFileList.first;
+                      _showListedItemActions(
+                        file,
+                        isDownloading: downloadingFiles[file.id] ?? false,
+                      );
+                    }
+                  : null,
+            )
+          : null,
       appBar: AppBar(
         backgroundColor: background,
         foregroundColor: titleColor,
@@ -2624,10 +3498,24 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
         centerTitle: false,
         titleSpacing: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: _backToSubjects,
+          icon: Icon(
+            _fileSelectionMode
+                ? Icons.close_rounded
+                : Icons.arrow_back_rounded,
+          ),
+          onPressed:
+              _fileSelectionMode ? _clearFileSelection : _backToSubjects,
         ),
-        title: Column(
+        title: _fileSelectionMode
+            ? Text(
+                '${_selectedItems.length} selected',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  color: titleColor,
+                ),
+              )
+            : Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
@@ -2663,47 +3551,62 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
           ],
         ),
         actions: [
-          if (_isLiveFolder &&
-              _canManageFolders &&
-              selectedSubject!.folderId.isNotEmpty)
+          if (_fileSelectionMode)
             IconButton(
-              tooltip: 'New folder',
-              icon: _isMutatingFolder
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor:
-                            AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
-                      ),
-                    )
-                  : const Icon(Icons.create_new_folder_rounded),
-              onPressed: _isMutatingFolder ? null : _createNestedFolder,
+              tooltip: _selectedItems.length == visibleFiles.length
+                  ? 'Deselect all'
+                  : 'Select all',
+              icon: Icon(
+                _selectedItems.length == visibleFiles.length
+                    ? Icons.deselect_rounded
+                    : Icons.select_all_rounded,
+              ),
+              onPressed: _selectAllVisibleFiles,
+            )
+          else ...[
+            if (_isLiveFolder &&
+                _canManageFolders &&
+                selectedSubject!.folderId.isNotEmpty)
+              IconButton(
+                tooltip: 'New folder',
+                icon: _isMutatingFolder
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
+                        ),
+                      )
+                    : const Icon(Icons.create_new_folder_rounded),
+                onPressed: _isMutatingFolder ? null : _createNestedFolder,
+              ),
+            IconButton(
+              tooltip: 'Sort · ${_fileSort.label}',
+              icon: const Icon(Icons.sort_rounded),
+              onPressed: _openFileSort,
             ),
-          IconButton(
-            tooltip: 'Sort · ${_fileSort.label}',
-            icon: const Icon(Icons.sort_rounded),
-            onPressed: _openFileSort,
-          ),
-          IconButton(
-            tooltip: _useLargeIcons ? 'Details view' : 'Large icons',
-            icon: Icon(
-              _useLargeIcons
-                  ? Icons.view_list_rounded
-                  : Icons.grid_view_rounded,
+            IconButton(
+              tooltip: _useLargeIcons ? 'Details view' : 'Large icons',
+              icon: Icon(
+                _useLargeIcons
+                    ? Icons.view_list_rounded
+                    : Icons.grid_view_rounded,
+              ),
+              onPressed: _toggleFilesView,
             ),
-            onPressed: _toggleFilesView,
-          ),
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            onPressed: isUploading
-                ? null
-                : () => _loadSubjectFiles(selectedSubject!),
-          ),
+            IconButton(
+              icon: const Icon(Icons.refresh_rounded),
+              onPressed: isUploading
+                  ? null
+                  : () => _loadSubjectFiles(selectedSubject!),
+            ),
+          ],
         ],
       ),
-      floatingActionButton: _isLiveFolder &&
+      floatingActionButton: !_fileSelectionMode &&
+              _isLiveFolder &&
               _canManageFolders &&
               selectedSubject!.folderId.isNotEmpty
           ? _fabAboveNav(
@@ -3051,13 +3954,30 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     final visible = _visibleUnits;
     final totalFiles = _totalUnitFiles;
     final pagePad = AdaptiveLayout.pagePadding(context);
-    final bottomPad = AdaptiveLayout.bottomClearance(context);
+    final bottomPad = AdaptiveLayout.bottomClearance(context) +
+        (_folderSelectionMode ? 96 : 0);
     final tablet = AdaptiveLayout.isTablet(context);
 
     return Scaffold(
       backgroundColor: background,
       resizeToAvoidBottomInset: false,
-      floatingActionButton: _isLiveFolder && _canManageFolders
+      bottomNavigationBar: _folderSelectionMode
+          ? _buildSelectionBar(
+              isDark: isDark,
+              count: _selectedUnits.length,
+              onMove: _canManageFolders &&
+                      _commonMoveTargetsForUnits(_selectedUnitList).isNotEmpty
+                  ? _moveSelectedUnits
+                  : null,
+              onDelete: _canManageFolders ? _deleteSelectedUnits : null,
+              onMore: _selectedUnits.length == 1
+                  ? () => _showUnitFolderActions(_selectedUnitList.first)
+                  : null,
+            )
+          : null,
+      floatingActionButton: !_folderSelectionMode &&
+              _isLiveFolder &&
+              _canManageFolders
           ? _fabAboveNav(
               IgnorePointer(
                 ignoring: _unitSearchFocus.hasFocus,
@@ -3090,7 +4010,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
         removeBottom: true,
         child: RefreshIndicator(
         color: const Color(0xFF6366F1),
-        onRefresh: _refreshSubjects,
+        onRefresh: _folderSelectionMode ? () async {} : _refreshSubjects,
         child: CustomScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: [
@@ -3098,11 +4018,19 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
               backgroundColor: background,
               foregroundColor: titleColor,
               leading: IconButton(
-                icon: const Icon(Icons.arrow_back_rounded),
-                onPressed: _leaveSemester,
+                icon: Icon(
+                  _folderSelectionMode
+                      ? Icons.close_rounded
+                      : Icons.arrow_back_rounded,
+                ),
+                onPressed: _folderSelectionMode
+                    ? _clearFolderSelection
+                    : _leaveSemester,
               ),
               title: Text(
-                widget.workspaceName,
+                _folderSelectionMode
+                    ? '${_selectedUnits.length} selected'
+                    : widget.workspaceName,
                 style: TextStyle(
                   fontWeight: FontWeight.w700,
                   fontSize: tablet ? 22 : 18,
@@ -3110,27 +4038,42 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
                 ),
               ),
               actions: [
-                if (!isLoading && subjects.isNotEmpty) ...[
+                if (_folderSelectionMode)
                   IconButton(
-                    tooltip: 'Sort · ${_folderSort.labelFor(FileSortKind.folders)}',
-                    icon: const Icon(Icons.sort_rounded),
-                    onPressed: _openFolderSort,
-                  ),
-                  IconButton(
-                    tooltip: _unitsAsGrid ? 'List view' : 'Grid view',
+                    tooltip: _selectedUnits.length == visible.length
+                        ? 'Deselect all'
+                        : 'Select all',
                     icon: Icon(
-                      _unitsAsGrid
-                          ? Icons.view_list_rounded
-                          : Icons.grid_view_rounded,
+                      _selectedUnits.length == visible.length
+                          ? Icons.deselect_rounded
+                          : Icons.select_all_rounded,
                     ),
-                    onPressed: _toggleUnitsView,
+                    onPressed: _selectAllVisibleUnits,
+                  )
+                else ...[
+                  if (!isLoading && subjects.isNotEmpty) ...[
+                    IconButton(
+                      tooltip:
+                          'Sort · ${_folderSort.labelFor(FileSortKind.folders)}',
+                      icon: const Icon(Icons.sort_rounded),
+                      onPressed: _openFolderSort,
+                    ),
+                    IconButton(
+                      tooltip: _unitsAsGrid ? 'List view' : 'Grid view',
+                      icon: Icon(
+                        _unitsAsGrid
+                            ? Icons.view_list_rounded
+                            : Icons.grid_view_rounded,
+                      ),
+                      onPressed: _toggleUnitsView,
+                    ),
+                  ],
+                  IconButton(
+                    icon: const Icon(Icons.refresh_rounded),
+                    onPressed: _isMutatingFolder ? null : _refreshSubjects,
+                    tooltip: 'Refresh',
                   ),
                 ],
-                IconButton(
-                  icon: const Icon(Icons.refresh_rounded),
-                  onPressed: _isMutatingFolder ? null : _refreshSubjects,
-                  tooltip: 'Refresh',
-                ),
               ],
             ),
             SliverPadding(
@@ -3319,8 +4262,12 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
                             subject: subject,
                             isDark: isDark,
                             compact: false,
+                            selected:
+                                _selectedUnits.containsKey(subject.folderId),
+                            selectionMode: _folderSelectionMode,
                             menu: _unitFolderMenu(subject),
-                            onTap: () => _openUnit(subject),
+                            onTap: () => _onUnitTap(subject),
+                            onLongPress: () => _onUnitLongPress(subject),
                           );
                         },
                         childCount: visible.length,
@@ -3345,8 +4292,12 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
                           subject: subject,
                           isDark: isDark,
                           compact: true,
+                          selected:
+                              _selectedUnits.containsKey(subject.folderId),
+                          selectionMode: _folderSelectionMode,
                           menu: _unitFolderMenu(subject),
-                          onTap: () => _openUnit(subject),
+                          onTap: () => _onUnitTap(subject),
+                          onLongPress: () => _onUnitLongPress(subject),
                         ),
                       );
                     }
@@ -3384,6 +4335,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
 
   Widget? _unitFolderMenu(Subject subject) {
     if (!_isLiveFolder) return null;
+    if (_folderSelectionMode) return null;
     return PopupMenuButton<String>(
       tooltip: 'Folder options',
       enabled: !_isMutatingFolder,
@@ -3397,25 +4349,20 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
       onSelected: (value) {
         Future<void>.delayed(const Duration(milliseconds: 150), () {
           if (!mounted) return;
-          if (value == 'info') {
-            showFileDetailsDialog(
-              context: context,
-              info: FileDetailsInfo.fromSubject(subject),
-            );
-          } else if (value == 'rename') {
-            _renameUnitFolder(subject);
-          } else if (value == 'lock') {
-            _lockUnitFolder(subject);
-          } else if (value == 'unlock') {
-            _unlockUnitFolder(subject);
-          } else if (value == 'move') {
-            _moveUnitFolder(subject);
-          } else if (value == 'delete') {
-            _confirmDeleteUnitFolder(subject);
-          }
+          _applyUnitFolderAction(subject, value);
         });
       },
       itemBuilder: (context) => [
+        const PopupMenuItem(
+          value: 'select',
+          child: Row(
+            children: [
+              Icon(Icons.check_circle_outline_rounded, size: 18, color: Color(0xFF6366F1)),
+              SizedBox(width: 10),
+              Text('Select'),
+            ],
+          ),
+        ),
         const PopupMenuItem(
           value: 'info',
           child: Row(
@@ -3569,6 +4516,9 @@ class _UnitFolderTile extends StatelessWidget {
     required this.isDark,
     required this.compact,
     required this.onTap,
+    this.onLongPress,
+    this.selected = false,
+    this.selectionMode = false,
     this.menu,
   });
 
@@ -3576,6 +4526,9 @@ class _UnitFolderTile extends StatelessWidget {
   final bool isDark;
   final bool compact;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
+  final bool selected;
+  final bool selectionMode;
   final Widget? menu;
 
   @override
@@ -3590,11 +4543,19 @@ class _UnitFolderTile extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
+        onLongPress: onLongPress,
         borderRadius: BorderRadius.circular(22),
         child: Ink(
           decoration: BoxDecoration(
-            color: card,
+            color: selected
+                ? (isDark
+                    ? const Color(0xFF312E81).withOpacity(0.45)
+                    : const Color(0xFFEEF2FF))
+                : card,
             borderRadius: BorderRadius.circular(22),
+            border: selected
+                ? Border.all(color: const Color(0xFF6366F1), width: 1.5)
+                : null,
             boxShadow: [
               if (!isDark)
                 BoxShadow(
@@ -3641,8 +4602,19 @@ class _UnitFolderTile extends StatelessWidget {
                           ],
                         ),
                       ),
-                      if (menu != null) menu!,
-                      Icon(Icons.chevron_right_rounded, color: muted),
+                      if (selectionMode)
+                        Icon(
+                          selected
+                              ? Icons.check_circle_rounded
+                              : Icons.circle_outlined,
+                          color: selected
+                              ? const Color(0xFF6366F1)
+                              : const Color(0xFF9CA3AF),
+                        )
+                      else ...[
+                        if (menu != null) menu!,
+                        Icon(Icons.chevron_right_rounded, color: muted),
+                      ],
                     ],
                   ),
                 )
@@ -3659,7 +4631,17 @@ class _UnitFolderTile extends StatelessWidget {
                             locked: subject.isLocked,
                           ),
                           const Spacer(),
-                          if (menu != null) menu!,
+                          if (selectionMode)
+                            Icon(
+                              selected
+                                  ? Icons.check_circle_rounded
+                                  : Icons.circle_outlined,
+                              color: selected
+                                  ? const Color(0xFF6366F1)
+                                  : const Color(0xFF9CA3AF),
+                            )
+                          else if (menu != null)
+                            menu!,
                         ],
                       ),
                       const Spacer(),
@@ -4249,6 +5231,170 @@ class _UploadProgressDialog extends StatelessWidget {
                       ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ItemActionChoice {
+  const _ItemActionChoice({
+    required this.value,
+    required this.icon,
+    required this.label,
+    this.color,
+  });
+
+  final String value;
+  final IconData icon;
+  final String label;
+  final Color? color;
+}
+
+class _ItemActionSheet extends StatelessWidget {
+  const _ItemActionSheet({
+    required this.title,
+    required this.subtitle,
+    required this.leadingIcon,
+    required this.leadingColor,
+    required this.actions,
+  });
+
+  final String title;
+  final String subtitle;
+  final IconData leadingIcon;
+  final Color leadingColor;
+  final List<_ItemActionChoice> actions;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final sheet = isDark ? const Color(0xFF151B28) : Colors.white;
+    final titleColor =
+        isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
+    final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
+    final card = isDark ? const Color(0xFF1F2937) : const Color(0xFFF3F4F6);
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: sheet,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.18),
+              blurRadius: 28,
+              offset: const Offset(0, -8),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: muted.withValues(alpha: 0.45),
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Container(
+                      width: 46,
+                      height: 46,
+                      decoration: BoxDecoration(
+                        color: leadingColor.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Icon(leadingIcon, color: leadingColor, size: 24),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 17,
+                              fontWeight: FontWeight.w700,
+                              color: titleColor,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            subtitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: muted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                ConstrainedBox(
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.sizeOf(context).height * 0.5,
+                  ),
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    itemCount: actions.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    itemBuilder: (context, index) {
+                      final action = actions[index];
+                      final color = action.color ?? titleColor;
+                      return Material(
+                        color: card,
+                        borderRadius: BorderRadius.circular(16),
+                        child: InkWell(
+                          onTap: () => Navigator.pop(context, action.value),
+                          borderRadius: BorderRadius.circular(16),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 13,
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(action.icon, size: 20, color: color),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    action.label,
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      color: color,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
