@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -60,6 +61,8 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
   bool isUploading = false;
   double uploadProgress = 0.0;
   static const int _maxImageUploadSelection = 10;
+  static const int _maxVideoUploadSelection = 5;
+  static const int _maxAudioUploadSelection = 10;
   final _UploadProgressSession _uploadSession = _UploadProgressSession();
   CancelToken? _uploadCancelToken;
   bool _uploadDialogVisible = false;
@@ -78,7 +81,15 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
   String _fileTypeFilter = 'All';
   final TextEditingController _fileSearchController = TextEditingController();
   final FocusNode _fileSearchFocus = FocusNode();
-  static const _fileTypeFilters = ['All', 'PDF', 'DOC', 'PPT', 'IMG'];
+  static const _fileTypeFilters = [
+    'All',
+    'PDF',
+    'DOC',
+    'PPT',
+    'IMG',
+    'VID',
+    'AUD',
+  ];
   static const _filesViewPrefKey = 'client_files_view_grid';
   static const _filesSortPrefKey = 'client_files_sort_mode';
   static const _unitsViewPrefKey = 'client_folders_view_list';
@@ -446,6 +457,43 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
       case 'webp':
       case 'heic':
         return 'IMG';
+      case 'mp4':
+      case 'm4v':
+      case 'mov':
+      case 'avi':
+      case 'mkv':
+      case 'webm':
+      case '3gp':
+      case '3g2':
+      case 'wmv':
+      case 'flv':
+      case 'mpeg':
+      case 'mpg':
+      case 'ts':
+      case 'm2ts':
+      case 'mts':
+      case 'ogv':
+      case 'asf':
+      case 'vob':
+      case 'f4v':
+        return 'VID';
+      case 'mp3':
+      case 'wav':
+      case 'aac':
+      case 'm4a':
+      case 'flac':
+      case 'ogg':
+      case 'oga':
+      case 'opus':
+      case 'wma':
+      case 'aiff':
+      case 'aif':
+      case 'amr':
+      case 'mid':
+      case 'midi':
+      case 'caf':
+      case 'weba':
+        return 'AUD';
       default:
         return 'FILE';
     }
@@ -1197,6 +1245,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
       context: context,
       backgroundColor: const Color(0xFF1B2230),
       barrierColor: Colors.black.withValues(alpha: 0.55),
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
       ),
@@ -1225,6 +1274,28 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
       );
       if (picked == null || picked.isEmpty || !mounted) return;
       await _uploadPickedFiles(subject.folderId, picked);
+      return;
+    }
+
+    if (source == _UploadSource.videos) {
+      await _pickAndUploadMedia(
+        folderId: subject.folderId,
+        mimeTypes: PhoneDocumentService.videoUploadMimeTypes,
+        pickerType: FileType.video,
+        maxSelection: _maxVideoUploadSelection,
+        pickerTitle: 'Select videos to upload',
+      );
+      return;
+    }
+
+    if (source == _UploadSource.audio) {
+      await _pickAndUploadMedia(
+        folderId: subject.folderId,
+        mimeTypes: PhoneDocumentService.audioUploadMimeTypes,
+        pickerType: FileType.audio,
+        maxSelection: _maxAudioUploadSelection,
+        pickerTitle: 'Select audio to upload',
+      );
       return;
     }
 
@@ -1275,6 +1346,74 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
 
     if (picked.isEmpty || !mounted) return;
     await _uploadPickedFiles(subject.folderId, picked);
+  }
+
+  Future<void> _pickAndUploadMedia({
+    required String folderId,
+    required List<String> mimeTypes,
+    required FileType pickerType,
+    required int maxSelection,
+    required String pickerTitle,
+  }) async {
+    List<PhonePickedDocument> raw = const [];
+    try {
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+        raw = await PhoneDocumentService.instance.pickForUpload(
+          mimeTypes: mimeTypes,
+        );
+      } else {
+        final result = await FilePicker.platform.pickFiles(
+          type: pickerType,
+          allowMultiple: true,
+          withData: false,
+          dialogTitle: pickerTitle,
+        );
+        if (result == null || result.files.isEmpty) return;
+        final picked = <PhonePickedDocument>[];
+        for (final file in result.files) {
+          final path = file.path;
+          if (path == null || path.isEmpty) continue;
+          picked.add(
+            await PhonePickedDocument.fromFile(
+              name: file.name,
+              path: path,
+              sizeBytes: file.size,
+            ),
+          );
+        }
+        raw = picked;
+      }
+    } on PlatformException catch (e) {
+      if (!mounted) return;
+      _showMessage(e.message ?? 'Could not open files', isError: true);
+      return;
+    }
+    if (raw.isEmpty || !mounted) return;
+    if (raw.length > maxSelection) {
+      _showMessage(
+        'You can upload up to $maxSelection files at a time',
+        isError: true,
+      );
+      return;
+    }
+
+    final usedNames = <String>{};
+    final picked = <PhonePickedDocument>[];
+    for (final file in raw) {
+      final name = _uniquePickedName(file.name, usedNames);
+      usedNames.add(name);
+      picked.add(
+        PhonePickedDocument(
+          name: name,
+          path: file.path,
+          sizeBytes: file.sizeBytes,
+          modifiedAt: file.modifiedAt,
+        ),
+      );
+    }
+
+    if (picked.isEmpty || !mounted) return;
+    await _uploadPickedFiles(folderId, picked);
   }
 
   void _enableAndroidPhotoPicker() {
@@ -1507,6 +1646,10 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
         return Icons.table_chart_rounded;
       case 'IMG':
         return Icons.image_rounded;
+      case 'VID':
+        return Icons.videocam_rounded;
+      case 'AUD':
+        return Icons.audiotrack_rounded;
       default:
         return Icons.insert_drive_file_rounded;
     }
@@ -1524,6 +1667,10 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
         return const Color(0xFF10B981);
       case 'IMG':
         return const Color(0xFF8B5CF6);
+      case 'VID':
+        return const Color(0xFF0EA5E9);
+      case 'AUD':
+        return const Color(0xFFEC4899);
       default:
         return const Color(0xFF6B7280);
     }
@@ -2374,7 +2521,11 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
           ),
         ),
         child: Text(
-          label,
+          switch (label) {
+            'VID' => 'Video',
+            'AUD' => 'Audio',
+            _ => label,
+          },
           style: TextStyle(
             color: selected ? Colors.white : muted,
             fontWeight: FontWeight.w600,
@@ -3091,7 +3242,7 @@ class _FolderGlyph extends StatelessWidget {
   }
 }
 
-enum _UploadSource { photos, documents }
+enum _UploadSource { photos, documents, videos, audio }
 
 class _UploadSourceSheet extends StatelessWidget {
   const _UploadSourceSheet();
@@ -3099,7 +3250,7 @@ class _UploadSourceSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SafeArea(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -3123,7 +3274,7 @@ class _UploadSourceSheet extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              'Choose photos, or browse PDFs and documents on this phone',
+              'Choose photos, documents, videos, or audio on this phone',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.62),
@@ -3146,6 +3297,22 @@ class _UploadSourceSheet extends StatelessWidget {
               title: 'PDF & documents',
               subtitle: 'Search recent PDFs, Word, Excel, and PowerPoint',
               onTap: () => Navigator.pop(context, _UploadSource.documents),
+            ),
+            const SizedBox(height: 10),
+            _UploadSourceOption(
+              icon: Icons.videocam_rounded,
+              iconColor: const Color(0xFF0EA5E9),
+              title: 'Videos',
+              subtitle: 'MP4, MOV, MKV, WebM, and other video types',
+              onTap: () => Navigator.pop(context, _UploadSource.videos),
+            ),
+            const SizedBox(height: 10),
+            _UploadSourceOption(
+              icon: Icons.audiotrack_rounded,
+              iconColor: const Color(0xFFEC4899),
+              title: 'Audio',
+              subtitle: 'MP3, WAV, AAC, M4A, FLAC, and other audio types',
+              onTap: () => Navigator.pop(context, _UploadSource.audio),
             ),
           ],
         ),

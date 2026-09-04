@@ -640,6 +640,10 @@ IconData fileTypeIcon(String type) {
       return Icons.table_chart_rounded;
     case 'IMG':
       return Icons.image_rounded;
+    case 'VID':
+      return Icons.videocam_rounded;
+    case 'AUD':
+      return Icons.audiotrack_rounded;
     default:
       return Icons.insert_drive_file_rounded;
   }
@@ -659,6 +663,10 @@ Color fileTypeColor(String type) {
       return const Color(0xFF10B981);
     case 'IMG':
       return const Color(0xFF8B5CF6);
+    case 'VID':
+      return const Color(0xFF0EA5E9);
+    case 'AUD':
+      return const Color(0xFFEC4899);
     default:
       return const Color(0xFF6366F1);
   }

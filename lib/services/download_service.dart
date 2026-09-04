@@ -787,6 +787,43 @@ class DownloadService {
       case 'tif':
       case 'tiff':
         return 'IMG';
+      case 'mp4':
+      case 'm4v':
+      case 'mov':
+      case 'avi':
+      case 'mkv':
+      case 'webm':
+      case '3gp':
+      case '3g2':
+      case 'wmv':
+      case 'flv':
+      case 'mpeg':
+      case 'mpg':
+      case 'ts':
+      case 'm2ts':
+      case 'mts':
+      case 'ogv':
+      case 'asf':
+      case 'vob':
+      case 'f4v':
+        return 'VID';
+      case 'mp3':
+      case 'wav':
+      case 'aac':
+      case 'm4a':
+      case 'flac':
+      case 'ogg':
+      case 'oga':
+      case 'opus':
+      case 'wma':
+      case 'aiff':
+      case 'aif':
+      case 'amr':
+      case 'mid':
+      case 'midi':
+      case 'caf':
+      case 'weba':
+        return 'AUD';
       default:
         return 'FILE';
     }

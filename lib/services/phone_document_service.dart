@@ -118,6 +118,8 @@ class PhoneDocumentService {
       MethodChannel('com.example.libview/phone_documents');
 
   static const List<String> imageUploadMimeTypes = ['image/*'];
+  static const List<String> videoUploadMimeTypes = ['video/*'];
+  static const List<String> audioUploadMimeTypes = ['audio/*'];
   static const List<String> documentUploadMimeTypes = [
     'application/pdf',
     'application/msword',

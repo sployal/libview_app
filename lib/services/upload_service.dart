@@ -65,14 +65,22 @@ class UploadService {
   static final UploadService instance = UploadService._();
 
   static const String baseUrl = 'https://edupal-backend.onrender.com';
-  static const int maxUploadBytes = 20 * 1024 * 1024;
+  static const int maxUploadBytes = 200 * 1024 * 1024;
+
+  static String get maxUploadLabel {
+    final mb = maxUploadBytes / (1024 * 1024);
+    if (mb >= 1 && mb == mb.roundToDouble()) {
+      return '${mb.round()} MB';
+    }
+    return '${mb.toStringAsFixed(1)} MB';
+  }
 
   final Dio _dio = Dio(
     BaseOptions(
       baseUrl: baseUrl,
       connectTimeout: const Duration(seconds: 60),
-      receiveTimeout: const Duration(minutes: 2),
-      sendTimeout: const Duration(minutes: 2),
+      receiveTimeout: const Duration(minutes: 20),
+      sendTimeout: const Duration(minutes: 20),
     ),
   );
 
@@ -672,7 +680,9 @@ class UploadService {
       }
       final length = await file.length();
       if (length > maxUploadBytes) {
-        throw UploadException('File is too large. Maximum size is 20 MB.');
+        throw UploadException(
+          'File is too large. Maximum size is $maxUploadLabel.',
+        );
       }
       return MultipartFile.fromFile(
         filePath,
@@ -683,7 +693,9 @@ class UploadService {
 
     if (bytes != null) {
       if (bytes.length > maxUploadBytes) {
-        throw UploadException('File is too large. Maximum size is 20 MB.');
+        throw UploadException(
+          'File is too large. Maximum size is $maxUploadLabel.',
+        );
       }
       return MultipartFile.fromBytes(
         bytes,
@@ -739,6 +751,69 @@ class UploadService {
         return 'text/plain';
       case 'rtf':
         return 'application/rtf';
+      case 'mp4':
+      case 'm4v':
+        return 'video/mp4';
+      case 'mov':
+        return 'video/quicktime';
+      case 'avi':
+        return 'video/x-msvideo';
+      case 'mkv':
+        return 'video/x-matroska';
+      case 'webm':
+        return 'video/webm';
+      case '3gp':
+        return 'video/3gpp';
+      case '3g2':
+        return 'video/3gpp2';
+      case 'wmv':
+        return 'video/x-ms-wmv';
+      case 'flv':
+        return 'video/x-flv';
+      case 'mpeg':
+      case 'mpg':
+        return 'video/mpeg';
+      case 'ts':
+      case 'm2ts':
+      case 'mts':
+        return 'video/mp2t';
+      case 'ogv':
+        return 'video/ogg';
+      case 'asf':
+        return 'video/x-ms-asf';
+      case 'vob':
+        return 'video/dvd';
+      case 'f4v':
+        return 'video/x-f4v';
+      case 'mp3':
+        return 'audio/mpeg';
+      case 'wav':
+        return 'audio/wav';
+      case 'aac':
+        return 'audio/aac';
+      case 'm4a':
+        return 'audio/mp4';
+      case 'flac':
+        return 'audio/flac';
+      case 'ogg':
+      case 'oga':
+        return 'audio/ogg';
+      case 'opus':
+        return 'audio/opus';
+      case 'wma':
+        return 'audio/x-ms-wma';
+      case 'aiff':
+      case 'aif':
+        return 'audio/aiff';
+      case 'amr':
+        return 'audio/amr';
+      case 'mid':
+      case 'midi':
+        return 'audio/midi';
+      case 'caf':
+        return 'audio/x-caf';
+      case 'weba':
+        return 'audio/webm';
       default:
         return 'application/octet-stream';
     }
