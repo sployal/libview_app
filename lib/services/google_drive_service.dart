@@ -660,6 +660,13 @@ class StudyMaterial {
 
   bool get isFolder => type == 'FOLDER';
 
+  /// Drive has no preview for folders, audio, or items without a listing link.
+  bool get canLoadDriveThumbnail {
+    if (isFolder || type == 'AUD') return false;
+    final preview = thumbnailUrl?.trim();
+    return preview != null && preview.isNotEmpty;
+  }
+
   StudyMaterial copyWith({
     String? id,
     String? name,

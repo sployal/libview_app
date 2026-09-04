@@ -2262,10 +2262,10 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
   }
 
   Widget _filePreview(StudyMaterial file, {required double iconSize}) {
-    if (file.isFolder) {
-      return _fileTypeFallback(file, iconSize: iconSize);
-    }
     final fallback = _fileTypeFallback(file, iconSize: iconSize);
+    if (file.isFolder || !file.canLoadDriveThumbnail) {
+      return fallback;
+    }
     final preview = DriveThumbnail(
       fileId: file.id,
       fallback: fallback,

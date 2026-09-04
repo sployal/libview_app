@@ -20,6 +20,7 @@ class DriveThumbnail extends StatefulWidget {
 }
 
 class _DriveThumbnailState extends State<DriveThumbnail> {
+  static final Set<String> _missingIds = <String>{};
   late Future<Map<String, String>?> _headers;
 
   @override
@@ -37,7 +38,9 @@ class _DriveThumbnailState extends State<DriveThumbnail> {
   }
 
   Future<Map<String, String>?> _loadHeaders() async {
-    if (widget.fileId.isEmpty || widget.fileId.startsWith('local-')) {
+    if (widget.fileId.isEmpty ||
+        widget.fileId.startsWith('local-') ||
+        _missingIds.contains(widget.fileId)) {
       return null;
     }
     try {
@@ -65,7 +68,10 @@ class _DriveThumbnailState extends State<DriveThumbnail> {
           gaplessPlayback: true,
           cacheWidth: 400,
           headers: headers,
-          errorBuilder: (_, __, ___) => widget.fallback,
+          errorBuilder: (_, __, ___) {
+            _missingIds.add(widget.fileId);
+            return widget.fallback;
+          },
           frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
             if (wasSynchronouslyLoaded || frame != null) return child;
             return widget.fallback;

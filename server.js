@@ -2176,24 +2176,29 @@ app.get('/files/:fileId/thumbnail', requireAuth, async (req, res) => {
 
   try {
     let thumbnailLink = '';
+    let mimeType = '';
+    const thumbFields = 'thumbnailLink,hasThumbnail,mimeType';
     if (driveIsConfigured()) {
       try {
         const meta = await drive.files.get({
           fileId,
-          fields: 'thumbnailLink,hasThumbnail',
+          fields: thumbFields,
           supportsAllDrives: true,
         });
+        mimeType = meta.data.mimeType || '';
         thumbnailLink = meta.data.thumbnailLink || '';
       } catch (err) {
         console.warn(`OAuth thumbnail meta failed for ${fileId}:`, err.message);
       }
     }
-    if (!thumbnailLink && driveReadIsConfigured()) {
-      const meta = await driveGetMeta(fileId, 'thumbnailLink,hasThumbnail', driveReadKey());
+    if (mimeType !== FOLDER_MIME && !thumbnailLink && driveReadIsConfigured()) {
+      const meta = await driveGetMeta(fileId, thumbFields, driveReadKey());
+      mimeType = meta.mimeType || mimeType;
       thumbnailLink = meta.thumbnailLink || '';
     }
-    if (!thumbnailLink) {
-      console.warn(`Thumbnail missing for ${fileId}`);
+    // Folders and files Drive has not previewed (audio, archives, etc.)
+    // have no thumbnailLink — return quietly instead of log-spamming.
+    if (mimeType === FOLDER_MIME || !thumbnailLink) {
       return res.status(404).json({ error: 'Could not load preview' });
     }
 
