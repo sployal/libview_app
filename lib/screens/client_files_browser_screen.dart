@@ -70,6 +70,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
   bool _uploadDialogVisible = false;
   BuildContext? _uploadDialogContext;
   bool _isMutatingFolder = false;
+  final List<Subject> _folderTrail = [];
   final Set<String> _lockedFolderIds = {};
   final Set<String> _sessionUnlockedFolderIds = {};
   bool _useLargeIcons = true;
@@ -202,13 +203,16 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
   List<StudyMaterial> get _visibleFiles {
     final query = _fileQuery.trim().toLowerCase();
     final filtered = currentFiles.where((file) {
+      if (query.isNotEmpty && !file.name.toLowerCase().contains(query)) {
+        return false;
+      }
+      if (file.isFolder) return true;
       if (_fileTypeFilter != 'All' && file.type != _fileTypeFilter) {
         return false;
       }
-      if (query.isEmpty) return true;
-      return file.name.toLowerCase().contains(query);
+      return true;
     });
-    return FileSort.apply(
+    final sorted = FileSort.apply(
       filtered,
       mode: _fileSort,
       nameOf: (file) => file.name,
@@ -217,6 +221,10 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
       dateOf: (file) => file.modifiedAt ?? FileSort.parseDate(file.date),
       uploadedOf: (file) => file.createdAt,
     );
+    return [
+      ...sorted.where((file) => file.isFolder),
+      ...sorted.where((file) => !file.isFolder),
+    ];
   }
 
   void _resetFileSearch() {
@@ -240,6 +248,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
         name: subject.name,
       );
     }
+    _folderTrail.clear();
     _loadSubjectFiles(subject);
   }
 
@@ -343,6 +352,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
       if (selectedSubject?.folderId == subject.folderId) {
         selectedSubject = null;
         currentFiles = [];
+        _folderTrail.clear();
       }
     });
   }
@@ -535,7 +545,10 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     });
 
     try {
-      final files = await GoogleDriveService.getSubjectFiles(subject.folderId);
+      final files = await GoogleDriveService.getSubjectFiles(
+        subject.folderId,
+        includeFolders: true,
+      );
       setState(() {
         currentFiles = files;
         isLoadingFiles = false;
@@ -555,6 +568,36 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
         );
       }
     }
+  }
+
+  Future<void> _openListedItem(StudyMaterial material) async {
+    if (material.isFolder) {
+      await _openNestedFolder(material);
+      return;
+    }
+    await _openFileInWebView(material);
+  }
+
+  Future<void> _openNestedFolder(StudyMaterial folder) async {
+    final subject = GoogleDriveService.subjectFromFolder(
+      id: folder.id,
+      name: folder.name,
+      colorIndex: _folderTrail.length + 1,
+      modifiedAt: folder.modifiedAt,
+      createdAt: folder.createdAt,
+      isLocked: _lockedFolderIds.contains(folder.id),
+    );
+    final locked =
+        subject.isLocked || _lockedFolderIds.contains(subject.folderId);
+    if (locked && !_sessionUnlockedFolderIds.contains(subject.folderId)) {
+      final opened = await _promptOpenLockedFolder(subject);
+      if (!opened || !mounted) return;
+    }
+    HapticFeedback.lightImpact();
+    if (selectedSubject != null) {
+      _folderTrail.add(selectedSubject!);
+    }
+    await _loadSubjectFiles(subject);
   }
 
   Future<void> _openFileInWebView(StudyMaterial material) async {
@@ -737,12 +780,14 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
-          title: const Text(
-            'Delete material?',
-            style: TextStyle(fontWeight: FontWeight.bold),
+          title: Text(
+            material.isFolder ? 'Delete folder?' : 'Delete material?',
+            style: const TextStyle(fontWeight: FontWeight.bold),
           ),
           content: Text(
-            '“${material.name}” will be permanently removed from this folder.',
+            material.isFolder
+                ? '“${material.name}” and everything inside it will be permanently removed.'
+                : '“${material.name}” will be permanently removed from this folder.',
           ),
           actions: [
             TextButton(
@@ -774,24 +819,33 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     }
 
     final name = await _promptFolderName(
-      title: 'Rename file',
+      title: material.isFolder ? 'Rename folder' : 'Rename file',
       confirmLabel: 'Rename',
-      initial: _fileStem(material.name),
-      fieldLabel: 'File name',
+      initial: material.isFolder ? material.name : _fileStem(material.name),
+      fieldLabel: material.isFolder ? 'Folder name' : 'File name',
       takenNames: currentFiles
           .where((file) => file.id != material.id)
           .map((file) => file.name)
           .toList(),
-      takenError: 'A file with that name already exists',
-      clashAsFile: true,
-      extensionFrom: material.name,
+      takenError: material.isFolder
+          ? 'A folder with that name already exists'
+          : 'A file with that name already exists',
+      clashAsFile: !material.isFolder,
+      extensionFrom: material.isFolder ? null : material.name,
     );
     if (name == null) return;
 
-    final nextName = _fileNameWithExtension(name, material.name);
+    final nextName = material.isFolder
+        ? name
+        : _fileNameWithExtension(name, material.name);
     if (nextName == material.name) return;
     if (_fileNameTaken(nextName, ignoreId: material.id)) {
-      _showMessage('A file named "$nextName" already exists', isError: true);
+      _showMessage(
+        material.isFolder
+            ? 'A folder named "$nextName" already exists'
+            : 'A file named "$nextName" already exists',
+        isError: true,
+      );
       return;
     }
 
@@ -833,7 +887,9 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
       setState(() {
         currentFiles.removeWhere((item) => item.id == material.id);
         _deletingIds.remove(material.id);
-        if (selectedSubject != null && selectedSubject!.fileCount > 0) {
+        if (!material.isFolder &&
+            selectedSubject != null &&
+            selectedSubject!.fileCount > 0) {
           selectedSubject!.fileCount -= 1;
         }
       });
@@ -1000,6 +1056,71 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
         });
       }
     }
+  }
+
+  Future<void> _createNestedFolder() async {
+    if (!_canManageFolders) return;
+    final parentId = selectedSubject?.folderId ?? '';
+    if (!_isLiveFolder || parentId.isEmpty) {
+      _showMessage('This folder is not connected to Drive', isError: true);
+      return;
+    }
+    if (_isMutatingFolder) return;
+
+    final name = await _promptFolderName(
+      title: 'Create folder',
+      confirmLabel: 'Create',
+      takenNames: currentFiles.map((file) => file.name).toList(),
+    );
+    if (name == null) return;
+    if (_fileNameTaken(name)) {
+      _showMessage('A folder named "$name" already exists', isError: true);
+      return;
+    }
+
+    setState(() {
+      _isMutatingFolder = true;
+    });
+
+    try {
+      final result = await UploadService.instance.createFolder(
+        parentFolderId: parentId,
+        name: name,
+      );
+      if (!mounted) return;
+      _insertCreatedNestedFolder(result, name);
+      _showMessage('Created "${result.name.isNotEmpty ? result.name : name}"');
+    } on UploadException catch (e) {
+      _showMessage(e.message, isError: true);
+    } catch (_) {
+      _showMessage('Failed to create folder', isError: true);
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isMutatingFolder = false;
+        });
+      }
+    }
+  }
+
+  void _insertCreatedNestedFolder(UploadResult result, String fallbackName) {
+    final id = result.id;
+    final name = result.name.isNotEmpty ? result.name : fallbackName;
+    if (id.isEmpty || name.isEmpty) return;
+    setState(() {
+      currentFiles.removeWhere((file) => file.id == id);
+      currentFiles.add(
+        StudyMaterial(
+          id: id,
+          name: name,
+          type: 'FOLDER',
+          size: 'Folder',
+          date: GoogleDriveService.formatDate(DateTime.now().toIso8601String()),
+          modifiedAt: DateTime.now(),
+          createdAt: DateTime.now(),
+        ),
+      );
+    });
   }
 
   Future<void> _renameUnitFolder(Subject subject) async {
@@ -1606,6 +1727,11 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
   }
 
   void _backToSubjects() {
+    if (_folderTrail.isNotEmpty) {
+      final parent = _folderTrail.removeLast();
+      _loadSubjectFiles(parent);
+      return;
+    }
     setState(() {
       openedMaterial = null;
       selectedSubject = null;
@@ -1652,6 +1778,8 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
         return Icons.videocam_rounded;
       case 'AUD':
         return Icons.audiotrack_rounded;
+      case 'FOLDER':
+        return Icons.folder_rounded;
       default:
         return Icons.insert_drive_file_rounded;
     }
@@ -1673,6 +1801,8 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
         return const Color(0xFF0EA5E9);
       case 'AUD':
         return const Color(0xFFEC4899);
+      case 'FOLDER':
+        return const Color(0xFF6366F1);
       default:
         return const Color(0xFF6B7280);
     }
@@ -1708,6 +1838,9 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
   }
 
   Widget _filePreview(StudyMaterial file, {required double iconSize}) {
+    if (file.isFolder) {
+      return _fileTypeFallback(file, iconSize: iconSize);
+    }
     final fallback = _fileTypeFallback(file, iconSize: iconSize);
     final preview = DriveThumbnail(
       fileId: file.id,
@@ -1761,8 +1894,9 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
       );
     }
     if (!_canManageFolders) return const SizedBox.shrink();
+    final itemLabel = file.isFolder ? 'folder' : 'file';
     return PopupMenuButton<String>(
-      tooltip: 'File options',
+      tooltip: file.isFolder ? 'Folder options' : 'File options',
       enabled: !isDownloading,
       padding: EdgeInsets.zero,
       icon: onPreview
@@ -1789,14 +1923,14 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
           }
         });
       },
-      itemBuilder: (context) => const [
+      itemBuilder: (context) => [
         PopupMenuItem(
           value: 'info',
           child: Row(
             children: [
-              Icon(Icons.info_outline_rounded, size: 18, color: Color(0xFF6366F1)),
-              SizedBox(width: 10),
-              Text('File info'),
+              const Icon(Icons.info_outline_rounded, size: 18, color: Color(0xFF6366F1)),
+              const SizedBox(width: 10),
+              Text(file.isFolder ? 'Folder info' : 'File info'),
             ],
           ),
         ),
@@ -1804,9 +1938,9 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
           value: 'rename',
           child: Row(
             children: [
-              Icon(Icons.drive_file_rename_outline_rounded, size: 18),
-              SizedBox(width: 10),
-              Text('Rename file'),
+              const Icon(Icons.drive_file_rename_outline_rounded, size: 18),
+              const SizedBox(width: 10),
+              Text('Rename $itemLabel'),
             ],
           ),
         ),
@@ -1836,6 +1970,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     required bool isDownloading,
     bool onPreview = false,
   }) {
+    if (file.isFolder) return const SizedBox.shrink();
     final fileColor = _getFileColor(file.type);
     if (isDownloading) {
       return IconButton(
@@ -1887,7 +2022,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
           child: Material(
             color: Colors.transparent,
             child: InkWell(
-              onTap: isDownloading ? null : () => _openFileInWebView(file),
+              onTap: isDownloading ? null : () => _openListedItem(file),
               borderRadius: BorderRadius.circular(20),
               child: Padding(
                 padding: const EdgeInsets.all(14),
@@ -1949,7 +2084,9 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
                             )
                           else
                             Text(
-                              '${file.type} • ${file.size} • ${file.date}',
+                              file.isFolder
+                                  ? file.date
+                                  : '${file.type} • ${file.size} • ${file.date}',
                               style: TextStyle(
                                 fontSize: 13,
                                 color: muted,
@@ -2007,7 +2144,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
               child: Material(
                 color: Colors.transparent,
                 child: InkWell(
-                  onTap: isDownloading ? null : () => _openFileInWebView(file),
+                  onTap: isDownloading ? null : () => _openListedItem(file),
                   borderRadius: BorderRadius.circular(16),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -2156,14 +2293,21 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
         isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
     final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
     final visibleFiles = _visibleFiles;
-    final folderCount = currentFiles.length;
+    final folderCount = currentFiles.where((file) => file.isFolder).length;
+    final fileCount = currentFiles.length - folderCount;
     final matchCount = visibleFiles.length;
-    final filesNoun = folderCount == 1 ? 'file' : 'files';
+    final filesNoun = fileCount == 1 ? 'file' : 'files';
+    final foldersNoun = folderCount == 1 ? 'folder' : 'folders';
+    final itemCountLabel = folderCount == 0
+        ? '$fileCount $filesNoun'
+        : fileCount == 0
+            ? '$folderCount $foldersNoun'
+            : '$folderCount $foldersNoun  ·  $fileCount $filesNoun';
     final isFiltering =
         _fileQuery.trim().isNotEmpty || _fileTypeFilter != 'All';
     final countLabel = isFiltering
-        ? '$matchCount of $folderCount $filesNoun'
-        : '$folderCount $filesNoun';
+        ? '$matchCount of ${currentFiles.length}'
+        : itemCountLabel;
 
     return Scaffold(
       backgroundColor: background,
@@ -2215,6 +2359,24 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
           ],
         ),
         actions: [
+          if (_isLiveFolder &&
+              _canManageFolders &&
+              selectedSubject!.folderId.isNotEmpty)
+            IconButton(
+              tooltip: 'New folder',
+              icon: _isMutatingFolder
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor:
+                            AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
+                      ),
+                    )
+                  : const Icon(Icons.create_new_folder_rounded),
+              onPressed: _isMutatingFolder ? null : _createNestedFolder,
+            ),
           IconButton(
             tooltip: 'Sort · ${_fileSort.label}',
             icon: const Icon(Icons.sort_rounded),
@@ -2347,6 +2509,19 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
                                 _canManageFolders &&
                                 selectedSubject!.folderId.isNotEmpty) ...[
                               const SizedBox(height: 20),
+                              FilledButton.icon(
+                                onPressed: _isMutatingFolder
+                                    ? null
+                                    : _createNestedFolder,
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: const Color(0xFF6366F1),
+                                ),
+                                icon: const Icon(
+                                  Icons.create_new_folder_rounded,
+                                ),
+                                label: const Text('New folder'),
+                              ),
+                              const SizedBox(height: 12),
                               FilledButton.icon(
                                 onPressed:
                                     isUploading ? null : _pickAndUploadFile,

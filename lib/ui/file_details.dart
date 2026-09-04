@@ -51,13 +51,17 @@ class FileDetailsInfo {
     return FileDetailsInfo(
       name: file.name,
       type: file.type,
-      sizeLabel: _sizeLabel(file.size, file.sizeBytes),
+      sizeLabel: file.isFolder ? 'Folder' : _sizeLabel(file.size, file.sizeBytes),
       dateLabel: file.date,
       modifiedAt: modified,
       createdAt: file.createdAt,
       thumbnailUrl: file.thumbnailUrl,
+      isFolder: file.isFolder,
       fields: [
-        FileDetailField(label: 'Kind', value: _kindLabel(file.type, extension)),
+        FileDetailField(
+          label: 'Kind',
+          value: file.isFolder ? 'Folder' : _kindLabel(file.type, extension),
+        ),
         if (folderName != null && folderName.trim().isNotEmpty)
           FileDetailField(label: 'Folder', value: folderName.trim()),
         if (extension != null)

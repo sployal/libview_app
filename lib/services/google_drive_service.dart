@@ -267,21 +267,24 @@ class GoogleDriveService {
   }
   
   // Get files for a specific subject
-  static Future<List<StudyMaterial>> getSubjectFiles(String subjectFolderId) async {
+  static Future<List<StudyMaterial>> getSubjectFiles(
+    String subjectFolderId, {
+    bool includeFolders = false,
+  }) async {
     try {
       final items = await getFolderContents(subjectFolderId);
       
       return items
-          .where((item) => !item.isFolder)
+          .where((item) => includeFolders || !item.isFolder)
           .map((item) => StudyMaterial(
                 id: item.id,
                 name: item.name,
-                type: _getFileType(item.name),
-                size: _formatFileSize(item.size),
+                type: item.isFolder ? 'FOLDER' : _getFileType(item.name),
+                size: item.isFolder ? 'Folder' : _formatFileSize(item.size),
                 date: formatDate(item.modifiedTime),
-                downloadUrl: item.webViewLink,
-                thumbnailUrl: item.thumbnailLink,
-                sizeBytes: int.tryParse(item.size ?? ''),
+                downloadUrl: item.isFolder ? null : item.webViewLink,
+                thumbnailUrl: item.isFolder ? null : item.thumbnailLink,
+                sizeBytes: item.isFolder ? null : int.tryParse(item.size ?? ''),
                 modifiedAt: DateTime.tryParse(item.modifiedTime ?? ''),
                 createdAt: DateTime.tryParse(item.uploadedAt ?? item.createdTime ?? ''),
               ))
@@ -654,6 +657,8 @@ class StudyMaterial {
     this.modifiedAt,
     this.createdAt,
   });
+
+  bool get isFolder => type == 'FOLDER';
 
   StudyMaterial copyWith({
     String? id,
