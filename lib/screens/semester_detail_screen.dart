@@ -988,22 +988,6 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
       return;
     }
 
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
-      final picked = await PhoneDocumentService.instance.pickForUpload(
-        mimeTypes: PhoneDocumentService.imageUploadMimeTypes,
-      );
-      if (picked.isEmpty || !mounted) return;
-      if (picked.length > _maxImageUploadSelection) {
-        _showMessage(
-          'You can upload up to $_maxImageUploadSelection images at a time',
-          isError: true,
-        );
-        return;
-      }
-      await _uploadPickedFiles(subject.folderId, picked);
-      return;
-    }
-
     _enableAndroidPhotoPicker();
     List<XFile> images;
     try {
@@ -1030,13 +1014,21 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     final picked = <PhonePickedDocument>[];
     final usedNames = <String>{};
     for (final image in images) {
-      final name = _uniquePickedName(image.name, usedNames);
+      final sizeBytes = await image.length();
+      final originalName = image.name;
+      final name = _uniquePickedName(originalName, usedNames);
       usedNames.add(name);
+      final resolved = await PhonePickedDocument.fromFile(
+        name: originalName,
+        path: image.path,
+        sizeBytes: sizeBytes,
+      );
       picked.add(
-        await PhonePickedDocument.fromFile(
+        PhonePickedDocument(
           name: name,
-          path: image.path,
-          sizeBytes: await image.length(),
+          path: resolved.path,
+          sizeBytes: sizeBytes,
+          modifiedAt: resolved.modifiedAt,
         ),
       );
     }

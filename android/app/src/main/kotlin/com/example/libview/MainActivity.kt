@@ -902,17 +902,17 @@ class MainActivity : FlutterActivity() {
         } else {
             0L
         }
-        val fromName = if (!fileName.isNullOrBlank()) {
-            queryMediaStoreModifiedByName(fileName, sizeBytes)
-        } else {
-            0L
-        }
         val fromExif = when {
             !path.isNullOrBlank() -> exifDateMs(path)
             uri != null -> exifDateMsFromUri(uri)
             else -> 0L
         }
-        return firstOriginalMs(fromUri, fromData, fromFile, fromName, fromExif)
+        val fromName = if (!fileName.isNullOrBlank()) {
+            queryMediaStoreModifiedByName(fileName, sizeBytes)
+        } else {
+            0L
+        }
+        return firstOriginalMs(fromUri, fromData, fromFile, fromExif, fromName)
     }
 
     private fun firstOriginalMs(vararg values: Long): Long {
