@@ -711,15 +711,17 @@ String? _prettyDate(DateTime? date) {
     'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
   ];
-  final hour = date.hour % 12 == 0 ? 12 : date.hour % 12;
-  final minute = date.minute.toString().padLeft(2, '0');
-  final suffix = date.hour >= 12 ? 'PM' : 'AM';
-  return '${months[date.month - 1]} ${date.day}, ${date.year} · $hour:$minute $suffix';
+  // Drive/API timestamps are UTC. Format in the device timezone, like the web UI.
+  final local = date.toLocal();
+  final hour = local.hour % 12 == 0 ? 12 : local.hour % 12;
+  final minute = local.minute.toString().padLeft(2, '0');
+  final suffix = local.hour >= 12 ? 'PM' : 'AM';
+  return '${months[local.month - 1]} ${local.day}, ${local.year} · $hour:$minute $suffix';
 }
 
 String? _relativeDate(DateTime? date) {
   if (date == null) return null;
-  final difference = DateTime.now().difference(date);
+  final difference = DateTime.now().difference(date.toLocal());
   if (difference.inSeconds < 45) return 'Just now';
   if (difference.inMinutes < 60) return '${difference.inMinutes} min ago';
   if (difference.inHours < 24) {
