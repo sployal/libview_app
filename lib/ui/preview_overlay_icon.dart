@@ -1,38 +1,49 @@
 import 'package:flutter/material.dart';
 
-/// Circular scrim so action icons stay readable on any file thumbnail.
+/// Quiet frosted chip so action icons stay readable on file thumbnails.
 class PreviewOverlayIcon extends StatelessWidget {
   const PreviewOverlayIcon({
     super.key,
     required this.icon,
-    this.color = Colors.white,
+    this.destructive = false,
     this.size = 18,
   });
 
   final IconData icon;
-  final Color color;
+  final bool destructive;
   final double size;
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final fill = isDark
+        ? const Color(0xFF111827).withValues(alpha: 0.78)
+        : Colors.white.withValues(alpha: 0.9);
+    final iconColor = destructive
+        ? const Color(0xFFEF4444)
+        : isDark
+            ? const Color(0xFFF9FAFB)
+            : const Color(0xFF1F2937);
+    final border = isDark
+        ? Colors.white.withValues(alpha: 0.14)
+        : const Color(0xFFE5E7EB);
+
     return Container(
-      width: 32,
-      height: 32,
+      width: 30,
+      height: 30,
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.55),
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.5),
-        ),
+        color: fill,
+        borderRadius: BorderRadius.circular(9),
+        border: Border.all(color: border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.28),
-            blurRadius: 6,
+            color: Colors.black.withValues(alpha: isDark ? 0.28 : 0.1),
+            blurRadius: 5,
             offset: const Offset(0, 1),
           ),
         ],
       ),
-      child: Icon(icon, color: color, size: size),
+      child: Icon(icon, color: iconColor, size: size),
     );
   }
 }

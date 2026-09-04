@@ -1683,7 +1683,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
         icon: onPreview
             ? const PreviewOverlayIcon(
                 icon: Icons.close_rounded,
-                color: Color(0xFFEF4444),
+                destructive: true,
               )
             : const Icon(Icons.close_rounded),
         color: const Color(0xFFEF4444),
