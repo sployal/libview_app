@@ -19,6 +19,7 @@ import '../ui/folder_lock_dialog.dart';
 import '../ui/preview_overlay_icon.dart';
 import '../ui/drive_thumbnail.dart';
 import 'no_internet_screen.dart';
+import 'phone_audio.dart';
 import 'phone_pdf.dart';
 import 'web_view_screen.dart';
 import 'media_player_screen.dart';
@@ -64,7 +65,6 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
   double uploadProgress = 0.0;
   static const int _maxImageUploadSelection = 10;
   static const int _maxVideoUploadSelection = 5;
-  static const int _maxAudioUploadSelection = 10;
   final _UploadProgressSession _uploadSession = _UploadProgressSession();
   CancelToken? _uploadCancelToken;
   bool _uploadDialogVisible = false;
@@ -1291,13 +1291,12 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     }
 
     if (source == _UploadSource.audio) {
-      await _pickAndUploadMedia(
-        folderId: subject.folderId,
-        kind: 'audio',
-        pickerType: FileType.audio,
-        maxSelection: _maxAudioUploadSelection,
-        pickerTitle: 'Select audio to upload',
+      final picked = await Navigator.push<List<PhonePickedDocument>>(
+        context,
+        MaterialPageRoute(builder: (_) => const PhoneAudioScreen()),
       );
+      if (picked == null || picked.isEmpty || !mounted) return;
+      await _uploadPickedFiles(subject.folderId, picked);
       return;
     }
 
@@ -3333,7 +3332,7 @@ class _UploadSourceSheet extends StatelessWidget {
               icon: Icons.audiotrack_rounded,
               iconColor: const Color(0xFFEC4899),
               title: 'Audio',
-              subtitle: 'Pick from music and recordings on this phone',
+              subtitle: 'Search music, recordings, and voice notes on this phone',
               onTap: () => Navigator.pop(context, _UploadSource.audio),
             ),
           ],

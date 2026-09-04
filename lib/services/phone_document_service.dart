@@ -48,8 +48,24 @@ class PhoneDocument {
       case 'pptx':
       case 'odp':
         return 'PowerPoint';
+      case 'mp3':
+        return 'MP3';
+      case 'wav':
+        return 'WAV';
+      case 'm4a':
+      case 'aac':
+      case 'm4b':
+        return 'M4A';
+      case 'flac':
+        return 'FLAC';
+      case 'ogg':
+      case 'oga':
+      case 'opus':
+        return 'OGG';
+      case 'amr':
+        return 'AMR';
       default:
-        return 'Document';
+        return extension.isEmpty ? 'Document' : extension.toUpperCase();
     }
   }
 
@@ -252,6 +268,16 @@ class PhoneDocumentService {
     return manage.isGranted || storage.isGranted;
   }
 
+  Future<bool> requestAudioAccess() async {
+    if (!Platform.isAndroid) {
+      return true;
+    }
+    if (await Permission.audio.request().isGranted) {
+      return true;
+    }
+    return requestAccess();
+  }
+
   Future<bool> hasAllFilesAccess() async {
     if (!Platform.isAndroid) {
       return true;
@@ -265,6 +291,22 @@ class PhoneDocumentService {
     }
 
     final raw = await _channel.invokeMethod<List<dynamic>>('listDocuments');
+    if (raw == null) {
+      return const [];
+    }
+
+    return raw
+        .whereType<Map>()
+        .map(PhoneDocument.fromMap)
+        .toList(growable: false);
+  }
+
+  Future<List<PhoneDocument>> listAudio() async {
+    if (!Platform.isAndroid) {
+      return const [];
+    }
+
+    final raw = await _channel.invokeMethod<List<dynamic>>('listAudio');
     if (raw == null) {
       return const [];
     }

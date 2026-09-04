@@ -56,6 +56,18 @@ class MainActivity : FlutterActivity() {
                             }
                         }
                     }
+                    "listAudio" -> {
+                        thread {
+                            try {
+                                val files = listPhoneAudio()
+                                mainHandler.post { result.success(files) }
+                            } catch (e: Exception) {
+                                mainHandler.post {
+                                    result.error("AUDIO_ERROR", e.message, null)
+                                }
+                            }
+                        }
+                    }
                     "copyDocument" -> {
                         val uri = call.argument<String>("uri")
                         val path = call.argument<String>("path")
@@ -740,6 +752,205 @@ class MainActivity : FlutterActivity() {
         return byKey.values.sortedByDescending {
             (it["modifiedMs"] as? Number)?.toLong() ?: 0L
         }
+    }
+
+    private val audioExtensions = setOf(
+        "mp3", "wav", "aac", "m4a", "flac", "ogg", "oga", "opus",
+        "wma", "aiff", "aif", "amr", "mid", "midi", "caf", "weba",
+        "m4b", "mp2",
+    )
+
+    private val audioSkipDirectoryNames = setOf(
+        "dcim", "pictures", "movies", "cache", "obb", ".thumbnails", ".trashed",
+    )
+
+    private fun listPhoneAudio(): List<Map<String, Any?>> {
+        val byKey = LinkedHashMap<String, Map<String, Any?>>()
+        queryMediaStoreAudio(byKey)
+        queryMediaStoreAudioFiles(byKey)
+        scanCommonAudioFolders(byKey)
+        return byKey.values.sortedByDescending {
+            (it["modifiedMs"] as? Number)?.toLong() ?: 0L
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun queryMediaStoreAudio(into: MutableMap<String, Map<String, Any?>>) {
+        val projection = arrayOf(
+            MediaStore.Audio.Media._ID,
+            MediaStore.Audio.Media.DISPLAY_NAME,
+            MediaStore.Audio.Media.MIME_TYPE,
+            MediaStore.Audio.Media.SIZE,
+            MediaStore.Audio.Media.DATE_MODIFIED,
+            MediaStore.MediaColumns.DATA,
+        )
+        try {
+            contentResolver.query(
+                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                projection,
+                null,
+                null,
+                "${MediaStore.Audio.Media.DATE_MODIFIED} DESC",
+            )?.use { cursor ->
+                val idIdx = cursor.getColumnIndex(MediaStore.Audio.Media._ID)
+                val nameIdx = cursor.getColumnIndex(MediaStore.Audio.Media.DISPLAY_NAME)
+                val mimeIdx = cursor.getColumnIndex(MediaStore.Audio.Media.MIME_TYPE)
+                val sizeIdx = cursor.getColumnIndex(MediaStore.Audio.Media.SIZE)
+                val modifiedIdx = cursor.getColumnIndex(MediaStore.Audio.Media.DATE_MODIFIED)
+                val dataIdx = cursor.getColumnIndex(MediaStore.MediaColumns.DATA)
+                while (cursor.moveToNext()) {
+                    val name = if (nameIdx >= 0) cursor.getString(nameIdx) else null
+                    if (name.isNullOrBlank() || !isAudioFile(name)) continue
+                    val id = if (idIdx >= 0) cursor.getLong(idIdx) else -1L
+                    addDocument(
+                        into,
+                        name = name,
+                        path = if (dataIdx >= 0) cursor.getString(dataIdx) else null,
+                        uri = if (id >= 0) {
+                            ContentUris.withAppendedId(
+                                MediaStore.Audio.Media.EXTERNAL_CONTENT_URI,
+                                id,
+                            ).toString()
+                        } else {
+                            null
+                        },
+                        mime = if (mimeIdx >= 0) cursor.getString(mimeIdx) else null,
+                        size = if (sizeIdx >= 0) cursor.getLong(sizeIdx) else 0L,
+                        modifiedMs = if (modifiedIdx >= 0) cursor.getLong(modifiedIdx) * 1000L else 0L,
+                    )
+                }
+            }
+        } catch (_: Exception) {
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun queryMediaStoreAudioFiles(into: MutableMap<String, Map<String, Any?>>) {
+        val projection = arrayOf(
+            MediaStore.Files.FileColumns._ID,
+            MediaStore.Files.FileColumns.DISPLAY_NAME,
+            MediaStore.Files.FileColumns.MIME_TYPE,
+            MediaStore.Files.FileColumns.SIZE,
+            MediaStore.Files.FileColumns.DATE_MODIFIED,
+            MediaStore.Files.FileColumns.DATA,
+        )
+        val likeClauses = audioExtensions.joinToString(" OR ") {
+            "${MediaStore.Files.FileColumns.DISPLAY_NAME} LIKE ?"
+        }
+        val selection = "${MediaStore.Files.FileColumns.MIME_TYPE} LIKE ? OR ($likeClauses)"
+        val args = listOf("audio/%") + audioExtensions.map { "%.$it" }
+        val collection = MediaStore.Files.getContentUri("external")
+        try {
+            contentResolver.query(
+                collection,
+                projection,
+                selection,
+                args.toTypedArray(),
+                "${MediaStore.Files.FileColumns.DATE_MODIFIED} DESC",
+            )?.use { cursor ->
+                val idIdx = cursor.getColumnIndex(MediaStore.Files.FileColumns._ID)
+                val nameIdx = cursor.getColumnIndex(MediaStore.Files.FileColumns.DISPLAY_NAME)
+                val mimeIdx = cursor.getColumnIndex(MediaStore.Files.FileColumns.MIME_TYPE)
+                val sizeIdx = cursor.getColumnIndex(MediaStore.Files.FileColumns.SIZE)
+                val modifiedIdx = cursor.getColumnIndex(MediaStore.Files.FileColumns.DATE_MODIFIED)
+                val dataIdx = cursor.getColumnIndex(MediaStore.Files.FileColumns.DATA)
+                while (cursor.moveToNext()) {
+                    val name = if (nameIdx >= 0) cursor.getString(nameIdx) else null
+                    if (name.isNullOrBlank() || !isAudioFile(name)) continue
+                    val id = if (idIdx >= 0) cursor.getLong(idIdx) else -1L
+                    addDocument(
+                        into,
+                        name = name,
+                        path = if (dataIdx >= 0) cursor.getString(dataIdx) else null,
+                        uri = if (id >= 0) {
+                            ContentUris.withAppendedId(collection, id).toString()
+                        } else {
+                            null
+                        },
+                        mime = if (mimeIdx >= 0) cursor.getString(mimeIdx) else null,
+                        size = if (sizeIdx >= 0) cursor.getLong(sizeIdx) else 0L,
+                        modifiedMs = if (modifiedIdx >= 0) cursor.getLong(modifiedIdx) * 1000L else 0L,
+                    )
+                }
+            }
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun scanCommonAudioFolders(into: MutableMap<String, Map<String, Any?>>) {
+        val storage = Environment.getExternalStorageDirectory() ?: return
+        val roots = listOf(
+            File(storage, Environment.DIRECTORY_MUSIC),
+            File(storage, Environment.DIRECTORY_DOWNLOADS),
+            File(storage, Environment.DIRECTORY_DOCUMENTS),
+            File(storage, Environment.DIRECTORY_PODCASTS),
+            File(storage, "Music"),
+            File(storage, "Recordings"),
+            File(storage, "Recording"),
+            File(storage, "Download"),
+            File(storage, "Sounds"),
+            File(storage, "WhatsApp/Media/WhatsApp Audio"),
+            File(storage, "WhatsApp/Media/WhatsApp Voice Notes"),
+            File(storage, "Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Audio"),
+            File(storage, "Android/media/com.whatsapp/WhatsApp/Media/WhatsApp Voice Notes"),
+            File(storage, "Telegram/Telegram Audio"),
+        )
+        val canScanAll = Build.VERSION.SDK_INT < Build.VERSION_CODES.R ||
+            Environment.isExternalStorageManager()
+        if (canScanAll) {
+            scanAudioDirectory(storage, into, depth = 0, maxDepth = 6)
+            return
+        }
+        for (root in roots) {
+            scanAudioDirectory(root, into, depth = 0, maxDepth = 8)
+        }
+    }
+
+    private fun scanAudioDirectory(
+        directory: File,
+        into: MutableMap<String, Map<String, Any?>>,
+        depth: Int,
+        maxDepth: Int,
+    ) {
+        if (depth > maxDepth || into.size > 2500 || !directory.exists() || !directory.isDirectory) {
+            return
+        }
+        val name = directory.name.lowercase(Locale.US)
+        val parentName = directory.parentFile?.name?.lowercase(Locale.US)
+        if (depth > 0 && (name.startsWith(".") || audioSkipDirectoryNames.contains(name))) {
+            return
+        }
+        if (parentName == "android" && (name == "data" || name == "obb")) {
+            return
+        }
+        val children = try {
+            directory.listFiles()
+        } catch (_: Exception) {
+            null
+        } ?: return
+        for (child in children) {
+            try {
+                if (child.isDirectory) {
+                    scanAudioDirectory(child, into, depth + 1, maxDepth)
+                } else if (isAudioFile(child.name)) {
+                    addDocument(
+                        into,
+                        name = child.name,
+                        path = child.absolutePath,
+                        uri = null,
+                        mime = mimeFromName(child.name),
+                        size = child.length(),
+                        modifiedMs = child.lastModified(),
+                    )
+                }
+            } catch (_: Exception) {
+            }
+        }
+    }
+
+    private fun isAudioFile(name: String): Boolean {
+        val ext = name.substringAfterLast('.', "").lowercase(Locale.US)
+        return audioExtensions.contains(ext)
     }
 
     @Suppress("DEPRECATION")
