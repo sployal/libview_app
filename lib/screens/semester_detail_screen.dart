@@ -739,12 +739,22 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     );
   }
 
+  bool _folderNameTaken(String name, {String? ignoreId}) {
+    final wanted = name.trim();
+    if (wanted.isEmpty) return false;
+    return subjects.any((subject) {
+      if (ignoreId != null && subject.folderId == ignoreId) return false;
+      return subject.name.trim() == wanted;
+    });
+  }
+
   Future<String?> _promptFolderName({
     required String title,
     required String confirmLabel,
     String initial = '',
     String fieldLabel = 'Folder name',
     String? helperText,
+    List<String> takenNames = const [],
   }) async {
     final result = await showDialog<String>(
       context: context,
@@ -757,6 +767,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
           initial: initial,
           fieldLabel: fieldLabel,
           helperText: helperText,
+          takenNames: takenNames,
         );
       },
     );
@@ -798,8 +809,13 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     final name = await _promptFolderName(
       title: 'Create unit folder',
       confirmLabel: 'Create',
+      takenNames: subjects.map((subject) => subject.name).toList(),
     );
     if (name == null) return;
+    if (_folderNameTaken(name)) {
+      _showMessage('A folder named "$name" already exists', isError: true);
+      return;
+    }
 
     setState(() {
       _isMutatingFolder = true;
@@ -2846,6 +2862,7 @@ class _FolderNameDialog extends StatefulWidget {
   final String initial;
   final String fieldLabel;
   final String? helperText;
+  final List<String> takenNames;
 
   const _FolderNameDialog({
     required this.title,
@@ -2853,6 +2870,7 @@ class _FolderNameDialog extends StatefulWidget {
     this.initial = '',
     this.fieldLabel = 'Folder name',
     this.helperText,
+    this.takenNames = const [],
   });
 
   @override
@@ -2861,6 +2879,7 @@ class _FolderNameDialog extends StatefulWidget {
 
 class _FolderNameDialogState extends State<_FolderNameDialog> {
   late final TextEditingController _controller;
+  String? _error;
 
   @override
   void initState() {
@@ -2874,8 +2893,20 @@ class _FolderNameDialogState extends State<_FolderNameDialog> {
     super.dispose();
   }
 
+  bool _isTaken(String name) {
+    return widget.takenNames.any((taken) => taken.trim() == name);
+  }
+
   void _submit() {
-    Navigator.of(context).pop(_controller.text.trim());
+    final name = _controller.text.trim();
+    if (name.isEmpty) return;
+    if (_isTaken(name)) {
+      setState(() {
+        _error = 'A folder with that name already exists';
+      });
+      return;
+    }
+    Navigator.of(context).pop(name);
   }
 
   @override
@@ -2896,7 +2927,15 @@ class _FolderNameDialogState extends State<_FolderNameDialog> {
           hintText: 'e.g. CS101 Data Structures',
           labelText: widget.fieldLabel,
           helperText: widget.helperText,
+          errorText: _error,
         ),
+        onChanged: (_) {
+          if (_error != null) {
+            setState(() {
+              _error = null;
+            });
+          }
+        },
         onSubmitted: (_) => _submit(),
       ),
       actions: [

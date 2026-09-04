@@ -176,6 +176,13 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
       hint: '',
     );
     if (name == null || name.isEmpty) return;
+    if (_folders.any((folder) => folder.name.trim() == name)) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('A folder named "$name" already exists')),
+      );
+      return;
+    }
     setState(() => _creating = true);
     try {
       final result = await UploadService.instance.createFolder(
@@ -218,32 +225,61 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
     required String hint,
   }) {
     final controller = TextEditingController();
+    final takenNames = _folders.map((folder) => folder.name.trim()).toSet();
     return showDialog<String>(
       context: context,
       builder: (context) {
         final isDark = Theme.of(context).brightness == Brightness.dark;
-        return AlertDialog(
-          backgroundColor: isDark ? const Color(0xFF1F2937) : Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-          ),
-          title: Text(title),
-          content: TextField(
-            controller: controller,
-            autofocus: true,
-            textCapitalization: TextCapitalization.words,
-            decoration: InputDecoration(hintText: hint),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, controller.text.trim()),
-              child: const Text('Create'),
-            ),
-          ],
+        String? error;
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            void submit() {
+              final name = controller.text.trim();
+              if (name.isEmpty) return;
+              if (takenNames.contains(name)) {
+                setDialogState(() {
+                  error = 'A folder with that name already exists';
+                });
+                return;
+              }
+              Navigator.pop(context, name);
+            }
+
+            return AlertDialog(
+              backgroundColor: isDark ? const Color(0xFF1F2937) : Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(18),
+              ),
+              title: Text(title),
+              content: TextField(
+                controller: controller,
+                autofocus: true,
+                textCapitalization: TextCapitalization.words,
+                decoration: InputDecoration(
+                  hintText: hint,
+                  errorText: error,
+                ),
+                onChanged: (_) {
+                  if (error != null) {
+                    setDialogState(() {
+                      error = null;
+                    });
+                  }
+                },
+                onSubmitted: (_) => submit(),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: submit,
+                  child: const Text('Create'),
+                ),
+              ],
+            );
+          },
         );
       },
     );

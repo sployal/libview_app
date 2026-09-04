@@ -1481,6 +1481,13 @@ app.post('/folders', requireAuth, async (req, res) => {
   }
 
   try {
+    const safeName = sanitizeFileName(name);
+    const siblings = await listChildFolders(parentFolderId);
+    const nameTaken = siblings.some((folder) => folder.name === safeName);
+    if (nameTaken) {
+      return res.status(409).json({ error: 'A folder with that name already exists' });
+    }
+
     const folder = await createFolder(name, parentFolderId);
     res.json(folder);
   } catch (e) {
