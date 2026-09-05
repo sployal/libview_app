@@ -971,6 +971,26 @@ async function listDirectChildren(parentId, { apiKey } = {}) {
   return files;
 }
 
+async function countFolderContents(folderId, { apiKey } = {}) {
+  const children = await listDirectChildren(folderId, { apiKey });
+  let fileCount = 0;
+  let folderCount = 0;
+  const nested = [];
+  for (const item of children) {
+    if (item.mimeType === FOLDER_MIME) {
+      folderCount += 1;
+      nested.push(item.id);
+    } else {
+      fileCount += 1;
+    }
+  }
+  const innerCounts = await Promise.all(nested.map((id) => countFolderContents(id, { apiKey })));
+  for (const inner of innerCounts) {
+    fileCount += inner.fileCount;
+  }
+  return { fileCount, folderCount };
+}
+
 async function sumFolderBytes(folderId) {
   const children = await listDirectChildren(folderId);
   let bytes = 0;
@@ -2689,9 +2709,9 @@ app.get('/folders/:folderId', requireAuth, async (req, res) => {
     if (String(req.query.counts || '') === '1') {
       await Promise.all(
         folders.map(async (folder) => {
-          const inner = await listDirectChildren(folder.id, { apiKey });
-          folder.fileCount = inner.filter((file) => file.mimeType !== FOLDER_MIME).length;
-          folder.folderCount = inner.filter((file) => file.mimeType === FOLDER_MIME).length;
+          const counts = await countFolderContents(folder.id, { apiKey });
+          folder.fileCount = counts.fileCount;
+          folder.folderCount = counts.folderCount;
         })
       );
     }
