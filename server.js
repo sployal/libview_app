@@ -948,6 +948,7 @@ function asListedDriveItem(item) {
     thumbnailLink: item.thumbnailLink,
     fileCount: item.fileCount,
     folderCount: item.folderCount,
+    nestedFolderCount: item.nestedFolderCount,
   };
 }
 
@@ -985,11 +986,12 @@ async function countFolderContents(folderId, { apiKey } = {}) {
     }
   }
   const innerCounts = await Promise.all(nested.map((id) => countFolderContents(id, { apiKey })));
+  let nestedFolderCount = folderCount;
   for (const inner of innerCounts) {
     fileCount += inner.fileCount;
-    folderCount += inner.folderCount;
+    nestedFolderCount += inner.nestedFolderCount;
   }
-  return { fileCount, folderCount };
+  return { fileCount, folderCount, nestedFolderCount };
 }
 
 async function sumFolderBytes(folderId) {
@@ -2713,6 +2715,7 @@ app.get('/folders/:folderId', requireAuth, async (req, res) => {
           const counts = await countFolderContents(folder.id, { apiKey });
           folder.fileCount = counts.fileCount;
           folder.folderCount = counts.folderCount;
+          folder.nestedFolderCount = counts.nestedFolderCount;
         })
       );
     }
