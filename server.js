@@ -947,6 +947,7 @@ function asListedDriveItem(item) {
     webViewLink: item.webViewLink,
     thumbnailLink: item.thumbnailLink,
     fileCount: item.fileCount,
+    folderCount: item.folderCount,
   };
 }
 
@@ -2690,6 +2691,7 @@ app.get('/folders/:folderId', requireAuth, async (req, res) => {
         folders.map(async (folder) => {
           const inner = await listDirectChildren(folder.id, { apiKey });
           folder.fileCount = inner.filter((file) => file.mimeType !== FOLDER_MIME).length;
+          folder.folderCount = inner.filter((file) => file.mimeType === FOLDER_MIME).length;
         })
       );
     }
