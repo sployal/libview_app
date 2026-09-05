@@ -207,6 +207,14 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
   int get _totalUnitFiles =>
       subjects.fold(0, (sum, subject) => sum + subject.fileCount);
 
+  int get _totalUnitFolders => subjects.fold(
+        0,
+        (sum, subject) => sum + 1 + subject.folderCount,
+      );
+
+  int get _listedFolderCount =>
+      currentFiles.where((file) => file.isFolder).length;
+
   int get _nestedFileCount {
     var files = 0;
     for (final file in currentFiles) {
@@ -217,16 +225,6 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
       }
     }
     return files;
-  }
-
-  int get _nestedFolderCount {
-    var folders = 0;
-    for (final file in currentFiles) {
-      if (file.isFolder) {
-        folders += 1 + file.folderCount;
-      }
-    }
-    return folders;
   }
 
   void _subtractListedItemCounts(StudyMaterial item) {
@@ -3505,7 +3503,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
         isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
     final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
     final visibleFiles = _visibleFiles;
-    final folderCount = _nestedFolderCount;
+    final folderCount = _listedFolderCount;
     final fileCount = _nestedFileCount;
     final matchCount = visibleFiles.length;
     final itemCountLabel = GoogleDriveService.folderContentsLabel(
@@ -4140,7 +4138,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
                     Text(
                       isLoading
                           ? 'Loading folders'
-                          : '${subjects.length} ${subjects.length == 1 ? 'folder' : 'folders'}  ·  $totalFiles ${totalFiles == 1 ? 'file' : 'files'}',
+                          : '${_totalUnitFolders} ${_totalUnitFolders == 1 ? 'folder' : 'folders'}  ·  $totalFiles ${totalFiles == 1 ? 'file' : 'files'}',
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,

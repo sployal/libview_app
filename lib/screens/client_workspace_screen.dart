@@ -474,7 +474,7 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
           const SizedBox(height: 18),
           Row(
             children: [
-              _metric(_summary.folderCount.toString(), 'Folders'),
+              _metric(_folders.length.toString(), 'Folders'),
               const SizedBox(width: 10),
               _metric(_summary.fileCount.toString(), 'Files'),
               const SizedBox(width: 10),
