@@ -215,17 +215,8 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
   int get _listedFolderCount =>
       currentFiles.where((file) => file.isFolder).length;
 
-  int get _nestedFileCount {
-    var files = 0;
-    for (final file in currentFiles) {
-      if (file.isFolder) {
-        files += file.fileCount;
-      } else {
-        files += 1;
-      }
-    }
-    return files;
-  }
+  int get _listedFileCount =>
+      currentFiles.where((file) => !file.isFolder).length;
 
   void _subtractListedItemCounts(StudyMaterial item) {
     final subject = selectedSubject;
@@ -3504,7 +3495,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
     final visibleFiles = _visibleFiles;
     final folderCount = _listedFolderCount;
-    final fileCount = _nestedFileCount;
+    final fileCount = _listedFileCount;
     final matchCount = visibleFiles.length;
     final itemCountLabel = GoogleDriveService.folderContentsLabel(
       fileCount: fileCount,
