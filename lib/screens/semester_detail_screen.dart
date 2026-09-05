@@ -2511,7 +2511,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
   }
 
   Widget? _unitFolderMenu(Subject subject) {
-    if (!_isLiveFolder) return null;
+    if (!_isLiveFolder || !_canManageFolders) return null;
     return PopupMenuButton<String>(
       tooltip: 'Folder options',
       enabled: !_isMutatingFolder,
