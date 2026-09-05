@@ -51,7 +51,12 @@ class FileDetailsInfo {
     return FileDetailsInfo(
       name: file.name,
       type: file.type,
-      sizeLabel: file.isFolder ? 'Folder' : _sizeLabel(file.size, file.sizeBytes),
+      sizeLabel: file.isFolder
+          ? GoogleDriveService.folderContentsLabel(
+              fileCount: file.fileCount,
+              folderCount: file.folderCount,
+            )
+          : _sizeLabel(file.size, file.sizeBytes),
       dateLabel: file.date,
       modifiedAt: modified,
       createdAt: file.createdAt,
@@ -71,11 +76,13 @@ class FileDetailsInfo {
   }
 
   factory FileDetailsInfo.fromSubject(Subject folder) {
-    final files = folder.fileCount;
     return FileDetailsInfo(
       name: folder.name,
       type: 'Folder',
-      sizeLabel: files == 1 ? '1 file' : '$files files',
+      sizeLabel: GoogleDriveService.folderContentsLabel(
+        fileCount: folder.fileCount,
+        folderCount: folder.folderCount,
+      ),
       dateLabel: '',
       modifiedAt: folder.modifiedAt,
       createdAt: folder.createdAt,

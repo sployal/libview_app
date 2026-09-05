@@ -143,7 +143,10 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
       final folderId = _client.driveFolderId;
       final results = await Future.wait([
         GoogleDriveService.summarizeFolder(folderId),
-        GoogleDriveService.getSubjectsFromFolder(folderId),
+        GoogleDriveService.getSubjectsFromFolder(
+          folderId,
+          nestedCounts: true,
+        ),
         ClientRecentFolders.load(_client.id),
         () async {
           try {
@@ -843,7 +846,10 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
                   style: TextStyle(fontWeight: FontWeight.w700, color: title),
                 ),
                 subtitle: Text(
-                  '${folder.fileCount} file${folder.fileCount == 1 ? '' : 's'}',
+                  GoogleDriveService.folderContentsLabel(
+                    fileCount: folder.fileCount,
+                    folderCount: folder.folderCount,
+                  ),
                   style: TextStyle(color: muted),
                 ),
                 trailing: Icon(Icons.chevron_right_rounded, color: muted),

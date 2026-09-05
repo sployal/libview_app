@@ -987,6 +987,7 @@ async function countFolderContents(folderId, { apiKey } = {}) {
   const innerCounts = await Promise.all(nested.map((id) => countFolderContents(id, { apiKey })));
   for (const inner of innerCounts) {
     fileCount += inner.fileCount;
+    folderCount += inner.folderCount;
   }
   return { fileCount, folderCount };
 }

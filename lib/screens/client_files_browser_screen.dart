@@ -207,6 +207,41 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
   int get _totalUnitFiles =>
       subjects.fold(0, (sum, subject) => sum + subject.fileCount);
 
+  int get _nestedFileCount {
+    var files = 0;
+    for (final file in currentFiles) {
+      if (file.isFolder) {
+        files += file.fileCount;
+      } else {
+        files += 1;
+      }
+    }
+    return files;
+  }
+
+  int get _nestedFolderCount {
+    var folders = 0;
+    for (final file in currentFiles) {
+      if (file.isFolder) {
+        folders += 1 + file.folderCount;
+      }
+    }
+    return folders;
+  }
+
+  void _subtractListedItemCounts(StudyMaterial item) {
+    final subject = selectedSubject;
+    if (subject == null) return;
+    if (item.isFolder) {
+      final nextFiles = subject.fileCount - item.fileCount;
+      final nextFolders = subject.folderCount - (1 + item.folderCount);
+      subject.fileCount = nextFiles < 0 ? 0 : nextFiles;
+      subject.folderCount = nextFolders < 0 ? 0 : nextFolders;
+    } else if (subject.fileCount > 0) {
+      subject.fileCount -= 1;
+    }
+  }
+
   List<StudyMaterial> get _visibleFiles {
     final query = _fileQuery.trim().toLowerCase();
     final filtered = currentFiles.where((file) {
@@ -416,7 +451,10 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
 
     try {
       if (widget.folderId != null && widget.folderId!.isNotEmpty) {
-        final loadedSubjects = await GoogleDriveService.getSubjectsFromFolder(widget.folderId!);
+        final loadedSubjects = await GoogleDriveService.getSubjectsFromFolder(
+          widget.folderId!,
+          nestedCounts: true,
+        );
         var lockedIds = <String>{};
         try {
           lockedIds = await UploadService.instance.fetchLockedFolderIds(widget.folderId!);
@@ -734,6 +772,8 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
       id: folder.id,
       name: folder.name,
       colorIndex: _folderTrail.length + 1,
+      fileCount: folder.fileCount,
+      folderCount: folder.folderCount,
       modifiedAt: folder.modifiedAt,
       createdAt: folder.createdAt,
       isLocked: _isListedFolderLocked(folder),
@@ -1055,11 +1095,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
       setState(() {
         currentFiles.removeWhere((item) => item.id == material.id);
         _deletingIds.remove(material.id);
-        if (!material.isFolder &&
-            selectedSubject != null &&
-            selectedSubject!.fileCount > 0) {
-          selectedSubject!.fileCount -= 1;
-        }
+        _subtractListedItemCounts(material);
       });
       _showMessage('Deleted ${material.name}');
     } on UploadException catch (e) {
@@ -1213,9 +1249,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
       setState(() {
         currentFiles.removeWhere((item) => item.id == material.id);
         _movingIds.remove(material.id);
-        if (selectedSubject != null && selectedSubject!.fileCount > 0) {
-          selectedSubject!.fileCount -= 1;
-        }
+        _subtractListedItemCounts(material);
       });
       _showMessage(
         destination.isMain
@@ -1513,12 +1547,18 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
           id: id,
           name: name,
           type: 'FOLDER',
-          size: 'Folder',
+          size: GoogleDriveService.folderContentsLabel(
+            fileCount: 0,
+            folderCount: 0,
+          ),
           date: GoogleDriveService.formatDate(DateTime.now().toIso8601String()),
           modifiedAt: DateTime.now(),
           createdAt: DateTime.now(),
         ),
       );
+      if (selectedSubject != null) {
+        selectedSubject!.folderCount += 1;
+      }
     });
   }
 
@@ -2420,11 +2460,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
         setState(() {
           currentFiles.removeWhere((file) => file.id == item.id);
           _selectedItems.remove(item.id);
-          if (!item.isFolder &&
-              selectedSubject != null &&
-              selectedSubject!.fileCount > 0) {
-            selectedSubject!.fileCount -= 1;
-          }
+          _subtractListedItemCounts(item);
         });
       } on UploadException catch (e) {
         _showMessage(e.message, isError: true);
@@ -2501,11 +2537,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
           currentFiles.removeWhere((file) => file.id == item.id);
           _selectedItems.remove(item.id);
           _deletingIds.remove(item.id);
-          if (!item.isFolder &&
-              selectedSubject != null &&
-              selectedSubject!.fileCount > 0) {
-            selectedSubject!.fileCount -= 1;
-          }
+          _subtractListedItemCounts(item);
         });
       } on UploadException catch (e) {
         _showMessage(e.message, isError: true);
@@ -2798,7 +2830,9 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     await _showItemActionSheet(
       title: file.name,
       subtitle: file.isFolder
-          ? (_isListedFolderLocked(file) ? 'Locked folder' : 'Folder')
+          ? (_isListedFolderLocked(file)
+              ? 'Locked · ${file.size}'
+              : file.size)
           : '${file.type} • ${file.size}',
       leadingIcon: file.isFolder
           ? Icons.folder_rounded
@@ -2814,7 +2848,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     await _showItemActionSheet(
       title: subject.name,
       subtitle:
-          '${subject.fileCount} ${subject.fileCount == 1 ? 'file' : 'files'}'
+          '${GoogleDriveService.folderContentsLabel(fileCount: subject.fileCount, folderCount: subject.folderCount)}'
           '${subject.isLocked ? ' • Locked' : ''}',
       leadingIcon: Icons.folder_rounded,
       leadingColor: subject.color,
@@ -3089,10 +3123,10 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
                             Text(
                               file.isFolder
                                   ? (_isListedFolderLocked(file)
-                                      ? (file.date.isEmpty
+                                      ? (file.size.isEmpty
                                           ? 'Locked'
-                                          : 'Locked · ${file.date}')
-                                      : file.date)
+                                          : 'Locked · ${file.size}')
+                                      : file.size)
                                   : '${file.type} • ${file.size} • ${file.date}',
                               style: TextStyle(
                                 fontSize: 13,
@@ -3448,20 +3482,18 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
         isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
     final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
     final visibleFiles = _visibleFiles;
-    final folderCount = currentFiles.where((file) => file.isFolder).length;
-    final fileCount = currentFiles.length - folderCount;
+    final folderCount = _nestedFolderCount;
+    final fileCount = _nestedFileCount;
     final matchCount = visibleFiles.length;
-    final filesNoun = fileCount == 1 ? 'file' : 'files';
-    final foldersNoun = folderCount == 1 ? 'folder' : 'folders';
-    final itemCountLabel = folderCount == 0
-        ? '$fileCount $filesNoun'
-        : fileCount == 0
-            ? '$folderCount $foldersNoun'
-            : '$folderCount $foldersNoun  ·  $fileCount $filesNoun';
+    final itemCountLabel = GoogleDriveService.folderContentsLabel(
+      fileCount: fileCount,
+      folderCount: folderCount,
+    );
     final isFiltering =
         _fileQuery.trim().isNotEmpty || _fileTypeFilter != 'All';
+    final totalListed = folderCount + fileCount;
     final countLabel = isFiltering
-        ? '$matchCount of ${currentFiles.length}'
+        ? '$matchCount of $totalListed'
         : itemCountLabel;
 
     return Scaffold(
@@ -4536,8 +4568,10 @@ class _UnitFolderTile extends StatelessWidget {
     final card = isDark ? const Color(0xFF1F2937) : Colors.white;
     final title = isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
     final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
-    final filesLabel =
-        '${subject.fileCount} ${subject.fileCount == 1 ? 'file' : 'files'}';
+    final filesLabel = GoogleDriveService.folderContentsLabel(
+      fileCount: subject.fileCount,
+      folderCount: subject.folderCount,
+    );
 
     return Material(
       color: Colors.transparent,

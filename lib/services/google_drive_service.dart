@@ -175,39 +175,84 @@ class GoogleDriveService {
   // ============================================================================
   // NEW METHOD: Load subjects from any Google Drive folder
   // ============================================================================
-  static Future<List<Subject>> getSubjectsFromFolder(String folderId) async {
+  static Future<DriveFolderSummary> countFolderContents(String folderId) async {
+    if (folderId.isEmpty) return const DriveFolderSummary();
     try {
       final items = await getFolderContents(folderId);
-      
-      // Convert folders to subjects
-      final List<Subject> subjects = [];
-      int colorIndex = 0;
-      
-      for (var item in items) {
+      var fileCount = 0;
+      var folderCount = 0;
+      final nested = <DriveItem>[];
+      for (final item in items) {
         if (item.isFolder) {
-          // Count files in this subject folder
-          int fileCount = 0;
-          try {
-            final subFolderItems = await getFolderContents(item.id);
-            fileCount = subFolderItems.where((i) => !i.isFolder).length;
-          } catch (e) {
-            fileCount = 0;
-          }
-          
-          subjects.add(subjectFromFolder(
-            id: item.id,
-            name: item.name,
-            colorIndex: colorIndex,
-            fileCount: fileCount,
-            modifiedAt: DateTime.tryParse(item.modifiedTime ?? ''),
-            createdAt: DateTime.tryParse(item.createdTime ?? ''),
-          ));
-          
-          colorIndex++;
+          folderCount += 1;
+          nested.add(item);
+        } else {
+          fileCount += 1;
         }
       }
-      
-      return subjects;
+      if (nested.isNotEmpty) {
+        final innerCounts = await Future.wait(
+          nested.map((folder) => countFolderContents(folder.id)),
+        );
+        for (final inner in innerCounts) {
+          fileCount += inner.fileCount;
+          folderCount += inner.folderCount;
+        }
+      }
+      return DriveFolderSummary(fileCount: fileCount, folderCount: folderCount);
+    } catch (e) {
+      print('Error counting folder contents: $e');
+      return const DriveFolderSummary();
+    }
+  }
+
+  static String folderContentsLabel({
+    required int fileCount,
+    int folderCount = 0,
+  }) {
+    final filesNoun = fileCount == 1 ? 'file' : 'files';
+    if (folderCount <= 0) {
+      return '$fileCount $filesNoun';
+    }
+    final foldersNoun = folderCount == 1 ? 'folder' : 'folders';
+    return '$folderCount $foldersNoun  ·  $fileCount $filesNoun';
+  }
+
+  static Future<List<Subject>> getSubjectsFromFolder(
+    String folderId, {
+    bool nestedCounts = false,
+  }) async {
+    try {
+      final items = await getFolderContents(folderId);
+      final folders = items.where((item) => item.isFolder).toList();
+      final counts = await Future.wait(
+        folders.map((item) async {
+          try {
+            if (nestedCounts) {
+              return await countFolderContents(item.id);
+            }
+            final subFolderItems = await getFolderContents(item.id);
+            return DriveFolderSummary(
+              fileCount: subFolderItems.where((i) => !i.isFolder).length,
+            );
+          } catch (e) {
+            return const DriveFolderSummary();
+          }
+        }),
+      );
+
+      return [
+        for (var i = 0; i < folders.length; i++)
+          subjectFromFolder(
+            id: folders[i].id,
+            name: folders[i].name,
+            colorIndex: i,
+            fileCount: counts[i].fileCount,
+            folderCount: counts[i].folderCount,
+            modifiedAt: DateTime.tryParse(folders[i].modifiedTime ?? ''),
+            createdAt: DateTime.tryParse(folders[i].createdTime ?? ''),
+          ),
+      ];
     } catch (e) {
       print('Error loading subjects from folder: $e');
       throw Exception('Failed to load subjects from folder: $e');
@@ -274,21 +319,41 @@ class GoogleDriveService {
     try {
       final items = await getFolderContents(subjectFolderId);
       
-      return items
+      final listed = items
           .where((item) => includeFolders || !item.isFolder)
-          .map((item) => StudyMaterial(
-                id: item.id,
-                name: item.name,
-                type: item.isFolder ? 'FOLDER' : _getFileType(item.name),
-                size: item.isFolder ? 'Folder' : _formatFileSize(item.size),
-                date: formatDate(item.modifiedTime),
-                downloadUrl: item.isFolder ? null : item.webViewLink,
-                thumbnailUrl: item.isFolder ? null : item.thumbnailLink,
-                sizeBytes: item.isFolder ? null : int.tryParse(item.size ?? ''),
-                modifiedAt: DateTime.tryParse(item.modifiedTime ?? ''),
-                createdAt: DateTime.tryParse(item.uploadedAt ?? item.createdTime ?? ''),
-              ))
           .toList();
+      final folderCounts = await Future.wait(
+        listed.map((item) async {
+          if (!item.isFolder) return const DriveFolderSummary();
+          return countFolderContents(item.id);
+        }),
+      );
+
+      return [
+        for (var i = 0; i < listed.length; i++)
+          StudyMaterial(
+            id: listed[i].id,
+            name: listed[i].name,
+            type: listed[i].isFolder ? 'FOLDER' : _getFileType(listed[i].name),
+            size: listed[i].isFolder
+                ? folderContentsLabel(
+                    fileCount: folderCounts[i].fileCount,
+                    folderCount: folderCounts[i].folderCount,
+                  )
+                : _formatFileSize(listed[i].size),
+            date: formatDate(listed[i].modifiedTime),
+            downloadUrl: listed[i].isFolder ? null : listed[i].webViewLink,
+            thumbnailUrl: listed[i].isFolder ? null : listed[i].thumbnailLink,
+            sizeBytes:
+                listed[i].isFolder ? null : int.tryParse(listed[i].size ?? ''),
+            modifiedAt: DateTime.tryParse(listed[i].modifiedTime ?? ''),
+            createdAt: DateTime.tryParse(
+              listed[i].uploadedAt ?? listed[i].createdTime ?? '',
+            ),
+            fileCount: folderCounts[i].fileCount,
+            folderCount: folderCounts[i].folderCount,
+          ),
+      ];
     } catch (e) {
       print('Error fetching subject files: $e');
       return [];
@@ -316,6 +381,7 @@ class GoogleDriveService {
     required String name,
     required int colorIndex,
     int fileCount = 0,
+    int folderCount = 0,
     DateTime? modifiedAt,
     DateTime? createdAt,
     bool isLocked = false,
@@ -327,6 +393,7 @@ class GoogleDriveService {
       folderId: id,
       color: folderColors[colorIndex % folderColors.length],
       fileCount: fileCount,
+      folderCount: folderCount,
       modifiedAt: modifiedAt,
       createdAt: createdAt,
       isLocked: isLocked,
@@ -592,6 +659,7 @@ class Subject {
   final String folderId;
   final Color color;
   int fileCount;
+  int folderCount;
   final DateTime? modifiedAt;
   final DateTime? createdAt;
   final bool isLocked;
@@ -603,6 +671,7 @@ class Subject {
     required this.folderId,
     required this.color,
     this.fileCount = 0,
+    this.folderCount = 0,
     this.modifiedAt,
     this.createdAt,
     this.isLocked = false,
@@ -615,6 +684,7 @@ class Subject {
     String? folderId,
     Color? color,
     int? fileCount,
+    int? folderCount,
     DateTime? modifiedAt,
     DateTime? createdAt,
     bool? isLocked,
@@ -626,6 +696,7 @@ class Subject {
       folderId: folderId ?? this.folderId,
       color: color ?? this.color,
       fileCount: fileCount ?? this.fileCount,
+      folderCount: folderCount ?? this.folderCount,
       modifiedAt: modifiedAt ?? this.modifiedAt,
       createdAt: createdAt ?? this.createdAt,
       isLocked: isLocked ?? this.isLocked,
@@ -644,6 +715,8 @@ class StudyMaterial {
   final int? sizeBytes;
   final DateTime? modifiedAt;
   final DateTime? createdAt;
+  final int fileCount;
+  final int folderCount;
   
   StudyMaterial({
     required this.id,
@@ -656,6 +729,8 @@ class StudyMaterial {
     this.sizeBytes,
     this.modifiedAt,
     this.createdAt,
+    this.fileCount = 0,
+    this.folderCount = 0,
   });
 
   bool get isFolder => type == 'FOLDER';
@@ -678,6 +753,8 @@ class StudyMaterial {
     int? sizeBytes,
     DateTime? modifiedAt,
     DateTime? createdAt,
+    int? fileCount,
+    int? folderCount,
   }) {
     return StudyMaterial(
       id: id ?? this.id,
@@ -690,6 +767,8 @@ class StudyMaterial {
       sizeBytes: sizeBytes ?? this.sizeBytes,
       modifiedAt: modifiedAt ?? this.modifiedAt,
       createdAt: createdAt ?? this.createdAt,
+      fileCount: fileCount ?? this.fileCount,
+      folderCount: folderCount ?? this.folderCount,
     );
   }
 }
