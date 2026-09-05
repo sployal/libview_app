@@ -3123,10 +3123,11 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
                             Text(
                               file.isFolder
                                   ? (_isListedFolderLocked(file)
-                                      ? (file.size.isEmpty
-                                          ? 'Locked'
-                                          : 'Locked · ${file.size}')
-                                      : file.size)
+                                      ? 'Locked · ${GoogleDriveService.folderContentsLabel(fileCount: file.fileCount, folderCount: file.folderCount)}'
+                                      : GoogleDriveService.folderContentsLabel(
+                                          fileCount: file.fileCount,
+                                          folderCount: file.folderCount,
+                                        ))
                                   : '${file.type} • ${file.size} • ${file.date}',
                               style: TextStyle(
                                 fontSize: 13,
@@ -3169,6 +3170,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final titleColor =
         isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
+    final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -3183,7 +3185,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
             crossAxisCount: crossAxisCount,
             mainAxisSpacing: 12,
             crossAxisSpacing: 12,
-            childAspectRatio: 0.78,
+            childAspectRatio: 0.72,
           ),
           itemCount: _visibleFiles.length,
           itemBuilder: (context, index) {
@@ -3293,17 +3295,38 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
                         ),
                       ),
                       Padding(
-                        padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
-                        child: Text(
-                          file.name,
-                          textAlign: TextAlign.center,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: titleColor,
-                          ),
+                        padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+                        child: Column(
+                          children: [
+                            Text(
+                              file.name,
+                              textAlign: TextAlign.center,
+                              maxLines: file.isFolder ? 1 : 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: titleColor,
+                              ),
+                            ),
+                            if (file.isFolder) ...[
+                              const SizedBox(height: 3),
+                              Text(
+                                GoogleDriveService.folderContentsLabel(
+                                  fileCount: file.fileCount,
+                                  folderCount: file.folderCount,
+                                ),
+                                textAlign: TextAlign.center,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                  color: muted,
+                                ),
+                              ),
+                            ],
+                          ],
                         ),
                       ),
                     ],
