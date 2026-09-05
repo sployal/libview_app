@@ -207,11 +207,6 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
   int get _totalUnitFiles =>
       subjects.fold(0, (sum, subject) => sum + subject.fileCount);
 
-  int get _totalUnitFolders => subjects.fold(
-        0,
-        (sum, subject) => sum + 1 + subject.folderCount,
-      );
-
   int get _listedFolderCount =>
       currentFiles.where((file) => file.isFolder).length;
 
@@ -4129,7 +4124,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
                     Text(
                       isLoading
                           ? 'Loading folders'
-                          : '${_totalUnitFolders} ${_totalUnitFolders == 1 ? 'folder' : 'folders'}  ·  $totalFiles ${totalFiles == 1 ? 'file' : 'files'}',
+                          : '${subjects.length} ${subjects.length == 1 ? 'folder' : 'folders'}  ·  $totalFiles ${totalFiles == 1 ? 'file' : 'files'}',
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
