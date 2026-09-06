@@ -2729,7 +2729,7 @@ app.get('/folders/:folderId', requireAuth, async (req, res) => {
 
 // --- AI chat (NVIDIA Llama vision) --------------------------------------
 
-registerAiRoutes(app, { requireAuth });
+registerAiRoutes(app, { requireAuth, firestore });
 registerMediaRoutes(app, { requireAuth, requireSystemAdmin, upload });
 registerContactRoutes(app, { oauth2Client });
 

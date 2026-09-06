@@ -1,14 +1,22 @@
 const axios = require('axios');
 
 const INVOKE_URL = 'https://integrate.api.nvidia.com/v1/chat/completions';
-const SYSTEM_PROMPT =
-  'You are Edupal AI, a helpful university study assistant. ' +
+
+const STUDENT_SYSTEM_PROMPT =
+  'You are UniStudy AI, a helpful university study assistant. ' +
   'Answer clearly and concisely. Help with coursework, exam prep, ' +
   'explanations, summaries, diagrams in images, and study planning. ' +
   'If a question is outside academics, still be helpful but keep a study-focused tone.';
 
-function toNvidiaMessages(clientMessages) {
-  const out = [{ role: 'system', content: SYSTEM_PROMPT }];
+const CLIENT_SYSTEM_PROMPT =
+  'You are Edupal AI, a helpful general-purpose assistant for workspace clients. ' +
+  'Answer any question clearly and concisely — including general knowledge, writing, ' +
+  'productivity, technical help, images, and everyday topics. ' +
+  'Do not steer the user toward academics or study unless they ask for it. ' +
+  'Be practical, direct, and useful.';
+
+function toNvidiaMessages(clientMessages, systemPrompt) {
+  const out = [{ role: 'system', content: systemPrompt }];
 
   for (const msg of clientMessages) {
     if (!msg || typeof msg !== 'object') continue;
@@ -52,18 +60,29 @@ function extractReply(data) {
   return '';
 }
 
-function registerAiRoutes(app, { requireAuth }) {
+async function isClientUser(firestore, uid) {
+  if (!firestore || !uid) return false;
+  try {
+    const snap = await firestore.collection('profiles').doc(uid).get();
+    const role = String(snap.data()?.role || '').toLowerCase();
+    return role === 'client';
+  } catch (error) {
+    console.error('AI role lookup failed:', error.message || error);
+    return false;
+  }
+}
+
+function registerAiRoutes(app, { requireAuth, firestore }) {
   app.post('/ai/chat', requireAuth, async (req, res) => {
     const apiKey = process.env.NVIDIA_API_KEY;
-    const model = process.env.NVIDIA_AI_MODEL;
-    if (!apiKey || !model) {
-      return res.status(503).json({
-        error: `AI is not configured (missing ${!apiKey ? 'NVIDIA_API_KEY' : 'NVIDIA_AI_MODEL'})`,
-      });
+    if (!apiKey) {
+      return res.status(503).json({ error: 'AI is not configured (missing NVIDIA_API_KEY)' });
     }
 
     const messages = Array.isArray(req.body?.messages) ? req.body.messages : [];
-    const nvidiaMessages = toNvidiaMessages(messages);
+    const clientUser = await isClientUser(firestore, req.user?.uid);
+    const systemPrompt = clientUser ? CLIENT_SYSTEM_PROMPT : STUDENT_SYSTEM_PROMPT;
+    const nvidiaMessages = toNvidiaMessages(messages, systemPrompt);
     const hasUserTurn = nvidiaMessages.some((m) => m.role === 'user');
     if (!hasUserTurn) {
       return res.status(400).json({ error: 'A user message is required' });
@@ -71,7 +90,7 @@ function registerAiRoutes(app, { requireAuth }) {
 
     const payload = {
       messages: nvidiaMessages,
-      model,
+      model: process.env.NVIDIA_AI_MODEL || 'meta/llama-3.2-90b-vision-instruct',
       frequency_penalty: 0,
       max_tokens: 1024,
       presence_penalty: 0,
