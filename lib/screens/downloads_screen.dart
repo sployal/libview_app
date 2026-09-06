@@ -31,7 +31,15 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
   FileSortMode _fileSort = FileSortMode.dateRecent;
   String _query = '';
   String _typeFilter = 'All';
-  static const _typeFilters = ['All', 'PDF', 'DOC', 'PPT', 'IMG'];
+  static const _typeFilters = [
+    'All',
+    'PDF',
+    'DOC',
+    'PPT',
+    'IMG',
+    'VID',
+    'AUD',
+  ];
 
   bool get _selectionMode => _selected.isNotEmpty;
 
@@ -313,6 +321,10 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
         return const Color(0xFF10B981);
       case 'IMG':
         return const Color(0xFF8B5CF6);
+      case 'VID':
+        return const Color(0xFF0EA5E9);
+      case 'AUD':
+        return const Color(0xFFEC4899);
       default:
         return const Color(0xFF6B7280);
     }
@@ -330,6 +342,10 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
         return Icons.table_chart_rounded;
       case 'IMG':
         return Icons.image_rounded;
+      case 'VID':
+        return Icons.videocam_rounded;
+      case 'AUD':
+        return Icons.audiotrack_rounded;
       default:
         return Icons.insert_drive_file_rounded;
     }
@@ -866,7 +882,11 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
                       ),
                     ),
                     child: Text(
-                      type,
+                      switch (type) {
+                        'VID' => 'Video',
+                        'AUD' => 'Audio',
+                        _ => type,
+                      },
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
