@@ -10,6 +10,7 @@ import 'package:permission_handler/permission_handler.dart';
 
 import '../services/ai_conversation_store.dart';
 import '../services/ai_service.dart';
+import '../services/auth_service.dart';
 import '../ui/adaptive_layout.dart';
 import 'no_internet_screen.dart';
 
@@ -28,6 +29,7 @@ class _AiScreenState extends State<AiScreen> {
   Uint8List? _pendingImage;
   String? _pendingImageMime;
   bool _isSending = false;
+  bool _isClientUser = false;
   late String _conversationId;
   String _conversationTitle = 'New conversation';
   List<AiConversationSummary> _conversations = const [];
@@ -39,6 +41,21 @@ class _AiScreenState extends State<AiScreen> {
     super.initState();
     _conversationId = _store.newId();
     _loadHistory();
+    _loadClientRole();
+  }
+
+  Future<void> _loadClientRole() async {
+    final uid = AuthService.instance.currentUser?.uid;
+    if (uid == null) return;
+    try {
+      final doc = await AuthService.instance.profileDocStream(uid).first;
+      if (!mounted) return;
+      setState(() {
+        _isClientUser = AuthService.isClientRole(doc.data()?['role'] as String?);
+      });
+    } catch (_) {
+      // Keep student defaults if role lookup fails.
+    }
   }
 
   Future<void> _loadHistory() async {
@@ -344,7 +361,11 @@ class _AiScreenState extends State<AiScreen> {
       children: [
         Expanded(
           child: _messages.isEmpty
-              ? _EmptyState(accent: accent, isDark: isDark)
+              ? _EmptyState(
+                  accent: accent,
+                  isDark: isDark,
+                  isClient: _isClientUser,
+                )
               : LayoutBuilder(
                   builder: (context, constraints) {
                     return ListView.builder(
@@ -369,6 +390,7 @@ class _AiScreenState extends State<AiScreen> {
         _Composer(
           controller: _controller,
           isSending: _isSending,
+          isClient: _isClientUser,
           accent: accent,
           isDark: isDark,
           pendingImage: _pendingImage,
@@ -427,12 +449,14 @@ class _AiScreenState extends State<AiScreen> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Study AI',
-              style: TextStyle(fontWeight: FontWeight.bold),
+            Text(
+              _isClientUser ? 'Edupal AI' : 'Study AI',
+              style: const TextStyle(fontWeight: FontWeight.bold),
             ),
             Text(
-              _messages.isEmpty ? 'Ask a study question' : _conversationTitle,
+              _messages.isEmpty
+                  ? (_isClientUser ? 'Ask anything' : 'Ask a study question')
+                  : _conversationTitle,
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.w400,
@@ -707,10 +731,15 @@ class _ConversationSidebar extends StatelessWidget {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.accent, required this.isDark});
+  const _EmptyState({
+    required this.accent,
+    required this.isDark,
+    required this.isClient,
+  });
 
   final Color accent;
   final bool isDark;
+  final bool isClient;
 
   @override
   Widget build(BuildContext context) {
@@ -730,7 +759,7 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 20),
             Text(
-              'Ask Edupal AI',
+              isClient ? 'Ask Edupal AI' : 'Ask UniStudy AI',
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
@@ -739,7 +768,9 @@ class _EmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Ask a question, snap a photo of your notes, or attach an image. Use the sidebar to reopen a saved chat, then collapse it to focus.',
+              isClient
+                  ? 'Ask anything, snap a photo, or attach an image. Use the sidebar to reopen a saved chat, then collapse it to focus.'
+                  : 'Ask a question, snap a photo of your notes, or attach an image. Use the sidebar to reopen a saved chat, then collapse it to focus.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 15,
@@ -876,6 +907,7 @@ class _Composer extends StatelessWidget {
   const _Composer({
     required this.controller,
     required this.isSending,
+    required this.isClient,
     required this.accent,
     required this.isDark,
     required this.pendingImage,
@@ -887,6 +919,7 @@ class _Composer extends StatelessWidget {
 
   final TextEditingController controller;
   final bool isSending;
+  final bool isClient;
   final Color accent;
   final bool isDark;
   final Uint8List? pendingImage;
@@ -970,7 +1003,8 @@ class _Composer extends StatelessWidget {
                     textInputAction: TextInputAction.send,
                     onSubmitted: (_) => onSend(),
                     decoration: InputDecoration(
-                      hintText: 'Ask a study question…',
+                      hintText:
+                          isClient ? 'Ask anything…' : 'Ask a study question…',
                       prefixIcon: IconButton(
                         tooltip: 'Browse files',
                         onPressed: isSending ? null : onBrowseFiles,
