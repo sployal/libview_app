@@ -3872,7 +3872,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
               fontSize: 15,
             ),
             decoration: InputDecoration(
-              hintText: 'Search notes, slides, labs...',
+              hintText: 'Search files...',
               hintStyle: TextStyle(color: muted, fontSize: 15),
               prefixIcon: Icon(
                 Icons.search_rounded,
