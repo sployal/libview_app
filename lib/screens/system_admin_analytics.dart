@@ -21,6 +21,7 @@ class _SystemAdminAnalyticsScreenState
     extends State<SystemAdminAnalyticsScreen> {
   static const _accent = Color(0xFF6366F1);
   static const _sky = Color(0xFF0EA5E9);
+  static const _media = Color(0xFF8B5CF6);
   static const _danger = Color(0xFFEF4444);
   static const _monthNames = [
     'January',
@@ -267,6 +268,8 @@ class _SystemAdminAnalyticsScreenState
                           _bandwidthCard(),
                           const SizedBox(height: 16),
                           _pair(_fileTypesCard(), _documentsCard()),
+                          const SizedBox(height: 16),
+                          _mediaPlaysCard(),
                           const SizedBox(height: 16),
                           _activityCard(),
                           const SizedBox(height: 16),
@@ -827,8 +830,8 @@ class _SystemAdminAnalyticsScreenState
                 children: [
                   _miniMetric('${count.uploads}', 'Uploads'),
                   _miniMetric('${count.downloads}', 'Downloads'),
-                  _miniMetric(_bytes(count.bytesUploaded), 'Up'),
-                  _miniMetric(_bytes(count.bytesDownloaded), 'Down'),
+                  _miniMetric('${count.streams}', 'Plays'),
+                  _miniMetric(_bytes(count.bytesDownloaded), 'Traffic'),
                 ],
               ),
             ],
@@ -996,7 +999,7 @@ class _SystemAdminAnalyticsScreenState
             _progressRow(
               color: _palette[i % _palette.length],
               title: rows[i].name,
-              subtitle: '${rows[i].uploads} up · ${rows[i].downloads} down',
+              subtitle: _trafficSubtitle(rows[i]),
               value: _bytes(rows[i].totalBytes),
               progress: _share(
                 rows[i].totalBytes,
@@ -1010,7 +1013,9 @@ class _SystemAdminAnalyticsScreenState
   }
 
   Widget _fileTypesCard() {
-    final rows = _data?.fileTypes ?? const [];
+    final rows = (_data?.fileTypes ?? const [])
+        .where((row) => row.id != 'video' && row.id != 'audio')
+        .toList();
     final slices = [
       for (final row in rows)
         if (row.totalCount > 0)
@@ -1027,7 +1032,7 @@ class _SystemAdminAnalyticsScreenState
             icon: CupertinoIcons.square_stack_3d_up_fill,
             color: const Color(0xFFF59E0B),
             title: 'File types',
-            subtitle: 'What people are transferring',
+            subtitle: 'Uploads and downloads, not media plays',
             meta: slices.isEmpty
                 ? null
                 : '${slices.fold<double>(0, (sum, item) => sum + item.value).round()}',
@@ -1044,8 +1049,7 @@ class _SystemAdminAnalyticsScreenState
               _progressRow(
                 color: _typeColors[rows[i].id] ?? _muted,
                 title: rows[i].name,
-                subtitle:
-                    '${rows[i].uploads} uploaded · ${rows[i].downloads} downloaded',
+                subtitle: _fileTypeSubtitle(rows[i]),
                 value: _bytes(rows[i].totalBytes),
                 progress: _share(
                   rows[i].totalCount,
@@ -1106,6 +1110,91 @@ class _SystemAdminAnalyticsScreenState
     );
   }
 
+  Widget _mediaPlaysCard() {
+    final data = _data;
+    if (data == null) return const SizedBox.shrink();
+    final rows = data.media.isNotEmpty
+        ? data.media
+        : data.fileTypes
+            .where((row) => row.id == 'video' || row.id == 'audio')
+            .toList();
+    final video = rows.where((row) => row.id == 'video').fold<int>(
+          0,
+          (sum, row) => sum + row.playCount,
+        );
+    final audio = rows.where((row) => row.id == 'audio').fold<int>(
+          0,
+          (sum, row) => sum + row.playCount,
+        );
+    final plays = data.streams > 0 ? data.streams : video + audio;
+    final slices = [
+      if (video > 0)
+        _ChartSlice(
+          label: 'Video',
+          value: video.toDouble(),
+          color: _typeColors['video'] ?? _media,
+        ),
+      if (audio > 0)
+        _ChartSlice(
+          label: 'Audio',
+          value: audio.toDouble(),
+          color: _typeColors['audio'] ?? _sky,
+        ),
+    ];
+
+    return _panel(
+      child: Column(
+        children: [
+          _cardHeader(
+            icon: CupertinoIcons.play_circle_fill,
+            color: _media,
+            title: 'Media plays',
+            subtitle: 'Video and audio opened in the player',
+            meta: plays > 0 ? '$plays' : null,
+          ),
+          _pieBlock(
+            values: slices,
+            empty: 'No video or audio plays in this period yet.',
+            emptyIcon: CupertinoIcons.play_circle,
+            centerLabel: 'plays',
+          ),
+          if (plays > 0) ...[
+            _hairline(indent: 0),
+            _progressRow(
+              color: _typeColors['video'] ?? _media,
+              title: 'Video',
+              subtitle: 'Opened in the video player',
+              value: '$video',
+              progress: _share(video, plays),
+              showDivider: true,
+            ),
+            _progressRow(
+              color: _typeColors['audio'] ?? _sky,
+              title: 'Audio',
+              subtitle: 'Opened in the audio player',
+              value: '$audio',
+              progress: _share(audio, plays),
+              showDivider: true,
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+              child: _singleBarChart(
+                points: data.series,
+                valueOf: (point) => point.streams.toDouble(),
+                color: _media,
+                empty: 'No play activity over time yet.',
+                tooltip: (value) => '$value plays',
+              ),
+            ),
+            _legendRow(const [
+              (_media, 'Plays'),
+            ]),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _activityCard() {
     final data = _data;
     if (data == null) return const SizedBox.shrink();
@@ -1141,6 +1230,7 @@ class _SystemAdminAnalyticsScreenState
   Widget _topUsersCard() {
     final uploads = _data?.topUploaders ?? const [];
     final downloads = _data?.topDownloaders ?? const [];
+    final players = _data?.topPlayers ?? const [];
     return _panel(
       child: Column(
         children: [
@@ -1150,10 +1240,10 @@ class _SystemAdminAnalyticsScreenState
             title: 'Top users',
             subtitle: 'Most active people this period',
           ),
-          if (uploads.isEmpty && downloads.isEmpty)
+          if (uploads.isEmpty && downloads.isEmpty && players.isEmpty)
             _emptyState(
               CupertinoIcons.person_2,
-              'Top users appear after the first upload or download.',
+              'Top users appear after the first upload, download, or play.',
             )
           else ...[
             _innerHeader('Uploaders'),
@@ -1187,6 +1277,23 @@ class _SystemAdminAnalyticsScreenState
                       '${downloads[i].count} · ${_bytes(downloads[i].bytes)}',
                   showDivider: i < downloads.length - 1,
                 ),
+            _hairline(indent: 0),
+            _innerHeader('Media players'),
+            if (players.isEmpty)
+              _emptyState(
+                CupertinoIcons.play_circle,
+                'No video or audio plays in this period.',
+              )
+            else
+              for (var i = 0; i < players.length; i++)
+                _rankRow(
+                  rank: i + 1,
+                  color: _media,
+                  title: players[i].name,
+                  subtitle: players[i].courseName,
+                  value: '${players[i].count} plays',
+                  showDivider: i < players.length - 1,
+                ),
           ],
         ],
       ),
@@ -1202,13 +1309,13 @@ class _SystemAdminAnalyticsScreenState
             icon: CupertinoIcons.clock_fill,
             color: const Color(0xFFF472B6),
             title: 'Recent activity',
-            subtitle: 'Latest uploads and downloads',
+            subtitle: 'Latest uploads, downloads, and plays',
             meta: rows.isEmpty ? null : '${rows.length}',
           ),
           if (rows.isEmpty)
             _emptyState(
               CupertinoIcons.time,
-              'Recent uploads and downloads will show up here.',
+              'Recent uploads, downloads, and plays will show up here.',
             )
           else
             for (var i = 0; i < rows.length; i++)
@@ -1218,7 +1325,7 @@ class _SystemAdminAnalyticsScreenState
                 title: rows[i].fileName.isEmpty ? rows[i].kind : rows[i].fileName,
                 subtitle: [
                   rows[i].name,
-                  _pretty(rows[i].kind),
+                  _kindLabel(rows[i].kind),
                   _pretty(rows[i].platform),
                   if (rows[i].ownerName.isNotEmpty) rows[i].ownerName,
                   if (rows[i].createdAt != null)
@@ -1408,6 +1515,102 @@ class _SystemAdminAnalyticsScreenState
                 final label = rodIndex == 0 ? 'Upload' : 'Download';
                 return BarTooltipItem(
                   '${points[group.x].label}\n$label ${tooltip(rod.toY.round())}',
+                  const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    height: 1.35,
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _singleBarChart({
+    required List<AnalyticsSeriesPoint> points,
+    required double Function(AnalyticsSeriesPoint) valueOf,
+    required Color color,
+    required String empty,
+    required String Function(int) tooltip,
+  }) {
+    if (points.isEmpty || points.every((point) => valueOf(point) == 0)) {
+      return _emptyState(CupertinoIcons.chart_bar, empty);
+    }
+
+    final maxValue = points.fold<double>(0, (current, point) {
+      final local = valueOf(point);
+      return local > current ? local : current;
+    });
+    final groups = <BarChartGroupData>[
+      for (var i = 0; i < points.length; i++)
+        BarChartGroupData(
+          x: i,
+          barRods: [_rod(valueOf(points[i]), color, points.length)],
+        ),
+    ];
+
+    return SizedBox(
+      height: 196,
+      child: BarChart(
+        BarChartData(
+          maxY: maxValue == 0 ? 1 : maxValue * 1.18,
+          barGroups: groups,
+          groupsSpace: points.length > 16 ? 6 : 10,
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: false,
+            getDrawingHorizontalLine: (_) => FlLine(
+              color: _line.withValues(alpha: 0.85),
+              strokeWidth: 0.8,
+            ),
+          ),
+          borderData: FlBorderData(show: false),
+          titlesData: FlTitlesData(
+            topTitles:
+                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            rightTitles:
+                const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            leftTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 24,
+                interval: points.length > 16 ? 5 : 1,
+                getTitlesWidget: (value, meta) {
+                  final index = value.round();
+                  if (index < 0 || index >= points.length) {
+                    return const SizedBox.shrink();
+                  }
+                  if (points.length > 16 && index % 5 != 0) {
+                    return const SizedBox.shrink();
+                  }
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text(
+                      points[index].label,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: _muted,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+          barTouchData: BarTouchData(
+            touchTooltipData: BarTouchTooltipData(
+              getTooltipColor: (_) => const Color(0xFF0F172A),
+              getTooltipItem: (group, _, rod, __) {
+                return BarTooltipItem(
+                  '${points[group.x].label}\n${tooltip(rod.toY.round())}',
                   const TextStyle(
                     color: Colors.white,
                     fontSize: 12,
@@ -2011,7 +2214,9 @@ class _SystemAdminAnalyticsScreenState
     required String value,
     bool showDivider = false,
   }) {
-    final upload = kind.toLowerCase().contains('upload');
+    final normalized = kind.toLowerCase();
+    final upload = normalized.contains('upload');
+    final play = normalized.contains('stream') || normalized.contains('play');
     return Column(
       children: [
         Padding(
@@ -2026,9 +2231,11 @@ class _SystemAdminAnalyticsScreenState
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
-                  upload
-                      ? CupertinoIcons.arrow_up_right
-                      : CupertinoIcons.arrow_down_left,
+                  play
+                      ? CupertinoIcons.play_fill
+                      : upload
+                          ? CupertinoIcons.arrow_up_right
+                          : CupertinoIcons.arrow_down_left,
                   size: 16,
                   color: color,
                 ),
@@ -2231,6 +2438,37 @@ class _SystemAdminAnalyticsScreenState
   String _pretty(String value) {
     if (value.isEmpty) return value;
     return value[0].toUpperCase() + value.substring(1);
+  }
+
+  String _kindLabel(String kind) {
+    switch (kind.toLowerCase()) {
+      case 'stream':
+      case 'play':
+        return 'Played';
+      case 'download':
+        return 'Downloaded';
+      case 'upload':
+        return 'Uploaded';
+      default:
+        return _pretty(kind);
+    }
+  }
+
+  String _fileTypeSubtitle(AnalyticsFileType row) {
+    final parts = <String>[
+      if (row.uploads > 0) '${row.uploads} uploaded',
+      if (row.downloads > 0) '${row.downloads} downloaded',
+    ];
+    return parts.isEmpty ? 'No transfers' : parts.join(' · ');
+  }
+
+  String _trafficSubtitle(AnalyticsNamedCount row) {
+    final parts = <String>[
+      '${row.uploads} up',
+      '${row.downloads} down',
+      if (row.streams > 0) '${row.streams} plays',
+    ];
+    return parts.join(' · ');
   }
 
   String _initials(String name) {

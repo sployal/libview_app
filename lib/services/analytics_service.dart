@@ -121,6 +121,7 @@ class AnalyticsFileType {
   }
 
   int get totalCount => uploads + downloads;
+  int get playCount => streams;
   int get totalBytes => bytesUploaded + bytesDownloaded;
 }
 
@@ -240,9 +241,11 @@ class AnalyticsSnapshot {
   final List<AnalyticsNamedCount> bandwidthByCourse;
   final List<AnalyticsFileType> fileTypes;
   final List<AnalyticsFileType> documents;
+  final List<AnalyticsFileType> media;
   final List<AnalyticsSeriesPoint> series;
   final List<AnalyticsTopUser> topUploaders;
   final List<AnalyticsTopUser> topDownloaders;
+  final List<AnalyticsTopUser> topPlayers;
   final List<AnalyticsRecentEvent> recent;
 
   const AnalyticsSnapshot({
@@ -268,9 +271,11 @@ class AnalyticsSnapshot {
     this.bandwidthByCourse = const [],
     this.fileTypes = const [],
     this.documents = const [],
+    this.media = const [],
     this.series = const [],
     this.topUploaders = const [],
     this.topDownloaders = const [],
+    this.topPlayers = const [],
     this.recent = const [],
   });
 
@@ -278,6 +283,9 @@ class AnalyticsSnapshot {
     final period = _map(json['period']);
     final summary = _map(json['summary']);
     final platforms = _map(json['platforms']);
+    final fileTypes =
+        _list(json['fileTypes']).map(AnalyticsFileType.fromJson).toList();
+    final media = _list(json['media']).map(AnalyticsFileType.fromJson).toList();
     return AnalyticsSnapshot(
       periodKind: period['kind']?.toString() ?? 'month',
       year: _int(period['year'], DateTime.now().year),
@@ -305,16 +313,22 @@ class AnalyticsSnapshot {
       bandwidthByCourse: _list(json['bandwidthByCourse'])
           .map(AnalyticsNamedCount.fromJson)
           .toList(),
-      fileTypes:
-          _list(json['fileTypes']).map(AnalyticsFileType.fromJson).toList(),
+      fileTypes: fileTypes,
       documents:
           _list(json['documents']).map(AnalyticsFileType.fromJson).toList(),
+      media: media.isNotEmpty
+          ? media
+          : fileTypes
+              .where((row) => row.id == 'video' || row.id == 'audio')
+              .toList(),
       series:
           _list(json['series']).map(AnalyticsSeriesPoint.fromJson).toList(),
       topUploaders:
           _list(json['topUploaders']).map(AnalyticsTopUser.fromJson).toList(),
       topDownloaders:
           _list(json['topDownloaders']).map(AnalyticsTopUser.fromJson).toList(),
+      topPlayers:
+          _list(json['topPlayers']).map(AnalyticsTopUser.fromJson).toList(),
       recent:
           _list(json['recent']).map(AnalyticsRecentEvent.fromJson).toList(),
     );

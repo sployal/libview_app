@@ -150,6 +150,37 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
     return 'other';
   }
 
+  function isMediaType(fileType) {
+    return fileType === 'video' || fileType === 'audio';
+  }
+
+  function playbackKind(event) {
+    const kind = event?.kind;
+    if (kind !== 'download') return kind;
+    if (event.saved || event.intent === 'download' || event.source === 'save') {
+      return 'download';
+    }
+    const type = FILE_TYPES.includes(event.fileType)
+      ? event.fileType
+      : classifyFile(event.fileName, event.mimeType);
+    return isMediaType(type) ? 'stream' : 'download';
+  }
+
+  function normalizeMediaPlays(bucket) {
+    if (!bucket?.types) return bucket;
+    for (const type of ['video', 'audio']) {
+      const stats = bucket.types[type];
+      if (!stats) continue;
+      const extra = num(stats.downloads);
+      if (!extra) continue;
+      stats.streams = num(stats.streams) + extra;
+      stats.downloads = 0;
+      bucket.streams = num(bucket.streams) + extra;
+      bucket.downloads = Math.max(0, num(bucket.downloads) - extra);
+    }
+    return bucket;
+  }
+
   function emptyTypes() {
     return Object.fromEntries(
       FILE_TYPES.map((type) => [
@@ -229,7 +260,7 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
         bytesDownloaded: num(item.bytesDownloaded),
       };
     }
-    return {
+    const bucket = {
       uploads: num(src.uploads),
       downloads: num(src.downloads),
       streams: num(src.streams),
@@ -247,6 +278,7 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
         bytesDownloaded: num(src.other?.bytesDownloaded),
       },
     };
+    return normalizeMediaPlays(bucket);
   }
 
   function emptyOwnerStats() {
@@ -260,7 +292,7 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
   }
 
   function applyEventToBucket(bucket, event) {
-    const kind = event.kind;
+    const kind = playbackKind(event);
     if (kind !== 'upload' && kind !== 'download' && kind !== 'stream') return;
     const count = countField(kind);
     const traffic = bytesField(kind);
@@ -508,6 +540,7 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
     sizeBytes,
     folderId,
     profile,
+    saved,
   }) {
     const uid = req.user?.uid;
     if (!uid || !kind) return;
@@ -562,6 +595,7 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
       ownerKind: owner.kind,
       ownerId: owner.id,
       ownerName: owner.name,
+      saved: Boolean(saved),
       createdAt: timestamp(),
       date: dateKey,
     });
@@ -710,16 +744,19 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
     sizeBytes,
     folderId,
     isRange,
+    forceDownload,
   } = {}) {
     try {
+      const media = isMediaType(classifyFile(fileName, mimeType));
       await recordUsage({
         req,
-        kind: isRange ? 'stream' : 'download',
+        kind: forceDownload ? 'download' : (media || isRange ? 'stream' : 'download'),
         fileId,
         fileName,
         mimeType,
         sizeBytes,
         folderId,
+        saved: Boolean(forceDownload),
       });
     } catch (err) {
       console.warn('Could not record download analytics:', err.message);
@@ -792,6 +829,7 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
       const unused =
         num(bucket.other.uploads) +
         num(bucket.other.downloads) +
+        num(bucket.other.streams) +
         num(bucket.other.bytesUploaded) +
         num(bucket.other.bytesDownloaded);
       if (unused > 0) {
@@ -979,7 +1017,7 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
       names[client.id] = client.name;
     });
 
-    const topMaps = { uploads: new Map(), downloads: new Map() };
+    const topMaps = { uploads: new Map(), downloads: new Map(), streams: new Map() };
     const recent = [];
     const eventTotals = {
       all: emptyBucket(),
@@ -1019,9 +1057,10 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
           applyEventToBucket(seriesFromEvents.get(seriesLabel), event);
         }
 
+        const kind = playbackKind(event);
         if (recent.length < 25) {
           recent.push({
-            kind: event.kind || '',
+            kind: kind || '',
             platform: event.platform || '',
             name: event.name || 'User',
             fileName: event.fileName || '',
@@ -1031,8 +1070,13 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
             createdAt: asDate(event.createdAt)?.toISOString() || '',
           });
         }
-        if (event.kind !== 'upload' && event.kind !== 'download') return;
-        const bucket = event.kind === 'upload' ? topMaps.uploads : topMaps.downloads;
+        if (kind !== 'upload' && kind !== 'download' && kind !== 'stream') return;
+        const bucket =
+          kind === 'upload'
+            ? topMaps.uploads
+            : kind === 'stream'
+              ? topMaps.streams
+              : topMaps.downloads;
         const current = bucket.get(event.uid) || {
           uid: event.uid,
           name: event.name || 'User',
@@ -1077,7 +1121,7 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
             bytesDownloaded: fromEvent.bytesDownloaded,
           };
         });
-        if (mapped.some((point) => point.uploads || point.downloads || point.bytesUploaded || point.bytesDownloaded)) {
+        if (mapped.some((point) => point.uploads || point.downloads || point.streams || point.bytesUploaded || point.bytesDownloaded)) {
           series.length = 0;
           series.push(...mapped);
         } else if (meta.kind === 'all') {
@@ -1117,7 +1161,12 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
     availableYears.add(nairobiParts().year);
 
     const avgUpload = rollup.uploads > 0 ? Math.round(rollup.bytesUploaded / rollup.uploads) : 0;
-    const avgDownload = rollup.downloads > 0 ? Math.round(rollup.bytesDownloaded / rollup.downloads) : 0;
+    const downloadBytes = FILE_TYPES.filter((type) => !isMediaType(type)).reduce(
+      (sum, type) => sum + num(rollup.types[type]?.bytesDownloaded),
+      0,
+    );
+    const avgDownload = rollup.downloads > 0 ? Math.round(downloadBytes / rollup.downloads) : 0;
+    const fileTypeRows = typeRows(rollup);
 
     return {
       period: {
@@ -1167,11 +1216,13 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
         ...ownerRowsFromBucket(rollup, names, 'course'),
         ...ownerRowsFromBucket(rollup, names, 'client'),
       ],
-      fileTypes: typeRows(rollup),
-      documents: typeRows(rollup).filter((row) => row.group === 'document'),
+      fileTypes: fileTypeRows,
+      documents: fileTypeRows.filter((row) => row.group === 'document'),
+      media: fileTypeRows.filter((row) => isMediaType(row.id)),
       series,
       topUploaders: toTop(topMaps.uploads),
       topDownloaders: toTop(topMaps.downloads),
+      topPlayers: toTop(topMaps.streams),
       recent,
     };
   }
@@ -1209,6 +1260,7 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
         sizeBytes: req.body?.sizeBytes,
         folderId: req.body?.folderId,
         isRange: false,
+        forceDownload: true,
       });
       res.json({ recorded: true });
     });
