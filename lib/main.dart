@@ -481,7 +481,9 @@ class _AppBottomNav extends StatelessWidget {
   Widget build(BuildContext context) {
     const accent = Color(0xFF6366F1);
     final surface = isDark ? const Color(0xFF1F2937) : Colors.white;
-    const unselected = Color(0xFF9CA3AF);
+    final unselected = isDark
+        ? const Color(0xFF9CA3AF)
+        : const Color(0xFF374151);
 
     return Container(
       decoration: BoxDecoration(
