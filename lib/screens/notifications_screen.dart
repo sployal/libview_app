@@ -234,7 +234,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               border: Border.all(
                 color: isDark
                     ? const Color(0xFF374151)
-                    : const Color(0xFFE5E7EB),
+                    : const Color(0xFFCBD5E1),
               ),
             ),
             child: SingleChildScrollView(
@@ -432,7 +432,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       labelText: label,
       labelStyle: TextStyle(color: muted),
       filled: true,
-      fillColor: isDark ? const Color(0xFF111827) : const Color(0xFFF8FAFC),
+      fillColor: isDark ? const Color(0xFF111827) : const Color(0xFFEEF2F7),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
         borderSide: BorderSide.none,
@@ -587,12 +587,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final background =
-        isDark ? const Color(0xFF111827) : const Color(0xFFF8FAFC);
+        isDark ? const Color(0xFF111827) : const Color(0xFFEEF2F7);
     final titleColor =
         isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
     final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
     final card = isDark ? const Color(0xFF1F2937) : Colors.white;
-    final divider = isDark ? const Color(0xFF374151) : const Color(0xFFE5E7EB);
+    final divider = isDark ? const Color(0xFF374151) : const Color(0xFFCBD5E1);
 
     final visible = _visibleNotifications;
     final unreadCount = visible.where((n) => !n.isRead).length;
@@ -1134,7 +1134,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
-          color: isDark ? const Color(0xFF374151) : const Color(0xFFE5E7EB),
+          color: isDark ? const Color(0xFF374151) : const Color(0xFFCBD5E1),
         ),
       ),
       icon: Icon(CupertinoIcons.ellipsis, color: muted, size: 18),
@@ -1270,7 +1270,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                     side: BorderSide(
                       color: isDark
                           ? const Color(0xFF374151)
-                          : const Color(0xFFE5E7EB),
+                          : const Color(0xFFCBD5E1),
                     ),
                   ),
                   child: const Text(

@@ -345,7 +345,7 @@ class _PhonePdfScreenState extends State<PhonePdfScreen>
       boxShadow: [
         if (!isDark)
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withOpacity(0.08),
             blurRadius: 18,
             offset: const Offset(0, 8),
           ),
@@ -580,7 +580,7 @@ class _PhonePdfScreenState extends State<PhonePdfScreen>
             : '$totalCount $filesNoun';
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final background =
-        isDark ? const Color(0xFF111827) : const Color(0xFFF8FAFC);
+        isDark ? const Color(0xFF111827) : const Color(0xFFEEF2F7);
     final titleColor =
         isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
     final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
@@ -768,7 +768,7 @@ class _PhonePdfScreenState extends State<PhonePdfScreen>
                             : Border.all(
                                 color: isDark
                                     ? const Color(0xFF374151)
-                                    : const Color(0xFFE5E7EB),
+                                    : const Color(0xFFCBD5E1),
                               ),
                       ),
                       child: Text(

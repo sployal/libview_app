@@ -944,7 +944,7 @@ class _ClientUnassignedState extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       backgroundColor:
-          isDark ? const Color(0xFF111827) : const Color(0xFFF8FAFC),
+          isDark ? const Color(0xFF111827) : const Color(0xFFEEF2F7),
       body: SafeArea(
         child: Center(
           child: Padding(

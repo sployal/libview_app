@@ -300,7 +300,7 @@ class _SemestersScreenState extends State<SemestersScreen> {
     }
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final background = isDark ? const Color(0xFF111827) : const Color(0xFFF8FAFC);
+    final background = isDark ? const Color(0xFF111827) : const Color(0xFFEEF2F7);
     final titleColor = isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
     final subtitleColor = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
     final pagePad = AdaptiveLayout.pagePadding(context);
@@ -463,7 +463,7 @@ class _AdminCourseSelector extends StatelessWidget {
     final card = isDark ? const Color(0xFF1F2937) : Colors.white;
     final title = isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
     final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
-    final border = isDark ? const Color(0xFF374151) : const Color(0xFFE5E7EB);
+    final border = isDark ? const Color(0xFF374151) : const Color(0xFFCBD5E1);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -531,7 +531,7 @@ class _AdminCourseSelector extends StatelessWidget {
               border: Border.all(color: border),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(isDark ? 0.18 : 0.04),
+                  color: Colors.black.withOpacity(isDark ? 0.18 : 0.08),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -619,10 +619,13 @@ class _OverviewStrip extends StatelessWidget {
       decoration: BoxDecoration(
         color: card,
         borderRadius: BorderRadius.circular(20),
+        border: isDark
+            ? null
+            : Border.all(color: const Color(0xFFCBD5E1)),
         boxShadow: [
           if (!isDark)
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withOpacity(0.08),
               blurRadius: 18,
               offset: const Offset(0, 8),
             ),
@@ -644,7 +647,7 @@ class _OverviewStrip extends StatelessWidget {
     return Container(
       width: 1,
       height: 32,
-      color: isDark ? const Color(0xFF374151) : const Color(0xFFE5E7EB),
+      color: isDark ? const Color(0xFF374151) : const Color(0xFFCBD5E1),
     );
   }
 }
@@ -779,7 +782,7 @@ class _YearSelector extends StatelessWidget {
                     : Border.all(
                         color: isDark
                             ? const Color(0xFF374151)
-                            : const Color(0xFFE5E7EB),
+                            : const Color(0xFFCBD5E1),
                       ),
               ),
               child: Text(
@@ -937,12 +940,12 @@ class _SemesterCard extends StatelessWidget {
             color: card,
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
-              color: isDark ? const Color(0xFF374151) : const Color(0xFFF1F5F9),
+              color: isDark ? const Color(0xFF374151) : const Color(0xFFCBD5E1),
             ),
             boxShadow: [
               if (!isDark)
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
+                  color: Colors.black.withOpacity(0.08),
                   blurRadius: 20,
                   offset: const Offset(0, 10),
                 ),
@@ -1079,7 +1082,7 @@ class _AcademicPath extends StatelessWidget {
                       ? accent.withOpacity(0.55)
                       : (isDark
                           ? const Color(0xFF374151)
-                          : const Color(0xFFE5E7EB)),
+                          : const Color(0xFFCBD5E1)),
                 ),
               ),
               child: Column(

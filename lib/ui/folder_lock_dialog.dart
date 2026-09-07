@@ -174,7 +174,7 @@ class _FolderLockDialogState extends State<FolderLockDialog>
     final card = isDark ? const Color(0xFF151B2B) : Colors.white;
     final title = isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A);
     final muted = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
-    final field = isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9);
+    final field = isDark ? const Color(0xFF0F172A) : const Color(0xFFE2E8F0);
 
     return Center(
       child: Material(

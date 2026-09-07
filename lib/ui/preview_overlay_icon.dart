@@ -26,7 +26,7 @@ class PreviewOverlayIcon extends StatelessWidget {
             : const Color(0xFF1F2937);
     final border = isDark
         ? Colors.white.withValues(alpha: 0.14)
-        : const Color(0xFFE5E7EB);
+        : const Color(0xFFCBD5E1);
 
     return Container(
       width: 30,

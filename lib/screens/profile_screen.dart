@@ -212,14 +212,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final background =
-        isDark ? const Color(0xFF111827) : const Color(0xFFF8FAFC);
+        isDark ? const Color(0xFF111827) : const Color(0xFFEEF2F7);
     final card = isDark ? const Color(0xFF1F2937) : Colors.white;
     final primaryText =
         isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
     final secondaryText =
         isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
     final separator =
-        isDark ? const Color(0xFF374151) : const Color(0xFFF1F5F9);
+        isDark ? const Color(0xFF374151) : const Color(0xFFCBD5E1);
     final chevron =
         isDark ? const Color(0xFF6B7280) : const Color(0xFF9CA3AF);
     const accent = Color(0xFF6366F1);
@@ -547,7 +547,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 radius: avatarRadius,
                 backgroundImage: NetworkImage(_avatarUrl!),
                 backgroundColor:
-                    isDark ? const Color(0xFF374151) : const Color(0xFFF1F5F9),
+                    isDark ? const Color(0xFF374151) : const Color(0xFFE2E8F0),
               )
             : CircleAvatar(
                 radius: avatarRadius,
@@ -575,10 +575,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
       decoration: BoxDecoration(
         color: card,
         borderRadius: BorderRadius.circular(20),
+        border: isDark
+            ? null
+            : Border.all(color: const Color(0xFFCBD5E1)),
         boxShadow: [
           if (!isDark)
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withOpacity(0.08),
               blurRadius: 14,
               offset: const Offset(0, 6),
             ),
@@ -651,14 +654,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
     required Color color,
     required List<Widget> children,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
         color: color,
         borderRadius: BorderRadius.circular(20),
+        border: isDark
+            ? null
+            : Border.all(color: const Color(0xFFCBD5E1)),
         boxShadow: [
-          if (Theme.of(context).brightness != Brightness.dark)
+          if (!isDark)
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withOpacity(0.08),
               blurRadius: 14,
               offset: const Offset(0, 6),
             ),
@@ -856,12 +863,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
           decoration: BoxDecoration(
             color: isSelected
                 ? const Color(0xFF6366F1).withOpacity(isDark ? 0.22 : 0.12)
-                : (isDark ? const Color(0xFF374151) : const Color(0xFFF1F5F9)),
+                : (isDark ? const Color(0xFF374151) : const Color(0xFFE2E8F0)),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: isSelected
                   ? const Color(0xFF6366F1)
-                  : Colors.transparent,
+                  : (isDark
+                      ? Colors.transparent
+                      : const Color(0xFFCBD5E1)),
               width: 1.5,
             ),
           ),

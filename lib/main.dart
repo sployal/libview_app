@@ -59,11 +59,11 @@ class StudyApp extends StatelessWidget {
             ),
             fontFamily: 'SF Pro Display',
             useMaterial3: true,
-            scaffoldBackgroundColor: const Color(0xFFF8FAFC),
+            scaffoldBackgroundColor: const Color(0xFFEEF2F7),
             appBarTheme: const AppBarTheme(
               elevation: 0,
               centerTitle: true,
-              backgroundColor: Color(0xFFF8FAFC),
+              backgroundColor: Color(0xFFEEF2F7),
               foregroundColor: Color(0xFF1F2937),
               surfaceTintColor: Colors.transparent,
             ),
@@ -428,7 +428,7 @@ class _MainScreenState extends State<MainScreen>
           extendBody: true,
           resizeToAvoidBottomInset: false,
           backgroundColor:
-              isDark ? const Color(0xFF111827) : const Color(0xFFF8FAFC),
+              isDark ? const Color(0xFF111827) : const Color(0xFFEEF2F7),
           body: FadeTransition(
             opacity: _fadeAnimation,
             child: IndexedStack(

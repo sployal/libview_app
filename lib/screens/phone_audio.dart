@@ -524,7 +524,7 @@ class _PhoneAudioScreenState extends State<PhoneAudioScreen>
             : '$totalCount $filesNoun';
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final background =
-        isDark ? const Color(0xFF111827) : const Color(0xFFF8FAFC);
+        isDark ? const Color(0xFF111827) : const Color(0xFFEEF2F7);
     final titleColor =
         isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
     final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);

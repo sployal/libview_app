@@ -501,7 +501,7 @@ class _AiScreenState extends State<AiScreen> {
                     thickness: 1,
                     color: isDark
                         ? const Color(0xFF374151)
-                        : const Color(0xFFE5E7EB),
+                        : const Color(0xFFCBD5E1),
                   ),
                 Expanded(child: chat),
               ],
@@ -526,7 +526,7 @@ class _AiScreenState extends State<AiScreen> {
                     elevation: 12,
                     color: isDark
                         ? const Color(0xFF111827)
-                        : const Color(0xFFF8FAFC),
+                        : const Color(0xFFEEF2F7),
                     child: SizedBox(
                       width: sidebarWidth,
                       child: SafeArea(
@@ -574,7 +574,7 @@ class _ConversationSidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
-    final background = isDark ? const Color(0xFF111827) : const Color(0xFFF8FAFC);
+    final background = isDark ? const Color(0xFF111827) : const Color(0xFFEEF2F7);
 
     return ColoredBox(
       color: background,
@@ -816,9 +816,12 @@ class _ChatBubble extends StatelessWidget {
             bottomLeft: Radius.circular(isUser ? 16 : 4),
             bottomRight: Radius.circular(isUser ? 4 : 16),
           ),
+          border: isUser || isDark
+              ? null
+              : Border.all(color: const Color(0xFFCBD5E1)),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.2 : 0.06),
+              color: Colors.black.withOpacity(isDark ? 0.2 : 0.08),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -940,9 +943,16 @@ class _Composer extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(8, 8, 12, 8),
         decoration: BoxDecoration(
           color: isDark ? const Color(0xFF1F2937) : Colors.white,
+          border: Border(
+            top: BorderSide(
+              color: isDark
+                  ? const Color(0xFF374151)
+                  : const Color(0xFFCBD5E1),
+            ),
+          ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.3 : 0.06),
+              color: Colors.black.withOpacity(isDark ? 0.3 : 0.08),
               blurRadius: 12,
               offset: const Offset(0, -2),
             ),
@@ -1020,7 +1030,7 @@ class _Composer extends StatelessWidget {
                       filled: true,
                       fillColor: isDark
                           ? const Color(0xFF111827)
-                          : const Color(0xFFF8FAFC),
+                          : const Color(0xFFE2E8F0),
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 12,
                         vertical: 12,

@@ -492,7 +492,7 @@ class _HomeScreenState extends State<HomeScreen>
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final background =
-        isDark ? const Color(0xFF111827) : const Color(0xFFF8FAFC);
+        isDark ? const Color(0xFF111827) : const Color(0xFFEEF2F7);
     final titleColor =
         isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
     final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
@@ -638,10 +638,13 @@ class _HomeScreenState extends State<HomeScreen>
       decoration: BoxDecoration(
         color: card,
         borderRadius: BorderRadius.circular(24),
+        border: isDark
+            ? null
+            : Border.all(color: const Color(0xFFCBD5E1)),
         boxShadow: [
           if (!isDark)
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withOpacity(0.08),
               blurRadius: 20,
               offset: const Offset(0, 10),
             ),
@@ -756,7 +759,7 @@ class _HomeScreenState extends State<HomeScreen>
                             ? const Color(0xFFF97316)
                             : (isDark
                                 ? const Color(0xFF374151)
-                                : const Color(0xFFF1F5F9)),
+                                : const Color(0xFFE2E8F0)),
                         border: isToday && !active
                             ? Border.all(
                                 color: const Color(0xFF6366F1),
@@ -856,10 +859,13 @@ class _HomeScreenState extends State<HomeScreen>
                   decoration: BoxDecoration(
                     color: card,
                     borderRadius: BorderRadius.circular(20),
+                    border: isDark
+                        ? null
+                        : Border.all(color: const Color(0xFFCBD5E1)),
                     boxShadow: [
                       if (!isDark)
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.04),
+                          color: Colors.black.withOpacity(0.08),
                           blurRadius: 14,
                           offset: const Offset(0, 6),
                         ),
@@ -983,6 +989,17 @@ class _HomeScreenState extends State<HomeScreen>
       decoration: BoxDecoration(
         color: card,
         borderRadius: BorderRadius.circular(20),
+        border: isDark
+            ? null
+            : Border.all(color: const Color(0xFFCBD5E1)),
+        boxShadow: [
+          if (!isDark)
+            BoxShadow(
+              color: Colors.black.withOpacity(0.08),
+              blurRadius: 14,
+              offset: const Offset(0, 6),
+            ),
+        ],
       ),
       child: Column(
         children: [
@@ -993,7 +1010,7 @@ class _HomeScreenState extends State<HomeScreen>
                 indent: 72,
                 color: isDark
                     ? const Color(0xFF374151)
-                    : const Color(0xFFF1F5F9),
+                    : const Color(0xFFCBD5E1),
               ),
             _buildRecentRow(recentDownloads[i], titleColor, muted),
           ],
@@ -1073,10 +1090,13 @@ class _HomeScreenState extends State<HomeScreen>
       decoration: BoxDecoration(
         color: card,
         borderRadius: BorderRadius.circular(24),
+        border: isDark
+            ? null
+            : Border.all(color: const Color(0xFFCBD5E1)),
         boxShadow: [
           if (!isDark)
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withOpacity(0.08),
               blurRadius: 20,
               offset: const Offset(0, 10),
             ),
@@ -1326,10 +1346,13 @@ class _HomeScreenState extends State<HomeScreen>
       decoration: BoxDecoration(
         color: card,
         borderRadius: BorderRadius.circular(24),
+        border: isDark
+            ? null
+            : Border.all(color: const Color(0xFFCBD5E1)),
         boxShadow: [
           if (!isDark)
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withOpacity(0.08),
               blurRadius: 20,
               offset: const Offset(0, 10),
             ),
@@ -1501,7 +1524,7 @@ class _HomeScreenState extends State<HomeScreen>
                       filled: true,
                       fillColor: isDark
                           ? const Color(0xFF111827)
-                          : const Color(0xFFF1F5F9),
+                          : const Color(0xFFE2E8F0),
                       isDense: true,
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16,
@@ -1622,7 +1645,7 @@ class _HomeScreenState extends State<HomeScreen>
                         filled: true,
                         fillColor: isDark
                             ? const Color(0xFF111827)
-                            : const Color(0xFFF1F5F9),
+                            : const Color(0xFFE2E8F0),
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 12,
                           vertical: 8,
@@ -1934,7 +1957,7 @@ class _WeatherLocationSheetState extends State<_WeatherLocationSheet> {
     final titleColor =
         isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
     final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
-    final field = isDark ? const Color(0xFF1F2937) : const Color(0xFFF1F5F9);
+    final field = isDark ? const Color(0xFF1F2937) : const Color(0xFFE2E8F0);
 
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
@@ -2366,12 +2389,12 @@ class _StudyFocusCardState extends State<_StudyFocusCard> {
         border: Border.all(
           color: _running
               ? const Color(0xFF6366F1).withOpacity(0.45)
-              : (isDark ? const Color(0xFF374151) : const Color(0xFFF1F5F9)),
+              : (isDark ? const Color(0xFF374151) : const Color(0xFFCBD5E1)),
         ),
         boxShadow: [
           if (!isDark)
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withOpacity(0.08),
               blurRadius: 18,
               offset: const Offset(0, 8),
             ),
@@ -2500,7 +2523,7 @@ class _StudyFocusCardState extends State<_StudyFocusCard> {
                           ? const Color(0xFF6366F1)
                           : (isDark
                               ? const Color(0xFF111827)
-                              : const Color(0xFFF1F5F9)),
+                              : const Color(0xFFE2E8F0)),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(

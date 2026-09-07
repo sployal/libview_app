@@ -96,14 +96,14 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard>
 
   bool get _isDark => Theme.of(context).brightness == Brightness.dark;
   Color get _bg =>
-      _isDark ? const Color(0xFF111827) : const Color(0xFFF8FAFC);
+      _isDark ? const Color(0xFF111827) : const Color(0xFFEEF2F7);
   Color get _card => _isDark ? const Color(0xFF1F2937) : Colors.white;
   Color get _titleColor =>
       _isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
   Color get _muted =>
       _isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
   Color get _chip =>
-      _isDark ? const Color(0xFF374151) : const Color(0xFFF1F5F9);
+      _isDark ? const Color(0xFF374151) : const Color(0xFFE2E8F0);
 
   int get _totalUsers =>
       _profiles.where((p) => _userRoles.contains(p['role'])).length;
@@ -2815,7 +2815,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard>
             border: Border.all(
               color: isSelected
                   ? const Color(0xFF6366F1)
-                  : (_isDark ? const Color(0xFF374151) : const Color(0xFFE5E7EB)),
+                  : (_isDark ? const Color(0xFF374151) : const Color(0xFFCBD5E1)),
             ),
           ),
           child: Text(

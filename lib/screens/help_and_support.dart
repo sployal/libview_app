@@ -142,13 +142,13 @@ class _HelpAndSupportScreenState extends State<HelpAndSupportScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final background =
-        isDark ? const Color(0xFF111827) : const Color(0xFFF8FAFC);
+        isDark ? const Color(0xFF111827) : const Color(0xFFEEF2F7);
     final card = isDark ? const Color(0xFF1F2937) : Colors.white;
     final primaryText =
         isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
     final secondaryText =
         isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
-    final divider = isDark ? const Color(0xFF374151) : const Color(0xFFE5E7EB);
+    final divider = isDark ? const Color(0xFF374151) : const Color(0xFFCBD5E1);
     final pagePad = AdaptiveLayout.pagePadding(context);
     final tablet = AdaptiveLayout.isTablet(context);
 

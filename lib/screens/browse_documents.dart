@@ -416,11 +416,13 @@ class _BrowseDocumentsScreenState extends State<BrowseDocumentsScreen>
       borderRadius: BorderRadius.circular(20),
       border: selected
           ? Border.all(color: const Color(0xFF6366F1), width: 1.5)
-          : null,
+          : (isDark
+              ? null
+              : Border.all(color: const Color(0xFFCBD5E1))),
       boxShadow: [
         if (!isDark)
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withOpacity(0.08),
             blurRadius: 18,
             offset: const Offset(0, 8),
           ),
@@ -662,7 +664,7 @@ class _BrowseDocumentsScreenState extends State<BrowseDocumentsScreen>
             : '$totalCount $filesNoun';
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final background =
-        isDark ? const Color(0xFF111827) : const Color(0xFFF8FAFC);
+        isDark ? const Color(0xFF111827) : const Color(0xFFEEF2F7);
     final titleColor =
         isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
     final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
@@ -872,7 +874,7 @@ class _BrowseDocumentsScreenState extends State<BrowseDocumentsScreen>
                           : Border.all(
                               color: isDark
                                   ? const Color(0xFF374151)
-                                  : const Color(0xFFE5E7EB),
+                                  : const Color(0xFFCBD5E1),
                             ),
                     ),
                     child: Text(

@@ -114,7 +114,7 @@ class _ClientEditorDialogState extends State<_ClientEditorDialog> {
     final sheet = isDark ? const Color(0xFF111827) : Colors.white;
     final muted = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
     final title = isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A);
-    final field = isDark ? const Color(0xFF1F2937) : const Color(0xFFF1F5F9);
+    final field = isDark ? const Color(0xFF1F2937) : const Color(0xFFE2E8F0);
 
     return Dialog(
       backgroundColor: Colors.transparent,

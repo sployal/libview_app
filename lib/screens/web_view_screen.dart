@@ -30,7 +30,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
   bool _tabTickersEnabled = true;
 
   static const _darkBg = Color(0xFF111827);
-  static const _lightBg = Color(0xFFF8FAFC);
+  static const _lightBg = Color(0xFFEEF2F7);
 
   @override
   void initState() {
@@ -498,7 +498,7 @@ try {
                         width: 200,
                         child: LinearProgressIndicator(
                           value: downloadProgress,
-                          backgroundColor: const Color(0xFFE5E7EB),
+                          backgroundColor: const Color(0xFFCBD5E1),
                           valueColor: const AlwaysStoppedAnimation<Color>(
                             Color(0xFF6366F1),
                           ),

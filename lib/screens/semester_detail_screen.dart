@@ -1334,10 +1334,13 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     return BoxDecoration(
       color: isDark ? const Color(0xFF1F2937) : Colors.white,
       borderRadius: BorderRadius.circular(20),
+      border: isDark
+          ? null
+          : Border.all(color: const Color(0xFFCBD5E1)),
       boxShadow: [
         if (!isDark)
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withOpacity(0.08),
             blurRadius: 18,
             offset: const Offset(0, 8),
           ),
@@ -1565,7 +1568,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                                   value: progress,
                                   backgroundColor: isDark
                                       ? const Color(0xFF374151)
-                                      : const Color(0xFFE5E7EB),
+                                      : const Color(0xFFCBD5E1),
                                   valueColor:
                                       AlwaysStoppedAnimation<Color>(fileColor),
                                   minHeight: 3,
@@ -1776,7 +1779,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
   Widget _buildFilesView() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final background =
-        isDark ? const Color(0xFF111827) : const Color(0xFFF8FAFC);
+        isDark ? const Color(0xFF111827) : const Color(0xFFEEF2F7);
     final titleColor =
         isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
     final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
@@ -1892,7 +1895,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
                   value: value > 0 ? value : null,
                   backgroundColor: isDark
                       ? const Color(0xFF374151)
-                      : const Color(0xFFE5E7EB),
+                      : const Color(0xFFCBD5E1),
                   valueColor:
                       const AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
                   minHeight: 3,
@@ -2042,7 +2045,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
         isDark ? const Color(0xFF1F2937) : Colors.white;
     final chipBorder = isDark
         ? const Color(0xFF374151)
-        : const Color(0xFFE5E7EB);
+        : const Color(0xFFCBD5E1);
     final highlighted = _fileSearchFocus.hasFocus || _fileQuery.isNotEmpty;
     final pagePad = AdaptiveLayout.pagePadding(context);
 
@@ -2167,7 +2170,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
   Widget _buildSubjectsView() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final background =
-        isDark ? const Color(0xFF111827) : const Color(0xFFF8FAFC);
+        isDark ? const Color(0xFF111827) : const Color(0xFFEEF2F7);
     final titleColor =
         isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
     final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
@@ -2684,10 +2687,13 @@ class _UnitFolderTile extends StatelessWidget {
           decoration: BoxDecoration(
             color: card,
             borderRadius: BorderRadius.circular(22),
+            border: isDark
+                ? null
+                : Border.all(color: const Color(0xFFCBD5E1)),
             boxShadow: [
               if (!isDark)
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
+                  color: Colors.black.withOpacity(0.08),
                   blurRadius: 16,
                   offset: const Offset(0, 8),
                 ),
@@ -3250,7 +3256,7 @@ class _UploadProgressDialog extends StatelessWidget {
                   minHeight: 8,
                   backgroundColor: isDark
                       ? const Color(0xFF374151)
-                      : const Color(0xFFE5E7EB),
+                      : const Color(0xFFCBD5E1),
                   color: const Color(0xFF6366F1),
                 ),
               ),
