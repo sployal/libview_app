@@ -1372,11 +1372,15 @@ function mimeFromFileName(name, fallback) {
 // firebaseAuth.js
 // =========================================================================
 
-// Verifies the Firebase ID token sent as "Authorization: Bearer <token>".
+// Verifies the Firebase ID token from "Authorization: Bearer <token>",
+// or from ?access_token= for <video>/<audio> (they cannot send auth headers).
 // On success attaches req.user = { uid, email, ... } and calls next().
 async function requireAuth(req, res, next) {
   const header = req.headers.authorization || '';
-  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
+  let token = header.startsWith('Bearer ') ? header.slice(7).trim() : '';
+  if (!token && typeof req.query.access_token === 'string') {
+    token = req.query.access_token.trim();
+  }
 
   if (!token) {
     console.warn('Auth rejected: missing Bearer token');
