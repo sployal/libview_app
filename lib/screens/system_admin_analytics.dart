@@ -66,6 +66,10 @@ class _SystemAdminAnalyticsScreenState
   late int _year;
   late int _month;
   AnalyticsSnapshot? _data;
+  final ScrollController _monthScroll = ScrollController();
+  static const _monthItemWidth = 52.0;
+  static const _monthItemGap = 8.0;
+  static const _monthItemExtent = _monthItemWidth + _monthItemGap;
 
   bool get _isDark => Theme.of(context).brightness == Brightness.dark;
   bool get _wide => MediaQuery.sizeOf(context).width >= 720;
@@ -90,6 +94,12 @@ class _SystemAdminAnalyticsScreenState
     _verifyAccess();
   }
 
+  @override
+  void dispose() {
+    _monthScroll.dispose();
+    super.dispose();
+  }
+
   Future<void> _verifyAccess() async {
     final allowed = await SystemAdminDashboard.isCurrentUserSystemAdmin();
     if (!mounted) return;
@@ -107,6 +117,7 @@ class _SystemAdminAnalyticsScreenState
       _hasAccess = true;
       _checkingAccess = false;
     });
+    _alignMonth();
     await _load();
   }
 
@@ -144,7 +155,37 @@ class _SystemAdminAnalyticsScreenState
     if (_period == period) return;
     HapticFeedback.selectionClick();
     setState(() => _period = period);
+    if (period == 'month') _alignMonth();
     _load();
+  }
+
+  void _alignMonth({bool animate = true, int attempt = 0}) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _period != 'month') return;
+      if (!_monthScroll.hasClients) {
+        if (attempt < 10) _alignMonth(animate: animate, attempt: attempt + 1);
+        return;
+      }
+      final maxExtent = _monthScroll.position.maxScrollExtent;
+      if (maxExtent <= 0 && _month > 2 && attempt < 10) {
+        _alignMonth(animate: animate, attempt: attempt + 1);
+        return;
+      }
+      final viewport = _monthScroll.position.viewportDimension;
+      final target = ((_month - 1) * _monthItemExtent -
+              (viewport - _monthItemExtent) / 2)
+          .clamp(0.0, maxExtent);
+      if ((target - _monthScroll.offset).abs() < 1) return;
+      if (animate) {
+        _monthScroll.animateTo(
+          target,
+          duration: const Duration(milliseconds: 280),
+          curve: Curves.easeOutCubic,
+        );
+      } else {
+        _monthScroll.jumpTo(target);
+      }
+    });
   }
 
   void _selectPlatform(String platform) {
@@ -214,7 +255,7 @@ class _SystemAdminAnalyticsScreenState
                           if (_error != null) _errorCard(),
                           _hero(),
                           const SizedBox(height: 16),
-                          _summaryGrid(),
+                          _overviewCard(),
                           const SizedBox(height: 16),
                           if (_platform == 'all')
                             _pair(_platformCard(), _rolesCard())
@@ -326,20 +367,7 @@ class _SystemAdminAnalyticsScreenState
             ],
             if (_period == 'month') ...[
               const SizedBox(height: 10),
-              _pillRow(
-                options: [
-                  for (var i = 1; i <= 12; i++)
-                    ('$i', _monthNames[i - 1].substring(0, 3)),
-                ],
-                selected: '$_month',
-                onSelected: (value) {
-                  final next = int.tryParse(value);
-                  if (next == null || next == _month) return;
-                  HapticFeedback.selectionClick();
-                  setState(() => _month = next);
-                  _load();
-                },
-              ),
+              _monthPills(),
             ],
           ],
         ),
@@ -623,107 +651,91 @@ class _SystemAdminAnalyticsScreenState
     );
   }
 
-  Widget _summaryGrid() {
+  Widget _overviewCard() {
     final data = _data;
     if (data == null) return const SizedBox.shrink();
-    final tiles = [
-      _statTile('Uploads', '${data.uploads}', CupertinoIcons.up_arrow, _accent),
-      _statTile(
-        'Downloads',
-        '${data.downloads}',
-        CupertinoIcons.down_arrow,
-        _sky,
-      ),
-      _statTile(
-        'Media plays',
-        '${data.streams}',
-        CupertinoIcons.play_fill,
-        const Color(0xFF8B5CF6),
-      ),
-      _statTile(
-        'New users',
-        '${data.newUsers}',
-        CupertinoIcons.person_badge_plus,
-        const Color(0xFF10B981),
-      ),
-      _statTile(
-        'Avg upload',
-        _bytes(data.avgUploadBytes),
-        CupertinoIcons.doc_fill,
-        const Color(0xFFF59E0B),
-      ),
-      _statTile(
-        'Avg download',
-        _bytes(data.avgDownloadBytes),
-        CupertinoIcons.square_arrow_down_fill,
-        const Color(0xFFF472B6),
-      ),
+    final cells = [
+      ('${data.uploads}', 'Uploads'),
+      ('${data.downloads}', 'Downloads'),
+      ('${data.streams}', 'Media plays'),
+      ('${data.newUsers}', 'New users'),
+      (_bytes(data.avgUploadBytes), 'Avg upload'),
+      (_bytes(data.avgDownloadBytes), 'Avg download'),
     ];
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final wide = constraints.maxWidth >= 720;
-        return Wrap(
-          spacing: 10,
-          runSpacing: 10,
+    Widget row(List<(String, String)> items) {
+      return IntrinsicHeight(
+        child: Row(
           children: [
-            for (final tile in tiles)
-              SizedBox(
-                width: wide
-                    ? (constraints.maxWidth - 20) / 3
-                    : (constraints.maxWidth - 10) / 2,
-                child: tile,
-              ),
+            for (var i = 0; i < items.length; i++) ...[
+              if (i > 0) VerticalDivider(width: 1, thickness: 0.5, color: _line),
+              _overviewCell(items[i].$1, items[i].$2),
+            ],
           ],
-        );
-      },
-    );
-  }
+        ),
+      );
+    }
 
-  Widget _statTile(String label, String value, IconData icon, Color color) {
     return _panel(
-      child: Stack(
+      child: Column(
         children: [
-          Positioned(
-            left: 0,
-            top: 16,
-            bottom: 16,
-            child: Container(
-              width: 3,
-              decoration: BoxDecoration(
-                color: color,
-                borderRadius: BorderRadius.circular(99),
-              ),
-            ),
-          ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 14, 13),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+            child: Row(
               children: [
-                _glyph(icon, color),
-                const SizedBox(height: 12),
                 Text(
-                  value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  'Overview',
                   style: TextStyle(
-                    fontSize: 21,
+                    fontSize: 16,
                     fontWeight: FontWeight.w700,
-                    letterSpacing: -0.5,
                     color: _titleColor,
                   ),
                 ),
-                const SizedBox(height: 2),
+                const Spacer(),
                 Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: _muted,
-                  ),
+                  _platformLabel(_platform),
+                  style: TextStyle(fontSize: 12, color: _muted),
                 ),
               ],
+            ),
+          ),
+          _hairline(indent: 0),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            child: row(cells.sublist(0, 3)),
+          ),
+          _hairline(indent: 0),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            child: row(cells.sublist(3)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _overviewCell(String value, String label) {
+    return Expanded(
+      child: Column(
+        children: [
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.4,
+              color: _titleColor,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: _muted,
             ),
           ),
         ],
@@ -1595,6 +1607,55 @@ class _SystemAdminAnalyticsScreenState
                         color: selected == option.$1
                             ? Colors.white
                             : _titleColor,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _monthPills() {
+    return SingleChildScrollView(
+      controller: _monthScroll,
+      scrollDirection: Axis.horizontal,
+      physics: const BouncingScrollPhysics(),
+      child: Row(
+        children: [
+          for (var i = 1; i <= 12; i++)
+            Padding(
+              padding: const EdgeInsets.only(right: _monthItemGap),
+              child: SizedBox(
+                width: _monthItemWidth,
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: GestureDetector(
+                    onTap: () {
+                      if (i == _month) return;
+                      HapticFeedback.selectionClick();
+                      setState(() => _month = i);
+                      _alignMonth();
+                      _load();
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 160),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: i == _month ? _accent : _chip,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        _monthNames[i - 1].substring(0, 3),
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight:
+                              i == _month ? FontWeight.w600 : FontWeight.w500,
+                          color: i == _month ? Colors.white : _titleColor,
+                        ),
                       ),
                     ),
                   ),
