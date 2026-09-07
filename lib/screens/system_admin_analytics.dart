@@ -358,24 +358,49 @@ class _SystemAdminAnalyticsScreenState
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            '${data.activeUsers} active',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 28,
-              fontWeight: FontWeight.w700,
-              letterSpacing: -0.6,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            data.newUsers > 0
-                ? '+${data.newUsers} new accounts in this period'
-                : 'Users seen on ${_platformLabel(_platform).toLowerCase()}',
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.78),
-              fontSize: 13,
-            ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${data.activeUsers} active',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 28,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: -0.6,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      data.newUsers > 0
+                          ? '+${data.newUsers} new accounts in this period'
+                          : 'Users seen on ${_platformLabel(_platform).toLowerCase()}',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.78),
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (_platform == 'all') ...[
+                _heroActiveSplit(
+                  CupertinoIcons.device_phone_portrait,
+                  '${data.mobile.activeUsers}',
+                  'Mobile',
+                ),
+                const SizedBox(width: 16),
+                _heroActiveSplit(
+                  CupertinoIcons.globe,
+                  '${data.web.activeUsers}',
+                  'Web',
+                ),
+              ],
+            ],
           ),
           const SizedBox(height: 16),
           Row(
@@ -399,6 +424,37 @@ class _SystemAdminAnalyticsScreenState
           ),
         ],
       ),
+    );
+  }
+
+  Widget _heroActiveSplit(IconData icon, String value, String label) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, color: Colors.white.withOpacity(0.78), size: 13),
+            const SizedBox(width: 4),
+            Text(
+              value,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.4,
+              ),
+            ),
+          ],
+        ),
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.72),
+            fontSize: 12,
+          ),
+        ),
+      ],
     );
   }
 
