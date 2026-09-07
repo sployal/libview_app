@@ -1251,7 +1251,7 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
         ...ownerRowsFromBucket(rollup, names, 'client'),
       ],
       fileTypes: fileTypeRows,
-      documents: fileTypeRows.filter((row) => row.group === 'document'),
+      documents: fileTypeRows.filter((row) => row.id === 'pdf' || row.id === 'word'),
       media: fileTypeRows.filter((row) => isMediaType(row.id)),
       series,
       topUploaders: toTop(topMaps.uploads),

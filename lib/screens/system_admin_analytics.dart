@@ -1076,9 +1076,32 @@ class _SystemAdminAnalyticsScreenState
     );
   }
 
+  List<AnalyticsFileType> _documentRows() {
+    const wanted = [
+      ('pdf', 'PDF'),
+      ('word', 'Word'),
+    ];
+    final byId = <String, AnalyticsFileType>{};
+    for (final row in [
+      ...?_data?.documents,
+      ...?_data?.fileTypes,
+    ]) {
+      byId.putIfAbsent(row.id, () => row);
+    }
+    return [
+      for (final (id, name) in wanted)
+        byId[id] ??
+            AnalyticsFileType(
+              id: id,
+              name: name,
+              group: 'document',
+            ),
+    ];
+  }
+
   Widget _documentsCard() {
-    final rows = _data?.documents ?? const [];
-    final hasData = rows.any((row) => row.totalCount > 0 || row.totalBytes > 0);
+    final rows = _documentRows();
+    final total = rows.fold<int>(0, (sum, row) => sum + row.totalCount);
     return _panel(
       child: Column(
         children: [
@@ -1087,38 +1110,26 @@ class _SystemAdminAnalyticsScreenState
             color: const Color(0xFFEF4444),
             title: 'Documents',
             subtitle: 'Office and PDF traffic',
-            meta: hasData
-                ? '${rows.fold<int>(0, (sum, row) => sum + row.totalCount)}'
-                : null,
+            meta: '$total',
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-            child: hasData
-                ? _typeBarChart(rows)
-                : _emptyState(
-                    CupertinoIcons.doc_on_doc,
-                    'No document uploads or downloads yet.',
-                  ),
+            child: _typeBarChart(rows),
           ),
-          if (hasData) ...[
-            _legendRow(const [
-              (_accent, 'Uploads'),
-              (_sky, 'Downloads'),
-            ]),
-            _hairline(indent: 0),
-            for (var i = 0; i < rows.length; i++)
-              _progressRow(
-                color: _typeColors[rows[i].id] ?? _muted,
-                title: rows[i].name,
-                subtitle: '${rows[i].uploads} up · ${rows[i].downloads} down',
-                value: '${rows[i].totalCount}',
-                progress: _share(
-                  rows[i].totalCount,
-                  rows.fold<int>(0, (sum, row) => sum + row.totalCount),
-                ),
-                showDivider: i < rows.length - 1,
-              ),
-          ],
+          _legendRow(const [
+            (_accent, 'Uploads'),
+            (_sky, 'Downloads'),
+          ]),
+          _hairline(indent: 0),
+          for (var i = 0; i < rows.length; i++)
+            _progressRow(
+              color: _typeColors[rows[i].id] ?? _muted,
+              title: rows[i].name,
+              subtitle: '${rows[i].uploads} up · ${rows[i].downloads} down',
+              value: '${rows[i].totalCount}',
+              progress: _share(rows[i].totalCount, total),
+              showDivider: i < rows.length - 1,
+            ),
         ],
       ),
     );
