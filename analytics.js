@@ -190,8 +190,33 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
     return out;
   }
 
+  function setDeep(target, parts, value) {
+    let current = target;
+    for (let i = 0; i < parts.length - 1; i += 1) {
+      const key = parts[i];
+      if (!current[key] || typeof current[key] !== 'object') current[key] = {};
+      current = current[key];
+    }
+    current[parts[parts.length - 1]] = value;
+  }
+
+  function readPrefixed(data, prefix) {
+    if (!data || typeof data !== 'object') return {};
+    const nested = data[prefix];
+    if (nested && typeof nested === 'object' && !Array.isArray(nested)) {
+      return nested;
+    }
+    const out = {};
+    const start = `${prefix}.`;
+    for (const [key, value] of Object.entries(data)) {
+      if (!key.startsWith(start)) continue;
+      setDeep(out, key.slice(start.length).split('.'), value);
+    }
+    return out;
+  }
+
   function extractBucket(data, prefix) {
-    const src = (data && data[prefix]) || {};
+    const src = readPrefixed(data, prefix);
     const types = emptyTypes();
     const rawTypes = src.types && typeof src.types === 'object' ? src.types : {};
     for (const type of FILE_TYPES) {
@@ -222,6 +247,70 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
         bytesDownloaded: num(src.other?.bytesDownloaded),
       },
     };
+  }
+
+  function emptyOwnerStats() {
+    return {
+      uploads: 0,
+      downloads: 0,
+      streams: 0,
+      bytesUploaded: 0,
+      bytesDownloaded: 0,
+    };
+  }
+
+  function applyEventToBucket(bucket, event) {
+    const kind = event.kind;
+    if (kind !== 'upload' && kind !== 'download' && kind !== 'stream') return;
+    const count = countField(kind);
+    const traffic = bytesField(kind);
+    const bytes = num(event.sizeBytes);
+    const type = FILE_TYPES.includes(event.fileType) ? event.fileType : 'other';
+    bucket[count] += 1;
+    bucket[traffic] += bytes;
+    bucket.types[type][count] += 1;
+    bucket.types[type][traffic] += bytes;
+
+    const ownerKind = event.ownerKind || 'other';
+    const ownerId = String(event.ownerId || 'other');
+    if (ownerKind === 'course') {
+      if (!bucket.courses[ownerId]) bucket.courses[ownerId] = emptyOwnerStats();
+      bucket.courses[ownerId][count] += 1;
+      bucket.courses[ownerId][traffic] += bytes;
+    } else if (ownerKind === 'client') {
+      if (!bucket.clients[ownerId]) bucket.clients[ownerId] = emptyOwnerStats();
+      bucket.clients[ownerId][count] += 1;
+      bucket.clients[ownerId][traffic] += bytes;
+    } else {
+      bucket.other[count] += 1;
+      bucket.other[traffic] += bytes;
+    }
+  }
+
+  function bucketHasTraffic(bucket) {
+    return Boolean(
+      bucket &&
+        (bucket.uploads ||
+          bucket.downloads ||
+          bucket.streams ||
+          bucket.bytesUploaded ||
+          bucket.bytesDownloaded),
+    );
+  }
+
+  async function patchRollup(ref, extra, incrementMap) {
+    const extraPayload = { ...extra, updatedAt: timestamp() };
+    try {
+      await ref.update({ ...incrementMap, ...extraPayload });
+    } catch (err) {
+      const missing =
+        err.code === 5 ||
+        err.code === 'not-found' ||
+        /no document|NOT_FOUND/i.test(String(err.message || ''));
+      if (!missing) throw err;
+      await ref.set(extraPayload, { merge: true });
+      await ref.update(incrementMap);
+    }
   }
 
   function countField(kind) {
@@ -477,25 +566,29 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
       date: dateKey,
     });
 
-    const increments = usageIncrements(platform, fileType, owner, bytes, kind);
     await Promise.all([
-      firestore.collection('analytics_daily').doc(dateKey).set(
-        { date: dateKey, updatedAt: timestamp(), ...increments },
-        { merge: true },
+      patchRollup(
+        firestore.collection('analytics_daily').doc(dateKey),
+        { date: dateKey },
+        usageIncrements(platform, fileType, owner, bytes, kind),
       ),
-      firestore.collection('analytics_monthly').doc(monthKey).set(
-        { month: monthKey, updatedAt: timestamp(), ...increments },
-        { merge: true },
+      patchRollup(
+        firestore.collection('analytics_monthly').doc(monthKey),
+        { month: monthKey },
+        usageIncrements(platform, fileType, owner, bytes, kind),
       ),
-      firestore.collection('analytics_yearly').doc(yearKey).set(
-        { year: yearKey, updatedAt: timestamp(), ...increments },
-        { merge: true },
+      patchRollup(
+        firestore.collection('analytics_yearly').doc(yearKey),
+        { year: yearKey },
+        usageIncrements(platform, fileType, owner, bytes, kind),
       ),
-      firestore.collection('analytics_totals').doc('all').set(
-        { updatedAt: timestamp(), ...increments },
-        { merge: true },
+      patchRollup(
+        firestore.collection('analytics_totals').doc('all'),
+        {},
+        usageIncrements(platform, fileType, owner, bytes, kind),
       ),
-      firestore.collection('analytics_users').doc(uid).set(
+      patchRollup(
+        firestore.collection('analytics_users').doc(uid),
         {
           name: displayName,
           email: String(req.user.email || userProfile.email || ''),
@@ -503,13 +596,13 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
           ownerId: owner.id,
           ownerName: owner.name,
           lastPlatform: platform,
-          updatedAt: timestamp(),
+        },
+        {
           [`${platform}.${countField(kind)}`]: increment(1),
           [`${platform}.${bytesField(kind)}`]: increment(bytes),
           [`all.${countField(kind)}`]: increment(1),
           [`all.${bytesField(kind)}`]: increment(bytes),
         },
-        { merge: true },
       ),
     ]);
   }
@@ -567,28 +660,27 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
           { merge: true },
         );
 
-        const updates = { date: dateKey, updatedAt: timestamp() };
-        if (firstOnPlatform) updates[`${platform}.activeUsers`] = increment(1);
-        if (firstToday) updates['all.activeUsers'] = increment(1);
-        await firestore.collection('analytics_daily').doc(dateKey).set(updates, { merge: true });
-        await firestore.collection('analytics_monthly').doc(monthKey).set(
-          {
-            month: monthKey,
-            updatedAt: timestamp(),
-            ...(firstOnPlatform ? { [`${platform}.activeUsers`]: increment(1) } : {}),
-            ...(firstToday ? { 'all.activeUsers': increment(1) } : {}),
-          },
-          { merge: true },
-        );
-        await firestore.collection('analytics_yearly').doc(yearKey).set(
-          {
-            year: yearKey,
-            updatedAt: timestamp(),
-            ...(firstOnPlatform ? { [`${platform}.activeUsers`]: increment(1) } : {}),
-            ...(firstToday ? { 'all.activeUsers': increment(1) } : {}),
-          },
-          { merge: true },
-        );
+        const presenceIncrements = {
+          ...(firstOnPlatform ? { [`${platform}.activeUsers`]: increment(1) } : {}),
+          ...(firstToday ? { 'all.activeUsers': increment(1) } : {}),
+        };
+        await Promise.all([
+          patchRollup(
+            firestore.collection('analytics_daily').doc(dateKey),
+            { date: dateKey },
+            presenceIncrements,
+          ),
+          patchRollup(
+            firestore.collection('analytics_monthly').doc(monthKey),
+            { month: monthKey },
+            presenceIncrements,
+          ),
+          patchRollup(
+            firestore.collection('analytics_yearly').doc(yearKey),
+            { year: yearKey },
+            presenceIncrements,
+          ),
+        ]);
       })
       .catch((err) => {
         console.warn('Could not record daily presence:', err.message);
@@ -829,7 +921,7 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
       });
     }
 
-    const rollup = extractBucket(rollupSource, prefix);
+    let rollup = extractBucket(rollupSource, prefix);
     mobileSource = extractBucket(rollupSource, 'mobile');
     webSource = extractBucket(rollupSource, 'web');
 
@@ -889,6 +981,12 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
 
     const topMaps = { uploads: new Map(), downloads: new Map() };
     const recent = [];
+    const eventTotals = {
+      all: emptyBucket(),
+      mobile: emptyBucket(),
+      web: emptyBucket(),
+    };
+    const seriesFromEvents = new Map();
     try {
       let query = firestore.collection('analytics_events').orderBy('createdAt', 'desc');
       if (meta.start) query = query.where('createdAt', '>=', meta.start);
@@ -896,7 +994,31 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
       const eventsSnap = await query.limit(2000).get();
       eventsSnap.forEach((doc) => {
         const event = doc.data() || {};
-        if (prefix !== 'all' && event.platform !== prefix) return;
+        const eventPlatform = event.platform === 'web' ? 'web' : 'mobile';
+        if (prefix !== 'all' && eventPlatform !== prefix) return;
+        applyEventToBucket(eventTotals.all, event);
+        applyEventToBucket(eventTotals[eventPlatform], event);
+
+        const eventDate =
+          event.date ||
+          (asDate(event.createdAt) ? nairobiKey(asDate(event.createdAt)) : '');
+        let seriesLabel = '';
+        if (eventDate && meta.kind === 'all') seriesLabel = eventDate.slice(0, 4);
+        else if (eventDate && meta.kind === 'year') {
+          const monthNumber = Number(eventDate.slice(5, 7));
+          seriesLabel = MONTH_NAMES[monthNumber - 1]
+            ? MONTH_NAMES[monthNumber - 1].slice(0, 3)
+            : '';
+        } else if (eventDate) {
+          seriesLabel = String(Number(eventDate.slice(8, 10)));
+        }
+        if (seriesLabel) {
+          if (!seriesFromEvents.has(seriesLabel)) {
+            seriesFromEvents.set(seriesLabel, emptyBucket());
+          }
+          applyEventToBucket(seriesFromEvents.get(seriesLabel), event);
+        }
+
         if (recent.length < 25) {
           recent.push({
             kind: event.kind || '',
@@ -921,9 +1043,61 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
         current.count += 1;
         current.bytes += num(event.sizeBytes);
         bucket.set(event.uid, current);
+        if (event.ownerName && !names[event.ownerId]) {
+          names[event.ownerId] = event.ownerName;
+        }
       });
     } catch (err) {
       console.warn('Analytics events query failed:', err.message);
+    }
+
+    if (bucketHasTraffic(eventTotals.all)) {
+      rollup = eventTotals.all;
+      mobileSource = eventTotals.mobile;
+      webSource = eventTotals.web;
+      if (seriesFromEvents.size) {
+        const mapped = series.map((point) => {
+          const fromEvent = seriesFromEvents.get(point.label);
+          if (!fromEvent) {
+            return {
+              ...point,
+              uploads: 0,
+              downloads: 0,
+              streams: 0,
+              bytesUploaded: 0,
+              bytesDownloaded: 0,
+            };
+          }
+          return {
+            ...point,
+            uploads: fromEvent.uploads,
+            downloads: fromEvent.downloads,
+            streams: fromEvent.streams,
+            bytesUploaded: fromEvent.bytesUploaded,
+            bytesDownloaded: fromEvent.bytesDownloaded,
+          };
+        });
+        if (mapped.some((point) => point.uploads || point.downloads || point.bytesUploaded || point.bytesDownloaded)) {
+          series.length = 0;
+          series.push(...mapped);
+        } else if (meta.kind === 'all') {
+          series.length = 0;
+          Array.from(seriesFromEvents.keys())
+            .sort()
+            .forEach((label) => {
+              const fromEvent = seriesFromEvents.get(label);
+              series.push({
+                label,
+                uploads: fromEvent.uploads,
+                downloads: fromEvent.downloads,
+                streams: fromEvent.streams,
+                bytesUploaded: fromEvent.bytesUploaded,
+                bytesDownloaded: fromEvent.bytesDownloaded,
+                activeUsers: fromEvent.activeUsers,
+              });
+            });
+        }
+      }
     }
 
     const toTop = (map) =>
