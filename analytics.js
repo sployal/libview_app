@@ -168,15 +168,27 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
 
   function normalizeMediaPlays(bucket) {
     if (!bucket?.types) return bucket;
+    bucket.bytesStreamed = num(bucket.bytesStreamed);
+    const usesStreamBytes =
+      bucket.bytesStreamed > 0 ||
+      ['video', 'audio'].some((type) => num(bucket.types[type]?.bytesStreamed) > 0);
+    if (usesStreamBytes) return bucket;
     for (const type of ['video', 'audio']) {
       const stats = bucket.types[type];
       if (!stats) continue;
       const extra = num(stats.downloads);
-      if (!extra) continue;
-      stats.streams = num(stats.streams) + extra;
-      stats.downloads = 0;
-      bucket.streams = num(bucket.streams) + extra;
-      bucket.downloads = Math.max(0, num(bucket.downloads) - extra);
+      const leftover = num(stats.bytesDownloaded);
+      if (extra) {
+        stats.streams = num(stats.streams) + extra;
+        stats.downloads = 0;
+        bucket.streams = num(bucket.streams) + extra;
+        bucket.downloads = Math.max(0, num(bucket.downloads) - extra);
+      }
+      if (!leftover) continue;
+      stats.bytesStreamed = num(stats.bytesStreamed) + leftover;
+      stats.bytesDownloaded = 0;
+      bucket.bytesStreamed += leftover;
+      bucket.bytesDownloaded = Math.max(0, num(bucket.bytesDownloaded) - leftover);
     }
     return bucket;
   }
@@ -185,7 +197,7 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
     return Object.fromEntries(
       FILE_TYPES.map((type) => [
         type,
-        { uploads: 0, downloads: 0, streams: 0, bytesUploaded: 0, bytesDownloaded: 0 },
+        { uploads: 0, downloads: 0, streams: 0, bytesUploaded: 0, bytesDownloaded: 0, bytesStreamed: 0 },
       ]),
     );
   }
@@ -197,11 +209,12 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
       streams: 0,
       bytesUploaded: 0,
       bytesDownloaded: 0,
+      bytesStreamed: 0,
       activeUsers: 0,
       types: emptyTypes(),
       courses: {},
       clients: {},
-      other: { uploads: 0, downloads: 0, streams: 0, bytesUploaded: 0, bytesDownloaded: 0 },
+      other: { uploads: 0, downloads: 0, streams: 0, bytesUploaded: 0, bytesDownloaded: 0, bytesStreamed: 0 },
     };
   }
 
@@ -216,6 +229,7 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
         streams: num(value.streams),
         bytesUploaded: num(value.bytesUploaded),
         bytesDownloaded: num(value.bytesDownloaded),
+        bytesStreamed: num(value.bytesStreamed),
       };
     }
     return out;
@@ -258,6 +272,7 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
         streams: num(item.streams),
         bytesUploaded: num(item.bytesUploaded),
         bytesDownloaded: num(item.bytesDownloaded),
+        bytesStreamed: num(item.bytesStreamed),
       };
     }
     const bucket = {
@@ -266,6 +281,7 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
       streams: num(src.streams),
       bytesUploaded: num(src.bytesUploaded),
       bytesDownloaded: num(src.bytesDownloaded),
+      bytesStreamed: num(src.bytesStreamed),
       activeUsers: num(src.activeUsers),
       types,
       courses: mergeOwnerMap(src.courses),
@@ -276,6 +292,7 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
         streams: num(src.other?.streams),
         bytesUploaded: num(src.other?.bytesUploaded),
         bytesDownloaded: num(src.other?.bytesDownloaded),
+        bytesStreamed: num(src.other?.bytesStreamed),
       },
     };
     return normalizeMediaPlays(bucket);
@@ -288,6 +305,7 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
       streams: 0,
       bytesUploaded: 0,
       bytesDownloaded: 0,
+      bytesStreamed: 0,
     };
   }
 
@@ -298,10 +316,10 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
     const traffic = bytesField(kind);
     const bytes = num(event.sizeBytes);
     const type = FILE_TYPES.includes(event.fileType) ? event.fileType : 'other';
-    bucket[count] += 1;
-    bucket[traffic] += bytes;
-    bucket.types[type][count] += 1;
-    bucket.types[type][traffic] += bytes;
+    bucket[count] = num(bucket[count]) + 1;
+    bucket[traffic] = num(bucket[traffic]) + bytes;
+    bucket.types[type][count] = num(bucket.types[type][count]) + 1;
+    bucket.types[type][traffic] = num(bucket.types[type][traffic]) + bytes;
 
     const ownerKind = event.ownerKind || 'other';
     const ownerId = String(event.ownerId || 'other');
@@ -326,7 +344,8 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
           bucket.downloads ||
           bucket.streams ||
           bucket.bytesUploaded ||
-          bucket.bytesDownloaded),
+          bucket.bytesDownloaded ||
+          bucket.bytesStreamed),
     );
   }
 
@@ -352,7 +371,9 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
   }
 
   function bytesField(kind) {
-    return kind === 'upload' ? 'bytesUploaded' : 'bytesDownloaded';
+    if (kind === 'upload') return 'bytesUploaded';
+    if (kind === 'stream') return 'bytesStreamed';
+    return 'bytesDownloaded';
   }
 
   function usageIncrements(platform, fileType, owner, bytes, kind) {
@@ -823,6 +844,7 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
         streams: num(stats.streams),
         bytesUploaded: num(stats.bytesUploaded),
         bytesDownloaded: num(stats.bytesDownloaded),
+        bytesStreamed: num(stats.bytesStreamed),
       });
     }
     if (kind === 'course' && bucket.other) {
@@ -831,7 +853,8 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
         num(bucket.other.downloads) +
         num(bucket.other.streams) +
         num(bucket.other.bytesUploaded) +
-        num(bucket.other.bytesDownloaded);
+        num(bucket.other.bytesDownloaded) +
+        num(bucket.other.bytesStreamed);
       if (unused > 0) {
         rows.push({
           id: 'unassigned',
@@ -842,6 +865,7 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
           streams: num(bucket.other.streams),
           bytesUploaded: num(bucket.other.bytesUploaded),
           bytesDownloaded: num(bucket.other.bytesDownloaded),
+          bytesStreamed: num(bucket.other.bytesStreamed),
         });
       }
     }
@@ -864,6 +888,7 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
         streams: num(stats.streams),
         bytesUploaded: num(stats.bytesUploaded),
         bytesDownloaded: num(stats.bytesDownloaded),
+        bytesStreamed: num(stats.bytesStreamed),
       };
     });
   }
@@ -907,6 +932,7 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
             streams: bucket.streams,
             bytesUploaded: bucket.bytesUploaded,
             bytesDownloaded: bucket.bytesDownloaded,
+            bytesStreamed: bucket.bytesStreamed,
             activeUsers: bucket.activeUsers,
           });
         });
@@ -931,6 +957,7 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
           streams: bucket.streams,
           bytesUploaded: bucket.bytesUploaded,
           bytesDownloaded: bucket.bytesDownloaded,
+          bytesStreamed: bucket.bytesStreamed,
           activeUsers: bucket.activeUsers,
         });
       });
@@ -954,6 +981,7 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
           streams: bucket.streams,
           bytesUploaded: bucket.bytesUploaded,
           bytesDownloaded: bucket.bytesDownloaded,
+          bytesStreamed: bucket.bytesStreamed,
           activeUsers: bucket.activeUsers,
         });
       });
@@ -1110,6 +1138,7 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
               streams: 0,
               bytesUploaded: 0,
               bytesDownloaded: 0,
+              bytesStreamed: 0,
             };
           }
           return {
@@ -1119,9 +1148,10 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
             streams: fromEvent.streams,
             bytesUploaded: fromEvent.bytesUploaded,
             bytesDownloaded: fromEvent.bytesDownloaded,
+            bytesStreamed: fromEvent.bytesStreamed,
           };
         });
-        if (mapped.some((point) => point.uploads || point.downloads || point.streams || point.bytesUploaded || point.bytesDownloaded)) {
+        if (mapped.some((point) => point.uploads || point.downloads || point.streams || point.bytesUploaded || point.bytesDownloaded || point.bytesStreamed)) {
           series.length = 0;
           series.push(...mapped);
         } else if (meta.kind === 'all') {
@@ -1137,6 +1167,7 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
                 streams: fromEvent.streams,
                 bytesUploaded: fromEvent.bytesUploaded,
                 bytesDownloaded: fromEvent.bytesDownloaded,
+                bytesStreamed: fromEvent.bytesStreamed,
                 activeUsers: fromEvent.activeUsers,
               });
             });
@@ -1185,6 +1216,7 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
         streams: rollup.streams,
         bytesUploaded: rollup.bytesUploaded,
         bytesDownloaded: rollup.bytesDownloaded,
+        bytesStreamed: rollup.bytesStreamed,
         avgUploadBytes: avgUpload,
         avgDownloadBytes: avgDownload,
       },
@@ -1196,6 +1228,7 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
           streams: mobileSource.streams,
           bytesUploaded: mobileSource.bytesUploaded,
           bytesDownloaded: mobileSource.bytesDownloaded,
+          bytesStreamed: mobileSource.bytesStreamed,
         },
         web: {
           activeUsers: webActive,
@@ -1204,6 +1237,7 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
           streams: webSource.streams,
           bytesUploaded: webSource.bytesUploaded,
           bytesDownloaded: webSource.bytesDownloaded,
+          bytesStreamed: webSource.bytesStreamed,
         },
       },
       activeUsersByCourse: Array.from(courseUserCounts.values()).sort(

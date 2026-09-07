@@ -557,13 +557,13 @@ class _SystemAdminAnalyticsScreenState
                       const SizedBox(width: 8),
                       _heroGlassStat(
                         CupertinoIcons.cloud_download_fill,
-                        _bytes(data.bytesDownloaded),
+                        _bytes(data.transferDownloadBytes),
                         'Downloaded',
                       ),
                       const SizedBox(width: 8),
                       _heroGlassStat(
                         CupertinoIcons.arrow_2_circlepath,
-                        _bytes(data.bytesUploaded + data.bytesDownloaded),
+                        _bytes(data.transferBytes),
                         'Total',
                       ),
                     ],
@@ -831,7 +831,7 @@ class _SystemAdminAnalyticsScreenState
                   _miniMetric('${count.uploads}', 'Uploads'),
                   _miniMetric('${count.downloads}', 'Downloads'),
                   _miniMetric('${count.streams}', 'Plays'),
-                  _miniMetric(_bytes(count.bytesDownloaded), 'Traffic'),
+                  _miniMetric(_bytes(count.bytesDownloaded), 'Down'),
                 ],
               ),
             ],
@@ -958,8 +958,8 @@ class _SystemAdminAnalyticsScreenState
             icon: CupertinoIcons.wifi,
             color: _sky,
             title: 'Bandwidth',
-            subtitle: 'Upload and download traffic',
-            meta: _bytes(data.bytesUploaded + data.bytesDownloaded),
+            subtitle: 'Upload and download traffic, not media plays',
+            meta: _bytes(data.transferBytes),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
@@ -979,20 +979,14 @@ class _SystemAdminAnalyticsScreenState
             color: _accent,
             title: 'Total uploaded',
             value: _bytes(data.bytesUploaded),
-            progress: _share(
-              data.bytesUploaded,
-              data.bytesUploaded + data.bytesDownloaded,
-            ),
+            progress: _share(data.bytesUploaded, data.transferBytes),
             showDivider: true,
           ),
           _progressRow(
             color: _sky,
             title: 'Total downloaded',
-            value: _bytes(data.bytesDownloaded),
-            progress: _share(
-              data.bytesDownloaded,
-              data.bytesUploaded + data.bytesDownloaded,
-            ),
+            value: _bytes(data.transferDownloadBytes),
+            progress: _share(data.transferDownloadBytes, data.transferBytes),
             showDivider: rows.isNotEmpty,
           ),
           for (var i = 0; i < rows.length; i++)
@@ -1001,10 +995,7 @@ class _SystemAdminAnalyticsScreenState
               title: rows[i].name,
               subtitle: _trafficSubtitle(rows[i]),
               value: _bytes(rows[i].totalBytes),
-              progress: _share(
-                rows[i].totalBytes,
-                data.bytesUploaded + data.bytesDownloaded,
-              ),
+              progress: _share(rows[i].totalBytes, data.transferBytes),
               showDivider: i < rows.length - 1,
             ),
         ],
@@ -1113,11 +1104,7 @@ class _SystemAdminAnalyticsScreenState
   Widget _mediaPlaysCard() {
     final data = _data;
     if (data == null) return const SizedBox.shrink();
-    final rows = data.media.isNotEmpty
-        ? data.media
-        : data.fileTypes
-            .where((row) => row.id == 'video' || row.id == 'audio')
-            .toList();
+    final rows = data.mediaRows;
     final video = rows.where((row) => row.id == 'video').fold<int>(
           0,
           (sum, row) => sum + row.playCount,
@@ -1126,7 +1113,16 @@ class _SystemAdminAnalyticsScreenState
           0,
           (sum, row) => sum + row.playCount,
         );
+    final videoBytes = rows.where((row) => row.id == 'video').fold<int>(
+          0,
+          (sum, row) => sum + row.playBytes,
+        );
+    final audioBytes = rows.where((row) => row.id == 'audio').fold<int>(
+          0,
+          (sum, row) => sum + row.playBytes,
+        );
     final plays = data.streams > 0 ? data.streams : video + audio;
+    final playBytes = data.playBytes;
     final slices = [
       if (video > 0)
         _ChartSlice(
@@ -1149,7 +1145,9 @@ class _SystemAdminAnalyticsScreenState
             icon: CupertinoIcons.play_circle_fill,
             color: _media,
             title: 'Media plays',
-            subtitle: 'Video and audio opened in the player',
+            subtitle: playBytes > 0
+                ? '${_bytes(playBytes)} streamed in the player'
+                : 'Video and audio opened in the player',
             meta: plays > 0 ? '$plays' : null,
           ),
           _pieBlock(
@@ -1163,7 +1161,7 @@ class _SystemAdminAnalyticsScreenState
             _progressRow(
               color: _typeColors['video'] ?? _media,
               title: 'Video',
-              subtitle: 'Opened in the video player',
+              subtitle: videoBytes > 0 ? _bytes(videoBytes) : 'Opened in the video player',
               value: '$video',
               progress: _share(video, plays),
               showDivider: true,
@@ -1171,7 +1169,7 @@ class _SystemAdminAnalyticsScreenState
             _progressRow(
               color: _typeColors['audio'] ?? _sky,
               title: 'Audio',
-              subtitle: 'Opened in the audio player',
+              subtitle: audioBytes > 0 ? _bytes(audioBytes) : 'Opened in the audio player',
               value: '$audio',
               progress: _share(audio, plays),
               showDivider: true,

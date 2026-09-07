@@ -17,6 +17,7 @@ class AnalyticsCount {
   final int streams;
   final int bytesUploaded;
   final int bytesDownloaded;
+  final int bytesStreamed;
   final int activeUsers;
 
   const AnalyticsCount({
@@ -25,6 +26,7 @@ class AnalyticsCount {
     this.streams = 0,
     this.bytesUploaded = 0,
     this.bytesDownloaded = 0,
+    this.bytesStreamed = 0,
     this.activeUsers = 0,
   });
 
@@ -36,6 +38,7 @@ class AnalyticsCount {
       streams: _int(data['streams']),
       bytesUploaded: _int(data['bytesUploaded']),
       bytesDownloaded: _int(data['bytesDownloaded']),
+      bytesStreamed: _int(data['bytesStreamed']),
       activeUsers: _int(data['activeUsers']),
     );
   }
@@ -54,6 +57,7 @@ class AnalyticsNamedCount {
   final int streams;
   final int bytesUploaded;
   final int bytesDownloaded;
+  final int bytesStreamed;
 
   const AnalyticsNamedCount({
     required this.id,
@@ -66,6 +70,7 @@ class AnalyticsNamedCount {
     this.streams = 0,
     this.bytesUploaded = 0,
     this.bytesDownloaded = 0,
+    this.bytesStreamed = 0,
   });
 
   factory AnalyticsNamedCount.fromJson(Map<String, dynamic> json) {
@@ -80,6 +85,7 @@ class AnalyticsNamedCount {
       streams: _int(json['streams']),
       bytesUploaded: _int(json['bytesUploaded']),
       bytesDownloaded: _int(json['bytesDownloaded']),
+      bytesStreamed: _int(json['bytesStreamed']),
     );
   }
 
@@ -95,6 +101,7 @@ class AnalyticsFileType {
   final int streams;
   final int bytesUploaded;
   final int bytesDownloaded;
+  final int bytesStreamed;
 
   const AnalyticsFileType({
     required this.id,
@@ -105,6 +112,7 @@ class AnalyticsFileType {
     this.streams = 0,
     this.bytesUploaded = 0,
     this.bytesDownloaded = 0,
+    this.bytesStreamed = 0,
   });
 
   factory AnalyticsFileType.fromJson(Map<String, dynamic> json) {
@@ -117,11 +125,13 @@ class AnalyticsFileType {
       streams: _int(json['streams']),
       bytesUploaded: _int(json['bytesUploaded']),
       bytesDownloaded: _int(json['bytesDownloaded']),
+      bytesStreamed: _int(json['bytesStreamed']),
     );
   }
 
   int get totalCount => uploads + downloads;
   int get playCount => streams;
+  int get playBytes => bytesStreamed > 0 ? bytesStreamed : bytesDownloaded;
   int get totalBytes => bytesUploaded + bytesDownloaded;
 }
 
@@ -132,6 +142,7 @@ class AnalyticsSeriesPoint {
   final int streams;
   final int bytesUploaded;
   final int bytesDownloaded;
+  final int bytesStreamed;
   final int activeUsers;
 
   const AnalyticsSeriesPoint({
@@ -141,6 +152,7 @@ class AnalyticsSeriesPoint {
     this.streams = 0,
     this.bytesUploaded = 0,
     this.bytesDownloaded = 0,
+    this.bytesStreamed = 0,
     this.activeUsers = 0,
   });
 
@@ -152,6 +164,7 @@ class AnalyticsSeriesPoint {
       streams: _int(json['streams']),
       bytesUploaded: _int(json['bytesUploaded']),
       bytesDownloaded: _int(json['bytesDownloaded']),
+      bytesStreamed: _int(json['bytesStreamed']),
       activeUsers: _int(json['activeUsers']),
     );
   }
@@ -232,6 +245,7 @@ class AnalyticsSnapshot {
   final int streams;
   final int bytesUploaded;
   final int bytesDownloaded;
+  final int bytesStreamed;
   final int avgUploadBytes;
   final int avgDownloadBytes;
   final AnalyticsCount mobile;
@@ -262,6 +276,7 @@ class AnalyticsSnapshot {
     this.streams = 0,
     this.bytesUploaded = 0,
     this.bytesDownloaded = 0,
+    this.bytesStreamed = 0,
     this.avgUploadBytes = 0,
     this.avgDownloadBytes = 0,
     this.mobile = const AnalyticsCount(),
@@ -300,6 +315,7 @@ class AnalyticsSnapshot {
       streams: _int(summary['streams']),
       bytesUploaded: _int(summary['bytesUploaded']),
       bytesDownloaded: _int(summary['bytesDownloaded']),
+      bytesStreamed: _int(summary['bytesStreamed']),
       avgUploadBytes: _int(summary['avgUploadBytes']),
       avgDownloadBytes: _int(summary['avgDownloadBytes']),
       mobile: AnalyticsCount.fromJson(_map(platforms['mobile'])),
@@ -333,6 +349,29 @@ class AnalyticsSnapshot {
           _list(json['recent']).map(AnalyticsRecentEvent.fromJson).toList(),
     );
   }
+
+  List<AnalyticsFileType> get mediaRows => media.isNotEmpty
+      ? media
+      : fileTypes.where((row) => row.id == 'video' || row.id == 'audio').toList();
+
+  int get playBytes {
+    if (bytesStreamed > 0) return bytesStreamed;
+    return mediaRows.fold<int>(0, (sum, row) => sum + row.playBytes);
+  }
+
+  int get transferDownloadBytes {
+    if (bytesStreamed > 0) return bytesDownloaded;
+    final mediaDown = mediaRows.fold<int>(0, (sum, row) {
+      if (row.playCount > 0 && row.bytesStreamed == 0) {
+        return sum + row.bytesDownloaded;
+      }
+      return sum;
+    });
+    final next = bytesDownloaded - mediaDown;
+    return next < 0 ? 0 : next;
+  }
+
+  int get transferBytes => bytesUploaded + transferDownloadBytes;
 }
 
 int _int(dynamic value, [int fallback = 0]) {
