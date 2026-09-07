@@ -432,7 +432,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       labelText: label,
       labelStyle: TextStyle(color: muted),
       filled: true,
-      fillColor: isDark ? const Color(0xFF111827) : const Color(0xFFEEF2F7),
+      fillColor: isDark ? const Color(0xFF111827) : const Color(0xFFDCE3EE),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
         borderSide: BorderSide.none,
@@ -587,7 +587,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final background =
-        isDark ? const Color(0xFF111827) : const Color(0xFFEEF2F7);
+        isDark ? const Color(0xFF111827) : const Color(0xFFE8EEF5);
     final titleColor =
         isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
     final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);

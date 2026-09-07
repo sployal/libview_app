@@ -526,7 +526,7 @@ class _AiScreenState extends State<AiScreen> {
                     elevation: 12,
                     color: isDark
                         ? const Color(0xFF111827)
-                        : const Color(0xFFEEF2F7),
+                        : const Color(0xFFE8EEF5),
                     child: SizedBox(
                       width: sidebarWidth,
                       child: SafeArea(
@@ -574,7 +574,7 @@ class _ConversationSidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
-    final background = isDark ? const Color(0xFF111827) : const Color(0xFFEEF2F7);
+    final background = isDark ? const Color(0xFF111827) : const Color(0xFFE8EEF5);
 
     return ColoredBox(
       color: background,
@@ -1030,7 +1030,7 @@ class _Composer extends StatelessWidget {
                       filled: true,
                       fillColor: isDark
                           ? const Color(0xFF111827)
-                          : const Color(0xFFE2E8F0),
+                          : const Color(0xFFDCE3EE),
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 12,
                         vertical: 12,

@@ -518,7 +518,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final background =
-        isDark ? const Color(0xFF111827) : const Color(0xFFEEF2F7);
+        isDark ? const Color(0xFF111827) : const Color(0xFFE8EEF5);
     final titleColor =
         isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
     final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
@@ -773,7 +773,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
   }) {
     const accent = Color(0xFF6366F1);
     final highlighted = _searchFocus.hasFocus || _query.isNotEmpty;
-    final fieldFill = isDark ? const Color(0xFF1F2937) : Colors.white;
+    final fieldFill = isDark ? const Color(0xFF1F2937) : const Color(0xFFDCE3EE);
     final borderColor = highlighted
         ? accent
         : (isDark ? const Color(0xFF4B5563) : const Color(0xFFD1D5DB));

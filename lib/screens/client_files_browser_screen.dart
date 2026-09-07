@@ -3484,7 +3484,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
   Widget _buildFilesView() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final background =
-        isDark ? const Color(0xFF111827) : const Color(0xFFEEF2F7);
+        isDark ? const Color(0xFF111827) : const Color(0xFFE8EEF5);
     final titleColor =
         isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
     final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
@@ -3847,7 +3847,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
   }) {
     const accent = Color(0xFF818CF8);
     final fieldFill =
-        isDark ? const Color(0xFF1F2937) : const Color(0xFFEEF2F6);
+        isDark ? const Color(0xFF1F2937) : const Color(0xFFDCE3EE);
     final chipFill =
         isDark ? const Color(0xFF1F2937) : Colors.white;
     final chipBorder = isDark
@@ -3981,13 +3981,13 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
   Widget _buildSubjectsView() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final background =
-        isDark ? const Color(0xFF111827) : const Color(0xFFEEF2F7);
+        isDark ? const Color(0xFF111827) : const Color(0xFFE8EEF5);
     final titleColor =
         isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
     final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
     const accent = Color(0xFF818CF8);
     final fieldFill =
-        isDark ? const Color(0xFF1F2937) : const Color(0xFFEEF2F6);
+        isDark ? const Color(0xFF1F2937) : const Color(0xFFDCE3EE);
     final unitSearchHighlighted =
         _unitSearchFocus.hasFocus || _unitQuery.isNotEmpty;
     final visible = _visibleUnits;

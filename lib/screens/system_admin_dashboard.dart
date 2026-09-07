@@ -96,14 +96,14 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard>
 
   bool get _isDark => Theme.of(context).brightness == Brightness.dark;
   Color get _bg =>
-      _isDark ? const Color(0xFF111827) : const Color(0xFFEEF2F7);
+      _isDark ? const Color(0xFF111827) : const Color(0xFFE8EEF5);
   Color get _card => _isDark ? const Color(0xFF1F2937) : Colors.white;
   Color get _titleColor =>
       _isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
   Color get _muted =>
       _isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
   Color get _chip =>
-      _isDark ? const Color(0xFF374151) : const Color(0xFFE2E8F0);
+      _isDark ? const Color(0xFF374151) : const Color(0xFFDCE3EE);
 
   int get _totalUsers =>
       _profiles.where((p) => _userRoles.contains(p['role'])).length;
@@ -2262,7 +2262,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard>
         borderRadius: BorderRadius.circular(7),
         child: Container(
           height: 14,
-          color: _isDark ? const Color(0xFF374151) : const Color(0xFFE2E8F0),
+          color: _isDark ? const Color(0xFF374151) : const Color(0xFFDCE3EE),
         ),
       );
     }
@@ -2410,7 +2410,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard>
     final otherDriveColor =
         _isDark ? const Color(0xFF6B7280) : const Color(0xFF94A3B8);
     final freeColor =
-        _isDark ? const Color(0xFF374151) : const Color(0xFFE2E8F0);
+        _isDark ? const Color(0xFF374151) : const Color(0xFFDCE3EE);
 
     final segments = <_StorageSegment>[
       for (var i = 0; i < storage.courses.length; i++)

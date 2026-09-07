@@ -30,7 +30,7 @@ class _WebViewScreenState extends State<WebViewScreen> {
   bool _tabTickersEnabled = true;
 
   static const _darkBg = Color(0xFF111827);
-  static const _lightBg = Color(0xFFEEF2F7);
+  static const _lightBg = Color(0xFFE8EEF5);
 
   @override
   void initState() {

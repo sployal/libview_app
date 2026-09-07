@@ -40,7 +40,7 @@ class _MediaPlayerScreenState extends State<MediaPlayerScreen> {
   bool _showControls = true;
 
   static const _darkBg = Color(0xFF111827);
-  static const _lightBg = Color(0xFFEEF2F7);
+  static const _lightBg = Color(0xFFE8EEF5);
 
   bool get _usePlatformView =>
       !widget.isAudio &&

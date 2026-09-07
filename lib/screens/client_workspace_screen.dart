@@ -324,7 +324,7 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
     }
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bg = isDark ? const Color(0xFF0B1220) : const Color(0xFFF0F9FF);
+    final bg = isDark ? const Color(0xFF0B1220) : const Color(0xFFE8EEF5);
     final title = isDark ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A);
     final muted = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
     final card = isDark ? const Color(0xFF111827) : Colors.white;
@@ -698,7 +698,7 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
                   border: Border.all(
                     color: isDark
                         ? Colors.white.withOpacity(0.06)
-                        : const Color(0xFFE2E8F0),
+                        : const Color(0xFFDCE3EE),
                   ),
                 ),
                 child: Stack(
@@ -889,7 +889,7 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
             border: Border.all(
               color: isDark
                   ? Colors.white.withOpacity(0.06)
-                  : const Color(0xFFE2E8F0),
+                  : const Color(0xFFDCE3EE),
             ),
           ),
           child: Row(
@@ -944,7 +944,7 @@ class _ClientUnassignedState extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       backgroundColor:
-          isDark ? const Color(0xFF111827) : const Color(0xFFEEF2F7),
+          isDark ? const Color(0xFF111827) : const Color(0xFFE8EEF5),
       body: SafeArea(
         child: Center(
           child: Padding(

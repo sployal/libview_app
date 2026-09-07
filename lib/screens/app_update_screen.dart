@@ -141,7 +141,7 @@ class _AppUpdateScreenState extends State<AppUpdateScreen> {
       canPop: false,
       child: Scaffold(
         backgroundColor:
-            isDark ? const Color(0xFF111827) : const Color(0xFFEEF2F7),
+            isDark ? const Color(0xFF111827) : const Color(0xFFE8EEF5),
         body: SafeArea(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 28),

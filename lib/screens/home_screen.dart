@@ -492,7 +492,7 @@ class _HomeScreenState extends State<HomeScreen>
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final background =
-        isDark ? const Color(0xFF111827) : const Color(0xFFEEF2F7);
+        isDark ? const Color(0xFF111827) : const Color(0xFFE8EEF5);
     final titleColor =
         isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
     final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
@@ -759,7 +759,7 @@ class _HomeScreenState extends State<HomeScreen>
                             ? const Color(0xFFF97316)
                             : (isDark
                                 ? const Color(0xFF374151)
-                                : const Color(0xFFE2E8F0)),
+                                : const Color(0xFFDCE3EE)),
                         border: isToday && !active
                             ? Border.all(
                                 color: const Color(0xFF6366F1),
@@ -1524,7 +1524,7 @@ class _HomeScreenState extends State<HomeScreen>
                       filled: true,
                       fillColor: isDark
                           ? const Color(0xFF111827)
-                          : const Color(0xFFE2E8F0),
+                          : const Color(0xFFDCE3EE),
                       isDense: true,
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16,
@@ -1645,7 +1645,7 @@ class _HomeScreenState extends State<HomeScreen>
                         filled: true,
                         fillColor: isDark
                             ? const Color(0xFF111827)
-                            : const Color(0xFFE2E8F0),
+                            : const Color(0xFFDCE3EE),
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 12,
                           vertical: 8,
@@ -1957,7 +1957,7 @@ class _WeatherLocationSheetState extends State<_WeatherLocationSheet> {
     final titleColor =
         isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
     final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
-    final field = isDark ? const Color(0xFF1F2937) : const Color(0xFFE2E8F0);
+    final field = isDark ? const Color(0xFF1F2937) : const Color(0xFFDCE3EE);
 
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
@@ -2523,7 +2523,7 @@ class _StudyFocusCardState extends State<_StudyFocusCard> {
                           ? const Color(0xFF6366F1)
                           : (isDark
                               ? const Color(0xFF111827)
-                              : const Color(0xFFE2E8F0)),
+                              : const Color(0xFFDCE3EE)),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Text(

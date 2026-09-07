@@ -212,7 +212,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final background =
-        isDark ? const Color(0xFF111827) : const Color(0xFFEEF2F7);
+        isDark ? const Color(0xFF111827) : const Color(0xFFE8EEF5);
     final card = isDark ? const Color(0xFF1F2937) : Colors.white;
     final primaryText =
         isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
@@ -547,7 +547,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 radius: avatarRadius,
                 backgroundImage: NetworkImage(_avatarUrl!),
                 backgroundColor:
-                    isDark ? const Color(0xFF374151) : const Color(0xFFE2E8F0),
+                    isDark ? const Color(0xFF374151) : const Color(0xFFDCE3EE),
               )
             : CircleAvatar(
                 radius: avatarRadius,
@@ -863,7 +863,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           decoration: BoxDecoration(
             color: isSelected
                 ? const Color(0xFF6366F1).withOpacity(isDark ? 0.22 : 0.12)
-                : (isDark ? const Color(0xFF374151) : const Color(0xFFE2E8F0)),
+                : (isDark ? const Color(0xFF374151) : const Color(0xFFDCE3EE)),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: isSelected

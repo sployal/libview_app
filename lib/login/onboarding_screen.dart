@@ -86,7 +86,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final background = isDark ? const Color(0xFF000000) : const Color(0xFFF2F2F7);
+    final background = isDark ? const Color(0xFF000000) : const Color(0xFFE8EEF5);
     final titleColor = isDark ? Colors.white : const Color(0xFF1C1C1E);
     final subtitleColor =
         isDark ? const Color(0xFF8E8E93) : const Color(0xFF6C6C70);
