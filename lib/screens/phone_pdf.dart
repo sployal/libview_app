@@ -383,7 +383,7 @@ class _PhonePdfScreenState extends State<PhonePdfScreen>
           margin: const EdgeInsets.only(bottom: 10),
           decoration: _docCardDecoration(isDark: isDark, selected: selected),
           child: Material(
-            color: Colors.transparent,
+            type: MaterialType.transparency,
             child: InkWell(
               onTap: _isPreparing ? null : () => _onTap(doc),
               onLongPress: _isPreparing ? null : () => _onLongPress(doc),
@@ -485,7 +485,7 @@ class _PhonePdfScreenState extends State<PhonePdfScreen>
             return Container(
               decoration: _docCardDecoration(isDark: isDark, selected: selected),
               child: Material(
-                color: Colors.transparent,
+                type: MaterialType.transparency,
                 child: InkWell(
                   onTap: _isPreparing ? null : () => _onTap(doc),
                   onLongPress: _isPreparing ? null : () => _onLongPress(doc),

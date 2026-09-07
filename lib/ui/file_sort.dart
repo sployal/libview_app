@@ -484,7 +484,12 @@ class _SortChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
+      type: selected ? MaterialType.canvas : MaterialType.transparency,
       color: selected ? const Color(0xFF6366F1) : Colors.transparent,
+      elevation: 0,
+      shadowColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      clipBehavior: Clip.antiAlias,
       borderRadius: BorderRadius.circular(12),
       child: InkWell(
         onTap: onTap,

@@ -56,7 +56,11 @@ class StudyApp extends StatelessWidget {
             colorScheme: ColorScheme.fromSeed(
               seedColor: const Color(0xFF6366F1),
               brightness: Brightness.light,
+            ).copyWith(
+              surfaceTint: Colors.transparent,
             ),
+            canvasColor: const Color(0xFFE8EEF5),
+            cardColor: Colors.white,
             fontFamily: 'SF Pro Display',
             useMaterial3: true,
             scaffoldBackgroundColor: const Color(0xFFE8EEF5),
@@ -74,7 +78,11 @@ class StudyApp extends StatelessWidget {
             colorScheme: ColorScheme.fromSeed(
               seedColor: const Color(0xFF6366F1),
               brightness: Brightness.dark,
+            ).copyWith(
+              surfaceTint: Colors.transparent,
             ),
+            canvasColor: const Color(0xFF111827),
+            cardColor: const Color(0xFF1F2937),
             fontFamily: 'SF Pro Display',
             useMaterial3: true,
             scaffoldBackgroundColor: const Color(0xFF111827),

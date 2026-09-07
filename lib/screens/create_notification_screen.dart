@@ -710,6 +710,9 @@ class _CreateNotificationScreenState extends State<CreateNotificationScreen> {
       color: isSelected
           ? Color.alphaBlend(_accent.withOpacity(0.12), card)
           : card,
+      elevation: 0,
+      shadowColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(

@@ -3023,7 +3023,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
           margin: const EdgeInsets.only(bottom: 12),
           decoration: _fileCardDecoration(isDark: isDark, selected: selected),
           child: Material(
-            color: Colors.transparent,
+            type: MaterialType.transparency,
             child: InkWell(
               onTap: () => _onListedItemTap(
                 file,
@@ -3182,7 +3182,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
               key: ValueKey(file.id),
               decoration: _fileCardDecoration(isDark: isDark, selected: selected),
               child: Material(
-                color: Colors.transparent,
+                type: MaterialType.transparency,
                 child: InkWell(
                   onTap: () => _onListedItemTap(
                     file,
@@ -4581,7 +4581,9 @@ class _UnitFolderTile extends StatelessWidget {
     );
 
     return Material(
-      color: Colors.transparent,
+      type: MaterialType.transparency,
+      clipBehavior: Clip.antiAlias,
+      borderRadius: BorderRadius.circular(22),
       child: InkWell(
         onTap: onTap,
         onLongPress: onLongPress,
@@ -4596,7 +4598,9 @@ class _UnitFolderTile extends StatelessWidget {
             borderRadius: BorderRadius.circular(22),
             border: selected
                 ? Border.all(color: const Color(0xFF6366F1), width: 1.5)
-                : null,
+                : (isDark
+                    ? null
+                    : Border.all(color: const Color(0xFFCBD5E1))),
             boxShadow: [
               if (!isDark)
                 BoxShadow(
@@ -4876,6 +4880,10 @@ class _UploadSourceOption extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: const Color(0xFF2A3344),
+      elevation: 0,
+      shadowColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      clipBehavior: Clip.antiAlias,
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         onTap: onTap,
@@ -5403,6 +5411,10 @@ class _ItemActionSheet extends StatelessWidget {
                       final color = action.color ?? titleColor;
                       return Material(
                         color: card,
+                        elevation: 0,
+                        shadowColor: Colors.transparent,
+                        surfaceTintColor: Colors.transparent,
+                        clipBehavior: Clip.antiAlias,
                         borderRadius: BorderRadius.circular(16),
                         child: InkWell(
                           onTap: () => Navigator.pop(context, action.value),

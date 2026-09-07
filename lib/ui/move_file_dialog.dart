@@ -91,7 +91,7 @@ class MoveFileDialog extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 24),
           child: Material(
-            color: Colors.transparent,
+            type: MaterialType.transparency,
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 420, maxHeight: 640),
               child: DecoratedBox(
@@ -287,6 +287,10 @@ class _FolderTile extends StatelessWidget {
     final accent = target.isMain ? const Color(0xFF0EA5E9) : const Color(0xFF6366F1);
     return Material(
       color: background,
+      elevation: 0,
+      shadowColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      clipBehavior: Clip.antiAlias,
       borderRadius: BorderRadius.circular(18),
       child: InkWell(
         onTap: () {

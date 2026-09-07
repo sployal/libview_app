@@ -556,6 +556,10 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
   }) {
     return Material(
       color: color.withOpacity(0.12),
+      elevation: 0,
+      shadowColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      clipBehavior: Clip.antiAlias,
       borderRadius: BorderRadius.circular(18),
       child: InkWell(
         onTap: onTap,
@@ -684,7 +688,18 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
           final recent = _recents[index];
           return Material(
             color: card,
-            borderRadius: BorderRadius.circular(18),
+            elevation: 0,
+            shadowColor: Colors.transparent,
+            surfaceTintColor: Colors.transparent,
+            clipBehavior: Clip.antiAlias,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18),
+              side: BorderSide(
+                color: isDark
+                    ? Colors.white.withOpacity(0.06)
+                    : const Color(0xFFCBD5E1),
+              ),
+            ),
             child: InkWell(
               onTap: () => _openBrowser(
                 folderId: recent.folderId,
@@ -693,14 +708,6 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
               borderRadius: BorderRadius.circular(18),
               child: Ink(
                 width: 148,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(
-                    color: isDark
-                        ? Colors.white.withOpacity(0.06)
-                        : const Color(0xFFDCE3EE),
-                  ),
-                ),
                 child: Stack(
                   children: [
                     Padding(
@@ -813,8 +820,18 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
             padding: const EdgeInsets.only(bottom: 8),
             child: Material(
               color: card,
-              borderRadius: BorderRadius.circular(16),
+              elevation: 0,
+              shadowColor: Colors.transparent,
+              surfaceTintColor: Colors.transparent,
+              clipBehavior: Clip.antiAlias,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: isDark
+                    ? BorderSide.none
+                    : const BorderSide(color: Color(0xFFCBD5E1)),
+              ),
               child: ListTile(
+                tileColor: Colors.transparent,
                 onTap: () => _openBrowser(
                   folderId: folder.folderId,
                   folderName: folder.name,
@@ -878,6 +895,10 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
   Widget _viewAllButton(Color card, bool isDark) {
     return Material(
       color: card,
+      elevation: 0,
+      shadowColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      clipBehavior: Clip.antiAlias,
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         onTap: () => _openBrowser(),
@@ -913,12 +934,16 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
   }
 
   Widget _emptyCard(Color card, Color muted, String text) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
       decoration: BoxDecoration(
         color: card,
         borderRadius: BorderRadius.circular(16),
+        border: isDark
+            ? null
+            : Border.all(color: const Color(0xFFCBD5E1)),
       ),
       child: Text(text, style: TextStyle(color: muted)),
     );

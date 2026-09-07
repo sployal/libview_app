@@ -822,7 +822,7 @@ class _PhoneAudioScreenState extends State<PhoneAudioScreen>
           margin: const EdgeInsets.only(bottom: 10),
           decoration: _cardDecoration(isDark: isDark, selected: selected),
           child: Material(
-            color: Colors.transparent,
+            type: MaterialType.transparency,
             child: InkWell(
               onTap: _isPreparing ? null : () => _onTap(file),
               onLongPress: _isPreparing ? null : () => _onLongPress(file),
@@ -924,7 +924,7 @@ class _PhoneAudioScreenState extends State<PhoneAudioScreen>
         final selected = _selected.containsKey(file.key);
         final preparing = _preparingName == file.name;
         return Material(
-          color: Colors.transparent,
+          type: MaterialType.transparency,
           child: InkWell(
             onTap: _isPreparing ? null : () => _onTap(file),
             onLongPress: _isPreparing ? null : () => _onLongPress(file),

@@ -178,7 +178,7 @@ class _FolderLockDialogState extends State<FolderLockDialog>
 
     return Center(
       child: Material(
-        color: Colors.transparent,
+        type: MaterialType.transparency,
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 420),
           child: Padding(

@@ -919,7 +919,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
     return Container(
       decoration: _fileCardDecoration(isDark: isDark, selected: selected),
       child: Material(
-        color: Colors.transparent,
+        type: MaterialType.transparency,
         child: InkWell(
           onTap: () => _onTap(download),
           onLongPress: () => _onLongPress(download),
@@ -1003,7 +1003,7 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
     return Container(
       decoration: _fileCardDecoration(isDark: isDark, selected: selected),
       child: Material(
-        color: Colors.transparent,
+        type: MaterialType.transparency,
         child: InkWell(
           onTap: () => _onTap(download),
           onLongPress: () => _onLongPress(download),
@@ -1159,7 +1159,7 @@ class _DownloadsConfirmDialog extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 24),
           child: Material(
-            color: Colors.transparent,
+            type: MaterialType.transparency,
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 400),
               child: DecoratedBox(

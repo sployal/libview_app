@@ -123,6 +123,9 @@ class _ClientEditorDialogState extends State<_ClientEditorDialog> {
         constraints: const BoxConstraints(maxWidth: 420),
         child: Material(
           color: sheet,
+          elevation: 0,
+          shadowColor: Colors.transparent,
+          surfaceTintColor: Colors.transparent,
           borderRadius: BorderRadius.circular(28),
           clipBehavior: Clip.antiAlias,
           child: Column(

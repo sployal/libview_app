@@ -941,7 +941,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard>
     return Column(
       children: [
         Material(
-          color: Colors.transparent,
+          type: MaterialType.transparency,
           child: InkWell(
             onTap: onTap == null
                 ? null
@@ -1910,6 +1910,10 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard>
               const SizedBox(height: 8),
               Material(
                 color: _card,
+                elevation: 0,
+                shadowColor: Colors.transparent,
+                surfaceTintColor: Colors.transparent,
+                clipBehavior: Clip.antiAlias,
                 borderRadius: BorderRadius.circular(16),
                 child: InkWell(
                   onTap: () => Navigator.pop(sheetContext),
@@ -2840,7 +2844,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard>
     final admission = user['admission_number']?.toString() ?? '';
 
     return Material(
-      color: Colors.transparent,
+      type: MaterialType.transparency,
       child: InkWell(
         onTap: () => _showUserDetails(user),
         child: Column(

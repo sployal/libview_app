@@ -460,7 +460,7 @@ class _BrowseDocumentsScreenState extends State<BrowseDocumentsScreen>
           margin: const EdgeInsets.only(bottom: 10),
           decoration: _docCardDecoration(isDark: isDark, selected: selected),
           child: Material(
-            color: Colors.transparent,
+            type: MaterialType.transparency,
             child: InkWell(
               onTap: _isOpening ? null : () => _onTap(doc),
               onLongPress: _isOpening ? null : () => _onLongPress(doc),
@@ -567,7 +567,7 @@ class _BrowseDocumentsScreenState extends State<BrowseDocumentsScreen>
             return Container(
               decoration: _docCardDecoration(isDark: isDark, selected: selected),
               child: Material(
-                color: Colors.transparent,
+                type: MaterialType.transparency,
                 child: InkWell(
                   onTap: _isOpening ? null : () => _onTap(doc),
                   onLongPress: _isOpening ? null : () => _onLongPress(doc),

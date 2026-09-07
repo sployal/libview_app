@@ -181,7 +181,7 @@ class FileDetailsDialog extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 24),
           child: Material(
-            color: Colors.transparent,
+            type: MaterialType.transparency,
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 420, maxHeight: 640),
               child: DecoratedBox(

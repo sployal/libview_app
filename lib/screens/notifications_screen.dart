@@ -910,8 +910,12 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       color: cardColor,
       elevation: isDark ? 0 : 1,
       shadowColor: Colors.black.withOpacity(0.12),
+      surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(18),
+        side: isDark
+            ? BorderSide.none
+            : const BorderSide(color: Color(0xFFCBD5E1)),
       ),
       clipBehavior: Clip.antiAlias,
       child: Padding(

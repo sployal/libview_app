@@ -524,6 +524,7 @@ class _AiScreenState extends State<AiScreen> {
                   alignment: Alignment.centerLeft,
                   child: Material(
                     elevation: 12,
+                    surfaceTintColor: Colors.transparent,
                     color: isDark
                         ? const Color(0xFF111827)
                         : const Color(0xFFE8EEF5),
@@ -643,9 +644,16 @@ class _ConversationSidebar extends StatelessWidget {
                           return Padding(
                             padding: const EdgeInsets.only(bottom: 4),
                             child: Material(
+                              type: isCurrent
+                                  ? MaterialType.canvas
+                                  : MaterialType.transparency,
                               color: isCurrent
                                   ? accent.withOpacity(isDark ? 0.22 : 0.12)
                                   : Colors.transparent,
+                              elevation: 0,
+                              shadowColor: Colors.transparent,
+                              surfaceTintColor: Colors.transparent,
+                              clipBehavior: Clip.antiAlias,
                               borderRadius: BorderRadius.circular(12),
                               child: InkWell(
                                 borderRadius: BorderRadius.circular(12),

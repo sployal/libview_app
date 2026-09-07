@@ -668,7 +668,9 @@ class _ContinueCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.transparent,
+      type: MaterialType.transparency,
+      clipBehavior: Clip.antiAlias,
+      borderRadius: BorderRadius.circular(20),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(20),
@@ -931,7 +933,9 @@ class _SemesterCard extends StatelessWidget {
     final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
 
     return Material(
-      color: Colors.transparent,
+      type: MaterialType.transparency,
+      clipBehavior: Clip.antiAlias,
+      borderRadius: BorderRadius.circular(24),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(24),

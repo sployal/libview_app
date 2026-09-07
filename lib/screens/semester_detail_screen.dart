@@ -1522,7 +1522,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
           margin: const EdgeInsets.only(bottom: 12),
           decoration: _fileCardDecoration(isDark: isDark),
           child: Material(
-            color: Colors.transparent,
+            type: MaterialType.transparency,
             child: InkWell(
               onTap: isDownloading ? null : () => _openFileInWebView(file),
               borderRadius: BorderRadius.circular(20),
@@ -1642,7 +1642,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
               key: ValueKey(file.id),
               decoration: _fileCardDecoration(isDark: isDark),
               child: Material(
-                color: Colors.transparent,
+                type: MaterialType.transparency,
                 child: InkWell(
                   onTap: isDownloading ? null : () => _openFileInWebView(file),
                   borderRadius: BorderRadius.circular(16),
@@ -2679,7 +2679,9 @@ class _UnitFolderTile extends StatelessWidget {
         '${subject.fileCount} ${subject.fileCount == 1 ? 'file' : 'files'}';
 
     return Material(
-      color: Colors.transparent,
+      type: MaterialType.transparency,
+      clipBehavior: Clip.antiAlias,
+      borderRadius: BorderRadius.circular(22),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(22),
@@ -2893,6 +2895,10 @@ class _UploadSourceOption extends StatelessWidget {
   Widget build(BuildContext context) {
     return Material(
       color: const Color(0xFF2A3344),
+      elevation: 0,
+      shadowColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      clipBehavior: Clip.antiAlias,
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         onTap: onTap,

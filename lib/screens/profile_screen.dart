@@ -915,7 +915,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return Column(
       children: [
         Material(
-          color: Colors.transparent,
+          type: MaterialType.transparency,
           child: InkWell(
             onTap: onTap,
             child: Padding(

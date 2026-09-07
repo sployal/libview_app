@@ -850,55 +850,61 @@ class _HomeScreenState extends State<HomeScreen>
       childAspectRatio: 1.55,
       children: items
           .map(
-            (item) => Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: item.onTap,
+            (item) => DecoratedBox(
+              decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(20),
-                child: Ink(
-                  decoration: BoxDecoration(
-                    color: card,
-                    borderRadius: BorderRadius.circular(20),
-                    border: isDark
-                        ? null
-                        : Border.all(color: const Color(0xFFCBD5E1)),
-                    boxShadow: [
-                      if (!isDark)
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.08),
-                          blurRadius: 14,
-                          offset: const Offset(0, 6),
-                        ),
-                    ],
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(14),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: item.color.withOpacity(isDark ? 0.2 : 0.12),
-                            borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  if (!isDark)
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.08),
+                      blurRadius: 14,
+                      offset: const Offset(0, 6),
+                    ),
+                ],
+              ),
+              child: Material(
+                type: MaterialType.transparency,
+                clipBehavior: Clip.antiAlias,
+                borderRadius: BorderRadius.circular(20),
+                child: InkWell(
+                  onTap: item.onTap,
+                  child: Ink(
+                    decoration: BoxDecoration(
+                      color: card,
+                      borderRadius: BorderRadius.circular(20),
+                      border: isDark
+                          ? null
+                          : Border.all(color: const Color(0xFFCBD5E1)),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              color: item.color.withOpacity(isDark ? 0.2 : 0.12),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Icon(item.icon, color: item.color, size: 20),
                           ),
-                          child: Icon(item.icon, color: item.color, size: 20),
-                        ),
-                        const Spacer(),
-                        Text(
-                          item.title,
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
-                            color: titleColor,
+                          const Spacer(),
+                          Text(
+                            item.title,
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: titleColor,
+                            ),
                           ),
-                        ),
-                        Text(
-                          item.subtitle,
-                          style: TextStyle(fontSize: 12, color: muted),
-                        ),
-                      ],
+                          Text(
+                            item.subtitle,
+                            style: TextStyle(fontSize: 12, color: muted),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -1540,6 +1546,10 @@ class _HomeScreenState extends State<HomeScreen>
                 const SizedBox(width: 8),
                 Material(
                   color: const Color(0xFF6366F1),
+                  elevation: 0,
+                  shadowColor: Colors.transparent,
+                  surfaceTintColor: Colors.transparent,
+                  clipBehavior: Clip.antiAlias,
                   borderRadius: BorderRadius.circular(14),
                   child: InkWell(
                     onTap: _addTodo,
@@ -1841,6 +1851,10 @@ class _WeatherChip extends StatelessWidget {
 
     return Material(
       color: isDark ? const Color(0xFF1F2937) : Colors.white,
+      elevation: 0,
+      shadowColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      clipBehavior: Clip.antiAlias,
       borderRadius: BorderRadius.circular(16),
       child: InkWell(
         onTap: onTap,
@@ -2150,7 +2164,11 @@ class _NotificationButton extends StatelessWidget {
       children: [
         Material(
           color: isDark ? const Color(0xFF1F2937) : Colors.white,
+          elevation: 0,
+          shadowColor: Colors.transparent,
+          surfaceTintColor: Colors.transparent,
           shape: const CircleBorder(),
+          clipBehavior: Clip.antiAlias,
           child: InkWell(
             customBorder: const CircleBorder(),
             onTap: onTap,
