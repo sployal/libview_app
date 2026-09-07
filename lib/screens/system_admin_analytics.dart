@@ -64,6 +64,7 @@ class _SystemAdminAnalyticsScreenState
   String? _error;
   String _period = 'month';
   String _platform = 'all';
+  String _platformBytesKind = 'download';
   late int _year;
   late int _month;
   AnalyticsSnapshot? _data;
@@ -763,6 +764,21 @@ class _SystemAdminAnalyticsScreenState
             meta: '${mobile + web}',
           ),
           Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: _compactSwitcher(
+              options: const [
+                ('download', 'Download'),
+                ('upload', 'Upload'),
+              ],
+              selected: _platformBytesKind,
+              onSelected: (value) {
+                if (value == _platformBytesKind) return;
+                HapticFeedback.selectionClick();
+                setState(() => _platformBytesKind = value);
+              },
+            ),
+          ),
+          Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
             child: _splitBar(mobile, web, _accent, _sky),
           ),
@@ -831,7 +847,14 @@ class _SystemAdminAnalyticsScreenState
                   _miniMetric('${count.uploads}', 'Uploads'),
                   _miniMetric('${count.downloads}', 'Downloads'),
                   _miniMetric('${count.streams}', 'Plays'),
-                  _miniMetric(_bytes(count.bytesDownloaded), 'Down'),
+                  _miniMetric(
+                    _bytes(
+                      _platformBytesKind == 'upload'
+                          ? count.bytesUploaded
+                          : count.bytesDownloaded,
+                    ),
+                    _platformBytesKind == 'upload' ? 'Up' : 'Down',
+                  ),
                 ],
               ),
             ],
@@ -1767,6 +1790,57 @@ class _SystemAdminAnalyticsScreenState
           child: Center(child: CupertinoActivityIndicator()),
         ),
       ],
+    );
+  }
+
+  Widget _compactSwitcher({
+    required List<(String, String)> options,
+    required String selected,
+    required ValueChanged<String> onSelected,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: _chip,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          for (final option in options)
+            Expanded(
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: GestureDetector(
+                  onTap: () => onSelected(option.$1),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 160),
+                    curve: Curves.easeOut,
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      color: selected == option.$1
+                          ? _accent
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(9),
+                    ),
+                    child: Text(
+                      option.$2,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: selected == option.$1
+                            ? FontWeight.w600
+                            : FontWeight.w500,
+                        color: selected == option.$1
+                            ? Colors.white
+                            : _titleColor,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 
