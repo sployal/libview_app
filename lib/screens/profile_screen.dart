@@ -15,6 +15,7 @@ import 'edit_profile.dart';
 import 'help_and_support.dart';
 import 'no_internet_screen.dart';
 import 'notifications_screen.dart';
+import 'system_admin_analytics.dart';
 import 'system_admin_dashboard.dart';
 import 'users_feedback.dart';
 
@@ -396,8 +397,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   chevron: chevron,
                                   primaryText: primaryText,
                                   secondaryText: secondaryText,
+                                  showDivider: true,
+                                  separator: separator,
                                   onTap: () {
                                     _openOnlinePage(const SystemAdminDashboard());
+                                  },
+                                ),
+                              if (_isSystemAdmin)
+                                _settingsRow(
+                                  title: 'Analytics',
+                                  subtitle: 'Usage, bandwidth, and activity',
+                                  icon: CupertinoIcons.chart_bar_alt_fill,
+                                  iconColor: const Color(0xFF6366F1),
+                                  chevron: chevron,
+                                  primaryText: primaryText,
+                                  secondaryText: secondaryText,
+                                  onTap: () {
+                                    _openOnlinePage(
+                                      const SystemAdminAnalyticsScreen(),
+                                    );
                                   },
                                 ),
                             ],

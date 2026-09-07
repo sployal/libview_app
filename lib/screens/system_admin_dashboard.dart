@@ -12,6 +12,7 @@ import '../services/course_service.dart';
 import '../services/upload_service.dart';
 import 'client_editor_dialog.dart';
 import 'course_addition.dart';
+import 'system_admin_analytics.dart';
 
 class SystemAdminDashboard extends StatefulWidget {
   const SystemAdminDashboard({super.key});
@@ -2569,7 +2570,26 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard>
       title: 'Refresh Token',
       subtitle: _oauthStatusSubtitle(),
       showChevron: true,
+      showDivider: true,
       onTap: _openRefreshTokenInChrome,
+    );
+  }
+
+  Widget _buildAnalyticsRow() {
+    return _settingsRow(
+      icon: CupertinoIcons.chart_bar_alt_fill,
+      iconColor: const Color(0xFF6366F1),
+      title: 'Analytics',
+      subtitle: 'Users, bandwidth, and file activity',
+      showChevron: true,
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const SystemAdminAnalyticsScreen(),
+          ),
+        );
+      },
     );
   }
 
@@ -2617,6 +2637,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard>
             _buildAddCourseButton(),
             _buildAddClientButton(),
             _buildTokenRefreshSection(),
+            _buildAnalyticsRow(),
           ]),
           const SizedBox(height: 18),
           _sectionLabel('Courses'),

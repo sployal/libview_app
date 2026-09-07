@@ -81,6 +81,7 @@ class UploadService {
       connectTimeout: const Duration(seconds: 60),
       receiveTimeout: const Duration(minutes: 20),
       sendTimeout: const Duration(minutes: 20),
+      headers: {'X-Client-Platform': 'mobile'},
     ),
   );
 
@@ -98,7 +99,10 @@ class UploadService {
   }
 
   Future<Map<String, String>> authHeaders() async {
-    return {'Authorization': 'Bearer ${await _idToken()}'};
+    return {
+      'Authorization': 'Bearer ${await _idToken()}',
+      'X-Client-Platform': 'mobile',
+    };
   }
 
   static String thumbnailUrl(String fileId) => '$baseUrl/files/$fileId/thumbnail';

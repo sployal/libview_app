@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase_options.dart';
 import 'services/auth_service.dart';
 import 'services/course_service.dart';
+import 'services/analytics_service.dart';
 import 'services/streak_service.dart';
 import 'services/theme_controller.dart';
 import 'screens/home_screen.dart';
@@ -370,6 +371,7 @@ class _MainScreenState extends State<MainScreen>
     _animationController.forward();
     WidgetsBinding.instance.addObserver(this);
     StreakService.instance.recordDailyOpen();
+    AnalyticsService.instance.ping();
     _listenMaterialsTabLabel();
   }
 
@@ -388,6 +390,7 @@ class _MainScreenState extends State<MainScreen>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       StreakService.instance.recordDailyOpen();
+      AnalyticsService.instance.ping();
     }
   }
 

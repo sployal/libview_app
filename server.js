@@ -13,6 +13,7 @@ const admin = require('firebase-admin');
 const { registerAiRoutes } = require('./ai_chat');
 const { registerMediaRoutes, deleteProfileAvatar } = require('./media server.js');
 const { registerContactRoutes } = require('./contact');
+const { createAnalytics } = require('./analytics');
 
 // =========================================================================
 // config
@@ -567,6 +568,12 @@ const oauth2Client = new google.auth.OAuth2(
 
 const drive = google.drive({ version: 'v3', auth: oauth2Client });
 const publicDrive = google.drive({ version: 'v3' });
+const analytics = createAnalytics({
+  firestore,
+  admin,
+  drive,
+  resolveClientWorkspaceId,
+});
 
 // Tracks whether we've successfully loaded/set a refresh token onto
 // oauth2Client, so routes can fail fast with a clear message instead of
@@ -1395,6 +1402,7 @@ async function requireAuth(req, res, next) {
     } catch (err) {
       console.warn('Could not promote system admin profile:', err.message);
     }
+    analytics.touchLastSeen(req);
     next();
   } catch (err) {
     console.error('Token verification failed:', err.message);
@@ -1907,6 +1915,7 @@ app.post('/upload', requireAuth, (req, res) => {
         modifiedTime: req.body?.modifiedMs || req.body?.modifiedTime,
       });
       res.json(result);
+      analytics.recordUploadFromRequest(req, { folderId, result });
     } catch (e) {
       console.error('Upload failed:', e);
       res.status(500).json({ error: 'File upload failed' });
@@ -2340,14 +2349,14 @@ app.get('/files/:fileId/download', requireAuth, async (req, res) => {
     if (driveIsConfigured()) {
       const got = await drive.files.get({
         fileId,
-        fields: 'id, name, mimeType, size, webContentLink, exportLinks',
+        fields: 'id, name, mimeType, size, parents, webContentLink, exportLinks',
         supportsAllDrives: true,
       });
       meta = got.data;
     } else {
       meta = await driveGetMeta(
         fileId,
-        'id, name, mimeType, size, webContentLink, exportLinks',
+        'id, name, mimeType, size, parents, webContentLink, exportLinks',
         apiKey
       );
     }
@@ -2357,6 +2366,14 @@ app.get('/files/:fileId/download', requireAuth, async (req, res) => {
     const isGoogleApp = sourceMime.startsWith('application/vnd.google-apps.');
     const isMedia =
       sourceMime.startsWith('video/') || sourceMime.startsWith('audio/');
+    analytics.recordDownloadFromRequest(req, {
+      fileId,
+      fileName: sourceName,
+      mimeType: sourceMime,
+      sizeBytes: meta.size,
+      folderId: (meta.parents || [])[0],
+      isRange: Boolean(range),
+    });
 
     let downloadMime = sourceMime;
     let downloadName = sourceName;
@@ -2736,6 +2753,7 @@ app.get('/folders/:folderId', requireAuth, async (req, res) => {
 registerAiRoutes(app, { requireAuth, firestore });
 registerMediaRoutes(app, { requireAuth, requireSystemAdmin, upload });
 registerContactRoutes(app, { oauth2Client });
+analytics.registerAnalyticsRoutes(app, { requireAuth, requireSystemAdmin });
 
 // --- Fallback error handler --------------------------------------------
 

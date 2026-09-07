@@ -12,6 +12,8 @@ import 'package:open_file/open_file.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:share_plus/share_plus.dart';
 
+import 'analytics_service.dart';
+
 class DownloadService {
   static final Dio _dio = Dio();
   static const String baseUrl = 'https://www.googleapis.com/drive/v3';
@@ -326,6 +328,13 @@ class DownloadService {
         size: fileSize,
         filePath: filePath,
         contentUri: saved.contentUri,
+      );
+
+      AnalyticsService.instance.recordDownload(
+        fileId: fileId,
+        fileName: fileName,
+        mimeType: metadata.mimeType,
+        sizeBytes: fileSize,
       );
       
       return DownloadResult(
