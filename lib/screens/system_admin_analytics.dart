@@ -2,6 +2,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:timeago/timeago.dart' as timeago;
 
 import '../services/analytics_service.dart';
 import '../services/download_service.dart';
@@ -19,6 +20,7 @@ class SystemAdminAnalyticsScreen extends StatefulWidget {
 class _SystemAdminAnalyticsScreenState
     extends State<SystemAdminAnalyticsScreen> {
   static const _accent = Color(0xFF6366F1);
+  static const _sky = Color(0xFF0EA5E9);
   static const _danger = Color(0xFFEF4444);
   static const _monthNames = [
     'January',
@@ -66,6 +68,7 @@ class _SystemAdminAnalyticsScreenState
   AnalyticsSnapshot? _data;
 
   bool get _isDark => Theme.of(context).brightness == Brightness.dark;
+  bool get _wide => MediaQuery.sizeOf(context).width >= 720;
   Color get _bg =>
       _isDark ? const Color(0xFF111827) : const Color(0xFFE8EEF5);
   Color get _card => _isDark ? const Color(0xFF1F2937) : Colors.white;
@@ -75,7 +78,8 @@ class _SystemAdminAnalyticsScreenState
       _isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
   Color get _chip =>
       _isDark ? const Color(0xFF374151) : const Color(0xFFDCE3EE);
-  Color get _border => const Color(0xFFCBD5E1);
+  Color get _line =>
+      _isDark ? const Color(0xFF374151) : const Color(0xFFCBD5E1);
 
   @override
   void initState() {
@@ -169,11 +173,10 @@ class _SystemAdminAnalyticsScreenState
                   parent: BouncingScrollPhysics(),
                 ),
                 slivers: [
-                  SliverAppBar(
-                    pinned: true,
+                  compactSliverAppBar(
+                    automaticallyImplyLeading: true,
                     backgroundColor: _bg,
                     foregroundColor: _titleColor,
-                    surfaceTintColor: Colors.transparent,
                     title: Text(
                       'Analytics',
                       style: TextStyle(
@@ -181,7 +184,22 @@ class _SystemAdminAnalyticsScreenState
                         fontSize: tablet ? 22 : 20,
                       ),
                     ),
+                    actions: [
+                      if (_data != null)
+                        Padding(
+                          padding: const EdgeInsets.only(right: 12),
+                          child: Center(child: _periodBadge()),
+                        ),
+                    ],
                   ),
+                  if (_loading && _data != null)
+                    SliverToBoxAdapter(
+                      child: LinearProgressIndicator(
+                        minHeight: 2,
+                        color: _accent,
+                        backgroundColor: _accent.withValues(alpha: 0.12),
+                      ),
+                    ),
                   SliverPadding(
                     padding: pagePad.copyWith(top: 4, bottom: bottomPad),
                     sliver: SliverList(
@@ -189,10 +207,7 @@ class _SystemAdminAnalyticsScreenState
                         _filters(),
                         const SizedBox(height: 16),
                         if (_loading && _data == null)
-                          const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 80),
-                            child: Center(child: CupertinoActivityIndicator()),
-                          )
+                          _loadingSkeleton()
                         else if (_error != null && _data == null)
                           _errorCard()
                         else ...[
@@ -200,34 +215,22 @@ class _SystemAdminAnalyticsScreenState
                           _hero(),
                           const SizedBox(height: 16),
                           _summaryGrid(),
-                          if (_platform == 'all') ...[
-                            const SizedBox(height: 16),
-                            _sectionLabel('Platforms'),
-                            _platformCompare(),
-                          ],
                           const SizedBox(height: 16),
-                          _sectionLabel('Active users by course'),
+                          if (_platform == 'all')
+                            _pair(_platformCard(), _rolesCard())
+                          else
+                            _rolesCard(),
+                          const SizedBox(height: 16),
                           _courseUsersCard(),
                           const SizedBox(height: 16),
-                          _sectionLabel('Active users by role'),
-                          _rolesCard(),
-                          const SizedBox(height: 16),
-                          _sectionLabel('Bandwidth'),
                           _bandwidthCard(),
                           const SizedBox(height: 16),
-                          _sectionLabel('File types'),
-                          _fileTypesCard(),
+                          _pair(_fileTypesCard(), _documentsCard()),
                           const SizedBox(height: 16),
-                          _sectionLabel('Documents'),
-                          _documentsCard(),
-                          const SizedBox(height: 16),
-                          _sectionLabel('Activity'),
                           _activityCard(),
                           const SizedBox(height: 16),
-                          _sectionLabel('Top users'),
                           _topUsersCard(),
                           const SizedBox(height: 16),
-                          _sectionLabel('Recent activity'),
                           _recentCard(),
                         ],
                       ]),
@@ -239,6 +242,24 @@ class _SystemAdminAnalyticsScreenState
     );
   }
 
+  Widget _periodBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: _chip,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        _data?.periodLabel ?? '',
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: _titleColor,
+        ),
+      ),
+    );
+  }
+
   Widget _filters() {
     final years = {
       DateTime.now().year,
@@ -247,9 +268,9 @@ class _SystemAdminAnalyticsScreenState
     }.toList()
       ..sort((a, b) => b.compareTo(a));
 
-    return _groupedCard(
+    return _panel(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -267,8 +288,8 @@ class _SystemAdminAnalyticsScreenState
               'Mobile, web, and combined traffic. New activity is stored as it happens.',
               style: TextStyle(fontSize: 13, height: 1.35, color: _muted),
             ),
-            const SizedBox(height: 14),
-            _chipRow(
+            const SizedBox(height: 16),
+            _segmented(
               options: const [
                 ('all', 'Combined'),
                 ('mobile', 'Mobile'),
@@ -278,7 +299,7 @@ class _SystemAdminAnalyticsScreenState
               onSelected: _selectPlatform,
             ),
             const SizedBox(height: 10),
-            _chipRow(
+            _segmented(
               options: const [
                 ('month', 'Monthly'),
                 ('year', 'Yearly'),
@@ -288,8 +309,8 @@ class _SystemAdminAnalyticsScreenState
               onSelected: _selectPeriod,
             ),
             if (_period != 'all') ...[
-              const SizedBox(height: 10),
-              _chipRow(
+              const SizedBox(height: 12),
+              _pillRow(
                 options: [
                   for (final year in years) ('$year', '$year'),
                 ],
@@ -305,7 +326,7 @@ class _SystemAdminAnalyticsScreenState
             ],
             if (_period == 'month') ...[
               const SizedBox(height: 10),
-              _chipRow(
+              _pillRow(
                 options: [
                   for (var i = 1; i <= 12; i++)
                     ('$i', _monthNames[i - 1].substring(0, 3)),
@@ -329,6 +350,8 @@ class _SystemAdminAnalyticsScreenState
   Widget _hero() {
     final data = _data;
     if (data == null) return const SizedBox.shrink();
+    final spots = _activitySpots();
+
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
@@ -339,148 +362,263 @@ class _SystemAdminAnalyticsScreenState
         ),
         boxShadow: [
           BoxShadow(
-            color: _accent.withOpacity(_isDark ? 0.28 : 0.22),
+            color: _accent.withValues(alpha: _isDark ? 0.28 : 0.22),
             blurRadius: 18,
             offset: const Offset(0, 8),
           ),
         ],
       ),
-      padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            _platformLabel(_platform),
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.78),
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${data.activeUsers} active',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 28,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: -0.6,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: Stack(
+          children: [
+            Positioned(right: -36, top: -48, child: _orb(168, 0.10)),
+            Positioned(left: -28, bottom: -60, child: _orb(150, 0.08)),
+            Positioned(right: 48, bottom: 18, child: _orb(70, 0.07)),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.14),
+                          borderRadius: BorderRadius.circular(999),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.16),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 6,
+                              height: 6,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF34D399),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'LIVE',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.92),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.8,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      data.newUsers > 0
-                          ? '+${data.newUsers} new accounts in this period'
-                          : 'Users seen on ${_platformLabel(_platform).toLowerCase()}',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.78),
-                        fontSize: 13,
+                      const SizedBox(width: 10),
+                      Text(
+                        _platformLabel(_platform),
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.78),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${data.activeUsers}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 34,
+                                fontWeight: FontWeight.w700,
+                                height: 0.95,
+                                letterSpacing: -0.8,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              data.newUsers > 0
+                                  ? 'active users  ·  +${data.newUsers} new'
+                                  : 'active users this period',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.78),
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (spots.length > 1)
+                        SizedBox(
+                          width: _wide ? 132 : 96,
+                          height: 56,
+                          child: LineChart(
+                            LineChartData(
+                              minY: 0,
+                              gridData: const FlGridData(show: false),
+                              titlesData: const FlTitlesData(show: false),
+                              borderData: FlBorderData(show: false),
+                              lineTouchData: const LineTouchData(enabled: false),
+                              lineBarsData: [
+                                LineChartBarData(
+                                  spots: spots,
+                                  isCurved: true,
+                                  color: Colors.white,
+                                  barWidth: 2.2,
+                                  dotData: const FlDotData(show: false),
+                                  belowBarData: BarAreaData(
+                                    show: true,
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                      colors: [
+                                        Colors.white.withValues(alpha: 0.32),
+                                        Colors.white.withValues(alpha: 0),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                  if (_platform == 'all') ...[
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        _heroSplitChip(
+                          CupertinoIcons.device_phone_portrait,
+                          '${data.mobile.activeUsers}',
+                          'Mobile',
+                        ),
+                        const SizedBox(width: 8),
+                        _heroSplitChip(
+                          CupertinoIcons.globe,
+                          '${data.web.activeUsers}',
+                          'Web',
+                        ),
+                      ],
                     ),
                   ],
-                ),
-              ),
-              if (_platform == 'all') ...[
-                _heroActiveSplit(
-                  CupertinoIcons.device_phone_portrait,
-                  '${data.mobile.activeUsers}',
-                  'Mobile',
-                ),
-                const SizedBox(width: 16),
-                _heroActiveSplit(
-                  CupertinoIcons.globe,
-                  '${data.web.activeUsers}',
-                  'Web',
-                ),
-              ],
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              _heroStat(
-                CupertinoIcons.cloud_upload_fill,
-                _bytes(data.bytesUploaded),
-                'Uploaded',
-              ),
-              _heroStat(
-                CupertinoIcons.cloud_download_fill,
-                _bytes(data.bytesDownloaded),
-                'Downloaded',
-              ),
-              _heroStat(
-                CupertinoIcons.arrow_2_circlepath,
-                _bytes(data.bytesUploaded + data.bytesDownloaded),
-                'Total',
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _heroActiveSplit(IconData icon, String value, String label) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, color: Colors.white.withOpacity(0.78), size: 13),
-            const SizedBox(width: 4),
-            Text(
-              value,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -0.4,
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      _heroGlassStat(
+                        CupertinoIcons.cloud_upload_fill,
+                        _bytes(data.bytesUploaded),
+                        'Uploaded',
+                      ),
+                      const SizedBox(width: 8),
+                      _heroGlassStat(
+                        CupertinoIcons.cloud_download_fill,
+                        _bytes(data.bytesDownloaded),
+                        'Downloaded',
+                      ),
+                      const SizedBox(width: 8),
+                      _heroGlassStat(
+                        CupertinoIcons.arrow_2_circlepath,
+                        _bytes(data.bytesUploaded + data.bytesDownloaded),
+                        'Total',
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ],
         ),
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.white.withOpacity(0.72),
-            fontSize: 12,
-          ),
-        ),
-      ],
+      ),
     );
   }
 
-  Widget _heroStat(IconData icon, String value, String label) {
+  Widget _heroSplitChip(IconData icon, String value, String label) {
     return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: Colors.white, size: 16),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.14),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: Colors.white.withValues(alpha: 0.82), size: 16),
+            const SizedBox(width: 8),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.4,
+                  ),
+                ),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.7),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
             ),
-          ),
-          Text(
-            label,
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.72),
-              fontSize: 12,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _heroGlassStat(IconData icon, String value, String label) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(10, 10, 10, 9),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.14),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: Colors.white.withValues(alpha: 0.86), size: 15),
+            const SizedBox(height: 8),
+            Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
             ),
-          ),
-        ],
+            Text(
+              label,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.68),
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -494,7 +632,7 @@ class _SystemAdminAnalyticsScreenState
         'Downloads',
         '${data.downloads}',
         CupertinoIcons.down_arrow,
-        const Color(0xFF0EA5E9),
+        _sky,
       ),
       _statTile(
         'Media plays',
@@ -543,49 +681,90 @@ class _SystemAdminAnalyticsScreenState
   }
 
   Widget _statTile(String label, String value, IconData icon, Color color) {
-    return _groupedCard(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(14, 14, 14, 13),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _glyph(icon, color),
-            const SizedBox(height: 12),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                letterSpacing: -0.4,
-                color: _titleColor,
+    return _panel(
+      child: Stack(
+        children: [
+          Positioned(
+            left: 0,
+            top: 16,
+            bottom: 16,
+            child: Container(
+              width: 3,
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(99),
               ),
             ),
-            const SizedBox(height: 2),
-            Text(label, style: TextStyle(fontSize: 12, color: _muted)),
-          ],
-        ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 14, 13),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _glyph(icon, color),
+                const SizedBox(height: 12),
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 21,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.5,
+                    color: _titleColor,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: _muted,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _platformCompare() {
+  Widget _platformCard() {
     final data = _data;
     if (data == null) return const SizedBox.shrink();
-    return _groupedCard(
+    final mobile = data.mobile.activeUsers;
+    final web = data.web.activeUsers;
+
+    return _panel(
       child: Column(
         children: [
+          _cardHeader(
+            icon: CupertinoIcons.device_phone_portrait,
+            color: _accent,
+            title: 'Platforms',
+            subtitle: 'Where people are active',
+            meta: '${mobile + web}',
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+            child: _splitBar(mobile, web, _accent, _sky),
+          ),
           _compareRow(
             'Mobile app',
             data.mobile,
             CupertinoIcons.device_phone_portrait,
             _accent,
+            share: _pct(mobile, mobile + web),
             showDivider: true,
           ),
           _compareRow(
             'Web app',
             data.web,
             CupertinoIcons.globe,
-            const Color(0xFF0EA5E9),
+            _sky,
+            share: _pct(web, mobile + web),
           ),
         ],
       ),
@@ -597,12 +776,13 @@ class _SystemAdminAnalyticsScreenState
     AnalyticsCount count,
     IconData icon,
     Color color, {
+    required String share,
     bool showDivider = false,
   }) {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
           child: Column(
             children: [
               Row(
@@ -610,18 +790,23 @@ class _SystemAdminAnalyticsScreenState
                   _glyph(icon, color),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Text(
-                      title,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: _titleColor,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                            color: _titleColor,
+                          ),
+                        ),
+                        Text(
+                          '${count.activeUsers} active · $share',
+                          style: TextStyle(fontSize: 12, color: _muted),
+                        ),
+                      ],
                     ),
-                  ),
-                  Text(
-                    '${count.activeUsers} active',
-                    style: TextStyle(fontSize: 13, color: _muted),
                   ),
                 ],
               ),
@@ -644,27 +829,45 @@ class _SystemAdminAnalyticsScreenState
 
   Widget _miniMetric(String value, String label) {
     return Expanded(
-      child: Column(
-        children: [
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: _titleColor,
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 3),
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: _chip.withValues(alpha: _isDark ? 0.45 : 0.55),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          children: [
+            Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                color: _titleColor,
+              ),
             ),
-          ),
-          Text(label, style: TextStyle(fontSize: 11, color: _muted)),
-        ],
+            Text(label, style: TextStyle(fontSize: 10, color: _muted)),
+          ],
+        ),
       ),
     );
   }
 
   Widget _courseUsersCard() {
     final rows = _data?.activeUsersByCourse ?? const [];
-    return _groupedCard(
+    final total = rows.fold<int>(0, (sum, row) => sum + row.users);
+    return _panel(
       child: Column(
         children: [
+          _cardHeader(
+            icon: CupertinoIcons.book_fill,
+            color: const Color(0xFF8B5CF6),
+            title: 'Active users by course',
+            subtitle: 'Who is using the library',
+            meta: total > 0 ? '$total' : null,
+          ),
           _pieBlock(
             values: [
               for (var i = 0; i < rows.length; i++)
@@ -675,10 +878,12 @@ class _SystemAdminAnalyticsScreenState
                 ),
             ],
             empty: 'No active users in this period yet.',
+            emptyIcon: CupertinoIcons.person_2,
+            centerLabel: 'users',
           ),
           if (rows.isNotEmpty) _hairline(indent: 0),
           for (var i = 0; i < rows.length; i++)
-            _tableRow(
+            _progressRow(
               color: _palette[i % _palette.length],
               title: rows[i].name,
               subtitle: rows[i].kind == 'client'
@@ -687,6 +892,7 @@ class _SystemAdminAnalyticsScreenState
                       ? '${rows[i].newUsers} new'
                       : 'Course',
               value: '${rows[i].users}',
+              progress: total == 0 ? 0 : rows[i].users / total,
               showDivider: i < rows.length - 1,
             ),
         ],
@@ -696,19 +902,31 @@ class _SystemAdminAnalyticsScreenState
 
   Widget _rolesCard() {
     final rows = _data?.activeUsersByRole ?? const [];
-    if (rows.isEmpty) {
-      return _groupedCard(child: _emptyNote('No role activity in this period.'));
-    }
-    return _groupedCard(
+    final total = rows.fold<int>(0, (sum, row) => sum + row.users);
+    return _panel(
       child: Column(
         children: [
-          for (var i = 0; i < rows.length; i++)
-            _tableRow(
-              color: _palette[i % _palette.length],
-              title: rows[i].name,
-              value: '${rows[i].users}',
-              showDivider: i < rows.length - 1,
-            ),
+          _cardHeader(
+            icon: CupertinoIcons.person_2_fill,
+            color: const Color(0xFF10B981),
+            title: 'Active users by role',
+            subtitle: 'Breakdown of who is active',
+            meta: total > 0 ? '$total' : null,
+          ),
+          if (rows.isEmpty)
+            _emptyState(
+              CupertinoIcons.person_crop_circle,
+              'No role activity in this period.',
+            )
+          else
+            for (var i = 0; i < rows.length; i++)
+              _progressRow(
+                color: _palette[i % _palette.length],
+                title: rows[i].name,
+                value: '${rows[i].users}',
+                progress: total == 0 ? 0 : rows[i].users / total,
+                showDivider: i < rows.length - 1,
+              ),
         ],
       ),
     );
@@ -718,11 +936,18 @@ class _SystemAdminAnalyticsScreenState
     final data = _data;
     if (data == null) return const SizedBox.shrink();
     final rows = data.bandwidthByCourse;
-    return _groupedCard(
+    return _panel(
       child: Column(
         children: [
+          _cardHeader(
+            icon: CupertinoIcons.wifi,
+            color: _sky,
+            title: 'Bandwidth',
+            subtitle: 'Upload and download traffic',
+            meta: _bytes(data.bytesUploaded + data.bytesDownloaded),
+          ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(14, 16, 14, 8),
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
             child: _dualBarChart(
               points: data.series,
               uploadOf: (point) => point.bytesUploaded.toDouble(),
@@ -732,28 +957,39 @@ class _SystemAdminAnalyticsScreenState
           ),
           _legendRow(const [
             (_accent, 'Upload'),
-            (Color(0xFF0EA5E9), 'Download'),
+            (_sky, 'Download'),
           ]),
           _hairline(indent: 0),
-          _tableRow(
+          _progressRow(
             color: _accent,
             title: 'Total uploaded',
             value: _bytes(data.bytesUploaded),
+            progress: _share(
+              data.bytesUploaded,
+              data.bytesUploaded + data.bytesDownloaded,
+            ),
             showDivider: true,
           ),
-          _tableRow(
-            color: const Color(0xFF0EA5E9),
+          _progressRow(
+            color: _sky,
             title: 'Total downloaded',
             value: _bytes(data.bytesDownloaded),
+            progress: _share(
+              data.bytesDownloaded,
+              data.bytesUploaded + data.bytesDownloaded,
+            ),
             showDivider: rows.isNotEmpty,
           ),
           for (var i = 0; i < rows.length; i++)
-            _tableRow(
+            _progressRow(
               color: _palette[i % _palette.length],
               title: rows[i].name,
-              subtitle:
-                  '${rows[i].uploads} up · ${rows[i].downloads} down',
+              subtitle: '${rows[i].uploads} up · ${rows[i].downloads} down',
               value: _bytes(rows[i].totalBytes),
+              progress: _share(
+                rows[i].totalBytes,
+                data.bytesUploaded + data.bytesDownloaded,
+              ),
               showDivider: i < rows.length - 1,
             ),
         ],
@@ -763,30 +999,46 @@ class _SystemAdminAnalyticsScreenState
 
   Widget _fileTypesCard() {
     final rows = _data?.fileTypes ?? const [];
-    return _groupedCard(
+    final slices = [
+      for (final row in rows)
+        if (row.totalCount > 0)
+          _ChartSlice(
+            label: row.name,
+            value: row.totalCount.toDouble(),
+            color: _typeColors[row.id] ?? _muted,
+          ),
+    ];
+    return _panel(
       child: Column(
         children: [
-          _pieBlock(
-            values: [
-              for (final row in rows)
-                if (row.totalCount > 0)
-                  _ChartSlice(
-                    label: row.name,
-                    value: row.totalCount.toDouble(),
-                    color: _typeColors[row.id] ?? _muted,
-                  ),
-            ],
-            empty: 'No file activity in this period yet.',
+          _cardHeader(
+            icon: CupertinoIcons.square_stack_3d_up_fill,
+            color: const Color(0xFFF59E0B),
+            title: 'File types',
+            subtitle: 'What people are transferring',
+            meta: slices.isEmpty
+                ? null
+                : '${slices.fold<double>(0, (sum, item) => sum + item.value).round()}',
           ),
-          if (rows.any((row) => row.totalCount > 0)) _hairline(indent: 0),
+          _pieBlock(
+            values: slices,
+            empty: 'No file activity in this period yet.',
+            emptyIcon: CupertinoIcons.doc,
+            centerLabel: 'files',
+          ),
+          if (slices.isNotEmpty) _hairline(indent: 0),
           for (var i = 0; i < rows.length; i++)
             if (rows[i].totalCount > 0 || rows[i].totalBytes > 0)
-              _tableRow(
+              _progressRow(
                 color: _typeColors[rows[i].id] ?? _muted,
                 title: rows[i].name,
                 subtitle:
                     '${rows[i].uploads} uploaded · ${rows[i].downloads} downloaded',
                 value: _bytes(rows[i].totalBytes),
+                progress: _share(
+                  rows[i].totalCount,
+                  rows.fold<int>(0, (sum, row) => sum + row.totalCount),
+                ),
                 showDivider: i < rows.length - 1,
               ),
         ],
@@ -797,24 +1049,43 @@ class _SystemAdminAnalyticsScreenState
   Widget _documentsCard() {
     final rows = _data?.documents ?? const [];
     final hasData = rows.any((row) => row.totalCount > 0 || row.totalBytes > 0);
-    return _groupedCard(
+    return _panel(
       child: Column(
         children: [
+          _cardHeader(
+            icon: CupertinoIcons.doc_text_fill,
+            color: const Color(0xFFEF4444),
+            title: 'Documents',
+            subtitle: 'Office and PDF traffic',
+            meta: hasData
+                ? '${rows.fold<int>(0, (sum, row) => sum + row.totalCount)}'
+                : null,
+          ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(14, 16, 14, 8),
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
             child: hasData
                 ? _typeBarChart(rows)
-                : _emptyNote('No document uploads or downloads yet.'),
+                : _emptyState(
+                    CupertinoIcons.doc_on_doc,
+                    'No document uploads or downloads yet.',
+                  ),
           ),
           if (hasData) ...[
-            const SizedBox(height: 4),
+            _legendRow(const [
+              (_accent, 'Uploads'),
+              (_sky, 'Downloads'),
+            ]),
+            _hairline(indent: 0),
             for (var i = 0; i < rows.length; i++)
-              _tableRow(
+              _progressRow(
                 color: _typeColors[rows[i].id] ?? _muted,
                 title: rows[i].name,
-                subtitle:
-                    '${rows[i].uploads} up · ${rows[i].downloads} down',
+                subtitle: '${rows[i].uploads} up · ${rows[i].downloads} down',
                 value: '${rows[i].totalCount}',
+                progress: _share(
+                  rows[i].totalCount,
+                  rows.fold<int>(0, (sum, row) => sum + row.totalCount),
+                ),
                 showDivider: i < rows.length - 1,
               ),
           ],
@@ -826,11 +1097,18 @@ class _SystemAdminAnalyticsScreenState
   Widget _activityCard() {
     final data = _data;
     if (data == null) return const SizedBox.shrink();
-    return _groupedCard(
+    return _panel(
       child: Column(
         children: [
+          _cardHeader(
+            icon: CupertinoIcons.chart_bar_alt_fill,
+            color: _accent,
+            title: 'Activity',
+            subtitle: 'Uploads and downloads over time',
+            meta: '${data.uploads + data.downloads}',
+          ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(14, 16, 14, 8),
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
             child: _dualBarChart(
               points: data.series,
               uploadOf: (point) => point.uploads.toDouble(),
@@ -840,9 +1118,9 @@ class _SystemAdminAnalyticsScreenState
           ),
           _legendRow(const [
             (_accent, 'Uploads'),
-            (Color(0xFF0EA5E9), 'Downloads'),
+            (_sky, 'Downloads'),
           ]),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
         ],
       ),
     );
@@ -851,40 +1129,53 @@ class _SystemAdminAnalyticsScreenState
   Widget _topUsersCard() {
     final uploads = _data?.topUploaders ?? const [];
     final downloads = _data?.topDownloaders ?? const [];
-    if (uploads.isEmpty && downloads.isEmpty) {
-      return _groupedCard(
-        child: _emptyNote('Top users appear after the first upload or download.'),
-      );
-    }
-    return _groupedCard(
+    return _panel(
       child: Column(
         children: [
-          _innerHeader('Uploaders'),
-          if (uploads.isEmpty)
-            _emptyNote('No uploads in this period.')
-          else
-            for (var i = 0; i < uploads.length; i++)
-              _tableRow(
-                color: _accent,
-                title: uploads[i].name,
-                subtitle: uploads[i].courseName,
-                value: '${uploads[i].count} · ${_bytes(uploads[i].bytes)}',
-                showDivider: i < uploads.length - 1,
-              ),
-          _hairline(indent: 0),
-          _innerHeader('Downloaders'),
-          if (downloads.isEmpty)
-            _emptyNote('No downloads in this period.')
-          else
-            for (var i = 0; i < downloads.length; i++)
-              _tableRow(
-                color: const Color(0xFF0EA5E9),
-                title: downloads[i].name,
-                subtitle: downloads[i].courseName,
-                value:
-                    '${downloads[i].count} · ${_bytes(downloads[i].bytes)}',
-                showDivider: i < downloads.length - 1,
-              ),
+          _cardHeader(
+            icon: CupertinoIcons.star_fill,
+            color: const Color(0xFFF59E0B),
+            title: 'Top users',
+            subtitle: 'Most active people this period',
+          ),
+          if (uploads.isEmpty && downloads.isEmpty)
+            _emptyState(
+              CupertinoIcons.person_2,
+              'Top users appear after the first upload or download.',
+            )
+          else ...[
+            _innerHeader('Uploaders'),
+            if (uploads.isEmpty)
+              _emptyState(CupertinoIcons.cloud_upload, 'No uploads in this period.')
+            else
+              for (var i = 0; i < uploads.length; i++)
+                _rankRow(
+                  rank: i + 1,
+                  color: _accent,
+                  title: uploads[i].name,
+                  subtitle: uploads[i].courseName,
+                  value: '${uploads[i].count} · ${_bytes(uploads[i].bytes)}',
+                  showDivider: i < uploads.length - 1,
+                ),
+            _hairline(indent: 0),
+            _innerHeader('Downloaders'),
+            if (downloads.isEmpty)
+              _emptyState(
+                CupertinoIcons.cloud_download,
+                'No downloads in this period.',
+              )
+            else
+              for (var i = 0; i < downloads.length; i++)
+                _rankRow(
+                  rank: i + 1,
+                  color: _sky,
+                  title: downloads[i].name,
+                  subtitle: downloads[i].courseName,
+                  value:
+                      '${downloads[i].count} · ${_bytes(downloads[i].bytes)}',
+                  showDivider: i < downloads.length - 1,
+                ),
+          ],
         ],
       ),
     );
@@ -892,27 +1183,38 @@ class _SystemAdminAnalyticsScreenState
 
   Widget _recentCard() {
     final rows = _data?.recent ?? const [];
-    if (rows.isEmpty) {
-      return _groupedCard(
-        child: _emptyNote('Recent uploads and downloads will show up here.'),
-      );
-    }
-    return _groupedCard(
+    return _panel(
       child: Column(
         children: [
-          for (var i = 0; i < rows.length; i++)
-            _tableRow(
-              color: _typeColors[rows[i].fileType] ?? _accent,
-              title: rows[i].fileName.isEmpty ? rows[i].kind : rows[i].fileName,
-              subtitle: [
-                rows[i].name,
-                rows[i].kind,
-                rows[i].platform,
-                if (rows[i].ownerName.isNotEmpty) rows[i].ownerName,
-              ].join(' · '),
-              value: _bytes(rows[i].sizeBytes),
-              showDivider: i < rows.length - 1,
-            ),
+          _cardHeader(
+            icon: CupertinoIcons.clock_fill,
+            color: const Color(0xFFF472B6),
+            title: 'Recent activity',
+            subtitle: 'Latest uploads and downloads',
+            meta: rows.isEmpty ? null : '${rows.length}',
+          ),
+          if (rows.isEmpty)
+            _emptyState(
+              CupertinoIcons.time,
+              'Recent uploads and downloads will show up here.',
+            )
+          else
+            for (var i = 0; i < rows.length; i++)
+              _eventRow(
+                color: _typeColors[rows[i].fileType] ?? _accent,
+                kind: rows[i].kind,
+                title: rows[i].fileName.isEmpty ? rows[i].kind : rows[i].fileName,
+                subtitle: [
+                  rows[i].name,
+                  _pretty(rows[i].kind),
+                  _pretty(rows[i].platform),
+                  if (rows[i].ownerName.isNotEmpty) rows[i].ownerName,
+                  if (rows[i].createdAt != null)
+                    timeago.format(rows[i].createdAt!.toLocal()),
+                ].join(' · '),
+                value: _bytes(rows[i].sizeBytes),
+                showDivider: i < rows.length - 1,
+              ),
         ],
       ),
     );
@@ -921,51 +1223,83 @@ class _SystemAdminAnalyticsScreenState
   Widget _pieBlock({
     required List<_ChartSlice> values,
     required String empty,
+    required IconData emptyIcon,
+    required String centerLabel,
   }) {
     final slices = values.where((item) => item.value > 0).toList();
-    if (slices.isEmpty) return _emptyNote(empty);
+    if (slices.isEmpty) return _emptyState(emptyIcon, empty);
     final total = slices.fold<double>(0, (sum, item) => sum + item.value);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(8, 16, 8, 8),
+      padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
       child: Column(
         children: [
           SizedBox(
-            height: 210,
-            child: PieChart(
-              PieChartData(
-                sectionsSpace: 2,
-                centerSpaceRadius: 48,
-                sections: [
-                  for (final slice in slices)
-                    PieChartSectionData(
-                      value: slice.value,
-                      color: slice.color,
-                      radius: 46,
-                      title: total <= 0
-                          ? ''
-                          : '${((slice.value / total) * 100).round()}%',
-                      titleStyle: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 11,
+            height: 214,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                PieChart(
+                  PieChartData(
+                    sectionsSpace: 3,
+                    centerSpaceRadius: 58,
+                    startDegreeOffset: -90,
+                    sections: [
+                      for (final slice in slices)
+                        PieChartSectionData(
+                          value: slice.value,
+                          color: slice.color,
+                          radius: 44,
+                          title: total <= 0 || (slice.value / total) < 0.08
+                              ? ''
+                              : '${((slice.value / total) * 100).round()}%',
+                          titleStyle: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '${total.round()}',
+                      style: TextStyle(
+                        fontSize: 22,
                         fontWeight: FontWeight.w700,
+                        letterSpacing: -0.6,
+                        color: _titleColor,
                       ),
                     ),
-                ],
-              ),
+                    Text(
+                      centerLabel,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: _muted,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 4),
           Wrap(
-            spacing: 10,
-            runSpacing: 6,
+            spacing: 8,
+            runSpacing: 8,
             alignment: WrapAlignment.center,
             children: [
               for (final slice in slices)
-                _legendDot(slice.color, '${slice.label} · ${slice.value.round()}'),
+                _legendChip(
+                  slice.color,
+                  '${slice.label} · ${slice.value.round()}',
+                ),
             ],
           ),
-          const SizedBox(height: 8),
         ],
       ),
     );
@@ -979,7 +1313,10 @@ class _SystemAdminAnalyticsScreenState
   }) {
     if (points.isEmpty ||
         points.every((point) => uploadOf(point) == 0 && downloadOf(point) == 0)) {
-      return _emptyNote('No traffic in this period yet.');
+      return _emptyState(
+        CupertinoIcons.chart_bar,
+        'No traffic in this period yet.',
+      );
     }
 
     final maxValue = points.fold<double>(0, (current, point) {
@@ -994,34 +1331,25 @@ class _SystemAdminAnalyticsScreenState
           x: i,
           barsSpace: 3,
           barRods: [
-            BarChartRodData(
-              toY: uploadOf(points[i]),
-              width: points.length > 16 ? 4 : 7,
-              borderRadius: BorderRadius.circular(3),
-              color: _accent,
-            ),
-            BarChartRodData(
-              toY: downloadOf(points[i]),
-              width: points.length > 16 ? 4 : 7,
-              borderRadius: BorderRadius.circular(3),
-              color: const Color(0xFF0EA5E9),
-            ),
+            _rod(uploadOf(points[i]), _accent, points.length),
+            _rod(downloadOf(points[i]), _sky, points.length),
           ],
         ),
     ];
 
     return SizedBox(
-      height: 220,
+      height: 228,
       child: BarChart(
         BarChartData(
-          maxY: maxValue == 0 ? 1 : maxValue * 1.15,
+          maxY: maxValue == 0 ? 1 : maxValue * 1.18,
           barGroups: groups,
+          groupsSpace: points.length > 16 ? 6 : 10,
           gridData: FlGridData(
             show: true,
             drawVerticalLine: false,
             getDrawingHorizontalLine: (_) => FlLine(
-              color: _chip.withOpacity(0.7),
-              strokeWidth: 0.6,
+              color: _line.withValues(alpha: 0.85),
+              strokeWidth: 0.8,
             ),
           ),
           borderData: FlBorderData(show: false),
@@ -1036,7 +1364,7 @@ class _SystemAdminAnalyticsScreenState
             bottomTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
-                reservedSize: 22,
+                reservedSize: 24,
                 interval: points.length > 16 ? 5 : 1,
                 getTitlesWidget: (value, meta) {
                   final index = value.round();
@@ -1046,9 +1374,16 @@ class _SystemAdminAnalyticsScreenState
                   if (points.length > 16 && index % 5 != 0) {
                     return const SizedBox.shrink();
                   }
-                  return Text(
-                    points[index].label,
-                    style: TextStyle(fontSize: 10, color: _muted),
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text(
+                      points[index].label,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: _muted,
+                      ),
+                    ),
                   );
                 },
               ),
@@ -1056,14 +1391,17 @@ class _SystemAdminAnalyticsScreenState
           ),
           barTouchData: BarTouchData(
             touchTooltipData: BarTouchTooltipData(
-              getTooltipColor: (_) => _isDark
-                  ? const Color(0xFF111827)
-                  : const Color(0xFF111827),
+              getTooltipColor: (_) => const Color(0xFF0F172A),
               getTooltipItem: (group, _, rod, rodIndex) {
                 final label = rodIndex == 0 ? 'Upload' : 'Download';
                 return BarTooltipItem(
                   '${points[group.x].label}\n$label ${tooltip(rod.toY.round())}',
-                  const TextStyle(color: Colors.white, fontSize: 12),
+                  const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    height: 1.35,
+                  ),
                 );
               },
             ),
@@ -1081,28 +1419,19 @@ class _SystemAdminAnalyticsScreenState
       return local > current ? local : current;
     });
     return SizedBox(
-      height: 210,
+      height: 214,
       child: BarChart(
         BarChartData(
           maxY: maxValue == 0 ? 1 : maxValue * 1.2,
+          groupsSpace: 14,
           barGroups: [
             for (var i = 0; i < rows.length; i++)
               BarChartGroupData(
                 x: i,
                 barsSpace: 4,
                 barRods: [
-                  BarChartRodData(
-                    toY: rows[i].uploads.toDouble(),
-                    width: 10,
-                    borderRadius: BorderRadius.circular(4),
-                    color: _accent,
-                  ),
-                  BarChartRodData(
-                    toY: rows[i].downloads.toDouble(),
-                    width: 10,
-                    borderRadius: BorderRadius.circular(4),
-                    color: _typeColors[rows[i].id] ?? const Color(0xFF0EA5E9),
-                  ),
+                  _rod(rows[i].uploads.toDouble(), _accent, rows.length),
+                  _rod(rows[i].downloads.toDouble(), _sky, rows.length),
                 ],
               ),
           ],
@@ -1110,8 +1439,8 @@ class _SystemAdminAnalyticsScreenState
             show: true,
             drawVerticalLine: false,
             getDrawingHorizontalLine: (_) => FlLine(
-              color: _chip.withOpacity(0.7),
-              strokeWidth: 0.6,
+              color: _line.withValues(alpha: 0.85),
+              strokeWidth: 0.8,
             ),
           ),
           borderData: FlBorderData(show: false),
@@ -1125,15 +1454,22 @@ class _SystemAdminAnalyticsScreenState
             bottomTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
-                reservedSize: 22,
+                reservedSize: 24,
                 getTitlesWidget: (value, meta) {
                   final index = value.round();
                   if (index < 0 || index >= rows.length) {
                     return const SizedBox.shrink();
                   }
-                  return Text(
-                    rows[index].name,
-                    style: TextStyle(fontSize: 10, color: _muted),
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text(
+                      rows[index].name,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: _muted,
+                      ),
+                    ),
                   );
                 },
               ),
@@ -1144,17 +1480,29 @@ class _SystemAdminAnalyticsScreenState
     );
   }
 
+  BarChartRodData _rod(double value, Color color, int count) {
+    return BarChartRodData(
+      toY: value,
+      width: count > 16 ? 5 : 8,
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+      gradient: LinearGradient(
+        begin: Alignment.bottomCenter,
+        end: Alignment.topCenter,
+        colors: [color.withValues(alpha: 0.55), color],
+      ),
+    );
+  }
+
   Widget _errorCard() {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
-      child: _groupedCard(
+      child: _panel(
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Row(
             children: [
-              const Icon(CupertinoIcons.exclamationmark_circle_fill,
-                  color: _danger),
-              const SizedBox(width: 10),
+              _glyph(CupertinoIcons.exclamationmark_circle_fill, _danger),
+              const SizedBox(width: 12),
               Expanded(
                 child: Text(
                   _error ?? 'Could not load analytics',
@@ -1168,7 +1516,97 @@ class _SystemAdminAnalyticsScreenState
     );
   }
 
-  Widget _chipRow({
+  Widget _loadingSkeleton() {
+    Widget box({double height = 18, double? width}) {
+      return Container(
+        height: height,
+        width: width,
+        decoration: BoxDecoration(
+          color: _chip.withValues(alpha: 0.7),
+          borderRadius: BorderRadius.circular(10),
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        _panel(
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                box(width: 72, height: 12),
+                const SizedBox(height: 12),
+                box(width: 180, height: 22),
+                const SizedBox(height: 10),
+                box(height: 44),
+                const SizedBox(height: 10),
+                box(height: 44),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        _panel(child: SizedBox(height: 210, child: Center(child: box(width: 160)))),
+        const Padding(
+          padding: EdgeInsets.symmetric(vertical: 36),
+          child: Center(child: CupertinoActivityIndicator()),
+        ),
+      ],
+    );
+  }
+
+  Widget _segmented({
+    required List<(String, String)> options,
+    required String selected,
+    required ValueChanged<String> onSelected,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: _chip,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        children: [
+          for (final option in options)
+            Expanded(
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: GestureDetector(
+                  onTap: () => onSelected(option.$1),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    curve: Curves.easeOut,
+                    padding: const EdgeInsets.symmetric(vertical: 9),
+                    decoration: BoxDecoration(
+                      color: selected == option.$1 ? _accent : Colors.transparent,
+                      borderRadius: BorderRadius.circular(11),
+                    ),
+                    child: Text(
+                      option.$2,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: selected == option.$1
+                            ? FontWeight.w600
+                            : FontWeight.w500,
+                        color: selected == option.$1
+                            ? Colors.white
+                            : _titleColor,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _pillRow({
     required List<(String, String)> options,
     required String selected,
     required ValueChanged<String> onSelected,
@@ -1180,24 +1618,34 @@ class _SystemAdminAnalyticsScreenState
           for (final option in options)
             Padding(
               padding: const EdgeInsets.only(right: 8),
-              child: ChoiceChip(
-                label: Text(option.$2),
-                selected: selected == option.$1,
-                onSelected: (_) => onSelected(option.$1),
-                selectedColor: _accent,
-                backgroundColor: _chip,
-                labelStyle: TextStyle(
-                  fontSize: 13,
-                  fontWeight:
-                      selected == option.$1 ? FontWeight.w600 : FontWeight.w500,
-                  color: selected == option.$1 ? Colors.white : _titleColor,
+              child: MouseRegion(
+                cursor: SystemMouseCursors.click,
+                child: GestureDetector(
+                  onTap: () => onSelected(option.$1),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 160),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: selected == option.$1 ? _accent : _chip,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      option.$2,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: selected == option.$1
+                            ? FontWeight.w600
+                            : FontWeight.w500,
+                        color: selected == option.$1
+                            ? Colors.white
+                            : _titleColor,
+                      ),
+                    ),
+                  ),
                 ),
-                side: BorderSide.none,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                visualDensity: VisualDensity.compact,
-                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
             ),
         ],
@@ -1205,16 +1653,16 @@ class _SystemAdminAnalyticsScreenState
     );
   }
 
-  Widget _groupedCard({required Widget child}) {
+  Widget _panel({required Widget child}) {
     return Container(
       decoration: BoxDecoration(
         color: _card,
         borderRadius: BorderRadius.circular(20),
-        border: _isDark ? null : Border.all(color: _border),
+        border: _isDark ? null : Border.all(color: _line),
         boxShadow: [
           if (!_isDark)
             BoxShadow(
-              color: Colors.black.withOpacity(0.08),
+              color: Colors.black.withValues(alpha: 0.08),
               blurRadius: 14,
               offset: const Offset(0, 6),
             ),
@@ -1227,9 +1675,84 @@ class _SystemAdminAnalyticsScreenState
     );
   }
 
-  Widget _sectionLabel(String text) {
+  Widget _cardHeader({
+    required IconData icon,
+    required Color color,
+    required String title,
+    String? subtitle,
+    String? meta,
+  }) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+      child: Row(
+        children: [
+          _glyph(icon, color, size: 36),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.3,
+                    color: _titleColor,
+                  ),
+                ),
+                if (subtitle != null)
+                  Text(
+                    subtitle,
+                    style: TextStyle(fontSize: 12, color: _muted),
+                  ),
+              ],
+            ),
+          ),
+          if (meta != null)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: _isDark ? 0.18 : 0.10),
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Text(
+                meta,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: color,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _pair(Widget left, Widget right) {
+    if (!_wide) {
+      return Column(
+        children: [
+          left,
+          const SizedBox(height: 16),
+          right,
+        ],
+      );
+    }
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(child: left),
+        const SizedBox(width: 16),
+        Expanded(child: right),
+      ],
+    );
+  }
+
+  Widget _innerHeader(String text) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
       child: Text(
         text.toUpperCase(),
         style: TextStyle(
@@ -1242,40 +1765,139 @@ class _SystemAdminAnalyticsScreenState
     );
   }
 
-  Widget _innerHeader(String text) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
-      child: Text(
-        text.toUpperCase(),
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 0.4,
-          color: _muted,
-        ),
-      ),
-    );
-  }
-
-  Widget _tableRow({
+  Widget _progressRow({
     required Color color,
     required String title,
     required String value,
+    required double progress,
     String? subtitle,
     bool showDivider = false,
   }) {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          padding: const EdgeInsets.fromLTRB(16, 11, 16, 11),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 9,
+                    height: 9,
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: _titleColor,
+                          ),
+                        ),
+                        if (subtitle != null && subtitle.isNotEmpty)
+                          Text(
+                            subtitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(fontSize: 11, color: _muted),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: _titleColor,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(99),
+                child: LinearProgressIndicator(
+                  value: progress.clamp(0, 1),
+                  minHeight: 5,
+                  color: color,
+                  backgroundColor: color.withValues(alpha: _isDark ? 0.16 : 0.12),
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (showDivider) _hairline(),
+      ],
+    );
+  }
+
+  Widget _rankRow({
+    required int rank,
+    required Color color,
+    required String title,
+    required String value,
+    String? subtitle,
+    bool showDivider = false,
+  }) {
+    final medal = switch (rank) {
+      1 => const Color(0xFFF59E0B),
+      2 => const Color(0xFF94A3B8),
+      3 => const Color(0xFFD97706),
+      _ => _muted,
+    };
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 11, 16, 11),
           child: Row(
             children: [
               Container(
-                width: 10,
-                height: 10,
+                width: 22,
+                height: 22,
+                alignment: Alignment.center,
                 decoration: BoxDecoration(
-                  color: color,
-                  borderRadius: BorderRadius.circular(3),
+                  color: medal.withValues(alpha: _isDark ? 0.2 : 0.12),
+                  borderRadius: BorderRadius.circular(7),
+                ),
+                child: Text(
+                  '$rank',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: medal,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Container(
+                width: 34,
+                height: 34,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [color, color.withValues(alpha: 0.72)],
+                  ),
+                  shape: BoxShape.circle,
+                ),
+                child: Text(
+                  _initials(title),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
               const SizedBox(width: 10),
@@ -1288,8 +1910,8 @@ class _SystemAdminAnalyticsScreenState
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
                         color: _titleColor,
                       ),
                     ),
@@ -1298,7 +1920,7 @@ class _SystemAdminAnalyticsScreenState
                         subtitle,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(fontSize: 12, color: _muted),
+                        style: TextStyle(fontSize: 11, color: _muted),
                       ),
                   ],
                 ),
@@ -1307,76 +1929,229 @@ class _SystemAdminAnalyticsScreenState
               Text(
                 value,
                 style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
                   color: _titleColor,
                 ),
               ),
             ],
           ),
         ),
-        if (showDivider) _hairline(),
+        if (showDivider) _hairline(indent: 82),
+      ],
+    );
+  }
+
+  Widget _eventRow({
+    required Color color,
+    required String kind,
+    required String title,
+    required String subtitle,
+    required String value,
+    bool showDivider = false,
+  }) {
+    final upload = kind.toLowerCase().contains('upload');
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 11, 16, 11),
+          child: Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: _isDark ? 0.2 : 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  upload
+                      ? CupertinoIcons.arrow_up_right
+                      : CupertinoIcons.arrow_down_left,
+                  size: 16,
+                  color: color,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: _titleColor,
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(fontSize: 11, color: _muted),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                value,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: _titleColor,
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (showDivider) _hairline(indent: 64),
       ],
     );
   }
 
   Widget _legendRow(List<(Color, String)> items) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 0, 14, 12),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
       child: Row(
         children: [
           for (final item in items) ...[
-            _legendDot(item.$1, item.$2),
-            const SizedBox(width: 14),
+            _legendChip(item.$1, item.$2),
+            const SizedBox(width: 8),
           ],
         ],
       ),
     );
   }
 
-  Widget _legendDot(Color color, String label) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 6),
-        Text(label, style: TextStyle(fontSize: 12, color: _muted)),
-      ],
-    );
-  }
-
-  Widget _glyph(IconData icon, Color color) {
+  Widget _legendChip(Color color, String label) {
     return Container(
-      width: 32,
-      height: 32,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
       decoration: BoxDecoration(
-        color: color.withOpacity(_isDark ? 0.2 : 0.12),
-        borderRadius: BorderRadius.circular(10),
+        color: color.withValues(alpha: _isDark ? 0.16 : 0.08),
+        borderRadius: BorderRadius.circular(999),
       ),
-      child: Icon(icon, color: color, size: 16),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 7,
+            height: 7,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: _muted,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _hairline({double indent = 34}) {
+  Widget _glyph(IconData icon, Color color, {double size = 32}) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: _isDark ? 0.2 : 0.12),
+        borderRadius: BorderRadius.circular(size * 0.32),
+      ),
+      child: Icon(icon, color: color, size: size * 0.48),
+    );
+  }
+
+  Widget _hairline({double indent = 16}) {
     return Padding(
       padding: EdgeInsets.only(left: indent),
-      child: Divider(height: 0.5, thickness: 0.5, color: _chip),
+      child: Divider(height: 0.5, thickness: 0.5, color: _line),
     );
   }
 
-  Widget _emptyNote(String text) {
+  Widget _emptyState(IconData icon, String text) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 22),
-      child: Text(
-        text,
-        textAlign: TextAlign.center,
-        style: TextStyle(fontSize: 14, height: 1.4, color: _muted),
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 26),
+      child: Column(
+        children: [
+          Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              color: _chip.withValues(alpha: 0.7),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: _muted, size: 20),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            text,
+            textAlign: TextAlign.center,
+            style: TextStyle(fontSize: 13, height: 1.4, color: _muted),
+          ),
+        ],
       ),
     );
+  }
+
+  Widget _orb(double size, double opacity) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: Colors.white.withValues(alpha: opacity),
+      ),
+    );
+  }
+
+  Widget _splitBar(int left, int right, Color leftColor, Color rightColor) {
+    final total = left + right;
+    final leftFlex = total == 0 ? 1 : (left == 0 ? 1 : left);
+    final rightFlex = total == 0 ? 1 : (right == 0 ? 1 : right);
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(99),
+      child: SizedBox(
+        height: 8,
+        child: Row(
+          children: [
+            Expanded(
+              flex: leftFlex,
+              child: ColoredBox(color: leftColor),
+            ),
+            Expanded(
+              flex: rightFlex,
+              child: ColoredBox(color: rightColor),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<FlSpot> _activitySpots() {
+    final points = _data?.series ?? const [];
+    if (points.length < 2) return const [];
+    return [
+      for (var i = 0; i < points.length; i++)
+        FlSpot(
+          i.toDouble(),
+          (points[i].uploads + points[i].downloads).toDouble(),
+        ),
+    ];
+  }
+
+  double _share(num part, num total) => total <= 0 ? 0 : part / total;
+
+  String _pct(num part, num total) {
+    if (total <= 0) return '0%';
+    return '${((part / total) * 100).round()}%';
   }
 
   String _bytes(int bytes) => DownloadService.formatFileSize(bytes);
@@ -1390,6 +2165,18 @@ class _SystemAdminAnalyticsScreenState
       default:
         return 'All platforms';
     }
+  }
+
+  String _pretty(String value) {
+    if (value.isEmpty) return value;
+    return value[0].toUpperCase() + value.substring(1);
+  }
+
+  String _initials(String name) {
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.isEmpty || parts.first.isEmpty) return '?';
+    if (parts.length == 1) return parts.first[0].toUpperCase();
+    return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
   }
 }
 
