@@ -3,7 +3,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../services/app_update_service.dart';
 import '../services/auth_service.dart';
 import '../services/download_service.dart';
 import '../services/theme_controller.dart';
@@ -22,11 +21,17 @@ import 'users_feedback.dart';
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
+  /// Must match Drive APK name without `.apk`.
+  static const currentApkLabel = 'Edupal v7.10';
+
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  static const _aboutMessage =
+      'Your Academic Companion. Edupal helps you organize and access your study materials seamlessly. Created and maintained by David Muigai.';
+
   final _firestore = FirebaseFirestore.instance;
   String? _fullName;
   String? _email;
@@ -1117,16 +1122,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _showAboutDialog() async {
-    final versionLabel =
-        await AppUpdateService.loadCurrentApkLabel() ?? 'Unknown version';
-    final aboutMessage = await AppUpdateService.loadAboutMessage() ?? '';
-    if (!mounted) return;
-    final content = aboutMessage.isEmpty
-        ? versionLabel
-        : '$versionLabel\n\n$aboutMessage';
     await _showThemedDialog<void>(
       title: 'Edupal',
-      content: content,
+      content: '${ProfileScreen.currentApkLabel}\n\n$_aboutMessage',
       actions: (dialogContext) => [
         TextButton(
           onPressed: () => Navigator.pop(dialogContext),
