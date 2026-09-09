@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/auth_service.dart';
 import '../services/download_service.dart';
 import '../services/phone_document_service.dart';
 import '../ui/adaptive_layout.dart';
@@ -31,7 +32,15 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
   FileSortMode _fileSort = FileSortMode.dateRecent;
   String _query = '';
   String _typeFilter = 'All';
-  static const _typeFilters = [
+  bool _isClientUser = false;
+  static const _studentTypeFilters = [
+    'All',
+    'PDF',
+    'DOC',
+    'PPT',
+    'IMG',
+  ];
+  static const _clientTypeFilters = [
     'All',
     'PDF',
     'DOC',
@@ -40,6 +49,9 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
     'VID',
     'AUD',
   ];
+
+  List<String> get _typeFilters =>
+      _isClientUser ? _clientTypeFilters : _studentTypeFilters;
 
   bool get _selectionMode => _selected.isNotEmpty;
 
@@ -56,7 +68,23 @@ class _DownloadsScreenState extends State<DownloadsScreen> {
       if (mounted) setState(() {});
     });
     _loadFilesViewPreference();
+    _loadClientRole();
     _loadDownloads(showSpinner: true);
+  }
+
+  Future<void> _loadClientRole() async {
+    try {
+      final role = await AuthService.instance.currentRole();
+      if (!mounted) return;
+      setState(() {
+        _isClientUser = AuthService.isClientRole(role);
+        if (!_isClientUser && (_typeFilter == 'VID' || _typeFilter == 'AUD')) {
+          _typeFilter = 'All';
+        }
+      });
+    } catch (_) {
+      // Keep student filters if role lookup fails.
+    }
   }
 
   Future<void> _loadFilesViewPreference() async {

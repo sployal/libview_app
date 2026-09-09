@@ -1789,12 +1789,9 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
   Future<_UploadSource?> _showUploadSourceSheet() {
     return showModalBottomSheet<_UploadSource>(
       context: context,
-      backgroundColor: const Color(0xFF1B2230),
+      backgroundColor: Colors.transparent,
       barrierColor: Colors.black.withValues(alpha: 0.55),
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
       builder: (context) => const _UploadSourceSheet(),
     );
   }
@@ -4789,72 +4786,109 @@ class _UploadSourceSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.28),
-                borderRadius: BorderRadius.circular(99),
-              ),
-            ),
-            const SizedBox(height: 18),
-            const Text(
-              'Upload from',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 22,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Choose photos, documents, videos, or audio on this phone',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.62),
-                fontSize: 13,
-                height: 1.35,
-              ),
-            ),
-            const SizedBox(height: 20),
-            _UploadSourceOption(
-              icon: Icons.photo_library_rounded,
-              iconColor: const Color(0xFF3B82F6),
-              title: 'Photos & images',
-              subtitle: 'Same picker as profile photo',
-              onTap: () => Navigator.pop(context, _UploadSource.photos),
-            ),
-            const SizedBox(height: 10),
-            _UploadSourceOption(
-              icon: Icons.picture_as_pdf_rounded,
-              iconColor: const Color(0xFFE25A45),
-              title: 'PDF & documents',
-              subtitle: 'Search recent PDFs, Word, Excel, and PowerPoint',
-              onTap: () => Navigator.pop(context, _UploadSource.documents),
-            ),
-            const SizedBox(height: 10),
-            _UploadSourceOption(
-              icon: Icons.videocam_rounded,
-              iconColor: const Color(0xFF0EA5E9),
-              title: 'Videos',
-              subtitle: 'Same gallery picker as photos, videos only',
-              onTap: () => Navigator.pop(context, _UploadSource.videos),
-            ),
-            const SizedBox(height: 10),
-            _UploadSourceOption(
-              icon: Icons.audiotrack_rounded,
-              iconColor: const Color(0xFFEC4899),
-              title: 'Audio',
-              subtitle: 'Search music, recordings, and voice notes on this phone',
-              onTap: () => Navigator.pop(context, _UploadSource.audio),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final sheet = isDark ? const Color(0xFF151B28) : Colors.white;
+    final titleColor =
+        isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
+    final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
+    final card = isDark ? const Color(0xFF1F2937) : const Color(0xFFF3F4F6);
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: sheet,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.18),
+              blurRadius: 28,
+              offset: const Offset(0, -8),
             ),
           ],
+        ),
+        child: SafeArea(
+          top: false,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: muted.withValues(alpha: 0.45),
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  'Upload from',
+                  style: TextStyle(
+                    color: titleColor,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Choose photos, documents, videos, or audio on this phone',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: muted,
+                    fontSize: 13,
+                    height: 1.35,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                _UploadSourceOption(
+                  icon: Icons.photo_library_rounded,
+                  iconColor: const Color(0xFF3B82F6),
+                  title: 'Photos & images',
+                  subtitle: 'Same picker as profile photo',
+                  card: card,
+                  titleColor: titleColor,
+                  muted: muted,
+                  onTap: () => Navigator.pop(context, _UploadSource.photos),
+                ),
+                const SizedBox(height: 10),
+                _UploadSourceOption(
+                  icon: Icons.picture_as_pdf_rounded,
+                  iconColor: const Color(0xFFE25A45),
+                  title: 'PDF & documents',
+                  subtitle: 'Search recent PDFs, Word, Excel, and PowerPoint',
+                  card: card,
+                  titleColor: titleColor,
+                  muted: muted,
+                  onTap: () => Navigator.pop(context, _UploadSource.documents),
+                ),
+                const SizedBox(height: 10),
+                _UploadSourceOption(
+                  icon: Icons.videocam_rounded,
+                  iconColor: const Color(0xFF0EA5E9),
+                  title: 'Videos',
+                  subtitle: 'Same gallery picker as photos, videos only',
+                  card: card,
+                  titleColor: titleColor,
+                  muted: muted,
+                  onTap: () => Navigator.pop(context, _UploadSource.videos),
+                ),
+                const SizedBox(height: 10),
+                _UploadSourceOption(
+                  icon: Icons.audiotrack_rounded,
+                  iconColor: const Color(0xFFEC4899),
+                  title: 'Audio',
+                  subtitle:
+                      'Search music, recordings, and voice notes on this phone',
+                  card: card,
+                  titleColor: titleColor,
+                  muted: muted,
+                  onTap: () => Navigator.pop(context, _UploadSource.audio),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -4866,6 +4900,9 @@ class _UploadSourceOption extends StatelessWidget {
   final Color iconColor;
   final String title;
   final String subtitle;
+  final Color card;
+  final Color titleColor;
+  final Color muted;
   final VoidCallback onTap;
 
   const _UploadSourceOption({
@@ -4873,13 +4910,16 @@ class _UploadSourceOption extends StatelessWidget {
     required this.iconColor,
     required this.title,
     required this.subtitle,
+    required this.card,
+    required this.titleColor,
+    required this.muted,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: const Color(0xFF2A3344),
+      color: card,
       elevation: 0,
       shadowColor: Colors.transparent,
       surfaceTintColor: Colors.transparent,
@@ -4908,8 +4948,8 @@ class _UploadSourceOption extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: titleColor,
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                       ),
@@ -4918,7 +4958,7 @@ class _UploadSourceOption extends StatelessWidget {
                     Text(
                       subtitle,
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.55),
+                        color: muted,
                         fontSize: 12.5,
                       ),
                     ),
@@ -4927,7 +4967,7 @@ class _UploadSourceOption extends StatelessWidget {
               ),
               Icon(
                 Icons.chevron_right_rounded,
-                color: Colors.white.withValues(alpha: 0.7),
+                color: muted,
               ),
             ],
           ),

@@ -84,42 +84,50 @@ class _NotificationImageViewerState extends State<NotificationImageViewer> {
   @override
   Widget build(BuildContext context) {
     final title = (widget.title ?? '').trim();
-    const barColor = Color(0xFF111111);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final background =
+        isDark ? const Color(0xFF111827) : const Color(0xFFE8EEF5);
+    final titleColor =
+        isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
+    final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
+
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: background,
       appBar: AppBar(
-        backgroundColor: barColor,
-        foregroundColor: Colors.white,
+        backgroundColor: background,
+        foregroundColor: titleColor,
         elevation: 0,
         scrolledUnderElevation: 0,
-        systemOverlayStyle: SystemUiOverlayStyle.light,
+        systemOverlayStyle:
+            isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
         title: title.isEmpty
             ? null
             : Text(
                 title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
+                  color: titleColor,
                 ),
               ),
         actions: [
           TextButton(
             onPressed: _saving ? null : _save,
-            style: TextButton.styleFrom(foregroundColor: Colors.white),
+            style: TextButton.styleFrom(foregroundColor: titleColor),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(_saving ? 'Saving…' : 'Save'),
                 const SizedBox(width: 6),
                 _saving
-                    ? const SizedBox(
+                    ? SizedBox(
                         width: 18,
                         height: 18,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: Colors.white,
+                          color: titleColor,
                         ),
                       )
                     : const Icon(CupertinoIcons.arrow_down_to_line, size: 20),
@@ -144,27 +152,27 @@ class _NotificationImageViewerState extends State<NotificationImageViewer> {
                 fit: BoxFit.contain,
                 loadingBuilder: (context, child, progress) {
                   if (progress == null) return child;
-                  return const Center(
+                  return Center(
                     child: CupertinoActivityIndicator(
-                      color: Colors.white,
+                      color: muted,
                       radius: 14,
                     ),
                   );
                 },
-                errorBuilder: (_, __, ___) => const Padding(
-                  padding: EdgeInsets.all(24),
+                errorBuilder: (_, __, ___) => Padding(
+                  padding: const EdgeInsets.all(24),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
                         CupertinoIcons.photo,
-                        color: Colors.white54,
+                        color: muted,
                         size: 48,
                       ),
-                      SizedBox(height: 12),
+                      const SizedBox(height: 12),
                       Text(
                         'Could not load image',
-                        style: TextStyle(color: Colors.white70),
+                        style: TextStyle(color: muted),
                       ),
                     ],
                   ),
@@ -174,12 +182,12 @@ class _NotificationImageViewerState extends State<NotificationImageViewer> {
           ),
         ),
       ),
-      bottomNavigationBar: const BottomAppBar(
-        color: barColor,
+      bottomNavigationBar: BottomAppBar(
+        color: background,
         elevation: 0,
         padding: EdgeInsets.zero,
         height: 40,
-        child: SizedBox.shrink(),
+        child: const SizedBox.shrink(),
       ),
     );
   }
