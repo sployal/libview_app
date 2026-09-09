@@ -176,6 +176,9 @@ class AnalyticsTopUser {
   final String courseName;
   final int count;
   final int bytes;
+  final int video;
+  final int audio;
+  final Map<String, int> types;
 
   const AnalyticsTopUser({
     required this.uid,
@@ -183,6 +186,9 @@ class AnalyticsTopUser {
     this.courseName = '',
     this.count = 0,
     this.bytes = 0,
+    this.video = 0,
+    this.audio = 0,
+    this.types = const {},
   });
 
   factory AnalyticsTopUser.fromJson(Map<String, dynamic> json) {
@@ -192,41 +198,9 @@ class AnalyticsTopUser {
       courseName: json['courseName']?.toString() ?? '',
       count: _int(json['count']),
       bytes: _int(json['bytes']),
-    );
-  }
-}
-
-class AnalyticsRecentEvent {
-  final String kind;
-  final String platform;
-  final String name;
-  final String fileName;
-  final String fileType;
-  final int sizeBytes;
-  final String ownerName;
-  final DateTime? createdAt;
-
-  const AnalyticsRecentEvent({
-    required this.kind,
-    required this.platform,
-    required this.name,
-    required this.fileName,
-    required this.fileType,
-    this.sizeBytes = 0,
-    this.ownerName = '',
-    this.createdAt,
-  });
-
-  factory AnalyticsRecentEvent.fromJson(Map<String, dynamic> json) {
-    return AnalyticsRecentEvent(
-      kind: json['kind']?.toString() ?? '',
-      platform: json['platform']?.toString() ?? '',
-      name: json['name']?.toString() ?? 'User',
-      fileName: json['fileName']?.toString() ?? '',
-      fileType: json['fileType']?.toString() ?? 'other',
-      sizeBytes: _int(json['sizeBytes']),
-      ownerName: json['ownerName']?.toString() ?? '',
-      createdAt: DateTime.tryParse(json['createdAt']?.toString() ?? ''),
+      video: _int(json['video']),
+      audio: _int(json['audio']),
+      types: _intMap(json['types']),
     );
   }
 }
@@ -260,7 +234,6 @@ class AnalyticsSnapshot {
   final List<AnalyticsTopUser> topUploaders;
   final List<AnalyticsTopUser> topDownloaders;
   final List<AnalyticsTopUser> topPlayers;
-  final List<AnalyticsRecentEvent> recent;
 
   const AnalyticsSnapshot({
     required this.periodKind,
@@ -291,7 +264,6 @@ class AnalyticsSnapshot {
     this.topUploaders = const [],
     this.topDownloaders = const [],
     this.topPlayers = const [],
-    this.recent = const [],
   });
 
   factory AnalyticsSnapshot.fromJson(Map<String, dynamic> json) {
@@ -345,8 +317,6 @@ class AnalyticsSnapshot {
           _list(json['topDownloaders']).map(AnalyticsTopUser.fromJson).toList(),
       topPlayers:
           _list(json['topPlayers']).map(AnalyticsTopUser.fromJson).toList(),
-      recent:
-          _list(json['recent']).map(AnalyticsRecentEvent.fromJson).toList(),
     );
   }
 
@@ -389,6 +359,16 @@ Map<String, dynamic> _map(dynamic value) {
   if (value is Map<String, dynamic>) return value;
   if (value is Map) return Map<String, dynamic>.from(value);
   return const {};
+}
+
+Map<String, int> _intMap(dynamic value) {
+  if (value is! Map) return const {};
+  final out = <String, int>{};
+  value.forEach((key, item) {
+    final count = _int(item);
+    if (count > 0) out[key.toString()] = count;
+  });
+  return out;
 }
 
 List<Map<String, dynamic>> _list(dynamic value) {

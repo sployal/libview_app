@@ -608,8 +608,6 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
       name: displayName,
       role: String(userProfile.role || ''),
       fileId: fileId || '',
-      fileName: fileName || '',
-      mimeType: mimeType || '',
       fileType,
       sizeBytes: bytes,
       folderId: folderId || '',
@@ -1046,7 +1044,6 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
     });
 
     const topMaps = { uploads: new Map(), downloads: new Map(), streams: new Map() };
-    const recent = [];
     const eventTotals = {
       all: emptyBucket(),
       mobile: emptyBucket(),
@@ -1086,18 +1083,6 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
         }
 
         const kind = playbackKind(event);
-        if (recent.length < 25) {
-          recent.push({
-            kind: kind || '',
-            platform: event.platform || '',
-            name: event.name || 'User',
-            fileName: event.fileName || '',
-            fileType: event.fileType || 'other',
-            sizeBytes: num(event.sizeBytes),
-            ownerName: event.ownerName || '',
-            createdAt: asDate(event.createdAt)?.toISOString() || '',
-          });
-        }
         if (kind !== 'upload' && kind !== 'download' && kind !== 'stream') return;
         const bucket =
           kind === 'upload'
@@ -1105,15 +1090,27 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
             : kind === 'stream'
               ? topMaps.streams
               : topMaps.downloads;
+        const type = FILE_TYPES.includes(event.fileType)
+          ? event.fileType
+          : classifyFile(event.fileName, event.mimeType);
+        const fileType = FILE_TYPES.includes(type) ? type : 'other';
         const current = bucket.get(event.uid) || {
           uid: event.uid,
           name: event.name || 'User',
           courseName: event.ownerName || '',
           count: 0,
           bytes: 0,
+          types: {},
+          video: 0,
+          audio: 0,
         };
         current.count += 1;
         current.bytes += num(event.sizeBytes);
+        current.types[fileType] = num(current.types[fileType]) + 1;
+        if (kind === 'stream') {
+          if (fileType === 'video') current.video += 1;
+          else if (fileType === 'audio') current.audio += 1;
+        }
         bucket.set(event.uid, current);
         if (event.ownerName && !names[event.ownerId]) {
           names[event.ownerId] = event.ownerName;
@@ -1175,16 +1172,28 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
       }
     }
 
-    const toTop = (map) =>
+    const typeCounts = (types) => {
+      const out = {};
+      for (const type of FILE_TYPES) {
+        const count = num(types?.[type]);
+        if (count > 0) out[type] = count;
+      }
+      return out;
+    };
+    const toTop = (map, { includePlays = false } = {}) =>
       Array.from(map.values())
         .sort((a, b) => b.count - a.count || b.bytes - a.bytes)
-        .slice(0, 8)
+        .slice(0, 10)
         .map((item) => ({
           uid: item.uid,
           name: item.name,
           courseName: item.courseName,
           count: item.count,
           bytes: item.bytes,
+          types: typeCounts(item.types),
+          ...(includePlays
+            ? { video: num(item.video), audio: num(item.audio) }
+            : {}),
         }));
 
     const yearsSnap = await firestore.collection('analytics_yearly').get();
@@ -1256,8 +1265,7 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
       series,
       topUploaders: toTop(topMaps.uploads),
       topDownloaders: toTop(topMaps.downloads),
-      topPlayers: toTop(topMaps.streams),
-      recent,
+      topPlayers: toTop(topMaps.streams, { includePlays: true }),
     };
   }
 

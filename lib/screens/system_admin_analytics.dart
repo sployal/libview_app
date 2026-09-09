@@ -2,7 +2,6 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:timeago/timeago.dart' as timeago;
 
 import '../services/analytics_service.dart';
 import '../services/download_service.dart';
@@ -275,8 +274,6 @@ class _SystemAdminAnalyticsScreenState
                           _activityCard(),
                           const SizedBox(height: 16),
                           _topUsersCard(),
-                          const SizedBox(height: 16),
-                          _recentCard(),
                         ],
                       ]),
                     ),
@@ -1288,7 +1285,8 @@ class _SystemAdminAnalyticsScreenState
                   color: _accent,
                   title: uploads[i].name,
                   subtitle: uploads[i].courseName,
-                  value: '${uploads[i].count} · ${_bytes(uploads[i].bytes)}',
+                  detail: _typeBreakdown(uploads[i]),
+                  value: uploads[i].bytes > 0 ? _bytes(uploads[i].bytes) : '',
                   showDivider: i < uploads.length - 1,
                 ),
             _hairline(indent: 0),
@@ -1305,8 +1303,8 @@ class _SystemAdminAnalyticsScreenState
                   color: _sky,
                   title: downloads[i].name,
                   subtitle: downloads[i].courseName,
-                  value:
-                      '${downloads[i].count} · ${_bytes(downloads[i].bytes)}',
+                  detail: _typeBreakdown(downloads[i]),
+                  value: downloads[i].bytes > 0 ? _bytes(downloads[i].bytes) : '',
                   showDivider: i < downloads.length - 1,
                 ),
             _hairline(indent: 0),
@@ -1323,49 +1321,10 @@ class _SystemAdminAnalyticsScreenState
                   color: _media,
                   title: players[i].name,
                   subtitle: players[i].courseName,
-                  value: '${players[i].count} plays',
+                  detail: _playsBreakdown(players[i]),
                   showDivider: i < players.length - 1,
                 ),
           ],
-        ],
-      ),
-    );
-  }
-
-  Widget _recentCard() {
-    final rows = _data?.recent ?? const [];
-    return _panel(
-      child: Column(
-        children: [
-          _cardHeader(
-            icon: CupertinoIcons.clock_fill,
-            color: const Color(0xFFF472B6),
-            title: 'Recent activity',
-            subtitle: 'Latest uploads, downloads, and plays',
-            meta: rows.isEmpty ? null : '${rows.length}',
-          ),
-          if (rows.isEmpty)
-            _emptyState(
-              CupertinoIcons.time,
-              'Recent uploads, downloads, and plays will show up here.',
-            )
-          else
-            for (var i = 0; i < rows.length; i++)
-              _eventRow(
-                color: _typeColors[rows[i].fileType] ?? _accent,
-                kind: rows[i].kind,
-                title: rows[i].fileName.isEmpty ? rows[i].kind : rows[i].fileName,
-                subtitle: [
-                  rows[i].name,
-                  _kindLabel(rows[i].kind),
-                  _pretty(rows[i].platform),
-                  if (rows[i].ownerName.isNotEmpty) rows[i].ownerName,
-                  if (rows[i].createdAt != null)
-                    timeago.format(rows[i].createdAt!.toLocal()),
-                ].join(' · '),
-                value: _bytes(rows[i].sizeBytes),
-                showDivider: i < rows.length - 1,
-              ),
         ],
       ),
     );
@@ -2194,8 +2153,9 @@ class _SystemAdminAnalyticsScreenState
     required int rank,
     required Color color,
     required String title,
-    required String value,
+    String value = '',
     String? subtitle,
+    String? detail,
     bool showDivider = false,
   }) {
     final medal = switch (rank) {
@@ -2262,6 +2222,17 @@ class _SystemAdminAnalyticsScreenState
                         color: _titleColor,
                       ),
                     ),
+                    if (detail != null && detail.isNotEmpty)
+                      Text(
+                        detail,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: _titleColor,
+                        ),
+                      ),
                     if (subtitle != null && subtitle.isNotEmpty)
                       Text(
                         subtitle,
@@ -2272,94 +2243,21 @@ class _SystemAdminAnalyticsScreenState
                   ],
                 ),
               ),
-              const SizedBox(width: 8),
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: _titleColor,
+              if (value.isNotEmpty) ...[
+                const SizedBox(width: 8),
+                Text(
+                  value,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: _titleColor,
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
         ),
         if (showDivider) _hairline(indent: 82),
-      ],
-    );
-  }
-
-  Widget _eventRow({
-    required Color color,
-    required String kind,
-    required String title,
-    required String subtitle,
-    required String value,
-    bool showDivider = false,
-  }) {
-    final normalized = kind.toLowerCase();
-    final upload = normalized.contains('upload');
-    final play = normalized.contains('stream') || normalized.contains('play');
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 11, 16, 11),
-          child: Row(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: _isDark ? 0.2 : 0.12),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  play
-                      ? CupertinoIcons.play_fill
-                      : upload
-                          ? CupertinoIcons.arrow_up_right
-                          : CupertinoIcons.arrow_down_left,
-                  size: 16,
-                  color: color,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: _titleColor,
-                      ),
-                    ),
-                    Text(
-                      subtitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 11, color: _muted),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: _titleColor,
-                ),
-              ),
-            ],
-          ),
-        ),
-        if (showDivider) _hairline(indent: 64),
       ],
     );
   }
@@ -2518,23 +2416,39 @@ class _SystemAdminAnalyticsScreenState
     }
   }
 
-  String _pretty(String value) {
-    if (value.isEmpty) return value;
-    return value[0].toUpperCase() + value.substring(1);
+  String _typeBreakdown(AnalyticsTopUser user) {
+    const order = [
+      'pdf',
+      'word',
+      'excel',
+      'ppt',
+      'image',
+      'video',
+      'audio',
+      'other',
+    ];
+    final parts = <String>[
+      for (final id in order)
+        if ((user.types[id] ?? 0) > 0) '${user.types[id]} $id',
+    ];
+    for (final entry in user.types.entries) {
+      if (!order.contains(entry.key) && entry.value > 0) {
+        parts.add('${entry.value} ${entry.key}');
+      }
+    }
+    if (parts.isNotEmpty) return parts.join(' · ');
+    return user.count > 0 ? '${user.count}' : '';
   }
 
-  String _kindLabel(String kind) {
-    switch (kind.toLowerCase()) {
-      case 'stream':
-      case 'play':
-        return 'Played';
-      case 'download':
-        return 'Downloaded';
-      case 'upload':
-        return 'Uploaded';
-      default:
-        return _pretty(kind);
-    }
+  String _playsBreakdown(AnalyticsTopUser user) {
+    final video = user.video > 0 ? user.video : (user.types['video'] ?? 0);
+    final audio = user.audio > 0 ? user.audio : (user.types['audio'] ?? 0);
+    final parts = <String>[
+      if (video > 0) '$video video',
+      if (audio > 0) '$audio audio',
+      '${user.count} plays',
+    ];
+    return parts.join(' · ');
   }
 
   String _fileTypeSubtitle(AnalyticsFileType row) {
