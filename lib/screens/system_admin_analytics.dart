@@ -1470,7 +1470,9 @@ class _SystemAdminAnalyticsScreenState
   }
 
   Widget _aiAnalysisCard() {
-    const promptColor = Color(0xFF6366F1);
+    const chatColor = Color(0xFF6366F1);
+    const scanColor = Color(0xFFF59E0B);
+    const promptColor = Color(0xFF8B5CF6);
     const completionColor = Color(0xFF14B8A6);
     final ai = _data?.ai ?? const AnalyticsAiUsage();
     final rows = ai.byOwner;
@@ -1480,6 +1482,12 @@ class _SystemAdminAnalyticsScreenState
     final requests = ai.requests > 0
         ? ai.requests
         : rows.fold<int>(0, (sum, row) => sum + row.requests);
+    final chats = ai.chats;
+    final scans = ai.imageScans;
+    final chatTokens = chats.totalTokens;
+    final scanTokens = scans.totalTokens;
+    final chatRequests = chats.requests;
+    final scanRequests = scans.requests;
 
     return _panel(
       child: Column(
@@ -1488,24 +1496,28 @@ class _SystemAdminAnalyticsScreenState
             icon: CupertinoIcons.sparkles,
             color: completionColor,
             title: 'AI analysis',
-            subtitle: 'Tokens used by course. Client usage is combined.',
+            subtitle: 'Chats and image scans by course. Client usage is combined.',
             meta: totalTokens > 0 ? _tokens(totalTokens) : null,
           ),
           if (ai.isEmpty)
             _emptyState(
               CupertinoIcons.sparkles,
-              'AI token use appears here after the first chat in this period.',
+              'AI token use appears here after the first chat or image scan in this period.',
             )
           else ...[
-            if (rows.any((row) => row.totalTokens > 0)) ...[
+            if (chatTokens > 0 || scanTokens > 0) ...[
               _pieBlock(
                 values: [
-                  for (var i = 0; i < rows.length; i++)
-                    _ChartSlice(
-                      label: rows[i].name,
-                      value: rows[i].totalTokens.toDouble(),
-                      color: _palette[i % _palette.length],
-                    ),
+                  _ChartSlice(
+                    label: 'Chats',
+                    value: chatTokens.toDouble(),
+                    color: chatColor,
+                  ),
+                  _ChartSlice(
+                    label: 'Image scans',
+                    value: scanTokens.toDouble(),
+                    color: scanColor,
+                  ),
                 ],
                 empty: 'No AI token use in this period yet.',
                 emptyIcon: CupertinoIcons.sparkles,
@@ -1516,6 +1528,26 @@ class _SystemAdminAnalyticsScreenState
               ),
               _hairline(indent: 0),
             ],
+            _progressRow(
+              color: chatColor,
+              title: 'Chats',
+              subtitle: chatRequests == 1
+                  ? '1 text turn'
+                  : '$chatRequests text turns',
+              value: _tokens(chatTokens),
+              progress: _share(chatTokens, totalTokens),
+              showDivider: true,
+            ),
+            _progressRow(
+              color: scanColor,
+              title: 'Image scans',
+              subtitle: scanRequests == 1
+                  ? '1 photo question'
+                  : '$scanRequests photo questions',
+              value: _tokens(scanTokens),
+              progress: _share(scanTokens, totalTokens),
+              showDivider: true,
+            ),
             _progressRow(
               color: promptColor,
               title: 'Prompt tokens',
@@ -1533,9 +1565,9 @@ class _SystemAdminAnalyticsScreenState
               showDivider: true,
             ),
             _progressRow(
-              color: const Color(0xFF8B5CF6),
+              color: const Color(0xFF0EA5E9),
               title: 'Requests',
-              subtitle: requests == 1 ? '1 chat turn' : '$requests chat turns',
+              subtitle: requests == 1 ? '1 turn' : '$requests turns',
               value: _compactNumber(requests),
               progress: 1,
               showDivider: rows.isNotEmpty,

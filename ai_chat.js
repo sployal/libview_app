@@ -74,6 +74,21 @@ function extractUsage(data) {
   return { promptTokens, completionTokens, totalTokens };
 }
 
+function lastUserMessageHasImage(messages) {
+  if (!Array.isArray(messages)) return false;
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i];
+    if (!msg || typeof msg !== 'object') continue;
+    const role =
+      msg.role === 'assistant' || msg.role === 'model' ? 'assistant' : 'user';
+    if (role !== 'user') continue;
+    const imageBase64 =
+      typeof msg.imageBase64 === 'string' ? msg.imageBase64.trim() : '';
+    return Boolean(imageBase64);
+  }
+  return false;
+}
+
 async function isClientUser(firestore, uid) {
   if (!firestore || !uid) return false;
   try {
@@ -130,7 +145,11 @@ function registerAiRoutes(app, { requireAuth, firestore, recordAiUsage }) {
 
       res.json({ reply });
       if (typeof recordAiUsage === 'function') {
-        recordAiUsage({ req, usage: extractUsage(response.data) }).catch((err) => {
+        recordAiUsage({
+          req,
+          usage: extractUsage(response.data),
+          imageScan: lastUserMessageHasImage(messages),
+        }).catch((err) => {
           console.warn('Could not record AI analytics:', err.message || err);
         });
       }

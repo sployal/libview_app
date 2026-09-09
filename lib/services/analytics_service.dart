@@ -237,11 +237,39 @@ class AnalyticsAiOwner {
   }
 }
 
+class AnalyticsAiStats {
+  final int requests;
+  final int promptTokens;
+  final int completionTokens;
+  final int totalTokens;
+
+  const AnalyticsAiStats({
+    this.requests = 0,
+    this.promptTokens = 0,
+    this.completionTokens = 0,
+    this.totalTokens = 0,
+  });
+
+  factory AnalyticsAiStats.fromJson(Map<String, dynamic>? json) {
+    final data = json ?? const {};
+    return AnalyticsAiStats(
+      requests: _int(data['requests']),
+      promptTokens: _int(data['promptTokens']),
+      completionTokens: _int(data['completionTokens']),
+      totalTokens: _int(data['totalTokens']),
+    );
+  }
+
+  bool get isEmpty => requests <= 0 && totalTokens <= 0;
+}
+
 class AnalyticsAiUsage {
   final int requests;
   final int promptTokens;
   final int completionTokens;
   final int totalTokens;
+  final AnalyticsAiStats chats;
+  final AnalyticsAiStats imageScans;
   final List<AnalyticsAiOwner> byOwner;
 
   const AnalyticsAiUsage({
@@ -249,22 +277,44 @@ class AnalyticsAiUsage {
     this.promptTokens = 0,
     this.completionTokens = 0,
     this.totalTokens = 0,
+    this.chats = const AnalyticsAiStats(),
+    this.imageScans = const AnalyticsAiStats(),
     this.byOwner = const [],
   });
 
   factory AnalyticsAiUsage.fromJson(Map<String, dynamic>? json) {
     final data = json ?? const {};
+    final chats = AnalyticsAiStats.fromJson(_map(data['chats']));
+    final imageScans = AnalyticsAiStats.fromJson(_map(data['imageScans']));
+    final requests = _int(data['requests']);
+    final promptTokens = _int(data['promptTokens']);
+    final completionTokens = _int(data['completionTokens']);
+    final totalTokens = _int(data['totalTokens']);
+    final hasKinds = !chats.isEmpty || !imageScans.isEmpty;
     return AnalyticsAiUsage(
-      requests: _int(data['requests']),
-      promptTokens: _int(data['promptTokens']),
-      completionTokens: _int(data['completionTokens']),
-      totalTokens: _int(data['totalTokens']),
+      requests: requests,
+      promptTokens: promptTokens,
+      completionTokens: completionTokens,
+      totalTokens: totalTokens,
+      chats: hasKinds
+          ? chats
+          : AnalyticsAiStats(
+              requests: requests,
+              promptTokens: promptTokens,
+              completionTokens: completionTokens,
+              totalTokens: totalTokens,
+            ),
+      imageScans: imageScans,
       byOwner: _list(data['byOwner']).map(AnalyticsAiOwner.fromJson).toList(),
     );
   }
 
   bool get isEmpty =>
-      requests <= 0 && totalTokens <= 0 && byOwner.isEmpty;
+      requests <= 0 &&
+      totalTokens <= 0 &&
+      chats.isEmpty &&
+      imageScans.isEmpty &&
+      byOwner.isEmpty;
 }
 
 class AnalyticsSnapshot {

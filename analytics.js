@@ -396,12 +396,15 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
   function addExtractedAi(target, source) {
     if (!source) return target;
     addAiStats(target, source);
+    if (!target.imageScans) target.imageScans = emptyAiStats();
+    addAiStats(target.imageScans, source.imageScans);
     for (const [id, stats] of Object.entries(source.courses || {})) {
       if (!target.courses[id]) target.courses[id] = emptyAiStats();
       addAiStats(target.courses[id], stats);
     }
     addAiStats(target.clients, source.clients);
     addAiStats(target.other, source.other);
+    Object.assign(target, withAiKinds(target, target.imageScans));
     return target;
   }
 
@@ -457,6 +460,38 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
     return target;
   }
 
+  function subtractAiStats(total, part) {
+    const a = mergeAiStats(total);
+    const b = mergeAiStats(part);
+    return {
+      requests: Math.max(0, a.requests - b.requests),
+      promptTokens: Math.max(0, a.promptTokens - b.promptTokens),
+      completionTokens: Math.max(0, a.completionTokens - b.completionTokens),
+      totalTokens: Math.max(0, a.totalTokens - b.totalTokens),
+    };
+  }
+
+  function withAiKinds(totals, imageScans) {
+    const next = mergeAiStats(totals);
+    const scans = mergeAiStats(imageScans);
+    return {
+      ...next,
+      imageScans: scans,
+      chats: subtractAiStats(next, scans),
+    };
+  }
+
+  function ownerImageScans(ai) {
+    const out = emptyAiStats();
+    if (!ai || typeof ai !== 'object') return out;
+    for (const stats of Object.values(ai.courses || {})) {
+      addAiStats(out, stats && stats.imageScans);
+    }
+    addAiStats(out, ai.clients && ai.clients.imageScans);
+    addAiStats(out, ai.other && ai.other.imageScans);
+    return out;
+  }
+
   function mergeAiOwnerMap(raw) {
     const out = {};
     if (!raw || typeof raw !== 'object') return out;
@@ -490,10 +525,24 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
       addAiStats(totals, clients);
       addAiStats(totals, other);
     }
-    return { ...totals, courses, clients, other };
+    let imageScans = mergeAiStats(ai.imageScans);
+    if (!imageScans.requests && !imageScans.totalTokens) {
+      imageScans = ownerImageScans(ai);
+    }
+    return { ...withAiKinds(totals, imageScans), courses, clients, other };
   }
 
-  function aiIncrements(platform, owner, usage) {
+  function aiStatsPayload(stats) {
+    const item = mergeAiStats(stats);
+    return {
+      requests: item.requests,
+      promptTokens: item.promptTokens,
+      completionTokens: item.completionTokens,
+      totalTokens: item.totalTokens,
+    };
+  }
+
+  function aiIncrements(platform, owner, usage, { imageScan = false } = {}) {
     const updates = {};
     const prompt = Math.max(0, Math.round(num(usage?.promptTokens)));
     const completion = Math.max(0, Math.round(num(usage?.completionTokens)));
@@ -517,6 +566,17 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
       updates[`${prefix}.ai.${ownerPath}.promptTokens`] = increment(prompt);
       updates[`${prefix}.ai.${ownerPath}.completionTokens`] = increment(completion);
       updates[`${prefix}.ai.${ownerPath}.totalTokens`] = increment(total);
+      if (imageScan) {
+        updates[`${prefix}.ai.imageScans.requests`] = increment(1);
+        updates[`${prefix}.ai.imageScans.promptTokens`] = increment(prompt);
+        updates[`${prefix}.ai.imageScans.completionTokens`] = increment(completion);
+        updates[`${prefix}.ai.imageScans.totalTokens`] = increment(total);
+        updates[`${prefix}.ai.${ownerPath}.imageScans.requests`] = increment(1);
+        updates[`${prefix}.ai.${ownerPath}.imageScans.promptTokens`] = increment(prompt);
+        updates[`${prefix}.ai.${ownerPath}.imageScans.completionTokens`] =
+          increment(completion);
+        updates[`${prefix}.ai.${ownerPath}.imageScans.totalTokens`] = increment(total);
+      }
     }
 
     if (owner.kind === 'course') {
@@ -876,7 +936,7 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
     ]);
   }
 
-  async function recordAiUsage({ req, usage }) {
+  async function recordAiUsage({ req, usage, imageScan = false }) {
     const uid = req?.user?.uid;
     if (!uid) return;
 
@@ -888,7 +948,7 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
       const loaded = await getCatalog();
       const userProfile = await loadProfile(uid);
       const owner = matchUserCourse(userProfile, loaded);
-      const increments = aiIncrements(platform, owner, usage);
+      const increments = aiIncrements(platform, owner, usage, { imageScan });
 
       await Promise.all([
         patchRollup(
@@ -1618,10 +1678,9 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
       topDownloaders: toTop(topMaps.downloads),
       topPlayers: toTop(topMaps.streams, { includePlays: true }),
       ai: {
-        requests: ai.requests,
-        promptTokens: ai.promptTokens,
-        completionTokens: ai.completionTokens,
-        totalTokens: ai.totalTokens,
+        ...aiStatsPayload(ai),
+        chats: aiStatsPayload(ai.chats),
+        imageScans: aiStatsPayload(ai.imageScans),
         byOwner: aiOwnerRows(ai, names),
       },
     };
