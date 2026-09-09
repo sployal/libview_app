@@ -67,7 +67,8 @@ class _SystemAdminAnalyticsScreenState
   late int _year;
   late int _month;
   AnalyticsSnapshot? _data;
-  final ScrollController _monthScroll = ScrollController();
+  late final ScrollController _monthScroll;
+  bool _pinMonthWindow = true;
   static const _monthItemWidth = 52.0;
   static const _monthItemGap = 8.0;
   static const _monthItemExtent = _monthItemWidth + _monthItemGap;
@@ -92,6 +93,11 @@ class _SystemAdminAnalyticsScreenState
     final now = DateTime.now();
     _year = now.year;
     _month = now.month;
+    _monthScroll = ScrollController(
+      onAttach: (_) {
+        if (_period == 'month') _alignMonth(animate: false);
+      },
+    );
     _verifyAccess();
   }
 
@@ -118,7 +124,7 @@ class _SystemAdminAnalyticsScreenState
       _hasAccess = true;
       _checkingAccess = false;
     });
-    _alignMonth();
+    _alignMonth(animate: false);
     await _load();
   }
 
@@ -143,12 +149,14 @@ class _SystemAdminAnalyticsScreenState
           _year = data.availableYears.first;
         }
       });
+      _alignMonth(animate: false);
     } catch (error) {
       if (!mounted) return;
       setState(() {
         _error = error.toString();
         _loading = false;
       });
+      _alignMonth(animate: false);
     }
   }
 
@@ -156,35 +164,50 @@ class _SystemAdminAnalyticsScreenState
     if (_period == period) return;
     HapticFeedback.selectionClick();
     setState(() => _period = period);
-    if (period == 'month') _alignMonth();
+    if (period == 'month') _alignMonth(animate: false);
     _load();
   }
 
+  double _monthWindowOffset(double viewport, double maxExtent) {
+    if (viewport <= 0) return 0;
+    // Keep the selected month at the leading edge of the strip so the
+    // window opens on the current month instead of January.
+    return ((_month - 1) * _monthItemExtent).clamp(0.0, maxExtent);
+  }
+
   void _alignMonth({bool animate = true, int attempt = 0}) {
+    _pinMonthWindow = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || _period != 'month') return;
       if (!_monthScroll.hasClients) {
-        if (attempt < 10) _alignMonth(animate: animate, attempt: attempt + 1);
+        if (attempt < 24) _alignMonth(animate: animate, attempt: attempt + 1);
         return;
       }
-      final maxExtent = _monthScroll.position.maxScrollExtent;
-      if (maxExtent <= 0 && _month > 2 && attempt < 10) {
+      final position = _monthScroll.position;
+      final viewport = position.viewportDimension;
+      final maxExtent = position.maxScrollExtent;
+      final contentWidth = 12 * _monthItemExtent;
+      if (viewport <= 0 ||
+          (maxExtent <= 0 && contentWidth > viewport + 1 && attempt < 24)) {
         _alignMonth(animate: animate, attempt: attempt + 1);
         return;
       }
-      final viewport = _monthScroll.position.viewportDimension;
-      final target = ((_month - 1) * _monthItemExtent -
-              (viewport - _monthItemExtent) / 2)
-          .clamp(0.0, maxExtent);
-      if ((target - _monthScroll.offset).abs() < 1) return;
+      final target = _monthWindowOffset(viewport, maxExtent);
+      if ((position.pixels - target).abs() < 1) {
+        _pinMonthWindow = false;
+        return;
+      }
       if (animate) {
         _monthScroll.animateTo(
           target,
           duration: const Duration(milliseconds: 280),
           curve: Curves.easeOutCubic,
-        );
+        ).whenComplete(() {
+          if (mounted) _pinMonthWindow = false;
+        });
       } else {
         _monthScroll.jumpTo(target);
+        _pinMonthWindow = false;
       }
     });
   }
@@ -246,7 +269,10 @@ class _SystemAdminAnalyticsScreenState
                     padding: pagePad.copyWith(top: 4, bottom: bottomPad),
                     sliver: SliverList(
                       delegate: SliverChildListDelegate([
-                        _filters(),
+                        _KeepAlive(
+                          key: const ValueKey('analytics-filters'),
+                          child: _filters(),
+                        ),
                         const SizedBox(height: 16),
                         if (_loading && _data == null)
                           _loadingSkeleton()
@@ -1972,50 +1998,91 @@ class _SystemAdminAnalyticsScreenState
   }
 
   Widget _monthPills() {
-    return SingleChildScrollView(
-      controller: _monthScroll,
-      scrollDirection: Axis.horizontal,
-      physics: const BouncingScrollPhysics(),
-      child: Row(
-        children: [
-          for (var i = 1; i <= 12; i++)
-            Padding(
-              padding: const EdgeInsets.only(right: _monthItemGap),
-              child: SizedBox(
-                width: _monthItemWidth,
-                child: MouseRegion(
-                  cursor: SystemMouseCursors.click,
-                  child: GestureDetector(
-                    onTap: () {
-                      if (i == _month) return;
-                      HapticFeedback.selectionClick();
-                      setState(() => _month = i);
-                      _alignMonth();
-                      _load();
-                    },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 160),
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: i == _month ? _accent : _chip,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        _monthNames[i - 1].substring(0, 3),
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight:
-                              i == _month ? FontWeight.w600 : FontWeight.w500,
-                          color: i == _month ? Colors.white : _titleColor,
+    return NotificationListener<ScrollMetricsNotification>(
+      onNotification: (notification) {
+        if (!_pinMonthWindow || _period != 'month' || !_monthScroll.hasClients) {
+          return false;
+        }
+        final position = _monthScroll.position;
+        final target = _monthWindowOffset(
+          position.viewportDimension,
+          position.maxScrollExtent,
+        );
+        if ((position.pixels - target).abs() < 1) {
+          _pinMonthWindow = false;
+          return false;
+        }
+        if (position.maxScrollExtent <= 0 &&
+            12 * _monthItemExtent > position.viewportDimension + 1) {
+          return false;
+        }
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted ||
+              !_pinMonthWindow ||
+              !_monthScroll.hasClients ||
+              _period != 'month') {
+            return;
+          }
+          final next = _monthScroll.position;
+          final desired = _monthWindowOffset(
+            next.viewportDimension,
+            next.maxScrollExtent,
+          );
+          if ((next.pixels - desired).abs() < 1) {
+            _pinMonthWindow = false;
+            return;
+          }
+          _monthScroll.jumpTo(desired);
+          _pinMonthWindow = false;
+        });
+        return false;
+      },
+      child: SingleChildScrollView(
+        controller: _monthScroll,
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        child: Row(
+          children: [
+            for (var i = 1; i <= 12; i++)
+              Padding(
+                padding: const EdgeInsets.only(right: _monthItemGap),
+                child: SizedBox(
+                  width: _monthItemWidth,
+                  child: MouseRegion(
+                    cursor: SystemMouseCursors.click,
+                    child: GestureDetector(
+                      onTap: () {
+                        if (i == _month) return;
+                        HapticFeedback.selectionClick();
+                        setState(() => _month = i);
+                        _alignMonth();
+                        _load();
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 160),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: i == _month ? _accent : _chip,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          _monthNames[i - 1].substring(0, 3),
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: i == _month
+                                ? FontWeight.w600
+                                : FontWeight.w500,
+                            color: i == _month ? Colors.white : _titleColor,
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -2619,4 +2686,25 @@ class _ChartSlice {
   final String label;
   final double value;
   final Color color;
+}
+
+class _KeepAlive extends StatefulWidget {
+  const _KeepAlive({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  State<_KeepAlive> createState() => _KeepAliveState();
+}
+
+class _KeepAliveState extends State<_KeepAlive>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
+  }
 }
