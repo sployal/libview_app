@@ -2750,7 +2750,11 @@ app.get('/folders/:folderId', requireAuth, async (req, res) => {
 
 // --- AI chat (NVIDIA Llama vision) --------------------------------------
 
-registerAiRoutes(app, { requireAuth, firestore });
+registerAiRoutes(app, {
+  requireAuth,
+  firestore,
+  recordAiUsage: analytics.recordAiUsage,
+});
 registerMediaRoutes(app, { requireAuth, requireSystemAdmin, upload });
 registerContactRoutes(app, { oauth2Client });
 analytics.registerAnalyticsRoutes(app, { requireAuth, requireSystemAdmin });

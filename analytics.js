@@ -309,6 +309,115 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
     };
   }
 
+  function emptyAiStats() {
+    return {
+      requests: 0,
+      promptTokens: 0,
+      completionTokens: 0,
+      totalTokens: 0,
+    };
+  }
+
+  function isAiStatsShape(value) {
+    return Boolean(
+      value &&
+        typeof value === 'object' &&
+        !Array.isArray(value) &&
+        ('requests' in value ||
+          'promptTokens' in value ||
+          'completionTokens' in value ||
+          'totalTokens' in value),
+    );
+  }
+
+  function mergeAiStats(value) {
+    const out = emptyAiStats();
+    if (!value || typeof value !== 'object') return out;
+    out.requests = num(value.requests);
+    out.promptTokens = num(value.promptTokens);
+    out.completionTokens = num(value.completionTokens);
+    out.totalTokens = num(value.totalTokens);
+    if (!out.totalTokens) out.totalTokens = out.promptTokens + out.completionTokens;
+    return out;
+  }
+
+  function addAiStats(target, value) {
+    const stats = mergeAiStats(value);
+    target.requests += stats.requests;
+    target.promptTokens += stats.promptTokens;
+    target.completionTokens += stats.completionTokens;
+    target.totalTokens += stats.totalTokens;
+    return target;
+  }
+
+  function mergeAiOwnerMap(raw) {
+    const out = {};
+    if (!raw || typeof raw !== 'object') return out;
+    for (const [id, value] of Object.entries(raw)) {
+      if (!isAiStatsShape(value)) continue;
+      const stats = mergeAiStats(value);
+      if (stats.requests || stats.totalTokens) out[id] = stats;
+    }
+    return out;
+  }
+
+  function aggregateAiMap(raw) {
+    if (isAiStatsShape(raw)) return mergeAiStats(raw);
+    const out = emptyAiStats();
+    if (!raw || typeof raw !== 'object') return out;
+    for (const value of Object.values(raw)) {
+      addAiStats(out, value);
+    }
+    return out;
+  }
+
+  function extractAi(data, prefix) {
+    const src = readPrefixed(data, prefix);
+    const ai = src.ai && typeof src.ai === 'object' ? src.ai : {};
+    const courses = mergeAiOwnerMap(ai.courses);
+    const clients = aggregateAiMap(ai.clients);
+    const other = mergeAiStats(ai.other);
+    const totals = mergeAiStats(ai);
+    if (!totals.requests && !totals.totalTokens) {
+      Object.values(courses).forEach((stats) => addAiStats(totals, stats));
+      addAiStats(totals, clients);
+      addAiStats(totals, other);
+    }
+    return { ...totals, courses, clients, other };
+  }
+
+  function aiIncrements(platform, owner, usage) {
+    const updates = {};
+    const prompt = Math.max(0, Math.round(num(usage?.promptTokens)));
+    const completion = Math.max(0, Math.round(num(usage?.completionTokens)));
+    const total = Math.max(
+      0,
+      Math.round(num(usage?.totalTokens) || prompt + completion),
+    );
+    const ownerPath =
+      owner.kind === 'course'
+        ? `courses.${safeField(owner.id, 'course')}`
+        : owner.kind === 'client'
+          ? 'clients'
+          : 'other';
+
+    for (const prefix of [platform, 'all']) {
+      updates[`${prefix}.ai.requests`] = increment(1);
+      updates[`${prefix}.ai.promptTokens`] = increment(prompt);
+      updates[`${prefix}.ai.completionTokens`] = increment(completion);
+      updates[`${prefix}.ai.totalTokens`] = increment(total);
+      updates[`${prefix}.ai.${ownerPath}.requests`] = increment(1);
+      updates[`${prefix}.ai.${ownerPath}.promptTokens`] = increment(prompt);
+      updates[`${prefix}.ai.${ownerPath}.completionTokens`] = increment(completion);
+      updates[`${prefix}.ai.${ownerPath}.totalTokens`] = increment(total);
+    }
+
+    if (owner.kind === 'course') {
+      updates[`courseNames.${safeField(owner.id, 'course')}`] = owner.name || owner.id;
+    }
+    return updates;
+  }
+
   function applyEventToBucket(bucket, event) {
     const kind = playbackKind(event);
     if (kind !== 'upload' && kind !== 'download' && kind !== 'stream') return;
@@ -660,6 +769,47 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
     ]);
   }
 
+  async function recordAiUsage({ req, usage }) {
+    const uid = req?.user?.uid;
+    if (!uid) return;
+
+    try {
+      const platform = clientPlatform(req);
+      const dateKey = nairobiKey();
+      const monthKey = dateKey.slice(0, 7);
+      const yearKey = dateKey.slice(0, 4);
+      const loaded = await getCatalog();
+      const userProfile = await loadProfile(uid);
+      const owner = matchUserCourse(userProfile, loaded);
+      const increments = aiIncrements(platform, owner, usage);
+
+      await Promise.all([
+        patchRollup(
+          firestore.collection('analytics_daily').doc(dateKey),
+          { date: dateKey },
+          increments,
+        ),
+        patchRollup(
+          firestore.collection('analytics_monthly').doc(monthKey),
+          { month: monthKey },
+          increments,
+        ),
+        patchRollup(
+          firestore.collection('analytics_yearly').doc(yearKey),
+          { year: yearKey },
+          increments,
+        ),
+        patchRollup(
+          firestore.collection('analytics_totals').doc('all'),
+          {},
+          increments,
+        ),
+      ]);
+    } catch (err) {
+      console.warn('Could not record AI analytics:', err.message);
+    }
+  }
+
   async function touchLastSeen(req) {
     const uid = req.user?.uid;
     if (!uid) return;
@@ -871,6 +1021,31 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
       (a, b) =>
         b.bytesUploaded + b.bytesDownloaded - (a.bytesUploaded + a.bytesDownloaded),
     );
+    return rows;
+  }
+
+  function pushAiRow(rows, id, name, kind, stats) {
+    const item = mergeAiStats(stats);
+    if (!item.requests && !item.totalTokens) return;
+    rows.push({
+      id,
+      name,
+      kind,
+      requests: item.requests,
+      promptTokens: item.promptTokens,
+      completionTokens: item.completionTokens,
+      totalTokens: item.totalTokens,
+    });
+  }
+
+  function aiOwnerRows(ai, names) {
+    const rows = [];
+    for (const [id, stats] of Object.entries(ai.courses || {})) {
+      pushAiRow(rows, id, names[id] || id, 'course', stats);
+    }
+    pushAiRow(rows, 'clients', 'Clients', 'client', ai.clients);
+    pushAiRow(rows, 'unassigned', 'Unassigned', 'other', ai.other);
+    rows.sort((a, b) => b.totalTokens - a.totalTokens || b.requests - a.requests);
     return rows;
   }
 
@@ -1200,6 +1375,7 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
     const availableYears = new Set(yearsSnap.docs.map((doc) => Number(doc.id)).filter(Boolean));
     availableYears.add(nairobiParts().year);
 
+    const ai = extractAi(rollupSource, prefix);
     const avgUpload = rollup.uploads > 0 ? Math.round(rollup.bytesUploaded / rollup.uploads) : 0;
     const downloadBytes = FILE_TYPES.filter((type) => !isMediaType(type)).reduce(
       (sum, type) => sum + num(rollup.types[type]?.bytesDownloaded),
@@ -1266,6 +1442,13 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
       topUploaders: toTop(topMaps.uploads),
       topDownloaders: toTop(topMaps.downloads),
       topPlayers: toTop(topMaps.streams, { includePlays: true }),
+      ai: {
+        requests: ai.requests,
+        promptTokens: ai.promptTokens,
+        completionTokens: ai.completionTokens,
+        totalTokens: ai.totalTokens,
+        byOwner: aiOwnerRows(ai, names),
+      },
     };
   }
 
@@ -1319,6 +1502,7 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
     touchLastSeen,
     recordUploadFromRequest,
     recordDownloadFromRequest,
+    recordAiUsage,
     clientPlatform,
   };
 }

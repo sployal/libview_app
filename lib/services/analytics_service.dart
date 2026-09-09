@@ -205,6 +205,68 @@ class AnalyticsTopUser {
   }
 }
 
+class AnalyticsAiOwner {
+  final String id;
+  final String name;
+  final String kind;
+  final int requests;
+  final int promptTokens;
+  final int completionTokens;
+  final int totalTokens;
+
+  const AnalyticsAiOwner({
+    required this.id,
+    required this.name,
+    this.kind = '',
+    this.requests = 0,
+    this.promptTokens = 0,
+    this.completionTokens = 0,
+    this.totalTokens = 0,
+  });
+
+  factory AnalyticsAiOwner.fromJson(Map<String, dynamic> json) {
+    return AnalyticsAiOwner(
+      id: json['id']?.toString() ?? '',
+      name: json['name']?.toString() ?? '',
+      kind: json['kind']?.toString() ?? '',
+      requests: _int(json['requests']),
+      promptTokens: _int(json['promptTokens']),
+      completionTokens: _int(json['completionTokens']),
+      totalTokens: _int(json['totalTokens']),
+    );
+  }
+}
+
+class AnalyticsAiUsage {
+  final int requests;
+  final int promptTokens;
+  final int completionTokens;
+  final int totalTokens;
+  final List<AnalyticsAiOwner> byOwner;
+
+  const AnalyticsAiUsage({
+    this.requests = 0,
+    this.promptTokens = 0,
+    this.completionTokens = 0,
+    this.totalTokens = 0,
+    this.byOwner = const [],
+  });
+
+  factory AnalyticsAiUsage.fromJson(Map<String, dynamic>? json) {
+    final data = json ?? const {};
+    return AnalyticsAiUsage(
+      requests: _int(data['requests']),
+      promptTokens: _int(data['promptTokens']),
+      completionTokens: _int(data['completionTokens']),
+      totalTokens: _int(data['totalTokens']),
+      byOwner: _list(data['byOwner']).map(AnalyticsAiOwner.fromJson).toList(),
+    );
+  }
+
+  bool get isEmpty =>
+      requests <= 0 && totalTokens <= 0 && byOwner.isEmpty;
+}
+
 class AnalyticsSnapshot {
   final String periodKind;
   final int year;
@@ -234,6 +296,7 @@ class AnalyticsSnapshot {
   final List<AnalyticsTopUser> topUploaders;
   final List<AnalyticsTopUser> topDownloaders;
   final List<AnalyticsTopUser> topPlayers;
+  final AnalyticsAiUsage ai;
 
   const AnalyticsSnapshot({
     required this.periodKind,
@@ -264,6 +327,7 @@ class AnalyticsSnapshot {
     this.topUploaders = const [],
     this.topDownloaders = const [],
     this.topPlayers = const [],
+    this.ai = const AnalyticsAiUsage(),
   });
 
   factory AnalyticsSnapshot.fromJson(Map<String, dynamic> json) {
@@ -317,6 +381,7 @@ class AnalyticsSnapshot {
           _list(json['topDownloaders']).map(AnalyticsTopUser.fromJson).toList(),
       topPlayers:
           _list(json['topPlayers']).map(AnalyticsTopUser.fromJson).toList(),
+      ai: AnalyticsAiUsage.fromJson(_map(json['ai'])),
     );
   }
 

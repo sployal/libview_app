@@ -274,6 +274,9 @@ class _SystemAdminAnalyticsScreenState
                           _activityCard(),
                           const SizedBox(height: 16),
                           _topUsersCard(),
+                          const SizedBox(height: 24),
+                          _sectionLabel('Other'),
+                          _aiAnalysisCard(),
                         ],
                       ]),
                     ),
@@ -1330,11 +1333,115 @@ class _SystemAdminAnalyticsScreenState
     );
   }
 
+  Widget _sectionLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 0, 4, 10),
+      child: Text(
+        text.toUpperCase(),
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.8,
+          color: _muted,
+        ),
+      ),
+    );
+  }
+
+  Widget _aiAnalysisCard() {
+    const promptColor = Color(0xFF6366F1);
+    const completionColor = Color(0xFF14B8A6);
+    final ai = _data?.ai ?? const AnalyticsAiUsage();
+    final rows = ai.byOwner;
+    final totalTokens = ai.totalTokens > 0
+        ? ai.totalTokens
+        : rows.fold<int>(0, (sum, row) => sum + row.totalTokens);
+    final requests = ai.requests > 0
+        ? ai.requests
+        : rows.fold<int>(0, (sum, row) => sum + row.requests);
+
+    return _panel(
+      child: Column(
+        children: [
+          _cardHeader(
+            icon: CupertinoIcons.sparkles,
+            color: completionColor,
+            title: 'AI analysis',
+            subtitle: 'Tokens used by course. Client usage is combined.',
+            meta: totalTokens > 0 ? _tokens(totalTokens) : null,
+          ),
+          if (ai.isEmpty)
+            _emptyState(
+              CupertinoIcons.sparkles,
+              'AI token use appears here after the first chat in this period.',
+            )
+          else ...[
+            if (rows.any((row) => row.totalTokens > 0)) ...[
+              _pieBlock(
+                values: [
+                  for (var i = 0; i < rows.length; i++)
+                    _ChartSlice(
+                      label: rows[i].name,
+                      value: rows[i].totalTokens.toDouble(),
+                      color: _palette[i % _palette.length],
+                    ),
+                ],
+                empty: 'No AI token use in this period yet.',
+                emptyIcon: CupertinoIcons.sparkles,
+                centerLabel: 'tokens',
+                formatTotal: (total) => _compactNumber(total.round()),
+                formatSlice: (slice) =>
+                    '${slice.label} · ${_tokens(slice.value.round())}',
+              ),
+              _hairline(indent: 0),
+            ],
+            _progressRow(
+              color: promptColor,
+              title: 'Prompt tokens',
+              subtitle: 'Sent to the model',
+              value: _tokens(ai.promptTokens),
+              progress: _share(ai.promptTokens, totalTokens),
+              showDivider: true,
+            ),
+            _progressRow(
+              color: completionColor,
+              title: 'Completion tokens',
+              subtitle: 'Returned by the model',
+              value: _tokens(ai.completionTokens),
+              progress: _share(ai.completionTokens, totalTokens),
+              showDivider: true,
+            ),
+            _progressRow(
+              color: const Color(0xFF8B5CF6),
+              title: 'Requests',
+              subtitle: requests == 1 ? '1 chat turn' : '$requests chat turns',
+              value: _compactNumber(requests),
+              progress: 1,
+              showDivider: rows.isNotEmpty,
+            ),
+            if (rows.isNotEmpty) _innerHeader('By course and clients'),
+            for (var i = 0; i < rows.length; i++)
+              _progressRow(
+                color: _palette[i % _palette.length],
+                title: rows[i].name,
+                subtitle: _aiOwnerSubtitle(rows[i]),
+                value: _tokens(rows[i].totalTokens),
+                progress: _share(rows[i].totalTokens, totalTokens),
+                showDivider: i < rows.length - 1,
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _pieBlock({
     required List<_ChartSlice> values,
     required String empty,
     required IconData emptyIcon,
     required String centerLabel,
+    String Function(double total)? formatTotal,
+    String Function(_ChartSlice slice)? formatSlice,
   }) {
     final slices = values.where((item) => item.value > 0).toList();
     if (slices.isEmpty) return _emptyState(emptyIcon, empty);
@@ -1376,7 +1483,7 @@ class _SystemAdminAnalyticsScreenState
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      '${total.round()}',
+                      formatTotal?.call(total) ?? '${total.round()}',
                       style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.w700,
@@ -1406,7 +1513,8 @@ class _SystemAdminAnalyticsScreenState
               for (final slice in slices)
                 _legendChip(
                   slice.color,
-                  '${slice.label} · ${slice.value.round()}',
+                  formatSlice?.call(slice) ??
+                      '${slice.label} · ${slice.value.round()}',
                 ),
             ],
           ),
@@ -2404,6 +2512,31 @@ class _SystemAdminAnalyticsScreenState
   }
 
   String _bytes(int bytes) => DownloadService.formatFileSize(bytes);
+
+  String _compactNumber(int value) {
+    final abs = value.abs();
+    if (abs < 1000) return '$value';
+    final suffix = abs < 1000000 ? 'k' : 'M';
+    final scaled = abs < 1000000 ? value / 1000 : value / 1000000;
+    final absScaled = scaled.abs();
+    final text = absScaled >= 100 || scaled == scaled.roundToDouble()
+        ? scaled.round().toString()
+        : scaled.toStringAsFixed(1).replaceAll(RegExp(r'\.0$'), '');
+    return '$text$suffix';
+  }
+
+  String _tokens(int value) => '${_compactNumber(value)} tok';
+
+  String _aiOwnerSubtitle(AnalyticsAiOwner row) {
+    final kind = row.kind == 'client'
+        ? 'All clients'
+        : row.kind == 'other'
+            ? 'Unassigned'
+            : 'Course';
+    final requests =
+        row.requests == 1 ? '1 request' : '${row.requests} requests';
+    return '$kind · $requests';
+  }
 
   String _platformLabel(String platform) {
     switch (platform) {

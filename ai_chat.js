@@ -60,6 +60,20 @@ function extractReply(data) {
   return '';
 }
 
+function extractUsage(data) {
+  const usage = data?.usage || {};
+  const promptTokens = Math.max(0, Math.round(Number(usage.prompt_tokens) || 0));
+  const completionTokens = Math.max(
+    0,
+    Math.round(Number(usage.completion_tokens) || 0),
+  );
+  const totalTokens = Math.max(
+    0,
+    Math.round(Number(usage.total_tokens) || promptTokens + completionTokens),
+  );
+  return { promptTokens, completionTokens, totalTokens };
+}
+
 async function isClientUser(firestore, uid) {
   if (!firestore || !uid) return false;
   try {
@@ -72,7 +86,7 @@ async function isClientUser(firestore, uid) {
   }
 }
 
-function registerAiRoutes(app, { requireAuth, firestore }) {
+function registerAiRoutes(app, { requireAuth, firestore, recordAiUsage }) {
   app.post('/ai/chat', requireAuth, async (req, res) => {
     const apiKey = process.env.NVIDIA_API_KEY;
     if (!apiKey) {
@@ -115,6 +129,11 @@ function registerAiRoutes(app, { requireAuth, firestore }) {
       }
 
       res.json({ reply });
+      if (typeof recordAiUsage === 'function') {
+        recordAiUsage({ req, usage: extractUsage(response.data) }).catch((err) => {
+          console.warn('Could not record AI analytics:', err.message || err);
+        });
+      }
     } catch (error) {
       const status = error.response?.status || 500;
       const nvidiaError = error.response?.data;
