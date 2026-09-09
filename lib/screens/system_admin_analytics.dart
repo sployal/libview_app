@@ -1696,14 +1696,31 @@ class _SystemAdminAnalyticsScreenState
           : downloadOf(point);
       return local > current ? local : current;
     });
+    final rodWidth = points.length > 16 ? 5.0 : 8.0;
     final groups = <BarChartGroupData>[
       for (var i = 0; i < points.length; i++)
         BarChartGroupData(
           x: i,
-          barsSpace: 3,
+          barsSpace: 0,
           barRods: [
-            _rod(uploadOf(points[i]), _accent, points.length),
-            _rod(downloadOf(points[i]), _sky, points.length),
+            _rod(
+              uploadOf(points[i]),
+              _accent,
+              points.length,
+              width: rodWidth,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(6),
+              ),
+            ),
+            _rod(
+              downloadOf(points[i]),
+              _sky,
+              points.length,
+              width: rodWidth,
+              borderRadius: const BorderRadius.only(
+                topRight: Radius.circular(6),
+              ),
+            ),
           ],
         ),
     ];
@@ -1736,27 +1753,9 @@ class _SystemAdminAnalyticsScreenState
               sideTitles: SideTitles(
                 showTitles: true,
                 reservedSize: 24,
-                interval: points.length > 16 ? 5 : 1,
-                getTitlesWidget: (value, meta) {
-                  final index = value.round();
-                  if (index < 0 || index >= points.length) {
-                    return const SizedBox.shrink();
-                  }
-                  if (points.length > 16 && index % 5 != 0) {
-                    return const SizedBox.shrink();
-                  }
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: Text(
-                      points[index].label,
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: _muted,
-                      ),
-                    ),
-                  );
-                },
+                interval: _seriesLabelStep(points.length).toDouble(),
+                getTitlesWidget: (value, _) =>
+                    _seriesBottomTitle(points, value),
               ),
             ),
           ),
@@ -1766,7 +1765,7 @@ class _SystemAdminAnalyticsScreenState
               getTooltipItem: (group, _, rod, rodIndex) {
                 final label = rodIndex == 0 ? 'Upload' : 'Download';
                 return BarTooltipItem(
-                  '${points[group.x].label}\n$label ${tooltip(rod.toY.round())}',
+                  '${_seriesHoverLabel(points[group.x])}\n$label ${tooltip(rod.toY.round())}',
                   const TextStyle(
                     color: Colors.white,
                     fontSize: 12,
@@ -1833,27 +1832,9 @@ class _SystemAdminAnalyticsScreenState
               sideTitles: SideTitles(
                 showTitles: true,
                 reservedSize: 24,
-                interval: points.length > 16 ? 5 : 1,
-                getTitlesWidget: (value, meta) {
-                  final index = value.round();
-                  if (index < 0 || index >= points.length) {
-                    return const SizedBox.shrink();
-                  }
-                  if (points.length > 16 && index % 5 != 0) {
-                    return const SizedBox.shrink();
-                  }
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: Text(
-                      points[index].label,
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: _muted,
-                      ),
-                    ),
-                  );
-                },
+                interval: _seriesLabelStep(points.length).toDouble(),
+                getTitlesWidget: (value, _) =>
+                    _seriesBottomTitle(points, value),
               ),
             ),
           ),
@@ -1862,7 +1843,7 @@ class _SystemAdminAnalyticsScreenState
               getTooltipColor: (_) => const Color(0xFF0F172A),
               getTooltipItem: (group, _, rod, __) {
                 return BarTooltipItem(
-                  '${points[group.x].label}\n${tooltip(rod.toY.round())}',
+                  '${_seriesHoverLabel(points[group.x])}\n${tooltip(rod.toY.round())}',
                   const TextStyle(
                     color: Colors.white,
                     fontSize: 12,
@@ -1947,11 +1928,18 @@ class _SystemAdminAnalyticsScreenState
     );
   }
 
-  BarChartRodData _rod(double value, Color color, int count) {
+  BarChartRodData _rod(
+    double value,
+    Color color,
+    int count, {
+    double? width,
+    BorderRadius? borderRadius,
+  }) {
     return BarChartRodData(
       toY: value,
-      width: count > 16 ? 5 : 8,
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+      width: width ?? (count > 16 ? 5 : 8),
+      borderRadius:
+          borderRadius ?? const BorderRadius.vertical(top: Radius.circular(6)),
       gradient: LinearGradient(
         begin: Alignment.bottomCenter,
         end: Alignment.topCenter,
@@ -2737,6 +2725,45 @@ class _SystemAdminAnalyticsScreenState
         ),
       ),
     );
+  }
+
+  int _seriesLabelStep(int count) {
+    if (_period == 'month' && count > 2) return 2;
+    return count > 16 ? 5 : 1;
+  }
+
+  Widget _seriesBottomTitle(List<AnalyticsSeriesPoint> points, double value) {
+    final index = value.round();
+    if (index < 0 || index >= points.length) {
+      return const SizedBox.shrink();
+    }
+    final step = _seriesLabelStep(points.length);
+    if (step > 1 && index % step != 0) {
+      return const SizedBox.shrink();
+    }
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Text(
+        points[index].label,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+          color: _muted,
+        ),
+      ),
+    );
+  }
+
+  String _seriesHoverLabel(AnalyticsSeriesPoint point) {
+    if (_period == 'month') {
+      final day = int.tryParse(point.label);
+      if (day != null && day >= 1 && day <= 31 && _month >= 1 && _month <= 12) {
+        final date = DateTime(_year, _month, day);
+        const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        return '${weekdays[date.weekday - 1]}, ${_monthNames[_month - 1].substring(0, 3)} $day';
+      }
+    }
+    return point.label;
   }
 
   List<FlSpot> _activitySpots() {
