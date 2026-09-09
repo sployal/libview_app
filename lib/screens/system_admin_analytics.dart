@@ -66,12 +66,17 @@ class _SystemAdminAnalyticsScreenState
   String _platformBytesKind = 'download';
   late int _year;
   late int _month;
+  late int _week;
   AnalyticsSnapshot? _data;
   late final ScrollController _monthScroll;
+  late final ScrollController _weekScroll;
   bool _pinMonthWindow = true;
   static const _monthItemWidth = 52.0;
   static const _monthItemGap = 8.0;
   static const _monthItemExtent = _monthItemWidth + _monthItemGap;
+  static const _weekItemWidth = 52.0;
+  static const _weekItemGap = 8.0;
+  static const _weekItemExtent = _weekItemWidth + _weekItemGap;
 
   bool get _isDark => Theme.of(context).brightness == Brightness.dark;
   bool get _wide => MediaQuery.sizeOf(context).width >= 720;
@@ -93,9 +98,15 @@ class _SystemAdminAnalyticsScreenState
     final now = DateTime.now();
     _year = now.year;
     _month = now.month;
+    _week = _isoWeekInfo(now).week;
     _monthScroll = ScrollController(
       onAttach: (_) {
         if (_period == 'month') _alignMonth(animate: false);
+      },
+    );
+    _weekScroll = ScrollController(
+      onAttach: (_) {
+        if (_period == 'week') _alignWeek(animate: false);
       },
     );
     _verifyAccess();
@@ -104,6 +115,7 @@ class _SystemAdminAnalyticsScreenState
   @override
   void dispose() {
     _monthScroll.dispose();
+    _weekScroll.dispose();
     super.dispose();
   }
 
@@ -139,6 +151,7 @@ class _SystemAdminAnalyticsScreenState
         platform: _platform,
         year: _period == 'all' ? null : _year,
         month: _period == 'month' ? _month : null,
+        week: _period == 'week' ? _week : null,
       );
       if (!mounted) return;
       setState(() {
@@ -150,6 +163,7 @@ class _SystemAdminAnalyticsScreenState
         }
       });
       _alignMonth(animate: false);
+      _alignWeek(animate: false);
     } catch (error) {
       if (!mounted) return;
       setState(() {
@@ -157,15 +171,53 @@ class _SystemAdminAnalyticsScreenState
         _loading = false;
       });
       _alignMonth(animate: false);
+      _alignWeek(animate: false);
     }
   }
 
   void _selectPeriod(String period) {
     if (_period == period) return;
     HapticFeedback.selectionClick();
-    setState(() => _period = period);
+    setState(() {
+      _period = period;
+      if (period == 'week') {
+        final iso = _isoWeekInfo(DateTime.now());
+        if (_year == iso.year) {
+          _week = iso.week;
+        } else {
+          _week = _week.clamp(1, _weeksInIsoYear(_year)).toInt();
+        }
+      }
+    });
     if (period == 'month') _alignMonth(animate: false);
+    if (period == 'week') _alignWeek(animate: false);
     _load();
+  }
+
+  ({int year, int week}) _isoWeekInfo(DateTime date) {
+    final utc = DateTime.utc(date.year, date.month, date.day);
+    final thursday = utc.add(Duration(days: 4 - utc.weekday));
+    final jan4 = DateTime.utc(thursday.year, 1, 4);
+    final week1Monday = jan4.subtract(Duration(days: jan4.weekday - 1));
+    final week = 1 + thursday.difference(week1Monday).inDays ~/ 7;
+    return (year: thursday.year, week: week);
+  }
+
+  int _weeksInIsoYear(int year) {
+    return _isoWeekInfo(DateTime.utc(year, 12, 28)).week;
+  }
+
+  String get _periodPhrase {
+    switch (_period) {
+      case 'week':
+        return 'this week';
+      case 'year':
+        return 'this year';
+      case 'all':
+        return 'all time';
+      default:
+        return 'this month';
+    }
   }
 
   double _monthWindowOffset(double viewport, double maxExtent) {
@@ -208,6 +260,34 @@ class _SystemAdminAnalyticsScreenState
       } else {
         _monthScroll.jumpTo(target);
         _pinMonthWindow = false;
+      }
+    });
+  }
+
+  void _alignWeek({bool animate = true, int attempt = 0}) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _period != 'week') return;
+      if (!_weekScroll.hasClients) {
+        if (attempt < 24) _alignWeek(animate: animate, attempt: attempt + 1);
+        return;
+      }
+      final position = _weekScroll.position;
+      final maxExtent = position.maxScrollExtent;
+      if (position.viewportDimension <= 0 && attempt < 24) {
+        _alignWeek(animate: animate, attempt: attempt + 1);
+        return;
+      }
+      final target =
+          ((_week - 1) * _weekItemExtent).clamp(0.0, maxExtent).toDouble();
+      if ((position.pixels - target).abs() < 1) return;
+      if (animate) {
+        _weekScroll.animateTo(
+          target,
+          duration: const Duration(milliseconds: 280),
+          curve: Curves.easeOutCubic,
+        );
+      } else {
+        _weekScroll.jumpTo(target);
       }
     });
   }
@@ -372,6 +452,7 @@ class _SystemAdminAnalyticsScreenState
             const SizedBox(height: 10),
             _segmented(
               options: const [
+                ('week', 'Weekly'),
                 ('month', 'Monthly'),
                 ('year', 'Yearly'),
                 ('all', 'All time'),
@@ -390,7 +471,13 @@ class _SystemAdminAnalyticsScreenState
                   final next = int.tryParse(value);
                   if (next == null || next == _year) return;
                   HapticFeedback.selectionClick();
-                  setState(() => _year = next);
+                  setState(() {
+                    _year = next;
+                    if (_period == 'week') {
+                      _week = _week.clamp(1, _weeksInIsoYear(_year)).toInt();
+                    }
+                  });
+                  if (_period == 'week') _alignWeek(animate: false);
                   _load();
                 },
               ),
@@ -398,6 +485,10 @@ class _SystemAdminAnalyticsScreenState
             if (_period == 'month') ...[
               const SizedBox(height: 10),
               _monthPills(),
+            ],
+            if (_period == 'week') ...[
+              const SizedBox(height: 10),
+              _weekPills(),
             ],
           ],
         ),
@@ -508,8 +599,8 @@ class _SystemAdminAnalyticsScreenState
                             const SizedBox(height: 6),
                             Text(
                               data.newUsers > 0
-                                  ? 'active users  ·  +${data.newUsers} new'
-                                  : 'active users this period',
+                                  ? 'active users $_periodPhrase  ·  +${data.newUsers} new'
+                                  : 'active users $_periodPhrase',
                               style: TextStyle(
                                 color: Colors.white.withValues(alpha: 0.78),
                                 fontSize: 14,
@@ -941,7 +1032,9 @@ class _SystemAdminAnalyticsScreenState
                   color: _palette[i % _palette.length],
                 ),
             ],
-            empty: 'No active users in this period yet.',
+            empty: _period == 'all'
+                ? 'No active users yet.'
+                : 'No active users $_periodPhrase yet.',
             emptyIcon: CupertinoIcons.person_2,
             centerLabel: 'users',
           ),
@@ -980,7 +1073,9 @@ class _SystemAdminAnalyticsScreenState
           if (rows.isEmpty)
             _emptyState(
               CupertinoIcons.person_crop_circle,
-              'No role activity in this period.',
+              _period == 'all'
+                  ? 'No role activity yet.'
+                  : 'No role activity $_periodPhrase.',
             )
           else
             for (var i = 0; i < rows.length; i++)
@@ -1978,8 +2073,10 @@ class _SystemAdminAnalyticsScreenState
                     child: Text(
                       option.$2,
                       textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: options.length > 3 ? 12 : 13,
                         fontWeight: selected == option.$1
                             ? FontWeight.w600
                             : FontWeight.w500,
@@ -2083,6 +2180,57 @@ class _SystemAdminAnalyticsScreenState
               ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _weekPills() {
+    final weeks = _weeksInIsoYear(_year);
+    return SingleChildScrollView(
+      controller: _weekScroll,
+      scrollDirection: Axis.horizontal,
+      physics: const BouncingScrollPhysics(),
+      child: Row(
+        children: [
+          for (var i = 1; i <= weeks; i++)
+            Padding(
+              padding: const EdgeInsets.only(right: _weekItemGap),
+              child: SizedBox(
+                width: _weekItemWidth,
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: GestureDetector(
+                    onTap: () {
+                      if (i == _week) return;
+                      HapticFeedback.selectionClick();
+                      setState(() => _week = i);
+                      _alignWeek();
+                      _load();
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 160),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: i == _week ? _accent : _chip,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        'W$i',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: i == _week
+                              ? FontWeight.w600
+                              : FontWeight.w500,
+                          color: i == _week ? Colors.white : _titleColor,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

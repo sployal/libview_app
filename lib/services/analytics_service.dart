@@ -271,6 +271,7 @@ class AnalyticsSnapshot {
   final String periodKind;
   final int year;
   final int? month;
+  final int? week;
   final String periodLabel;
   final String platform;
   final List<int> availableYears;
@@ -304,6 +305,7 @@ class AnalyticsSnapshot {
     required this.periodLabel,
     required this.platform,
     this.month,
+    this.week,
     this.availableYears = const [],
     this.activeUsers = 0,
     this.newUsers = 0,
@@ -341,6 +343,7 @@ class AnalyticsSnapshot {
       periodKind: period['kind']?.toString() ?? 'month',
       year: _int(period['year'], DateTime.now().year),
       month: period['month'] == null ? null : _int(period['month']),
+      week: period['week'] == null ? null : _int(period['week']),
       periodLabel: period['label']?.toString() ?? 'Analytics',
       platform: json['platform']?.toString() ?? 'all',
       availableYears: _intList(json['availableYears']),
@@ -486,6 +489,7 @@ class AnalyticsService {
     required String platform,
     int? year,
     int? month,
+    int? week,
   }) async {
     try {
       final response = await _dio.get(
@@ -495,6 +499,7 @@ class AnalyticsService {
           'platform': platform,
           if (year != null) 'year': year,
           if (month != null) 'month': month,
+          if (week != null) 'week': week,
         },
         options: await _options(),
       );

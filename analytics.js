@@ -61,6 +61,69 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
     return new Date(year, month, 0).getDate();
   }
 
+  function pad2(value) {
+    return String(value).padStart(2, '0');
+  }
+
+  function nairobiWeekday(date = new Date()) {
+    const label = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Africa/Nairobi',
+      weekday: 'short',
+    }).format(date);
+    return { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 }[label] ?? 0;
+  }
+
+  function isoWeekInfo(date = new Date()) {
+    const parts = nairobiParts(date);
+    const current = nairobiDate(`${parts.year}-${pad2(parts.month)}-${pad2(parts.day)}`);
+    const weekday = nairobiWeekday(current);
+    const isoDay = weekday === 0 ? 7 : weekday;
+    const thursday = new Date(current.getTime() + (4 - isoDay) * 86400000);
+    const weekYear = nairobiParts(thursday).year;
+    const jan4 = nairobiDate(`${weekYear}-01-04`);
+    const jan4Day = nairobiWeekday(jan4);
+    const jan4Iso = jan4Day === 0 ? 7 : jan4Day;
+    const week1Monday = new Date(jan4.getTime() - (jan4Iso - 1) * 86400000);
+    const week = Math.floor((current.getTime() - week1Monday.getTime()) / 604800000) + 1;
+    return { year: weekYear, week, isoDay };
+  }
+
+  function weeksInIsoYear(year) {
+    return isoWeekInfo(nairobiDate(`${year}-12-28`)).week;
+  }
+
+  function weekRange(weekYear, week) {
+    const jan4 = nairobiDate(`${weekYear}-01-04`);
+    const jan4Day = nairobiWeekday(jan4);
+    const jan4Iso = jan4Day === 0 ? 7 : jan4Day;
+    const week1Monday = new Date(jan4.getTime() - (jan4Iso - 1) * 86400000);
+    const startDate = new Date(week1Monday.getTime() + (week - 1) * 604800000);
+    const days = [];
+    for (let i = 0; i < 7; i += 1) {
+      const d = new Date(startDate.getTime() + i * 86400000);
+      const p = nairobiParts(d);
+      days.push({
+        year: p.year,
+        month: p.month,
+        day: p.day,
+        key: `${p.year}-${pad2(p.month)}-${pad2(p.day)}`,
+      });
+    }
+    const first = days[0];
+    const last = days[6];
+    const label =
+      first.month === last.month
+        ? `${first.day}–${last.day} ${MONTH_NAMES[first.month - 1]} ${weekYear}`
+        : `${first.day} ${MONTH_NAMES[first.month - 1].slice(0, 3)} – ${last.day} ${MONTH_NAMES[last.month - 1].slice(0, 3)} ${weekYear}`;
+    return {
+      days,
+      start: nairobiDate(first.key),
+      end: nairobiDate(last.key, true),
+      label,
+      month: first.month,
+    };
+  }
+
   function asDate(value) {
     if (!value) return null;
     if (typeof value.toDate === 'function') return value.toDate();
@@ -296,6 +359,50 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
       },
     };
     return normalizeMediaPlays(bucket);
+  }
+
+  function addCountFields(target, source) {
+    if (!target || !source) return target;
+    target.uploads = num(target.uploads) + num(source.uploads);
+    target.downloads = num(target.downloads) + num(source.downloads);
+    target.streams = num(target.streams) + num(source.streams);
+    target.bytesUploaded = num(target.bytesUploaded) + num(source.bytesUploaded);
+    target.bytesDownloaded = num(target.bytesDownloaded) + num(source.bytesDownloaded);
+    target.bytesStreamed = num(target.bytesStreamed) + num(source.bytesStreamed);
+    if ('activeUsers' in target) {
+      target.activeUsers = num(target.activeUsers) + num(source.activeUsers);
+    }
+    return target;
+  }
+
+  function addBucket(target, source) {
+    if (!source) return target;
+    addCountFields(target, source);
+    for (const type of FILE_TYPES) {
+      addCountFields(target.types[type], source.types?.[type]);
+    }
+    for (const [id, stats] of Object.entries(source.courses || {})) {
+      if (!target.courses[id]) target.courses[id] = emptyOwnerStats();
+      addCountFields(target.courses[id], stats);
+    }
+    for (const [id, stats] of Object.entries(source.clients || {})) {
+      if (!target.clients[id]) target.clients[id] = emptyOwnerStats();
+      addCountFields(target.clients[id], stats);
+    }
+    addCountFields(target.other, source.other);
+    return target;
+  }
+
+  function addExtractedAi(target, source) {
+    if (!source) return target;
+    addAiStats(target, source);
+    for (const [id, stats] of Object.entries(source.courses || {})) {
+      if (!target.courses[id]) target.courses[id] = emptyAiStats();
+      addAiStats(target.courses[id], stats);
+    }
+    addAiStats(target.clients, source.clients);
+    addAiStats(target.other, source.other);
+    return target;
   }
 
   function emptyOwnerStats() {
@@ -932,10 +1039,31 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
     }
   }
 
-  function periodMeta(kind, year, month) {
+  function periodMeta(kind, year, month, week) {
     const now = nairobiParts();
     const selectedYear = Number(year) || now.year;
     const selectedMonth = Math.min(12, Math.max(1, Number(month) || now.month));
+
+    if (kind === 'week') {
+      const current = isoWeekInfo();
+      const weekYear = Number(year) || current.year;
+      const maxWeek = weeksInIsoYear(weekYear);
+      const selectedWeek = Math.min(
+        maxWeek,
+        Math.max(1, Number(week) || (weekYear === current.year ? current.week : 1)),
+      );
+      const range = weekRange(weekYear, selectedWeek);
+      return {
+        kind: 'week',
+        year: weekYear,
+        month: range.month,
+        week: selectedWeek,
+        label: range.label,
+        start: range.start,
+        end: range.end,
+        days: range.days,
+      };
+    }
 
     if (kind === 'year') {
       const start = nairobiDate(`${selectedYear}-01-01`);
@@ -1080,14 +1208,17 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
     return labels[role] || role || 'Other';
   }
 
-  async function buildAnalytics({ period, year, month, platform }) {
+  async function buildAnalytics({ period, year, month, week, platform }) {
     const prefix = platform === 'mobile' || platform === 'web' ? platform : 'all';
-    const meta = periodMeta(period, year, month);
+    const meta = periodMeta(period, year, month, week);
     const loaded = await getCatalog();
+    const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
     let rollupSource = {};
     let mobileSource = {};
     let webSource = {};
+    let weekMerged = null;
+    let weekAi = null;
     const series = [];
 
     if (meta.kind === 'all') {
@@ -1134,6 +1265,40 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
           activeUsers: bucket.activeUsers,
         });
       });
+    } else if (meta.kind === 'week') {
+      const dayReads = await Promise.all(
+        (meta.days || []).map((day) =>
+          firestore.collection('analytics_daily').doc(day.key).get(),
+        ),
+      );
+      rollupSource = { courseNames: {}, clientNames: {} };
+      weekMerged = {
+        all: emptyBucket(),
+        mobile: emptyBucket(),
+        web: emptyBucket(),
+      };
+      dayReads.forEach((doc, index) => {
+        const data = doc.data() || {};
+        Object.assign(rollupSource.courseNames, data.courseNames || {});
+        Object.assign(rollupSource.clientNames, data.clientNames || {});
+        const bucket = extractBucket(data, prefix);
+        addBucket(weekMerged.all, bucket);
+        addBucket(weekMerged.mobile, extractBucket(data, 'mobile'));
+        addBucket(weekMerged.web, extractBucket(data, 'web'));
+        const extractedAi = extractAi(data, prefix);
+        if (!weekAi) weekAi = extractedAi;
+        else addExtractedAi(weekAi, extractedAi);
+        series.push({
+          label: WEEKDAY_LABELS[index],
+          uploads: bucket.uploads,
+          downloads: bucket.downloads,
+          streams: bucket.streams,
+          bytesUploaded: bucket.bytesUploaded,
+          bytesDownloaded: bucket.bytesDownloaded,
+          bytesStreamed: bucket.bytesStreamed,
+          activeUsers: bucket.activeUsers,
+        });
+      });
     } else {
       const monthKey = `${meta.year}-${String(meta.month).padStart(2, '0')}`;
       const snap = await firestore.collection('analytics_monthly').doc(monthKey).get();
@@ -1160,9 +1325,15 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
       });
     }
 
-    let rollup = extractBucket(rollupSource, prefix);
-    mobileSource = extractBucket(rollupSource, 'mobile');
-    webSource = extractBucket(rollupSource, 'web');
+    let rollup = weekMerged
+      ? weekMerged.all
+      : extractBucket(rollupSource, prefix);
+    mobileSource = weekMerged
+      ? weekMerged.mobile
+      : extractBucket(rollupSource, 'mobile');
+    webSource = weekMerged
+      ? weekMerged.web
+      : extractBucket(rollupSource, 'web');
 
     const profilesSnap = await firestore.collection('profiles').get();
     const courseUserCounts = new Map();
@@ -1247,6 +1418,9 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
           seriesLabel = MONTH_NAMES[monthNumber - 1]
             ? MONTH_NAMES[monthNumber - 1].slice(0, 3)
             : '';
+        } else if (eventDate && meta.kind === 'week') {
+          const dayIndex = (meta.days || []).findIndex((day) => day.key === eventDate);
+          seriesLabel = dayIndex >= 0 ? WEEKDAY_LABELS[dayIndex] : '';
         } else if (eventDate) {
           seriesLabel = String(Number(eventDate.slice(8, 10)));
         }
@@ -1375,7 +1549,7 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
     const availableYears = new Set(yearsSnap.docs.map((doc) => Number(doc.id)).filter(Boolean));
     availableYears.add(nairobiParts().year);
 
-    const ai = extractAi(rollupSource, prefix);
+    const ai = weekAi || extractAi(rollupSource, prefix);
     const avgUpload = rollup.uploads > 0 ? Math.round(rollup.bytesUploaded / rollup.uploads) : 0;
     const downloadBytes = FILE_TYPES.filter((type) => !isMediaType(type)).reduce(
       (sum, type) => sum + num(rollup.types[type]?.bytesDownloaded),
@@ -1389,6 +1563,7 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
         kind: meta.kind,
         year: meta.year,
         month: meta.month,
+        week: meta.week || null,
         label: meta.label,
       },
       platform: prefix,
@@ -1459,10 +1634,12 @@ function createAnalytics({ firestore, admin, drive, resolveClientWorkspaceId }) 
         const platform = String(req.query.platform || 'all').toLowerCase();
         const year = req.query.year;
         const month = req.query.month;
+        const week = req.query.week;
         const payload = await buildAnalytics({
-          period: ['all', 'year', 'month'].includes(period) ? period : 'month',
+          period: ['all', 'year', 'month', 'week'].includes(period) ? period : 'month',
           year,
           month,
+          week,
           platform: ['mobile', 'web', 'all'].includes(platform) ? platform : 'all',
         });
         res.json(payload);
