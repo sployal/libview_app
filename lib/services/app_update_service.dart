@@ -8,8 +8,8 @@ import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 
+import '../app_version.dart';
 import 'google_drive_service.dart';
-import '../screens/profile_screen.dart';
 
 class AppUpdateRelease {
   const AppUpdateRelease({
@@ -41,8 +41,8 @@ class AppUpdateService {
 
   static const _apkMime = 'application/vnd.android.package-archive';
 
-  /// Installed label from [ProfileScreen.currentApkLabel].
-  static String get currentApkLabel => ProfileScreen.currentApkLabel;
+  /// Installed label from [appApkLabel] (`lib/app_version.dart`).
+  static String get currentApkLabel => appApkLabel;
 
   static final RegExp _apkNamePattern = RegExp(
     r'^edupal\s+v(\d+(?:\.\d+)*)\.apk$',

@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../app_version.dart';
 import '../services/auth_service.dart';
 import '../services/download_service.dart';
 import '../services/theme_controller.dart';
@@ -21,12 +22,10 @@ import 'users_feedback.dart';
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
-  /// Bump when shipping. Must match Drive APK name without `.apk`.
-  /// Getter (not const) so hot reload picks up edits.
-  static String get currentApkLabel => 'Edupal v5.10';
+  /// Prefer editing [appApkLabel] in `lib/app_version.dart`.
+  static String get currentApkLabel => appApkLabel;
 
-  static String get aboutMessage =>
-      'Your Academic Companion. Edupal helps you organize and access your study materials seamlessly. Created and maintained by David Muigai.';
+  static String get aboutMessage => appAboutMessage;
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();

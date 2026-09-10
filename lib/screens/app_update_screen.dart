@@ -35,6 +35,14 @@ class _AppUpdateGateState extends State<AppUpdateGate>
     _checkForUpdate();
   }
 
+  /// Hot reload does not re-run [initState]; re-check so a bumped
+  /// [appApkLabel] is applied immediately.
+  @override
+  void reassemble() {
+    super.reassemble();
+    _checkForUpdate();
+  }
+
   @override
   void dispose() {
     _authSub?.cancel();
