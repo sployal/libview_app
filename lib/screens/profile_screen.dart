@@ -21,17 +21,18 @@ import 'users_feedback.dart';
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
-  /// Must match Drive APK name without `.apk`.
-  static const currentApkLabel = 'Edupal v7.10';
+  /// Bump when shipping. Must match Drive APK name without `.apk`.
+  /// Getter (not const) so hot reload picks up edits.
+  static String get currentApkLabel => 'Edupal v5.10';
+
+  static String get aboutMessage =>
+      'Your Academic Companion. Edupal helps you organize and access your study materials seamlessly. Created and maintained by David Muigai.';
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  static const _aboutMessage =
-      'Your Academic Companion. Edupal helps you organize and access your study materials seamlessly. Created and maintained by David Muigai.';
-
   final _firestore = FirebaseFirestore.instance;
   String? _fullName;
   String? _email;
@@ -1124,7 +1125,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _showAboutDialog() async {
     await _showThemedDialog<void>(
       title: 'Edupal',
-      content: '${ProfileScreen.currentApkLabel}\n\n$_aboutMessage',
+      content:
+          '${ProfileScreen.currentApkLabel}\n\n${ProfileScreen.aboutMessage}',
       actions: (dialogContext) => [
         TextButton(
           onPressed: () => Navigator.pop(dialogContext),
