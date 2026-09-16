@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
@@ -72,9 +73,10 @@ class _MediaPlaybackOverlayState extends State<MediaPlaybackOverlay>
 
   double _bottomClearance(BuildContext context) {
     final padding = MediaQuery.paddingOf(context).bottom;
-    final fallback = MediaQuery.viewPaddingOf(context).bottom +
-        kBottomNavigationBarHeight;
-    return (padding > fallback ? padding : fallback) + 12;
+    final view = MediaQuery.viewPaddingOf(context).bottom;
+    // The shell already counts the bottom bar in padding. Don't add it again.
+    if (padding > view) return padding;
+    return view + kBottomNavigationBarHeight;
   }
 
   Future<void> _downloadCurrent() async {
@@ -222,6 +224,21 @@ class _FullPlayer extends StatelessWidget {
     final item = session.current;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final palette = _Palette(isDark, item?.isAudio ?? false);
+    final readyVideo = item != null &&
+        !item.isAudio &&
+        !session.loading &&
+        session.error == null;
+    if (readyVideo) {
+      return _VideoTheater(
+        session: session,
+        bottomInset: bottomInset,
+        downloading: downloading,
+        downloadProgress: downloadProgress,
+        onDownload: onDownload,
+        onMode: onMode,
+        onQueue: onQueue,
+      );
+    }
     return Material(
       color: palette.canvas,
       child: Column(
@@ -462,6 +479,219 @@ class _StatusPane extends StatelessWidget {
   }
 }
 
+class _VideoTheater extends StatefulWidget {
+  const _VideoTheater({
+    required this.session,
+    required this.bottomInset,
+    required this.downloading,
+    required this.downloadProgress,
+    required this.onDownload,
+    required this.onMode,
+    required this.onQueue,
+  });
+
+  final MediaSession session;
+  final double bottomInset;
+  final bool downloading;
+  final double downloadProgress;
+  final VoidCallback onDownload;
+  final VoidCallback onMode;
+  final VoidCallback onQueue;
+
+  @override
+  State<_VideoTheater> createState() => _VideoTheaterState();
+}
+
+class _VideoTheaterState extends State<_VideoTheater> {
+  bool _chrome = true;
+  Timer? _hideTimer;
+  static final _overlayPalette = _Palette(true, false);
+
+  MediaSession get session => widget.session;
+
+  @override
+  void initState() {
+    super.initState();
+    session.addListener(_onSession);
+    session.playing.addListener(_onPlaying);
+    _scheduleHide();
+  }
+
+  @override
+  void dispose() {
+    _hideTimer?.cancel();
+    session.removeListener(_onSession);
+    session.playing.removeListener(_onPlaying);
+    super.dispose();
+  }
+
+  void _onSession() {
+    if (!mounted) return;
+    if (session.showUpNext && !_chrome) {
+      setState(() => _chrome = true);
+    }
+    _scheduleHide();
+  }
+
+  void _onPlaying() {
+    if (!mounted) return;
+    if (!session.playing.value) {
+      _hideTimer?.cancel();
+      setState(() => _chrome = true);
+      return;
+    }
+    _scheduleHide();
+  }
+
+  void _scheduleHide() {
+    _hideTimer?.cancel();
+    if (!session.playing.value || session.showUpNext) return;
+    _hideTimer = Timer(const Duration(seconds: 3), () {
+      if (!mounted || !session.playing.value || session.showUpNext) return;
+      setState(() => _chrome = false);
+    });
+  }
+
+  void _onVideoTap() {
+    if (session.showUpNext) return;
+    HapticFeedback.selectionClick();
+    setState(() => _chrome = !_chrome);
+    if (_chrome) _scheduleHide();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final item = session.current;
+    final controller = session.controller;
+    final ready = controller != null && controller.value.isInitialized;
+    final next = session.upcoming;
+    final showChrome = _chrome || !session.playing.value || session.showUpNext;
+    return ColoredBox(
+      color: Colors.black,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (ready)
+            Center(
+              child: AspectRatio(
+                aspectRatio: controller.value.aspectRatio == 0
+                    ? 16 / 9
+                    : controller.value.aspectRatio,
+                child: IgnorePointer(child: VideoPlayer(controller)),
+              ),
+            ),
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: _onVideoTap,
+            ),
+          ),
+          if (session.showUpNext && next != null)
+            _UpNextCurtain(
+              item: next,
+              palette: _overlayPalette,
+              onPlay: () {
+                HapticFeedback.lightImpact();
+                session.playUpcoming();
+              },
+              onReplay: session.togglePlay,
+              onDismiss: session.dismissUpNext,
+            ),
+          Positioned.fill(
+            child: IgnorePointer(
+              ignoring: !showChrome,
+              child: AnimatedOpacity(
+                opacity: showChrome ? 1 : 0,
+                duration: const Duration(milliseconds: 220),
+                child: Stack(
+                  children: [
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            Colors.black.withValues(alpha: 0.72),
+                            Colors.transparent,
+                          ],
+                        ),
+                      ),
+                      child: SafeArea(
+                        bottom: false,
+                        child: _TopBar(
+                          palette: _overlayPalette,
+                          title: item?.title ?? 'Now playing',
+                          subtitle: item == null
+                              ? null
+                              : '${item.kindLabel} · ${session.index + 1} of ${session.queue.length}',
+                          downloading: widget.downloading,
+                          onBack: session.close,
+                          onPopOut: () {
+                            HapticFeedback.lightImpact();
+                            session.popOut();
+                          },
+                          onDownload: widget.onDownload,
+                          onQueue: widget.onQueue,
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (!session.showUpNext)
+                    Center(
+                      child: _PlayOrb(
+                        palette: _overlayPalette,
+                        playing: session.playing.value,
+                        onTap: () {
+                          HapticFeedback.lightImpact();
+                          session.togglePlay();
+                          _scheduleHide();
+                        },
+                      ),
+                    ),
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: widget.bottomInset + 12,
+                    child: _ControlDock(
+                      session: session,
+                      palette: _overlayPalette,
+                      onMode: widget.onMode,
+                      onQueue: widget.onQueue,
+                      overlay: true,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          ),
+          if (widget.downloading)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: SafeArea(
+                bottom: false,
+                child: LinearProgressIndicator(
+                  value: widget.downloadProgress > 0
+                      ? widget.downloadProgress
+                      : null,
+                  minHeight: 2,
+                  color: _overlayPalette.accent,
+                  backgroundColor: Colors.white24,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 class _VideoStage extends StatelessWidget {
   const _VideoStage({required this.session, required this.palette});
 
@@ -498,11 +728,25 @@ class _VideoStage extends StatelessWidget {
                     aspectRatio: controller.value.aspectRatio == 0
                         ? 16 / 9
                         : controller.value.aspectRatio,
-                    child: VideoPlayer(controller),
+                    child: IgnorePointer(
+                      child: VideoPlayer(controller),
+                    ),
+                  ),
+                ),
+              if (!session.showUpNext)
+                Positioned.fill(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      session.togglePlay();
+                    },
                   ),
                 ),
               if (!session.playing.value && !session.showUpNext)
-                Center(child: _PlayOrb(palette: palette, onTap: session.togglePlay)),
+                Center(
+                  child: _PlayOrb(palette: palette, onTap: session.togglePlay),
+                ),
               if (session.showUpNext && next != null)
                 _UpNextCurtain(
                   item: next,
@@ -718,15 +962,63 @@ class _ControlDock extends StatelessWidget {
     required this.palette,
     required this.onMode,
     required this.onQueue,
+    this.overlay = false,
   });
 
   final MediaSession session;
   final _Palette palette;
   final VoidCallback onMode;
   final VoidCallback onQueue;
+  final bool overlay;
 
   @override
   Widget build(BuildContext context) {
+    final controls = Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 4),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  _modeCaption(session),
+                  maxLines: 2,
+                  style: TextStyle(color: palette.muted, fontSize: 12),
+                ),
+              ),
+              const SizedBox(width: 8),
+              _QueueButton(palette: palette, onTap: onQueue),
+              const SizedBox(width: 8),
+              _ModePill(
+                palette: palette,
+                label: session.modeLabel,
+                onTap: onMode,
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          _SeekBar(palette: palette),
+          const SizedBox(height: 4),
+          _TransportRow(session: session, palette: palette),
+        ],
+      ),
+    );
+    if (overlay) {
+      return DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.transparent,
+              Colors.black.withValues(alpha: 0.82),
+            ],
+          ),
+        ),
+        child: controls,
+      );
+    }
     final audio = palette.isAudio;
     return Padding(
       padding: EdgeInsets.fromLTRB(audio ? 16 : 0, 0, audio ? 16 : 0, audio ? 4 : 0),
@@ -743,7 +1035,7 @@ class _ControlDock extends StatelessWidget {
               border: Border.all(color: palette.line),
             ),
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(18, 14, 18, 8),
+              padding: EdgeInsets.fromLTRB(18, 12, 18, audio ? 8 : 0),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
