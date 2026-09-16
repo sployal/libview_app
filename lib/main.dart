@@ -26,6 +26,8 @@ import 'login/onboarding_screen.dart';
 import 'screens/app_update_screen.dart';
 import 'screens/suspend_account.dart';
 import 'ui/app_splash_screen.dart';
+import 'ui/media_playback_overlay.dart';
+import 'services/media_session.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -370,6 +372,7 @@ class _MainScreenState extends State<MainScreen>
     );
     _animationController.forward();
     WidgetsBinding.instance.addObserver(this);
+    MediaSession.instance.expanded.addListener(_onMediaChrome);
     StreakService.instance.recordDailyOpen();
     AnalyticsService.instance.ping();
     _listenMaterialsTabLabel();
@@ -394,8 +397,14 @@ class _MainScreenState extends State<MainScreen>
     }
   }
 
+  void _onMediaChrome() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void dispose() {
+    MediaSession.instance.expanded.removeListener(_onMediaChrome);
+    MediaSession.instance.close();
     WidgetsBinding.instance.removeObserver(this);
     _profileSub?.cancel();
     _animationController.dispose();
@@ -403,6 +412,10 @@ class _MainScreenState extends State<MainScreen>
   }
 
   Future<void> _selectTab(int index) async {
+    if (MediaSession.instance.isExpanded) {
+      MediaSession.instance.popOut();
+      if (index == _selectedIndex) return;
+    }
     if (index == _selectedIndex) {
       _activeNestedKey?.currentState?.popUntil((route) => route.isFirst);
       return;
@@ -430,9 +443,10 @@ class _MainScreenState extends State<MainScreen>
         return true;
       },
       child: PopScope(
-        canPop: !_nestedCanPop,
+        canPop: !_nestedCanPop && !MediaSession.instance.isExpanded,
         onPopInvokedWithResult: (didPop, result) {
           if (didPop) return;
+          if (MediaSession.instance.consumeSystemBack()) return;
           _activeNestedKey?.currentState?.maybePop();
         },
         child: Scaffold(
@@ -440,12 +454,17 @@ class _MainScreenState extends State<MainScreen>
           resizeToAvoidBottomInset: false,
           backgroundColor:
               isDark ? const Color(0xFF111827) : const Color(0xFFE8EEF5),
-          body: FadeTransition(
-            opacity: _fadeAnimation,
-            child: IndexedStack(
-              index: _selectedIndex,
-              children: _screens,
-            ),
+          body: Stack(
+            children: [
+              FadeTransition(
+                opacity: _fadeAnimation,
+                child: IndexedStack(
+                  index: _selectedIndex,
+                  children: _screens,
+                ),
+              ),
+              const MediaPlaybackOverlay(),
+            ],
           ),
           bottomNavigationBar: _AppBottomNav(
             selectedIndex: _selectedIndex,

@@ -23,7 +23,7 @@ import 'no_internet_screen.dart';
 import 'phone_audio.dart';
 import 'phone_pdf.dart';
 import 'web_view_screen.dart';
-import 'media_player_screen.dart';
+import '../services/media_session.dart';
 
 class ClientFilesBrowserScreen extends StatefulWidget {
   final String workspaceName;
@@ -110,6 +110,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
   @override
   void initState() {
     super.initState();
+    MediaSession.instance.expanded.addListener(_onMediaChrome);
     _loadFilesViewPreference();
     _loadSubjects();
     _unitSearchFocus.addListener(() {
@@ -131,8 +132,13 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     });
   }
 
+  void _onMediaChrome() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void dispose() {
+    MediaSession.instance.expanded.removeListener(_onMediaChrome);
     _uploadCancelToken?.cancel('disposed');
     _uploadSession.dispose();
     _unitSearchController.dispose();
@@ -802,9 +808,53 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     if (!await NoInternetScreen.ensureOnline(context)) return;
     if (!mounted) return;
 
+    if (UploadService.isPlayableMediaType(material.type)) {
+      final queue = _folderMediaQueue();
+      final index = queue.indexWhere((item) => item.id == material.id);
+      await MediaSession.instance.open(
+        queue: index < 0
+            ? [
+                MediaQueueItem(
+                  id: material.id,
+                  title: material.name,
+                  isAudio: material.type.toUpperCase() == 'AUD',
+                  subject: selectedSubject?.name ?? 'Unknown',
+                ),
+              ]
+            : queue,
+        index: index < 0 ? 0 : index,
+      );
+      return;
+    }
+
     setState(() {
       openedMaterial = material;
     });
+  }
+
+  /// Audio and video sitting in the open folder, not in child folders.
+  List<MediaQueueItem> _folderMediaQueue() {
+    final subjectName = selectedSubject?.name ?? 'Unknown';
+    final files = currentFiles.where((file) => !file.isFolder);
+    final sorted = FileSort.apply(
+      files,
+      mode: _fileSort,
+      nameOf: (file) => file.name,
+      typeOf: (file) => file.type,
+      sizeOf: (file) => file.sizeBytes ?? FileSort.parseSizeBytes(file.size),
+      dateOf: (file) => file.modifiedAt ?? FileSort.parseDate(file.date),
+      uploadedOf: (file) => file.createdAt,
+    );
+    return [
+      for (final file in sorted)
+        if (UploadService.isPlayableMediaType(file.type))
+          MediaQueueItem(
+            id: file.id,
+            title: file.name,
+            isAudio: file.type.toUpperCase() == 'AUD',
+            subject: subjectName,
+          ),
+    ];
   }
 
   void _closeWebView() {
@@ -2172,6 +2222,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
   }
 
   Future<void> _onSystemBack() async {
+    if (MediaSession.instance.consumeSystemBack()) return;
     if (_fileSelectionMode) {
       _clearFileSelection();
       return;
@@ -3324,7 +3375,8 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
   @override
   Widget build(BuildContext context) {
     return PopScope(
-      canPop: !_fileSelectionMode &&
+      canPop: !MediaSession.instance.isExpanded &&
+          !_fileSelectionMode &&
           !_folderSelectionMode &&
           widget.onBack == null &&
           selectedSubject == null &&
@@ -3334,22 +3386,13 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
         _onSystemBack();
       },
       child: openedMaterial != null
-          ? (UploadService.isPlayableMediaType(openedMaterial!.type)
-              ? MediaPlayerScreen(
-                  key: ValueKey(openedMaterial!.id),
-                  fileId: openedMaterial!.id,
-                  title: openedMaterial!.name,
-                  isAudio: openedMaterial!.type == 'AUD',
-                  subject: selectedSubject?.name ?? 'Unknown',
-                  onBack: _closeWebView,
-                )
-              : WebViewScreen(
-                  key: ValueKey(openedMaterial!.id),
-                  url: openedMaterial!.downloadUrl!,
-                  title: openedMaterial!.name,
-                  subject: selectedSubject?.name ?? 'Unknown',
-                  onBack: _closeWebView,
-                ))
+          ? WebViewScreen(
+              key: ValueKey(openedMaterial!.id),
+              url: openedMaterial!.downloadUrl!,
+              title: openedMaterial!.name,
+              subject: selectedSubject?.name ?? 'Unknown',
+              onBack: _closeWebView,
+            )
           : selectedSubject != null
               ? _buildFilesView()
               : _buildSubjectsView(),
