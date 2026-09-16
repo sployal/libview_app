@@ -20,7 +20,7 @@ import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.webkit.MimeTypeMap
 import androidx.core.content.FileProvider
-import io.flutter.embedding.android.FlutterActivity
+import com.ryanheise.audioservice.AudioServiceActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 import java.io.File
@@ -29,7 +29,7 @@ import java.io.InputStream
 import java.util.Locale
 import kotlin.concurrent.thread
 
-class MainActivity : FlutterActivity() {
+class MainActivity : AudioServiceActivity() {
     private val downloadsChannel = "com.example.libview/downloads"
     private val documentsChannel = "com.example.libview/phone_documents"
     private val mainHandler = Handler(Looper.getMainLooper())

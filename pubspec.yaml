@@ -51,6 +51,8 @@ dependencies:
   device_info_plus: ^12.1.0
   http_parser: ^4.1.2
   video_player: ^2.10.0
+  audio_service: ^0.18.16
+  audio_session: ^0.2.2
   fl_chart: ^0.70.2
 
 dev_dependencies:

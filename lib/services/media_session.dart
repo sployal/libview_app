@@ -223,16 +223,12 @@ class MediaSession extends ChangeNotifier {
 
   Future<void> retry() => _loadCurrent();
 
-  Future<void> togglePlay() async {
+  Future<void> play() async {
     final currentController = controller;
     if (currentController == null || !currentController.value.isInitialized) {
       return;
     }
-    if (currentController.value.isPlaying) {
-      await currentController.pause();
-      notifyListeners();
-      return;
-    }
+    if (currentController.value.isPlaying) return;
     final atEnd = duration > Duration.zero &&
         currentController.value.position >=
             duration - const Duration(milliseconds: 300);
@@ -243,6 +239,24 @@ class MediaSession extends ChangeNotifier {
     }
     await currentController.play();
     notifyListeners();
+  }
+
+  Future<void> pause() async {
+    final currentController = controller;
+    if (currentController == null || !currentController.value.isInitialized) {
+      return;
+    }
+    if (!currentController.value.isPlaying) return;
+    await currentController.pause();
+    notifyListeners();
+  }
+
+  Future<void> togglePlay() async {
+    if (controller?.value.isPlaying == true) {
+      await pause();
+      return;
+    }
+    await play();
   }
 
   Future<void> seekTo(Duration target) async {
@@ -365,6 +379,7 @@ class MediaSession extends ChangeNotifier {
           Uri.parse(UploadService.mediaStreamUrl(item.id)),
           httpHeaders: headers,
           viewType: _viewType(item.isAudio),
+          videoPlayerOptions: _playerOptions,
         ),
       );
       return;
@@ -391,6 +406,7 @@ class MediaSession extends ChangeNotifier {
         VideoPlayerController.file(
           File(path),
           viewType: _viewType(false),
+          videoPlayerOptions: _playerOptions,
         ),
       );
       return;
@@ -410,6 +426,10 @@ class MediaSession extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  static final _playerOptions = VideoPlayerOptions(
+    allowBackgroundPlayback: true,
+  );
 
   VideoViewType _viewType(bool isAudio) {
     if (!isAudio &&

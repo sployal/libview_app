@@ -27,6 +27,7 @@ import 'screens/app_update_screen.dart';
 import 'screens/suspend_account.dart';
 import 'ui/app_splash_screen.dart';
 import 'ui/media_playback_overlay.dart';
+import 'services/media_notification.dart';
 import 'services/media_session.dart';
 
 Future<void> main() async {
@@ -39,6 +40,7 @@ Future<void> main() async {
   );
 
   await ThemeController.instance.load();
+  await MediaNotification.ensureInitialized();
 
   runApp(const StudyApp());
 }
