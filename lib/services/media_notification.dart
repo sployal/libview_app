@@ -62,22 +62,19 @@ class PlaybackAudioHandler extends BaseAudioHandler with SeekHandler {
   Future<void> _configureAudioSession() async {
     try {
       final session = await AudioSession.instance;
-      await session.configure(const AudioSessionConfiguration.music());
-      session.interruptionEventStream.listen((event) {
-        if (event.begin && event.type != AudioInterruptionType.duck) {
-          unawaited(MediaSession.instance.pause());
-        }
-      });
+      // On Android, ExoPlayer already owns audio focus. Requesting it again
+      // here sends AUDIOFOCUS_LOSS to the player and it keeps pausing.
+      if (Platform.isIOS) {
+        await session.configure(const AudioSessionConfiguration.music());
+        session.interruptionEventStream.listen((event) {
+          if (event.begin && event.type != AudioInterruptionType.duck) {
+            unawaited(MediaSession.instance.pause());
+          }
+        });
+      }
       session.becomingNoisyEventStream.listen((_) {
         unawaited(MediaSession.instance.pause());
       });
-    } catch (_) {}
-  }
-
-  Future<void> _activateAudioSession() async {
-    try {
-      final session = await AudioSession.instance;
-      await session.setActive(true);
     } catch (_) {}
   }
 
@@ -110,7 +107,6 @@ class PlaybackAudioHandler extends BaseAudioHandler with SeekHandler {
       return;
     }
     unawaited(_ensureAndroidNotificationPermission());
-    unawaited(_activateAudioSession());
     _publishItem();
     _publishState();
   }
