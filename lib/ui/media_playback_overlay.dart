@@ -112,6 +112,20 @@ class _MediaPlaybackOverlayState extends State<MediaPlaybackOverlay>
     );
   }
 
+  Future<void> _showQueue() async {
+    final session = MediaSession.instance;
+    if (!session.active || session.queue.isEmpty) return;
+    final picked = await showModalBottomSheet<int>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => _QueueSheet(session: session),
+    );
+    if (picked == null || picked == session.index) return;
+    HapticFeedback.selectionClick();
+    await session.playAt(picked);
+  }
+
   Future<void> _pickMode() async {
     final session = MediaSession.instance;
     final picked = await showModalBottomSheet<PlaybackRepeatMode>(
@@ -144,6 +158,7 @@ class _MediaPlaybackOverlayState extends State<MediaPlaybackOverlay>
                       _downloadProgress[session.current?.id] ?? 0,
                   onDownload: _downloadCurrent,
                   onMode: _pickMode,
+                  onQueue: _showQueue,
                 ),
               ),
             if (session.poppedOut)
@@ -169,15 +184,16 @@ class _Palette {
   final bool isAudio;
 
   Color get accent =>
-      isAudio ? const Color(0xFFEC4899) : const Color(0xFF6366F1);
-  Color get canvas => isDark ? const Color(0xFF0B1020) : const Color(0xFFE8EEF5);
+      isAudio ? const Color(0xFFEC4899) : const Color(0xFF0EA5E9);
+  Color get canvas => isAudio
+      ? (isDark ? const Color(0xFF1A1020) : const Color(0xFFF8EEF3))
+      : (isDark ? const Color(0xFF070B12) : const Color(0xFFE7F2F8));
   Color get ink => isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
   Color get muted => isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
-  Color get sheet =>
-      isDark ? const Color(0xF2161D2E) : const Color(0xF2FFFFFF);
-  Color get line => isDark
-      ? Colors.white.withValues(alpha: 0.08)
-      : const Color(0xFF6366F1).withValues(alpha: 0.14);
+  Color get sheet => isAudio
+      ? (isDark ? const Color(0xF22A1528) : const Color(0xF2FFFFFF))
+      : (isDark ? const Color(0xF20C121C) : const Color(0xF2FFFFFF));
+  Color get line => accent.withValues(alpha: isDark ? 0.28 : 0.18);
 }
 
 class _FullPlayer extends StatelessWidget {
@@ -189,6 +205,7 @@ class _FullPlayer extends StatelessWidget {
     required this.downloadProgress,
     required this.onDownload,
     required this.onMode,
+    required this.onQueue,
   });
 
   final MediaSession session;
@@ -198,6 +215,7 @@ class _FullPlayer extends StatelessWidget {
   final double downloadProgress;
   final VoidCallback onDownload;
   final VoidCallback onMode;
+  final VoidCallback onQueue;
 
   @override
   Widget build(BuildContext context) {
@@ -223,6 +241,7 @@ class _FullPlayer extends StatelessWidget {
                 session.popOut();
               },
               onDownload: onDownload,
+              onQueue: onQueue,
             ),
           ),
           if (downloading)
@@ -282,6 +301,7 @@ class _FullPlayer extends StatelessWidget {
               session: session,
               palette: palette,
               onMode: onMode,
+              onQueue: onQueue,
             ),
           SizedBox(height: bottomInset),
         ],
@@ -299,6 +319,7 @@ class _TopBar extends StatelessWidget {
     required this.onBack,
     required this.onPopOut,
     required this.onDownload,
+    required this.onQueue,
   });
 
   final _Palette palette;
@@ -308,6 +329,7 @@ class _TopBar extends StatelessWidget {
   final VoidCallback onBack;
   final VoidCallback onPopOut;
   final VoidCallback onDownload;
+  final VoidCallback onQueue;
 
   @override
   Widget build(BuildContext context) {
@@ -344,6 +366,16 @@ class _TopBar extends StatelessWidget {
                   ),
               ],
             ),
+          ),
+          IconButton(
+            onPressed: onQueue,
+            tooltip: 'Queue',
+            icon: Icon(
+              palette.isAudio
+                  ? Icons.queue_music_rounded
+                  : Icons.playlist_play_rounded,
+            ),
+            color: palette.ink,
           ),
           IconButton(
             onPressed: onPopOut,
@@ -685,63 +717,61 @@ class _ControlDock extends StatelessWidget {
     required this.session,
     required this.palette,
     required this.onMode,
+    required this.onQueue,
   });
 
   final MediaSession session;
   final _Palette palette;
   final VoidCallback onMode;
+  final VoidCallback onQueue;
 
   @override
   Widget build(BuildContext context) {
-    final item = session.current;
-    final next = session.mode == PlaybackRepeatMode.none ? session.upcoming : null;
-    return ClipRRect(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            color: palette.sheet,
-            border: Border(top: BorderSide(color: palette.line)),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(18, 14, 18, 8),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        _modeCaption(session),
-                        maxLines: 2,
-                        style: TextStyle(color: palette.muted, fontSize: 12),
+    final audio = palette.isAudio;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(audio ? 16 : 0, 0, audio ? 16 : 0, audio ? 4 : 0),
+      child: ClipRRect(
+        borderRadius: BorderRadius.vertical(
+          top: const Radius.circular(28),
+          bottom: Radius.circular(audio ? 28 : 0),
+        ),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              color: palette.sheet,
+              border: Border.all(color: palette.line),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(18, 14, 18, 8),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _modeCaption(session),
+                          maxLines: 2,
+                          style: TextStyle(color: palette.muted, fontSize: 12),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    _ModePill(
-                      palette: palette,
-                      label: session.modeLabel,
-                      onTap: onMode,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                _SeekBar(palette: palette),
-                const SizedBox(height: 4),
-                _TransportRow(session: session, palette: palette),
-                if (next != null && (item?.isAudio == true || !session.showUpNext)) ...[
-                  const SizedBox(height: 12),
-                  _UpNextRow(
-                    item: next,
-                    palette: palette,
-                    onPlay: () {
-                      HapticFeedback.lightImpact();
-                      session.playUpcoming();
-                    },
+                      const SizedBox(width: 8),
+                      _QueueButton(palette: palette, onTap: onQueue),
+                      const SizedBox(width: 8),
+                      _ModePill(
+                        palette: palette,
+                        label: session.modeLabel,
+                        onTap: onMode,
+                      ),
+                    ],
                   ),
+                  const SizedBox(height: 6),
+                  _SeekBar(palette: palette),
+                  const SizedBox(height: 4),
+                  _TransportRow(session: session, palette: palette),
                 ],
-              ],
+              ),
             ),
           ),
         ),
@@ -750,17 +780,19 @@ class _ControlDock extends StatelessWidget {
   }
 
   String _modeCaption(MediaSession session) {
+    final kind = session.current?.isAudio == true ? 'audio files' : 'videos';
+    final one = session.current?.isAudio == true ? 'audio' : 'video';
     switch (session.mode) {
       case PlaybackRepeatMode.none:
         return session.upcoming == null
-            ? 'Last in this folder'
-            : 'Next in this folder';
+            ? 'Last $one in this folder'
+            : 'Stops after this $one';
       case PlaybackRepeatMode.one:
-        return 'Repeating this item';
+        return 'Repeating this $one';
       case PlaybackRepeatMode.all:
-        return 'Playing this folder, then starting over';
+        return 'Playing the $kind in this folder, then starting over';
       case PlaybackRepeatMode.shuffle:
-        return 'Shuffled within this folder';
+        return 'Shuffled $kind in this folder';
     }
   }
 }
@@ -998,62 +1030,31 @@ class _ModePill extends StatelessWidget {
   }
 }
 
-class _UpNextRow extends StatelessWidget {
-  const _UpNextRow({
-    required this.item,
-    required this.palette,
-    required this.onPlay,
-  });
+class _QueueButton extends StatelessWidget {
+  const _QueueButton({required this.palette, required this.onTap});
 
-  final MediaQueueItem item;
   final _Palette palette;
-  final VoidCallback onPlay;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: palette.accent.withValues(alpha: palette.isDark ? 0.14 : 0.08),
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: onPlay,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(8, 8, 10, 8),
-          child: Row(
-            children: [
-              _ArtThumb(item: item, width: 72, height: 46, radius: 10),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Up next',
-                      style: TextStyle(
-                        color: palette.accent,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    Text(
-                      item.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: palette.ink,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 13,
-                      ),
-                    ),
-                    Text(
-                      '${item.kindLabel} in this folder',
-                      style: TextStyle(color: palette.muted, fontSize: 11),
-                    ),
-                  ],
-                ),
-              ),
-              Icon(Icons.play_arrow_rounded, color: palette.accent),
-            ],
+    return Tooltip(
+      message: 'Queue',
+      child: Material(
+        color: palette.accent.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(999),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(999),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(8),
+            child: Icon(
+              palette.isAudio
+                  ? Icons.queue_music_rounded
+                  : Icons.playlist_play_rounded,
+              color: palette.accent,
+              size: 20,
+            ),
           ),
         ),
       ),
@@ -1093,15 +1094,6 @@ class _UpNextCurtain extends StatelessWidget {
               ),
             ),
             const Spacer(),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: SizedBox(
-                width: 220,
-                height: 124,
-                child: _ArtThumb(item: item, width: 220, height: 124, radius: 16),
-              ),
-            ),
-            const SizedBox(height: 14),
             const Text(
               'Up next',
               style: TextStyle(
@@ -1110,7 +1102,9 @@ class _UpNextCurtain extends StatelessWidget {
                 letterSpacing: 0.4,
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 12),
+            _VideoPreview(item: item),
+            const SizedBox(height: 14),
             Text(
               item.title,
               textAlign: TextAlign.center,
@@ -1150,6 +1144,40 @@ class _UpNextCurtain extends StatelessWidget {
   }
 }
 
+class _VideoPreview extends StatelessWidget {
+  const _VideoPreview({required this.item});
+
+  final MediaQueueItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final fallback = _MediaMark(item: item, radius: 16);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: AspectRatio(
+        aspectRatio: 16 / 9,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: Colors.black,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white24),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: item.hasThumbnail
+                ? DriveThumbnail(
+                    fileId: item.id,
+                    fit: BoxFit.cover,
+                    fallback: fallback,
+                  )
+                : fallback,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _ArtThumb extends StatelessWidget {
   const _ArtThumb({
     required this.item,
@@ -1171,13 +1199,13 @@ class _ArtThumb extends StatelessWidget {
       height: height,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(radius),
-        child: item.isAudio
-            ? fallback
-            : DriveThumbnail(
+        child: item.hasThumbnail
+            ? DriveThumbnail(
                 fileId: item.id,
                 fit: BoxFit.cover,
                 fallback: fallback,
-              ),
+              )
+            : fallback,
       ),
     );
   }
@@ -1314,17 +1342,26 @@ class _VideoMini extends StatelessWidget {
                   if (session.showUpNext && session.upcoming != null)
                     GestureDetector(
                       onTap: session.playUpcoming,
-                      child: const ColoredBox(
-                        color: Colors.black54,
-                        child: Center(
-                          child: Text(
-                            'Play next',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          _ArtThumb(
+                            item: session.upcoming!,
+                            width: 236,
+                            height: 132,
+                            radius: 0,
+                          ),
+                          const ColoredBox(color: Colors.black38),
+                          const Center(
+                            child: Text(
+                              'Play next',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
-                        ),
+                        ],
                       ),
                     ),
                   Positioned(
@@ -1570,6 +1607,122 @@ class _MiniIcon extends StatelessWidget {
   }
 }
 
+class _QueueSheet extends StatelessWidget {
+  const _QueueSheet({required this.session});
+
+  final MediaSession session;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final audio = session.current?.isAudio ?? false;
+    final accent = audio ? const Color(0xFFEC4899) : const Color(0xFF0EA5E9);
+    final ink = isDark ? const Color(0xFFF9FAFB) : const Color(0xFF111827);
+    final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
+    final card = isDark ? const Color(0xFF161D2E) : Colors.white;
+    final indexes = session.sequenceIndexes;
+    final height = MediaQuery.sizeOf(context).height * 0.62;
+    final countLabel = audio
+        ? '${indexes.length} ${indexes.length == 1 ? 'track' : 'tracks'}'
+        : '${indexes.length} ${indexes.length == 1 ? 'video' : 'videos'}';
+    return SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: card,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: SizedBox(
+            height: height,
+            child: Column(
+              children: [
+                const SizedBox(height: 12),
+                Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: muted.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  audio ? 'Audio queue' : 'Video queue',
+                  style: TextStyle(
+                    color: ink,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'This folder only · $countLabel',
+                  style: TextStyle(color: muted, fontSize: 12),
+                ),
+                const SizedBox(height: 8),
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+                    itemCount: indexes.length,
+                    itemBuilder: (context, position) {
+                      final index = indexes[position];
+                      final item = session.queue[index];
+                      final playing = index == session.index;
+                      return ListTile(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        selected: playing,
+                        selectedTileColor: accent.withValues(alpha: 0.12),
+                        leading: audio
+                            ? CircleAvatar(
+                                backgroundColor: accent.withValues(alpha: 0.16),
+                                child: Icon(
+                                  Icons.audiotrack_rounded,
+                                  color: accent,
+                                  size: 18,
+                                ),
+                              )
+                            : _ArtThumb(
+                                item: item,
+                                width: 64,
+                                height: 40,
+                                radius: 8,
+                              ),
+                        title: Text(
+                          item.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: ink,
+                            fontWeight: playing ? FontWeight.w700 : FontWeight.w600,
+                          ),
+                        ),
+                        subtitle: Text(
+                          playing ? 'Now playing' : '${position + 1}',
+                          style: TextStyle(
+                            color: playing ? accent : muted,
+                            fontSize: 12,
+                          ),
+                        ),
+                        trailing: playing
+                            ? Icon(Icons.equalizer_rounded, color: accent)
+                            : null,
+                        onTap: () => Navigator.pop(context, index),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _ModeSheet extends StatelessWidget {
   const _ModeSheet({required this.selected});
 
@@ -1585,7 +1738,7 @@ class _ModeSheet extends StatelessWidget {
       (
         PlaybackRepeatMode.none,
         'None',
-        'Stop here and suggest the next file in this folder',
+        'Stop here and suggest the next one in this folder',
         Icons.playlist_play_rounded,
       ),
       (
@@ -1597,13 +1750,13 @@ class _ModeSheet extends StatelessWidget {
       (
         PlaybackRepeatMode.all,
         'Loop all',
-        'Play every audio and video in this folder, then start over',
+        'Play the rest of this queue, then start over',
         Icons.repeat_rounded,
       ),
       (
         PlaybackRepeatMode.shuffle,
         'Shuffle',
-        'Play this folder in a random order',
+        'Play this queue in a random order',
         Icons.shuffle_rounded,
       ),
     ];
@@ -1639,7 +1792,7 @@ class _ModeSheet extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'This folder only, not folders inside it',
+                  'This folder only, same type',
                   style: TextStyle(color: muted, fontSize: 12),
                 ),
                 const SizedBox(height: 8),

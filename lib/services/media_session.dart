@@ -25,12 +25,14 @@ class MediaQueueItem {
     required this.title,
     required this.isAudio,
     required this.subject,
+    this.hasThumbnail = false,
   });
 
   final String id;
   final String title;
   final bool isAudio;
   final String subject;
+  final bool hasThumbnail;
 
   String get kindLabel => isAudio ? 'Audio' : 'Video';
 }
@@ -73,7 +75,15 @@ class MediaSession extends ChangeNotifier {
     return queue[index];
   }
 
-  /// Next item in folder order. Shown only while [mode] is [PlaybackRepeatMode.none].
+  /// Folder order, or the remaining shuffle order when shuffle is on.
+  List<int> get sequenceIndexes {
+    if (mode == PlaybackRepeatMode.shuffle && _shuffleBag.isNotEmpty) {
+      return [index, ..._shuffleBag];
+    }
+    return [for (var i = 0; i < queue.length; i++) i];
+  }
+
+  /// Next item of the same type, in folder order.
   MediaQueueItem? get upcoming {
     final next = index + 1;
     if (next < 0 || next >= queue.length) return null;
@@ -303,6 +313,8 @@ class MediaSession extends ChangeNotifier {
     if (next == null) return;
     await _goTo(index + 1);
   }
+
+  Future<void> playAt(int next) => _goTo(next);
 
   Future<void> openExternal() async {
     final item = current;

@@ -809,7 +809,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     if (!mounted) return;
 
     if (UploadService.isPlayableMediaType(material.type)) {
-      final queue = _folderMediaQueue();
+      final queue = _folderMediaQueue(material);
       final index = queue.indexWhere((item) => item.id == material.id);
       await MediaSession.instance.open(
         queue: index < 0
@@ -819,6 +819,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
                   title: material.name,
                   isAudio: material.type.toUpperCase() == 'AUD',
                   subject: selectedSubject?.name ?? 'Unknown',
+                  hasThumbnail: material.canLoadDriveThumbnail,
                 ),
               ]
             : queue,
@@ -832,9 +833,10 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     });
   }
 
-  /// Audio and video sitting in the open folder, not in child folders.
-  List<MediaQueueItem> _folderMediaQueue() {
+  /// Same-type media in the open folder only. Audio never queues video.
+  List<MediaQueueItem> _folderMediaQueue(StudyMaterial material) {
     final subjectName = selectedSubject?.name ?? 'Unknown';
+    final audioOnly = material.type.toUpperCase() == 'AUD';
     final files = currentFiles.where((file) => !file.isFolder);
     final sorted = FileSort.apply(
       files,
@@ -847,12 +849,14 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     );
     return [
       for (final file in sorted)
-        if (UploadService.isPlayableMediaType(file.type))
+        if (UploadService.isPlayableMediaType(file.type) &&
+            (file.type.toUpperCase() == 'AUD') == audioOnly)
           MediaQueueItem(
             id: file.id,
             title: file.name,
-            isAudio: file.type.toUpperCase() == 'AUD',
+            isAudio: audioOnly,
             subject: subjectName,
+            hasThumbnail: file.canLoadDriveThumbnail,
           ),
     ];
   }
