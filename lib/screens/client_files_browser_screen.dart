@@ -69,9 +69,13 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
   static const int _maxImageUploadSelection = 10;
   static const int _maxVideoUploadSelection = 5;
   final _UploadProgressSession _uploadSession = _UploadProgressSession();
+  final _UploadProgressSession _downloadSession = _UploadProgressSession();
   CancelToken? _uploadCancelToken;
   bool _uploadDialogVisible = false;
   BuildContext? _uploadDialogContext;
+  bool _downloadDialogVisible = false;
+  BuildContext? _downloadDialogContext;
+  String? _activeBatchDownloadFileId;
   bool _isMutatingFolder = false;
   final List<Subject> _folderTrail = [];
   final Set<String> _lockedFolderIds = {};
@@ -141,7 +145,12 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
   void dispose() {
     MediaSession.instance.expanded.removeListener(_onMediaChrome);
     _uploadCancelToken?.cancel('disposed');
+    final batchId = _activeBatchDownloadFileId;
+    if (batchId != null) {
+      DownloadService.cancelDownload(batchId);
+    }
     _uploadSession.dispose();
+    _downloadSession.dispose();
     _unitSearchController.dispose();
     _unitSearchFocus.dispose();
     _fileSearchController.dispose();
@@ -2090,7 +2099,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     List<PhonePickedDocument> files, {
     Map<String, List<int>>? bytesByName,
   }) async {
-    if (isUploading || files.isEmpty) return;
+    if (isUploading || _downloadDialogVisible || files.isEmpty) return;
 
     final duplicate = _firstDuplicateUploadName(files.map((file) => file.name));
     if (duplicate != null) {
@@ -2481,21 +2490,154 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
   }
 
   Future<void> _downloadSelectedFiles() async {
+    if (isUploading || _downloadDialogVisible) return;
     final files = _selectedFileList.where((file) => !file.isFolder).toList();
     if (files.isEmpty) {
       _showMessage('Select files to download', isError: true);
       return;
     }
-    for (final file in files) {
-      if (!mounted) return;
-      await _downloadFile(file, notify: false);
-    }
+    if (!await NoInternetScreen.ensureOnline(context)) return;
     if (!mounted) return;
-    _showMessage(
-      files.length == 1
-          ? 'Download finished for "${files.first.name}"'
-          : 'Finished downloading ${files.length} files',
-    );
+
+    _downloadSession.start(files.length);
+    _showDownloadProgressDialog();
+    await WidgetsBinding.instance.endOfFrame;
+    await Future<void>.delayed(Duration.zero);
+
+    var downloaded = 0;
+    var cancelled = false;
+    String? lastError;
+
+    try {
+      for (var i = 0; i < files.length; i++) {
+        if (!mounted) return;
+        if (_downloadSession.cancelling) {
+          cancelled = true;
+          break;
+        }
+
+        final file = files[i];
+        final url = file.downloadUrl;
+        if (url == null || url.isEmpty) {
+          lastError = 'File URL not available';
+          continue;
+        }
+        final fileId = _extractFileId(url);
+        if (fileId == null) {
+          lastError = 'Could not identify file from URL';
+          continue;
+        }
+
+        _downloadSession.beginFile(
+          file.name,
+          file.sizeBytes ?? FileSort.parseSizeBytes(file.size),
+          i,
+        );
+        _activeBatchDownloadFileId = fileId;
+
+        final result = await DownloadService.downloadFile(
+          fileId: fileId,
+          subject: selectedSubject?.name ?? widget.workspaceName,
+          onProgress: (progress) {
+            if (!mounted) return;
+            _downloadSession.updateReceiveProgress(progress);
+          },
+          onBytes: (received, total) {
+            if (!mounted) return;
+            if (total > 0) _downloadSession.updateFileSize(total);
+            _downloadSession.updateBytes(received, total);
+          },
+        );
+
+        _activeBatchDownloadFileId = null;
+
+        if (result.cancelled || _downloadSession.cancelling) {
+          cancelled = true;
+          break;
+        }
+        if (result.success) {
+          downloaded++;
+          _downloadSession.markCompleted();
+        } else {
+          lastError = result.message;
+        }
+      }
+    } finally {
+      _activeBatchDownloadFileId = null;
+      if (mounted) {
+        _hideDownloadProgressDialog();
+      }
+    }
+
+    if (!mounted) return;
+
+    if (cancelled) {
+      _showMessage(
+        downloaded == 0
+            ? 'Download cancelled'
+            : 'Download cancelled. $downloaded of ${files.length} downloaded.',
+        isError: true,
+      );
+    } else if (downloaded == files.length) {
+      _showMessage(
+        downloaded == 1
+            ? '${files.first.name} downloaded successfully'
+            : '$downloaded files downloaded successfully',
+      );
+    } else if (downloaded > 0) {
+      _showMessage(
+        '$downloaded of ${files.length} downloaded. ${lastError ?? 'Some files failed.'}',
+        isError: true,
+      );
+    } else {
+      _showMessage(
+        lastError ?? 'Download failed. Please try again.',
+        isError: true,
+      );
+    }
+  }
+
+  void _showDownloadProgressDialog() {
+    if (_downloadDialogVisible || !mounted) return;
+    _downloadDialogVisible = true;
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      useRootNavigator: true,
+      builder: (dialogContext) {
+        _downloadDialogContext = dialogContext;
+        return ListenableBuilder(
+          listenable: _downloadSession,
+          builder: (context, _) {
+            return _UploadProgressDialog(
+              session: _downloadSession,
+              onCancel: _cancelActiveBatchDownload,
+              isDownload: true,
+            );
+          },
+        );
+      },
+    ).whenComplete(() {
+      _downloadDialogVisible = false;
+      _downloadDialogContext = null;
+    });
+  }
+
+  void _hideDownloadProgressDialog() {
+    if (!_downloadDialogVisible) return;
+    final dialogContext = _downloadDialogContext;
+    if (dialogContext != null && dialogContext.mounted) {
+      Navigator.of(dialogContext).pop();
+    }
+  }
+
+  void _cancelActiveBatchDownload() {
+    if (_downloadSession.cancelling) return;
+    _downloadSession.markCancelling();
+    final fileId = _activeBatchDownloadFileId;
+    if (fileId != null) {
+      DownloadService.cancelDownload(fileId);
+    }
   }
 
   Future<void> _moveSelectedFiles() async {
@@ -5228,6 +5370,22 @@ class _UploadProgressSession extends ChangeNotifier {
     _notify();
   }
 
+  void updateReceiveProgress(double progress) {
+    final next = progress.clamp(0.0, 1.0);
+    awaitingServer = false;
+    final prevPct = (fileProgress * 100).floor();
+    final nextPct = (next * 100).floor();
+    fileProgress = next;
+    if (nextPct == prevPct) return;
+    _notify();
+  }
+
+  void updateFileSize(int size) {
+    if (size <= 0 || size == fileBytes) return;
+    fileBytes = size;
+    _notify();
+  }
+
   void updateBytes(int sent, int totalBytes) {
     final previous = sentBytes;
     final cap = fileBytes > 0 ? fileBytes : (totalBytes > 0 ? totalBytes : sent);
@@ -5266,10 +5424,12 @@ class _UploadProgressDialog extends StatelessWidget {
   const _UploadProgressDialog({
     required this.session,
     required this.onCancel,
+    this.isDownload = false,
   });
 
   final _UploadProgressSession session;
   final VoidCallback onCancel;
+  final bool isDownload;
 
   @override
   Widget build(BuildContext context) {
@@ -5307,9 +5467,11 @@ class _UploadProgressDialog extends StatelessWidget {
                       color: const Color(0xFF6366F1).withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    child: const Icon(
-                      Icons.cloud_upload_rounded,
-                      color: Color(0xFF6366F1),
+                    child: Icon(
+                      isDownload
+                          ? Icons.cloud_download_rounded
+                          : Icons.cloud_upload_rounded,
+                      color: const Color(0xFF6366F1),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -5319,8 +5481,12 @@ class _UploadProgressDialog extends StatelessWidget {
                       children: [
                         Text(
                           session.total == 1
-                              ? 'Uploading file'
-                              : 'Uploading files',
+                              ? (isDownload
+                                  ? 'Downloading file'
+                                  : 'Uploading file')
+                              : (isDownload
+                                  ? 'Downloading files'
+                                  : 'Uploading files'),
                           style: const TextStyle(
                             fontWeight: FontWeight.w800,
                             fontSize: 18,
@@ -5329,7 +5495,9 @@ class _UploadProgressDialog extends StatelessWidget {
                         const SizedBox(height: 2),
                         Text(
                           session.cancelling
-                              ? 'Stopping upload...'
+                              ? (isDownload
+                                  ? 'Stopping download...'
+                                  : 'Stopping upload...')
                               : '${session.completed} of ${session.total} complete',
                           style: TextStyle(
                             fontSize: 13,
@@ -5402,9 +5570,9 @@ class _UploadProgressDialog extends StatelessWidget {
                         style: TextButton.styleFrom(
                           foregroundColor: const Color(0xFFEF4444),
                         ),
-                        child: const Text(
-                          'Cancel upload',
-                          style: TextStyle(fontWeight: FontWeight.w700),
+                        child: Text(
+                          isDownload ? 'Cancel download' : 'Cancel upload',
+                          style: const TextStyle(fontWeight: FontWeight.w700),
                         ),
                       ),
               ),

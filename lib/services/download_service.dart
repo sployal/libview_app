@@ -219,6 +219,7 @@ class DownloadService {
     required String fileId,
     required String subject,
     Function(double)? onProgress,
+    void Function(int received, int total)? onBytes,
   }) async {
     final cancelToken = CancelToken();
     _cancelTokens[fileId] = cancelToken;
@@ -267,9 +268,11 @@ class DownloadService {
         tempPath,
         cancelToken: cancelToken,
         onReceiveProgress: (received, total) {
+          if (onBytes != null) {
+            onBytes(received, total > 0 ? total : received);
+          }
           if (total != -1 && onProgress != null) {
-            final progress = received / total;
-            onProgress(progress);
+            onProgress(received / total);
           }
         },
         options: Options(
