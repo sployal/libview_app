@@ -156,16 +156,16 @@
     "semantic_hash": "1b9057ebad5bdab814f46e02b2b8c2a8"
   },
   "lib/screens/client_files_browser_screen.dart": {
-    "mtime": 1789742286.2871912,
-    "seen": 1789743888.4047866,
-    "ast_hash": "ee16a1112c9b6a8de4e61967ad4ff163",
+    "mtime": 1789752515.1540756,
+    "seen": 1789753117.1132534,
+    "ast_hash": "3ccae06bfc1c58149352ad512c17a311",
     "semantic_hash": ""
   },
   "lib/screens/client_workspace_screen.dart": {
-    "mtime": 1788804297.4156902,
-    "seen": 1789529207.0751164,
-    "ast_hash": "aab6a49776d1025c0bc9bc8739f2a5b6",
-    "semantic_hash": "aab6a49776d1025c0bc9bc8739f2a5b6"
+    "mtime": 1789753059.0458477,
+    "seen": 1789753117.113262,
+    "ast_hash": "ee530f739be836dcbcce05bb42932073",
+    "semantic_hash": ""
   },
   "lib/screens/course_addition.dart": {
     "mtime": 1788800501.927634,
@@ -360,10 +360,10 @@
     "semantic_hash": "d1e9f1149e4778ea3d50eca52bf7613e"
   },
   "lib/services/download_service.dart": {
-    "mtime": 1788812059.0031984,
-    "seen": 1789529207.0752373,
-    "ast_hash": "f8a5e1d5b6b8d795e109fc13e3ea9688",
-    "semantic_hash": "f8a5e1d5b6b8d795e109fc13e3ea9688"
+    "mtime": 1789751984.7338758,
+    "seen": 1789752079.2618735,
+    "ast_hash": "2acc385bdc3b1b58a54328d722e43936",
+    "semantic_hash": ""
   },
   "lib/services/google_drive_service.dart": {
     "mtime": 1788596926.2715764,
@@ -618,9 +618,9 @@
     "semantic_hash": "7569387d58711ab975940f4df3b4bcda"
   },
   "lib/services/media_notification.dart": {
-    "mtime": 1789746955.9968493,
-    "seen": 1789747093.2718365,
-    "ast_hash": "8ad29375a2761b35c7703b43bb4e13d1",
+    "mtime": 1789747126.241031,
+    "seen": 1789752079.2618794,
+    "ast_hash": "8e9890385a43fb50bd5fc3b544355f88",
     "semantic_hash": ""
   },
   "lib/services/media_session.dart": {
@@ -630,9 +630,9 @@
     "semantic_hash": ""
   },
   "lib/ui/media_playback_overlay.dart": {
-    "mtime": 1789746984.439833,
-    "seen": 1789747093.2718909,
-    "ast_hash": "8015f7dcba7a18774332fa0eb46295ac",
+    "mtime": 1789751420.8241048,
+    "seen": 1789752079.261927,
+    "ast_hash": "7832a6d520464619f27518f1d57dceba",
     "semantic_hash": ""
   },
   "README.md": {

@@ -455,9 +455,23 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            'of ${ClientWorkspace.formatStorage(_client.storageLimitBytes)} used',
-            style: const TextStyle(color: Colors.white70),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'of ${ClientWorkspace.formatStorage(_client.storageLimitBytes)} used',
+                  style: const TextStyle(color: Colors.white70),
+                ),
+              ),
+              Text(
+                '${(_storageProgress * 100).round()}%',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 14,
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
           ClipRRect(

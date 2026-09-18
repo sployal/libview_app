@@ -156,16 +156,16 @@
     "semantic_hash": "1b9057ebad5bdab814f46e02b2b8c2a8"
   },
   "lib/screens/client_files_browser_screen.dart": {
-    "mtime": 1789752019.0396793,
-    "seen": 1789752079.261773,
-    "ast_hash": "4bd1cce7dfb6aef26827cca9784dd6db",
+    "mtime": 1789752515.1540756,
+    "seen": 1789753117.1132534,
+    "ast_hash": "3ccae06bfc1c58149352ad512c17a311",
     "semantic_hash": ""
   },
   "lib/screens/client_workspace_screen.dart": {
-    "mtime": 1788804297.4156902,
-    "seen": 1789529207.0751164,
-    "ast_hash": "aab6a49776d1025c0bc9bc8739f2a5b6",
-    "semantic_hash": "aab6a49776d1025c0bc9bc8739f2a5b6"
+    "mtime": 1789753349.0312047,
+    "seen": 1789753408.5972383,
+    "ast_hash": "167b8caf0db3bb1f2595a47e8875c60e",
+    "semantic_hash": ""
   },
   "lib/screens/course_addition.dart": {
     "mtime": 1788800501.927634,

@@ -3979,7 +3979,7 @@
       "file_type": "code",
       "norm_label": "actions",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5627"
+      "source_location": "L5614"
     },
     {
       "id": "lib_screens_client_files_browser_screen_activebatchdownloadfileid",
@@ -4034,7 +4034,7 @@
       "file_type": "code",
       "norm_label": "awaitingserver",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5343"
+      "source_location": "L5330"
     },
     {
       "id": "lib_screens_client_files_browser_screen_backtosubjects",
@@ -4056,7 +4056,7 @@
       "file_type": "code",
       "norm_label": "beginfile",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5364"
+      "source_location": "L5351"
     },
     {
       "id": "lib_screens_client_files_browser_screen_build",
@@ -4067,7 +4067,7 @@
       "file_type": "code",
       "norm_label": "build",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L3583"
+      "source_location": "L3570"
     },
     {
       "id": "lib_screens_client_files_browser_screen_builddetailsfilelist",
@@ -4078,7 +4078,7 @@
       "file_type": "code",
       "norm_label": "_builddetailsfilelist",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L3256"
+      "source_location": "L3243"
     },
     {
       "id": "lib_screens_client_files_browser_screen_buildfilesview",
@@ -4089,7 +4089,7 @@
       "file_type": "code",
       "norm_label": "_buildfilesview",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L3725"
+      "source_location": "L3712"
     },
     {
       "id": "lib_screens_client_files_browser_screen_buildfolderfilesearch",
@@ -4100,7 +4100,7 @@
       "file_type": "code",
       "norm_label": "_buildfolderfilesearch",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L4084"
+      "source_location": "L4071"
     },
     {
       "id": "lib_screens_client_files_browser_screen_buildlargeiconsgrid",
@@ -4111,7 +4111,7 @@
       "file_type": "code",
       "norm_label": "_buildlargeiconsgrid",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L3408"
+      "source_location": "L3395"
     },
     {
       "id": "lib_screens_client_files_browser_screen_buildopenedfile",
@@ -4133,7 +4133,7 @@
       "file_type": "code",
       "norm_label": "_buildselectionbar",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L3619"
+      "source_location": "L3606"
     },
     {
       "id": "lib_screens_client_files_browser_screen_buildsubjectsview",
@@ -4144,7 +4144,7 @@
       "file_type": "code",
       "norm_label": "_buildsubjectsview",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L4222"
+      "source_location": "L4209"
     },
     {
       "id": "lib_screens_client_files_browser_screen_cancelactivebatchdownload",
@@ -4155,7 +4155,7 @@
       "file_type": "code",
       "norm_label": "_cancelactivebatchdownload",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L2647"
+      "source_location": "L2634"
     },
     {
       "id": "lib_screens_client_files_browser_screen_cancelactiveupload",
@@ -4188,7 +4188,7 @@
       "file_type": "code",
       "norm_label": "cancelling",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5335"
+      "source_location": "L5322"
     },
     {
       "id": "lib_screens_client_files_browser_screen_cancreate",
@@ -4199,7 +4199,7 @@
       "file_type": "code",
       "norm_label": "cancreate",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L4730"
+      "source_location": "L4717"
     },
     {
       "id": "lib_screens_client_files_browser_screen_canmanagefolders",
@@ -4243,7 +4243,7 @@
       "file_type": "code",
       "norm_label": "card",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5147"
+      "source_location": "L5134"
     },
     {
       "id": "lib_screens_client_files_browser_screen_clashasfile",
@@ -4254,7 +4254,7 @@
       "file_type": "code",
       "norm_label": "clashasfile",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5232"
+      "source_location": "L5219"
     },
     {
       "id": "lib_screens_client_files_browser_screen_clearfileselection",
@@ -4320,7 +4320,7 @@
       "file_type": "code",
       "norm_label": "color",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L4970"
+      "source_location": "L4957"
     },
     {
       "id": "lib_screens_client_files_browser_screen_commonmovetargetsforfiles",
@@ -4353,7 +4353,7 @@
       "file_type": "code",
       "norm_label": "compact",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L4807"
+      "source_location": "L4794"
     },
     {
       "id": "lib_screens_client_files_browser_screen_completed",
@@ -4364,7 +4364,7 @@
       "file_type": "code",
       "norm_label": "completed",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5338"
+      "source_location": "L5325"
     },
     {
       "id": "lib_screens_client_files_browser_screen_confirmdelete",
@@ -4397,7 +4397,7 @@
       "file_type": "code",
       "norm_label": "confirmlabel",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5226"
+      "source_location": "L5213"
     },
     {
       "id": "lib_screens_client_files_browser_screen_controller",
@@ -4408,7 +4408,7 @@
       "file_type": "code",
       "norm_label": "_controller",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5252"
+      "source_location": "L5239"
     },
     {
       "id": "lib_screens_client_files_browser_screen_createnestedfolder",
@@ -4474,7 +4474,7 @@
       "file_type": "code",
       "norm_label": "_deleteselectedfiles",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L2720"
+      "source_location": "L2707"
     },
     {
       "id": "lib_screens_client_files_browser_screen_deleteselectedunits",
@@ -4485,7 +4485,7 @@
       "file_type": "code",
       "norm_label": "_deleteselectedunits",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L2835"
+      "source_location": "L2822"
     },
     {
       "id": "lib_screens_client_files_browser_screen_deleteunitfolder",
@@ -4540,7 +4540,7 @@
       "file_type": "code",
       "norm_label": "_disposed",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5344"
+      "source_location": "L5331"
     },
     {
       "id": "lib_screens_client_files_browser_screen_downloadbutton",
@@ -4551,7 +4551,7 @@
       "file_type": "code",
       "norm_label": "_downloadbutton",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L3224"
+      "source_location": "L3211"
     },
     {
       "id": "lib_screens_client_files_browser_screen_downloaddialogcontext",
@@ -4650,7 +4650,7 @@
       "file_type": "code",
       "norm_label": "_error",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5253"
+      "source_location": "L5240"
     },
     {
       "id": "lib_screens_client_files_browser_screen_errormessage",
@@ -4672,7 +4672,7 @@
       "file_type": "code",
       "norm_label": "extensionfrom",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5233"
+      "source_location": "L5220"
     },
     {
       "id": "lib_screens_client_files_browser_screen_extractfileid",
@@ -4694,7 +4694,7 @@
       "file_type": "code",
       "norm_label": "_fababovenav",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L3612"
+      "source_location": "L3599"
     },
     {
       "id": "lib_screens_client_files_browser_screen_fieldlabel",
@@ -4705,7 +4705,7 @@
       "file_type": "code",
       "norm_label": "fieldlabel",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5228"
+      "source_location": "L5215"
     },
     {
       "id": "lib_screens_client_files_browser_screen_filebytes",
@@ -4716,7 +4716,7 @@
       "file_type": "code",
       "norm_label": "filebytes",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5340"
+      "source_location": "L5327"
     },
     {
       "id": "lib_screens_client_files_browser_screen_filecarddecoration",
@@ -4749,7 +4749,7 @@
       "file_type": "code",
       "norm_label": "_filefilterchip",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L4184"
+      "source_location": "L4171"
     },
     {
       "id": "lib_screens_client_files_browser_screen_filename",
@@ -4760,7 +4760,7 @@
       "file_type": "code",
       "norm_label": "filename",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5339"
+      "source_location": "L5326"
     },
     {
       "id": "lib_screens_client_files_browser_screen_filenametaken",
@@ -4793,7 +4793,7 @@
       "file_type": "code",
       "norm_label": "_fileoverflowmenu",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L3099"
+      "source_location": "L3086"
     },
     {
       "id": "lib_screens_client_files_browser_screen_filepreview",
@@ -4815,7 +4815,7 @@
       "file_type": "code",
       "norm_label": "fileprogress",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5342"
+      "source_location": "L5329"
     },
     {
       "id": "lib_screens_client_files_browser_screen_filequery",
@@ -5024,7 +5024,7 @@
       "file_type": "code",
       "norm_label": "_formatuploadbytes",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5768"
+      "source_location": "L5755"
     },
     {
       "id": "lib_screens_client_files_browser_screen_getfilecolor",
@@ -5068,7 +5068,7 @@
       "file_type": "code",
       "norm_label": "helpertext",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5229"
+      "source_location": "L5216"
     },
     {
       "id": "lib_screens_client_files_browser_screen_hidedownloadprogressdialog",
@@ -5079,7 +5079,7 @@
       "file_type": "code",
       "norm_label": "_hidedownloadprogressdialog",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L2639"
+      "source_location": "L2626"
     },
     {
       "id": "lib_screens_client_files_browser_screen_hideuploadprogressdialog",
@@ -5101,7 +5101,7 @@
       "file_type": "code",
       "norm_label": "icon",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5143"
+      "source_location": "L5130"
     },
     {
       "id": "lib_screens_client_files_browser_screen_iconcolor",
@@ -5112,7 +5112,7 @@
       "file_type": "code",
       "norm_label": "iconcolor",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5144"
+      "source_location": "L5131"
     },
     {
       "id": "lib_screens_client_files_browser_screen_index",
@@ -5123,7 +5123,7 @@
       "file_type": "code",
       "norm_label": "index",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5336"
+      "source_location": "L5323"
     },
     {
       "id": "lib_screens_client_files_browser_screen_initial",
@@ -5134,7 +5134,7 @@
       "file_type": "code",
       "norm_label": "initial",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5227"
+      "source_location": "L5214"
     },
     {
       "id": "lib_screens_client_files_browser_screen_initialfolderid",
@@ -5211,7 +5211,7 @@
       "file_type": "code",
       "norm_label": "isbusy",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L4731"
+      "source_location": "L4718"
     },
     {
       "id": "lib_screens_client_files_browser_screen_isdark",
@@ -5222,7 +5222,7 @@
       "file_type": "code",
       "norm_label": "isdark",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L4806"
+      "source_location": "L4793"
     },
     {
       "id": "lib_screens_client_files_browser_screen_isdownload",
@@ -5233,7 +5233,7 @@
       "file_type": "code",
       "norm_label": "isdownload",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5445"
+      "source_location": "L5432"
     },
     {
       "id": "lib_screens_client_files_browser_screen_isimagefile",
@@ -5310,7 +5310,7 @@
       "file_type": "code",
       "norm_label": "_istaken",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5267"
+      "source_location": "L5254"
     },
     {
       "id": "lib_screens_client_files_browser_screen_isuploading",
@@ -5332,7 +5332,7 @@
       "file_type": "code",
       "norm_label": "_itemactionchoice",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5600"
+      "source_location": "L5587"
     },
     {
       "id": "lib_screens_client_files_browser_screen_label",
@@ -5343,7 +5343,7 @@
       "file_type": "code",
       "norm_label": "label",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5610"
+      "source_location": "L5597"
     },
     {
       "id": "lib_screens_client_files_browser_screen_leadingcolor",
@@ -5354,7 +5354,7 @@
       "file_type": "code",
       "norm_label": "leadingcolor",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5626"
+      "source_location": "L5613"
     },
     {
       "id": "lib_screens_client_files_browser_screen_leadingicon",
@@ -5365,7 +5365,7 @@
       "file_type": "code",
       "norm_label": "leadingicon",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5625"
+      "source_location": "L5612"
     },
     {
       "id": "lib_screens_client_files_browser_screen_leavesemester",
@@ -5409,7 +5409,7 @@
       "file_type": "code",
       "norm_label": "_listeditemactions",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L2893"
+      "source_location": "L2880"
     },
     {
       "id": "lib_screens_client_files_browser_screen_loadfilesviewpreference",
@@ -5453,7 +5453,7 @@
       "file_type": "code",
       "norm_label": "locked",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L4972"
+      "source_location": "L4959"
     },
     {
       "id": "lib_screens_client_files_browser_screen_lockedfolderids",
@@ -5486,7 +5486,7 @@
       "file_type": "code",
       "norm_label": "markcancelling",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5419"
+      "source_location": "L5406"
     },
     {
       "id": "lib_screens_client_files_browser_screen_markcompleted",
@@ -5497,7 +5497,7 @@
       "file_type": "code",
       "norm_label": "markcompleted",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5411"
+      "source_location": "L5398"
     },
     {
       "id": "lib_screens_client_files_browser_screen_maximageuploadselection",
@@ -5530,7 +5530,7 @@
       "file_type": "code",
       "norm_label": "menu",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L4812"
+      "source_location": "L4799"
     },
     {
       "id": "lib_screens_client_files_browser_screen_movefoldertargets",
@@ -5574,7 +5574,7 @@
       "file_type": "code",
       "norm_label": "_moveselectedfiles",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L2656"
+      "source_location": "L2643"
     },
     {
       "id": "lib_screens_client_files_browser_screen_moveselectedunits",
@@ -5585,7 +5585,7 @@
       "file_type": "code",
       "norm_label": "_moveselectedunits",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L2793"
+      "source_location": "L2780"
     },
     {
       "id": "lib_screens_client_files_browser_screen_movetargets",
@@ -5629,7 +5629,7 @@
       "file_type": "code",
       "norm_label": "muted",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5149"
+      "source_location": "L5136"
     },
     {
       "id": "lib_screens_client_files_browser_screen_notify",
@@ -5640,7 +5640,7 @@
       "file_type": "code",
       "norm_label": "_notify",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5424"
+      "source_location": "L5411"
     },
     {
       "id": "lib_screens_client_files_browser_screen_onback",
@@ -5662,7 +5662,7 @@
       "file_type": "code",
       "norm_label": "oncancel",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5444"
+      "source_location": "L5431"
     },
     {
       "id": "lib_screens_client_files_browser_screen_oncreate",
@@ -5673,7 +5673,7 @@
       "file_type": "code",
       "norm_label": "oncreate",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L4732"
+      "source_location": "L4719"
     },
     {
       "id": "lib_screens_client_files_browser_screen_onlisteditemlongpress",
@@ -5706,7 +5706,7 @@
       "file_type": "code",
       "norm_label": "onlongpress",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L4809"
+      "source_location": "L4796"
     },
     {
       "id": "lib_screens_client_files_browser_screen_onmediachrome",
@@ -5739,7 +5739,7 @@
       "file_type": "code",
       "norm_label": "ontap",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L4808"
+      "source_location": "L4795"
     },
     {
       "id": "lib_screens_client_files_browser_screen_onunitlongpress",
@@ -5992,7 +5992,7 @@
       "file_type": "code",
       "norm_label": "selected",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L4810"
+      "source_location": "L4797"
     },
     {
       "id": "lib_screens_client_files_browser_screen_selectedfilelist",
@@ -6058,7 +6058,7 @@
       "file_type": "code",
       "norm_label": "_selectionbaraction",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L3693"
+      "source_location": "L3680"
     },
     {
       "id": "lib_screens_client_files_browser_screen_selectionmode",
@@ -6069,7 +6069,7 @@
       "file_type": "code",
       "norm_label": "selectionmode",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L4811"
+      "source_location": "L4798"
     },
     {
       "id": "lib_screens_client_files_browser_screen_sendshare",
@@ -6080,7 +6080,7 @@
       "file_type": "code",
       "norm_label": "_sendshare",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5333"
+      "source_location": "L5320"
     },
     {
       "id": "lib_screens_client_files_browser_screen_sentbytes",
@@ -6091,7 +6091,7 @@
       "file_type": "code",
       "norm_label": "sentbytes",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5341"
+      "source_location": "L5328"
     },
     {
       "id": "lib_screens_client_files_browser_screen_session",
@@ -6102,7 +6102,7 @@
       "file_type": "code",
       "norm_label": "session",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5443"
+      "source_location": "L5430"
     },
     {
       "id": "lib_screens_client_files_browser_screen_sessionunlockedfolderids",
@@ -6135,7 +6135,7 @@
       "file_type": "code",
       "norm_label": "_showdownloadprogressdialog",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L2613"
+      "source_location": "L2600"
     },
     {
       "id": "lib_screens_client_files_browser_screen_showitemactionsheet",
@@ -6146,7 +6146,7 @@
       "file_type": "code",
       "norm_label": "_showitemactionsheet",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L3032"
+      "source_location": "L3019"
     },
     {
       "id": "lib_screens_client_files_browser_screen_showlisteditemactions",
@@ -6157,7 +6157,7 @@
       "file_type": "code",
       "norm_label": "_showlisteditemactions",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L3059"
+      "source_location": "L3046"
     },
     {
       "id": "lib_screens_client_files_browser_screen_showmessage",
@@ -6179,7 +6179,7 @@
       "file_type": "code",
       "norm_label": "_showunitfolderactions",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L3085"
+      "source_location": "L3072"
     },
     {
       "id": "lib_screens_client_files_browser_screen_showuploadprogressdialog",
@@ -6212,7 +6212,7 @@
       "file_type": "code",
       "norm_label": "size",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L4971"
+      "source_location": "L4958"
     },
     {
       "id": "lib_screens_client_files_browser_screen_start",
@@ -6223,7 +6223,7 @@
       "file_type": "code",
       "norm_label": "start",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5351"
+      "source_location": "L5338"
     },
     {
       "id": "lib_screens_client_files_browser_screen_subject",
@@ -6234,7 +6234,7 @@
       "file_type": "code",
       "norm_label": "subject",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L4805"
+      "source_location": "L4792"
     },
     {
       "id": "lib_screens_client_files_browser_screen_subjectfromlistedfolder",
@@ -6267,7 +6267,7 @@
       "file_type": "code",
       "norm_label": "_submit",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5277"
+      "source_location": "L5264"
     },
     {
       "id": "lib_screens_client_files_browser_screen_subtitle",
@@ -6278,7 +6278,7 @@
       "file_type": "code",
       "norm_label": "subtitle",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5146"
+      "source_location": "L5133"
     },
     {
       "id": "lib_screens_client_files_browser_screen_subtractlisteditemcounts",
@@ -6300,7 +6300,7 @@
       "file_type": "code",
       "norm_label": "takenerror",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5231"
+      "source_location": "L5218"
     },
     {
       "id": "lib_screens_client_files_browser_screen_takennames",
@@ -6311,7 +6311,7 @@
       "file_type": "code",
       "norm_label": "takennames",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5230"
+      "source_location": "L5217"
     },
     {
       "id": "lib_screens_client_files_browser_screen_title",
@@ -6322,7 +6322,7 @@
       "file_type": "code",
       "norm_label": "title",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5145"
+      "source_location": "L5132"
     },
     {
       "id": "lib_screens_client_files_browser_screen_titlecolor",
@@ -6333,7 +6333,7 @@
       "file_type": "code",
       "norm_label": "titlecolor",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5148"
+      "source_location": "L5135"
     },
     {
       "id": "lib_screens_client_files_browser_screen_togglefilesview",
@@ -6388,7 +6388,7 @@
       "file_type": "code",
       "norm_label": "total",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5337"
+      "source_location": "L5324"
     },
     {
       "id": "lib_screens_client_files_browser_screen_totalunitfiles",
@@ -6432,7 +6432,7 @@
       "file_type": "code",
       "norm_label": "_unitfolderactions",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L2975"
+      "source_location": "L2962"
     },
     {
       "id": "lib_screens_client_files_browser_screen_unitfoldermenu",
@@ -6443,7 +6443,7 @@
       "file_type": "code",
       "norm_label": "_unitfoldermenu",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L4616"
+      "source_location": "L4603"
     },
     {
       "id": "lib_screens_client_files_browser_screen_unitquery",
@@ -6531,7 +6531,7 @@
       "file_type": "code",
       "norm_label": "updatebytes",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5402"
+      "source_location": "L5389"
     },
     {
       "id": "lib_screens_client_files_browser_screen_updatefileprogress",
@@ -6542,7 +6542,7 @@
       "file_type": "code",
       "norm_label": "updatefileprogress",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5374"
+      "source_location": "L5361"
     },
     {
       "id": "lib_screens_client_files_browser_screen_updatefilesize",
@@ -6553,7 +6553,7 @@
       "file_type": "code",
       "norm_label": "updatefilesize",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5396"
+      "source_location": "L5383"
     },
     {
       "id": "lib_screens_client_files_browser_screen_updatereceiveprogress",
@@ -6564,7 +6564,7 @@
       "file_type": "code",
       "norm_label": "updatereceiveprogress",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5386"
+      "source_location": "L5373"
     },
     {
       "id": "lib_screens_client_files_browser_screen_uploadcanceltoken",
@@ -6641,7 +6641,7 @@
       "file_type": "code",
       "norm_label": "_uploadsource",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5026"
+      "source_location": "L5013"
     },
     {
       "id": "lib_screens_client_files_browser_screen_uselargeicons",
@@ -6663,7 +6663,7 @@
       "file_type": "code",
       "norm_label": "value",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5608"
+      "source_location": "L5595"
     },
     {
       "id": "lib_screens_client_files_browser_screen_workspacename",
@@ -19400,7 +19400,7 @@
       "file_type": "code",
       "norm_label": "_actionchip",
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L551"
+      "source_location": "L565"
     },
     {
       "id": "lib_screens_client_workspace_screen_actionsrow",
@@ -19411,7 +19411,7 @@
       "file_type": "code",
       "norm_label": "_actionsrow",
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L518"
+      "source_location": "L532"
     },
     {
       "id": "lib_screens_client_workspace_screen_amber",
@@ -19444,7 +19444,7 @@
       "file_type": "code",
       "norm_label": "_clearrecents",
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L645"
+      "source_location": "L659"
     },
     {
       "id": "lib_screens_client_workspace_screen_client",
@@ -19466,7 +19466,7 @@
       "file_type": "code",
       "norm_label": "_clientunassignedstate",
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L962"
+      "source_location": "L976"
     },
     {
       "id": "lib_screens_client_workspace_screen_clientworkspacescreen",
@@ -19543,7 +19543,7 @@
       "file_type": "code",
       "norm_label": "_emptycard",
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L936"
+      "source_location": "L950"
     },
     {
       "id": "lib_screens_client_workspace_screen_folderislocked",
@@ -19576,7 +19576,7 @@
       "file_type": "code",
       "norm_label": "_foldersheader",
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L599"
+      "source_location": "L613"
     },
     {
       "id": "lib_screens_client_workspace_screen_foldersort",
@@ -19609,7 +19609,7 @@
       "file_type": "code",
       "norm_label": "_folderspreview",
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L797"
+      "source_location": "L811"
     },
     {
       "id": "lib_screens_client_workspace_screen_header",
@@ -19686,7 +19686,7 @@
       "file_type": "code",
       "norm_label": "_metric",
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L489"
+      "source_location": "L503"
     },
     {
       "id": "lib_screens_client_workspace_screen_mint",
@@ -19774,7 +19774,7 @@
       "file_type": "code",
       "norm_label": "_recentheader",
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L625"
+      "source_location": "L639"
     },
     {
       "id": "lib_screens_client_workspace_screen_recents",
@@ -19796,7 +19796,7 @@
       "file_type": "code",
       "norm_label": "_recentsection",
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L662"
+      "source_location": "L676"
     },
     {
       "id": "lib_screens_client_workspace_screen_refresh",
@@ -19818,7 +19818,7 @@
       "file_type": "code",
       "norm_label": "_relativetime",
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L952"
+      "source_location": "L966"
     },
     {
       "id": "lib_screens_client_workspace_screen_removerecent",
@@ -19829,7 +19829,7 @@
       "file_type": "code",
       "norm_label": "_removerecent",
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L651"
+      "source_location": "L665"
     },
     {
       "id": "lib_screens_client_workspace_screen_sectionlabel",
@@ -19840,7 +19840,7 @@
       "file_type": "code",
       "norm_label": "_sectionlabel",
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L588"
+      "source_location": "L602"
     },
     {
       "id": "lib_screens_client_workspace_screen_showbrowser",
@@ -19884,7 +19884,7 @@
       "file_type": "code",
       "norm_label": "_viewallbutton",
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L895"
+      "source_location": "L909"
     },
     {
       "id": "lib_screens_client_workspace_screen_workspace",
@@ -25293,7 +25293,7 @@
       "file_type": "code",
       "norm_label": "_foldernamedialog",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5224"
+      "source_location": "L5211"
     },
     {
       "id": "lib_screens_client_files_browser_screen_foldernamedialogstate",
@@ -25304,7 +25304,7 @@
       "file_type": "code",
       "norm_label": "_foldernamedialogstate",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5251"
+      "source_location": "L5238"
     },
     {
       "id": "lib_screens_home_screen_greetingskyicon",
@@ -25667,7 +25667,7 @@
       "file_type": "code",
       "norm_label": "_folderglyph",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L4963"
+      "source_location": "L4950"
     },
     {
       "id": "lib_screens_client_files_browser_screen_itemactionsheet",
@@ -25678,7 +25678,7 @@
       "file_type": "code",
       "norm_label": "_itemactionsheet",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5614"
+      "source_location": "L5601"
     },
     {
       "id": "lib_screens_client_files_browser_screen_unitfoldertile",
@@ -25689,7 +25689,7 @@
       "file_type": "code",
       "norm_label": "_unitfoldertile",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L4793"
+      "source_location": "L4780"
     },
     {
       "id": "lib_screens_client_files_browser_screen_unitsemptystate",
@@ -25700,7 +25700,7 @@
       "file_type": "code",
       "norm_label": "_unitsemptystate",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L4723"
+      "source_location": "L4710"
     },
     {
       "id": "lib_screens_client_files_browser_screen_uploadprogressdialog",
@@ -25711,7 +25711,7 @@
       "file_type": "code",
       "norm_label": "_uploadprogressdialog",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5436"
+      "source_location": "L5423"
     },
     {
       "id": "lib_screens_client_files_browser_screen_uploadsourceoption",
@@ -25722,7 +25722,7 @@
       "file_type": "code",
       "norm_label": "_uploadsourceoption",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5142"
+      "source_location": "L5129"
     },
     {
       "id": "lib_screens_client_files_browser_screen_uploadsourcesheet",
@@ -25733,7 +25733,7 @@
       "file_type": "code",
       "norm_label": "_uploadsourcesheet",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5028"
+      "source_location": "L5015"
     },
     {
       "id": "lib_screens_downloads_screen_downloadsconfirmdialog",
@@ -41000,7 +41000,7 @@
       "file_type": "code",
       "norm_label": "_uploadprogresssession",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5332"
+      "source_location": "L5319"
     },
     {
       "id": "lib_screens_semester_detail_screen_uploadprogresssession",
@@ -51259,7 +51259,7 @@
       "confidence_score": 1.0,
       "context": "type_lookup",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L3112",
+      "source_location": "L3099",
       "weight": 1.0
     },
     {
@@ -51271,7 +51271,7 @@
       "confidence_score": 1.0,
       "context": "type_lookup",
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L469",
+      "source_location": "L483",
       "weight": 1.0
     },
     {
@@ -52351,7 +52351,7 @@
       "confidence_score": 1.0,
       "context": "variable_type",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L4812",
+      "source_location": "L4799",
       "weight": 1.0
     },
     {
@@ -52363,7 +52363,7 @@
       "confidence_score": 1.0,
       "context": "variable_type",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5143",
+      "source_location": "L5130",
       "weight": 1.0
     },
     {
@@ -52387,7 +52387,7 @@
       "confidence_score": 1.0,
       "context": "variable_type",
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5333",
+      "source_location": "L5320",
       "weight": 1.0
     },
     {
@@ -63283,7 +63283,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L2613",
+      "source_location": "L2600",
       "weight": 1.0
     },
     {
@@ -63294,7 +63294,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L2639",
+      "source_location": "L2626",
       "weight": 1.0
     },
     {
@@ -63305,7 +63305,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L2647",
+      "source_location": "L2634",
       "weight": 1.0
     },
     {
@@ -63316,7 +63316,18 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L2656",
+      "source_location": "L2643",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_screens_client_files_browser_screen",
+      "target": "lib_screens_client_files_browser_screen_deleteselectedfiles",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/screens/client_files_browser_screen.dart",
+      "source_location": "L2707",
       "weight": 1.0
     },
     {
@@ -63328,17 +63339,6 @@
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
       "source_location": "L272",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_screens_client_files_browser_screen",
-      "target": "lib_screens_client_files_browser_screen_deleteselectedfiles",
-      "relation": "defines",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L2720",
       "weight": 1.0
     },
     {
@@ -63360,7 +63360,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L2793",
+      "source_location": "L2780",
       "weight": 1.0
     },
     {
@@ -63371,7 +63371,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L2835",
+      "source_location": "L2822",
       "weight": 1.0
     },
     {
@@ -63393,7 +63393,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L2893",
+      "source_location": "L2880",
       "weight": 1.0
     },
     {
@@ -63426,7 +63426,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L2975",
+      "source_location": "L2962",
       "weight": 1.0
     },
     {
@@ -63459,7 +63459,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L3032",
+      "source_location": "L3019",
       "weight": 1.0
     },
     {
@@ -63470,7 +63470,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L3059",
+      "source_location": "L3046",
       "weight": 1.0
     },
     {
@@ -63481,7 +63481,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L3085",
+      "source_location": "L3072",
       "weight": 1.0
     },
     {
@@ -63492,7 +63492,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L3099",
+      "source_location": "L3086",
       "weight": 1.0
     },
     {
@@ -63547,7 +63547,18 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L3224",
+      "source_location": "L3211",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_screens_client_files_browser_screen",
+      "target": "lib_screens_client_files_browser_screen_builddetailsfilelist",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/screens/client_files_browser_screen.dart",
+      "source_location": "L3243",
       "weight": 1.0
     },
     {
@@ -63559,17 +63570,6 @@
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
       "source_location": "L325",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_screens_client_files_browser_screen",
-      "target": "lib_screens_client_files_browser_screen_builddetailsfilelist",
-      "relation": "defines",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L3256",
       "weight": 1.0
     },
     {
@@ -63607,6 +63607,17 @@
     },
     {
       "source": "lib_screens_client_files_browser_screen",
+      "target": "lib_screens_client_files_browser_screen_buildlargeiconsgrid",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/screens/client_files_browser_screen.dart",
+      "source_location": "L3395",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_screens_client_files_browser_screen",
       "target": "lib_screens_client_files_browser_screen_initialfolderid",
       "relation": "defines",
       "_origin": "ast",
@@ -63614,17 +63625,6 @@
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
       "source_location": "L34",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_screens_client_files_browser_screen",
-      "target": "lib_screens_client_files_browser_screen_buildlargeiconsgrid",
-      "relation": "defines",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L3408",
       "weight": 1.0
     },
     {
@@ -63657,7 +63657,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L3583",
+      "source_location": "L3570",
       "weight": 1.0
     },
     {
@@ -63668,7 +63668,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L3612",
+      "source_location": "L3599",
       "weight": 1.0
     },
     {
@@ -63679,7 +63679,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L3619",
+      "source_location": "L3606",
       "weight": 1.0
     },
     {
@@ -63706,6 +63706,17 @@
     },
     {
       "source": "lib_screens_client_files_browser_screen",
+      "target": "lib_screens_client_files_browser_screen_selectionbaraction",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/screens/client_files_browser_screen.dart",
+      "source_location": "L3680",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_screens_client_files_browser_screen",
       "target": "lib_screens_client_files_browser_screen_commonmovetargetsforfiles",
       "relation": "defines",
       "_origin": "ast",
@@ -63717,24 +63728,13 @@
     },
     {
       "source": "lib_screens_client_files_browser_screen",
-      "target": "lib_screens_client_files_browser_screen_selectionbaraction",
-      "relation": "defines",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L3693",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_screens_client_files_browser_screen",
       "target": "lib_screens_client_files_browser_screen_buildfilesview",
       "relation": "defines",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L3725",
+      "source_location": "L3712",
       "weight": 1.0
     },
     {
@@ -63756,7 +63756,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L4084",
+      "source_location": "L4071",
       "weight": 1.0
     },
     {
@@ -63767,7 +63767,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L4184",
+      "source_location": "L4171",
       "weight": 1.0
     },
     {
@@ -63789,7 +63789,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L4222",
+      "source_location": "L4209",
       "weight": 1.0
     },
     {
@@ -63822,7 +63822,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L4616",
+      "source_location": "L4603",
       "weight": 1.0
     },
     {
@@ -63833,7 +63833,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L4723",
+      "source_location": "L4710",
       "weight": 1.0
     },
     {
@@ -63844,7 +63844,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L4730",
+      "source_location": "L4717",
       "weight": 1.0
     },
     {
@@ -63855,7 +63855,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L4731",
+      "source_location": "L4718",
       "weight": 1.0
     },
     {
@@ -63866,7 +63866,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L4732",
+      "source_location": "L4719",
       "weight": 1.0
     },
     {
@@ -63877,7 +63877,95 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
+      "source_location": "L4780",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_screens_client_files_browser_screen",
+      "target": "lib_screens_client_files_browser_screen_subject",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/screens/client_files_browser_screen.dart",
+      "source_location": "L4792",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_screens_client_files_browser_screen",
+      "target": "lib_screens_client_files_browser_screen_isdark",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/screens/client_files_browser_screen.dart",
       "source_location": "L4793",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_screens_client_files_browser_screen",
+      "target": "lib_screens_client_files_browser_screen_compact",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/screens/client_files_browser_screen.dart",
+      "source_location": "L4794",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_screens_client_files_browser_screen",
+      "target": "lib_screens_client_files_browser_screen_ontap",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/screens/client_files_browser_screen.dart",
+      "source_location": "L4795",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_screens_client_files_browser_screen",
+      "target": "lib_screens_client_files_browser_screen_onlongpress",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/screens/client_files_browser_screen.dart",
+      "source_location": "L4796",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_screens_client_files_browser_screen",
+      "target": "lib_screens_client_files_browser_screen_selected",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/screens/client_files_browser_screen.dart",
+      "source_location": "L4797",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_screens_client_files_browser_screen",
+      "target": "lib_screens_client_files_browser_screen_selectionmode",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/screens/client_files_browser_screen.dart",
+      "source_location": "L4798",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_screens_client_files_browser_screen",
+      "target": "lib_screens_client_files_browser_screen_menu",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/screens/client_files_browser_screen.dart",
+      "source_location": "L4799",
       "weight": 1.0
     },
     {
@@ -63893,90 +63981,46 @@
     },
     {
       "source": "lib_screens_client_files_browser_screen",
-      "target": "lib_screens_client_files_browser_screen_subject",
+      "target": "lib_screens_client_files_browser_screen_folderglyph",
       "relation": "defines",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L4805",
+      "source_location": "L4950",
       "weight": 1.0
     },
     {
       "source": "lib_screens_client_files_browser_screen",
-      "target": "lib_screens_client_files_browser_screen_isdark",
+      "target": "lib_screens_client_files_browser_screen_color",
       "relation": "defines",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L4806",
+      "source_location": "L4957",
       "weight": 1.0
     },
     {
       "source": "lib_screens_client_files_browser_screen",
-      "target": "lib_screens_client_files_browser_screen_compact",
+      "target": "lib_screens_client_files_browser_screen_size",
       "relation": "defines",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L4807",
+      "source_location": "L4958",
       "weight": 1.0
     },
     {
       "source": "lib_screens_client_files_browser_screen",
-      "target": "lib_screens_client_files_browser_screen_ontap",
+      "target": "lib_screens_client_files_browser_screen_locked",
       "relation": "defines",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L4808",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_screens_client_files_browser_screen",
-      "target": "lib_screens_client_files_browser_screen_onlongpress",
-      "relation": "defines",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L4809",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_screens_client_files_browser_screen",
-      "target": "lib_screens_client_files_browser_screen_selected",
-      "relation": "defines",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L4810",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_screens_client_files_browser_screen",
-      "target": "lib_screens_client_files_browser_screen_selectionmode",
-      "relation": "defines",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L4811",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_screens_client_files_browser_screen",
-      "target": "lib_screens_client_files_browser_screen_menu",
-      "relation": "defines",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L4812",
+      "source_location": "L4959",
       "weight": 1.0
     },
     {
@@ -63992,57 +64036,13 @@
     },
     {
       "source": "lib_screens_client_files_browser_screen",
-      "target": "lib_screens_client_files_browser_screen_folderglyph",
-      "relation": "defines",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L4963",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_screens_client_files_browser_screen",
-      "target": "lib_screens_client_files_browser_screen_color",
-      "relation": "defines",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L4970",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_screens_client_files_browser_screen",
-      "target": "lib_screens_client_files_browser_screen_size",
-      "relation": "defines",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L4971",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_screens_client_files_browser_screen",
-      "target": "lib_screens_client_files_browser_screen_locked",
-      "relation": "defines",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L4972",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_screens_client_files_browser_screen",
       "target": "lib_screens_client_files_browser_screen_uploadsource",
       "relation": "defines",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5026",
+      "source_location": "L5013",
       "weight": 1.0
     },
     {
@@ -64053,7 +64053,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5028",
+      "source_location": "L5015",
       "weight": 1.0
     },
     {
@@ -64064,7 +64064,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5142",
+      "source_location": "L5129",
       "weight": 1.0
     },
     {
@@ -64075,7 +64075,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5143",
+      "source_location": "L5130",
       "weight": 1.0
     },
     {
@@ -64086,7 +64086,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5144",
+      "source_location": "L5131",
       "weight": 1.0
     },
     {
@@ -64097,7 +64097,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5145",
+      "source_location": "L5132",
       "weight": 1.0
     },
     {
@@ -64108,7 +64108,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5146",
+      "source_location": "L5133",
       "weight": 1.0
     },
     {
@@ -64119,7 +64119,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5147",
+      "source_location": "L5134",
       "weight": 1.0
     },
     {
@@ -64130,7 +64130,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5148",
+      "source_location": "L5135",
       "weight": 1.0
     },
     {
@@ -64141,7 +64141,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5149",
+      "source_location": "L5136",
       "weight": 1.0
     },
     {
@@ -64174,7 +64174,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5224",
+      "source_location": "L5211",
       "weight": 1.0
     },
     {
@@ -64185,7 +64185,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5226",
+      "source_location": "L5213",
       "weight": 1.0
     },
     {
@@ -64196,7 +64196,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5227",
+      "source_location": "L5214",
       "weight": 1.0
     },
     {
@@ -64207,7 +64207,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5228",
+      "source_location": "L5215",
       "weight": 1.0
     },
     {
@@ -64218,7 +64218,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5229",
+      "source_location": "L5216",
       "weight": 1.0
     },
     {
@@ -64229,7 +64229,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5230",
+      "source_location": "L5217",
       "weight": 1.0
     },
     {
@@ -64240,7 +64240,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5231",
+      "source_location": "L5218",
       "weight": 1.0
     },
     {
@@ -64251,7 +64251,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5232",
+      "source_location": "L5219",
       "weight": 1.0
     },
     {
@@ -64262,7 +64262,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5233",
+      "source_location": "L5220",
       "weight": 1.0
     },
     {
@@ -64273,7 +64273,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5251",
+      "source_location": "L5238",
       "weight": 1.0
     },
     {
@@ -64284,7 +64284,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5252",
+      "source_location": "L5239",
       "weight": 1.0
     },
     {
@@ -64295,7 +64295,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5253",
+      "source_location": "L5240",
       "weight": 1.0
     },
     {
@@ -64306,7 +64306,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5267",
+      "source_location": "L5254",
       "weight": 1.0
     },
     {
@@ -64317,7 +64317,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5277",
+      "source_location": "L5264",
       "weight": 1.0
     },
     {
@@ -64339,7 +64339,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5332",
+      "source_location": "L5319",
       "weight": 1.0
     },
     {
@@ -64350,7 +64350,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5333",
+      "source_location": "L5320",
       "weight": 1.0
     },
     {
@@ -64361,7 +64361,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5335",
+      "source_location": "L5322",
       "weight": 1.0
     },
     {
@@ -64372,7 +64372,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5336",
+      "source_location": "L5323",
       "weight": 1.0
     },
     {
@@ -64383,7 +64383,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5337",
+      "source_location": "L5324",
       "weight": 1.0
     },
     {
@@ -64394,7 +64394,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5338",
+      "source_location": "L5325",
       "weight": 1.0
     },
     {
@@ -64405,7 +64405,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5339",
+      "source_location": "L5326",
       "weight": 1.0
     },
     {
@@ -64416,7 +64416,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5340",
+      "source_location": "L5327",
       "weight": 1.0
     },
     {
@@ -64427,7 +64427,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5341",
+      "source_location": "L5328",
       "weight": 1.0
     },
     {
@@ -64438,7 +64438,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5342",
+      "source_location": "L5329",
       "weight": 1.0
     },
     {
@@ -64449,7 +64449,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5343",
+      "source_location": "L5330",
       "weight": 1.0
     },
     {
@@ -64460,7 +64460,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5344",
+      "source_location": "L5331",
       "weight": 1.0
     },
     {
@@ -64471,7 +64471,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5351",
+      "source_location": "L5338",
       "weight": 1.0
     },
     {
@@ -64482,7 +64482,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5364",
+      "source_location": "L5351",
       "weight": 1.0
     },
     {
@@ -64493,7 +64493,18 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5374",
+      "source_location": "L5361",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_screens_client_files_browser_screen",
+      "target": "lib_screens_client_files_browser_screen_updatereceiveprogress",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/screens/client_files_browser_screen.dart",
+      "source_location": "L5373",
       "weight": 1.0
     },
     {
@@ -64509,24 +64520,35 @@
     },
     {
       "source": "lib_screens_client_files_browser_screen",
-      "target": "lib_screens_client_files_browser_screen_updatereceiveprogress",
-      "relation": "defines",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5386",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_screens_client_files_browser_screen",
       "target": "lib_screens_client_files_browser_screen_updatefilesize",
       "relation": "defines",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5396",
+      "source_location": "L5383",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_screens_client_files_browser_screen",
+      "target": "lib_screens_client_files_browser_screen_updatebytes",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/screens/client_files_browser_screen.dart",
+      "source_location": "L5389",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_screens_client_files_browser_screen",
+      "target": "lib_screens_client_files_browser_screen_markcompleted",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/screens/client_files_browser_screen.dart",
+      "source_location": "L5398",
       "weight": 1.0
     },
     {
@@ -64542,35 +64564,13 @@
     },
     {
       "source": "lib_screens_client_files_browser_screen",
-      "target": "lib_screens_client_files_browser_screen_updatebytes",
-      "relation": "defines",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5402",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_screens_client_files_browser_screen",
-      "target": "lib_screens_client_files_browser_screen_markcompleted",
-      "relation": "defines",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5411",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_screens_client_files_browser_screen",
       "target": "lib_screens_client_files_browser_screen_markcancelling",
       "relation": "defines",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5419",
+      "source_location": "L5406",
       "weight": 1.0
     },
     {
@@ -64581,7 +64581,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5424",
+      "source_location": "L5411",
       "weight": 1.0
     },
     {
@@ -64592,7 +64592,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5436",
+      "source_location": "L5423",
       "weight": 1.0
     },
     {
@@ -64603,7 +64603,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5443",
+      "source_location": "L5430",
       "weight": 1.0
     },
     {
@@ -64614,7 +64614,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5444",
+      "source_location": "L5431",
       "weight": 1.0
     },
     {
@@ -64625,7 +64625,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5445",
+      "source_location": "L5432",
       "weight": 1.0
     },
     {
@@ -64658,7 +64658,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5600",
+      "source_location": "L5587",
       "weight": 1.0
     },
     {
@@ -64669,7 +64669,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5608",
+      "source_location": "L5595",
       "weight": 1.0
     },
     {
@@ -64680,7 +64680,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5610",
+      "source_location": "L5597",
       "weight": 1.0
     },
     {
@@ -64691,7 +64691,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5614",
+      "source_location": "L5601",
       "weight": 1.0
     },
     {
@@ -64702,7 +64702,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5625",
+      "source_location": "L5612",
       "weight": 1.0
     },
     {
@@ -64713,7 +64713,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5626",
+      "source_location": "L5613",
       "weight": 1.0
     },
     {
@@ -64724,7 +64724,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5627",
+      "source_location": "L5614",
       "weight": 1.0
     },
     {
@@ -64757,7 +64757,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5768",
+      "source_location": "L5755",
       "weight": 1.0
     },
     {
@@ -65505,7 +65505,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L489",
+      "source_location": "L503",
       "weight": 1.0
     },
     {
@@ -65516,7 +65516,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L518",
+      "source_location": "L532",
       "weight": 1.0
     },
     {
@@ -65538,7 +65538,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L551",
+      "source_location": "L565",
       "weight": 1.0
     },
     {
@@ -65560,18 +65560,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L588",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_screens_client_workspace_screen",
-      "target": "lib_screens_client_workspace_screen_foldersheader",
-      "relation": "defines",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L599",
+      "source_location": "L602",
       "weight": 1.0
     },
     {
@@ -65587,6 +65576,17 @@
     },
     {
       "source": "lib_screens_client_workspace_screen",
+      "target": "lib_screens_client_workspace_screen_foldersheader",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/screens/client_workspace_screen.dart",
+      "source_location": "L613",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_screens_client_workspace_screen",
       "target": "lib_screens_client_workspace_screen_accent",
       "relation": "defines",
       "_origin": "ast",
@@ -65594,17 +65594,6 @@
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_workspace_screen.dart",
       "source_location": "L62",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_screens_client_workspace_screen",
-      "target": "lib_screens_client_workspace_screen_recentheader",
-      "relation": "defines",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L625",
       "weight": 1.0
     },
     {
@@ -65620,6 +65609,17 @@
     },
     {
       "source": "lib_screens_client_workspace_screen",
+      "target": "lib_screens_client_workspace_screen_recentheader",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/screens/client_workspace_screen.dart",
+      "source_location": "L639",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_screens_client_workspace_screen",
       "target": "lib_screens_client_workspace_screen_amber",
       "relation": "defines",
       "_origin": "ast",
@@ -65627,17 +65627,6 @@
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_workspace_screen.dart",
       "source_location": "L64",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_screens_client_workspace_screen",
-      "target": "lib_screens_client_workspace_screen_clearrecents",
-      "relation": "defines",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L645",
       "weight": 1.0
     },
     {
@@ -65653,13 +65642,13 @@
     },
     {
       "source": "lib_screens_client_workspace_screen",
-      "target": "lib_screens_client_workspace_screen_removerecent",
+      "target": "lib_screens_client_workspace_screen_clearrecents",
       "relation": "defines",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L651",
+      "source_location": "L659",
       "weight": 1.0
     },
     {
@@ -65675,13 +65664,24 @@
     },
     {
       "source": "lib_screens_client_workspace_screen",
+      "target": "lib_screens_client_workspace_screen_removerecent",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/screens/client_workspace_screen.dart",
+      "source_location": "L665",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_screens_client_workspace_screen",
       "target": "lib_screens_client_workspace_screen_recentsection",
       "relation": "defines",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L662",
+      "source_location": "L676",
       "weight": 1.0
     },
     {
@@ -65802,7 +65802,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L797",
+      "source_location": "L811",
       "weight": 1.0
     },
     {
@@ -65835,7 +65835,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L895",
+      "source_location": "L909",
       "weight": 1.0
     },
     {
@@ -65846,7 +65846,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L936",
+      "source_location": "L950",
       "weight": 1.0
     },
     {
@@ -65857,18 +65857,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L952",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_screens_client_workspace_screen",
-      "target": "lib_screens_client_workspace_screen_clientunassignedstate",
-      "relation": "defines",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L962",
+      "source_location": "L966",
       "weight": 1.0
     },
     {
@@ -65880,6 +65869,17 @@
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_workspace_screen.dart",
       "source_location": "L97",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_screens_client_workspace_screen",
+      "target": "lib_screens_client_workspace_screen_clientunassignedstate",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/screens/client_workspace_screen.dart",
+      "source_location": "L976",
       "weight": 1.0
     },
     {
@@ -97449,7 +97449,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L4963",
+      "source_location": "L4950",
       "weight": 1.0
     },
     {
@@ -97460,7 +97460,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5224",
+      "source_location": "L5211",
       "weight": 1.0
     },
     {
@@ -97471,7 +97471,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5251",
+      "source_location": "L5238",
       "weight": 1.0
     },
     {
@@ -97482,7 +97482,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5614",
+      "source_location": "L5601",
       "weight": 1.0
     },
     {
@@ -97493,7 +97493,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L4793",
+      "source_location": "L4780",
       "weight": 1.0
     },
     {
@@ -97504,7 +97504,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L4723",
+      "source_location": "L4710",
       "weight": 1.0
     },
     {
@@ -97515,7 +97515,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5436",
+      "source_location": "L5423",
       "weight": 1.0
     },
     {
@@ -97526,7 +97526,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5332",
+      "source_location": "L5319",
       "weight": 1.0
     },
     {
@@ -97537,7 +97537,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5142",
+      "source_location": "L5129",
       "weight": 1.0
     },
     {
@@ -97548,7 +97548,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5028",
+      "source_location": "L5015",
       "weight": 1.0
     },
     {
@@ -97581,7 +97581,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L962",
+      "source_location": "L976",
       "weight": 1.0
     },
     {
@@ -100661,7 +100661,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5251",
+      "source_location": "L5238",
       "weight": 1.0
     },
     {
@@ -101504,5 +101504,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "97f54795ff399885846e0600ab6e6fdd228bdd15"
+  "built_at_commit": "8929fccab0370ef6d60bd7cd292ba14bba07fbe5"
 }
