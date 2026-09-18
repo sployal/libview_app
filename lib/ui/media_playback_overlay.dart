@@ -1996,88 +1996,97 @@ class _AudioMini extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         child: Material(
           color: Colors.transparent,
-          child: InkWell(
-            onTap: session.expand,
-            child: Column(
-              children: [
-                Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(10, 8, 4, 4),
-                    child: Row(
-                      children: [
-                        _EqualizerBars(
-                          animation: equalizer,
-                          color: palette.accent,
-                          active: session.playing.value,
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Column(
+            children: [
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 8, 4, 4),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: InkWell(
+                          onTap: session.expand,
+                          borderRadius: BorderRadius.circular(12),
+                          child: Row(
                             children: [
-                              Text(
-                                item.title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: palette.ink,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 13,
-                                ),
+                              _EqualizerBars(
+                                animation: equalizer,
+                                color: palette.accent,
+                                active: session.playing.value,
                               ),
-                              Text(
-                                origin != null && origin.playlistName.isNotEmpty
-                                    ? origin.playlistName
-                                    : session.showUpNext &&
-                                            session.upcoming != null
-                                        ? 'Up next · ${session.upcoming!.title}'
-                                        : 'Audio',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: origin != null || session.showUpNext
-                                      ? palette.accent
-                                      : palette.muted,
-                                  fontSize: 11,
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      item.title,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: palette.ink,
+                                        fontWeight: FontWeight.w700,
+                                        fontSize: 13,
+                                      ),
+                                    ),
+                                    Text(
+                                      origin != null &&
+                                              origin.playlistName.isNotEmpty
+                                          ? origin.playlistName
+                                          : session.showUpNext &&
+                                                  session.upcoming != null
+                                              ? 'Up next · ${session.upcoming!.title}'
+                                              : 'Audio',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        color: origin != null ||
+                                                session.showUpNext
+                                            ? palette.accent
+                                            : palette.muted,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
                           ),
                         ),
+                      ),
+                      _MiniIcon(
+                        icon: session.playing.value
+                            ? Icons.pause_rounded
+                            : Icons.play_arrow_rounded,
+                        tooltip: session.playing.value ? 'Pause' : 'Play',
+                        onTap: session.togglePlay,
+                        color: palette.ink,
+                      ),
+                      _MiniIcon(
+                        icon: Icons.skip_next_rounded,
+                        tooltip: 'Next',
+                        onTap: session.canSkipNext ? session.skipNext : null,
+                        color: palette.ink,
+                      ),
+                      if (origin != null)
                         _MiniIcon(
-                          icon: session.playing.value
-                              ? Icons.pause_rounded
-                              : Icons.play_arrow_rounded,
-                          tooltip: session.playing.value ? 'Pause' : 'Play',
-                          onTap: session.togglePlay,
-                          color: palette.ink,
+                          icon: Icons.library_music_rounded,
+                          tooltip: 'Open playlist',
+                          onTap: () => openPlayingClientPlaylist(context),
+                          color: palette.accent,
                         ),
-                        _MiniIcon(
-                          icon: Icons.skip_next_rounded,
-                          tooltip: 'Next',
-                          onTap: session.canSkipNext ? session.skipNext : null,
-                          color: palette.ink,
-                        ),
-                        if (origin != null)
-                          _MiniIcon(
-                            icon: Icons.library_music_rounded,
-                            tooltip: 'Open playlist',
-                            onTap: () => openPlayingClientPlaylist(context),
-                            color: palette.accent,
-                          ),
-                        _MiniIcon(
-                          icon: Icons.close_rounded,
-                          tooltip: 'Close',
-                          onTap: session.close,
-                        ),
-                      ],
-                    ),
+                      _MiniIcon(
+                        icon: Icons.close_rounded,
+                        tooltip: 'Close',
+                        onTap: session.close,
+                      ),
+                    ],
                   ),
                 ),
-                _ThinProgress(color: palette.accent),
-              ],
-            ),
+              ),
+              _ThinProgress(color: palette.accent),
+            ],
           ),
         ),
       ),
