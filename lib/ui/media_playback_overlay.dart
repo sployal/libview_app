@@ -2080,6 +2080,7 @@ class _AudioMini extends StatelessWidget {
                         icon: Icons.close_rounded,
                         tooltip: 'Close',
                         onTap: session.close,
+                        color: palette.ink,
                       ),
                     ],
                   ),
@@ -2141,6 +2142,11 @@ class _MiniIcon extends StatelessWidget {
       visualDensity: VisualDensity.compact,
       padding: EdgeInsets.zero,
       constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+      style: IconButton.styleFrom(
+        minimumSize: const Size(32, 32),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        padding: EdgeInsets.zero,
+      ),
       onPressed: onTap,
       icon: DecoratedBox(
         decoration: BoxDecoration(
