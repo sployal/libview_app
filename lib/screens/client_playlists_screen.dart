@@ -31,6 +31,9 @@ List<Color> playlistCoverColors(String seed) {
 Future<bool> playClientAudioPlaylist(
   BuildContext context,
   ClientAudioPlaylist playlist, {
+  required String clientId,
+  required String rootFolderId,
+  String workspaceName = '',
   int index = 0,
   bool shuffle = false,
 }) async {
@@ -55,7 +58,13 @@ Future<bool> playClientAudioPlaylist(
         ),
     ],
     index: index.clamp(0, playlist.tracks.length - 1),
-    sourceId: playlist.id,
+    origin: PlaylistPlaybackOrigin(
+      playlistId: playlist.id,
+      clientId: clientId,
+      rootFolderId: rootFolderId,
+      workspaceName: workspaceName,
+      playlistName: playlist.name,
+    ),
   );
   if (shuffle) {
     MediaSession.instance.setMode(PlaybackRepeatMode.shuffle);
@@ -63,6 +72,42 @@ Future<bool> playClientAudioPlaylist(
     MediaSession.instance.setMode(PlaybackRepeatMode.all);
   }
   return true;
+}
+
+Future<void> openPlayingClientPlaylist(BuildContext context) async {
+  final origin = MediaSession.instance.playlistOrigin;
+  if (origin == null) return;
+  if (ClientPlaylistDetailScreen.visiblePlaylistId == origin.playlistId) {
+    MediaSession.instance.popOut();
+    return;
+  }
+  MediaSession.instance.popOut();
+  final playlists = await ClientAudioPlaylists.load(origin.clientId);
+  ClientAudioPlaylist? playlist;
+  for (final item in playlists) {
+    if (item.id == origin.playlistId) {
+      playlist = item;
+      break;
+    }
+  }
+  if (!context.mounted) return;
+  if (playlist == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('That playlist is no longer available')),
+    );
+    return;
+  }
+  final selected = playlist;
+  HapticFeedback.lightImpact();
+  await Navigator.of(context, rootNavigator: true).push(
+    MaterialPageRoute<void>(
+      builder: (context) => ClientPlaylistDetailScreen(
+        clientId: origin.clientId,
+        rootFolderId: origin.rootFolderId,
+        playlist: selected,
+      ),
+    ),
+  );
 }
 
 Future<void> showAddAudioToPlaylistSheet({
@@ -219,6 +264,9 @@ class _ClientPlaylistsScreenState extends State<ClientPlaylistsScreen> {
                               onPlay: () => playClientAudioPlaylist(
                                 context,
                                 playlist,
+                                clientId: widget.clientId,
+                                rootFolderId: widget.rootFolderId,
+                                workspaceName: widget.workspaceName,
                               ),
                             );
                           },
@@ -243,6 +291,8 @@ class ClientPlaylistDetailScreen extends StatefulWidget {
   final String rootFolderId;
   final ClientAudioPlaylist playlist;
 
+  static String? visiblePlaylistId;
+
   @override
   State<ClientPlaylistDetailScreen> createState() =>
       _ClientPlaylistDetailScreenState();
@@ -256,12 +306,20 @@ class _ClientPlaylistDetailScreenState
   void initState() {
     super.initState();
     _playlist = widget.playlist;
+    ClientPlaylistDetailScreen.visiblePlaylistId = _playlist.id;
     MediaSession.instance.addListener(_onSession);
     MediaSession.instance.playing.addListener(_onSession);
   }
 
   @override
   void dispose() {
+    if (ClientPlaylistDetailScreen.visiblePlaylistId == _playlist.id) {
+      ClientPlaylistDetailScreen.visiblePlaylistId = null;
+    }
+    if (MediaSession.instance.sourceId == _playlist.id &&
+        MediaSession.instance.active) {
+      MediaSession.instance.popOut();
+    }
     MediaSession.instance.removeListener(_onSession);
     MediaSession.instance.playing.removeListener(_onSession);
     super.dispose();
@@ -269,6 +327,17 @@ class _ClientPlaylistDetailScreenState
 
   void _onSession() {
     if (mounted) setState(() {});
+  }
+
+  Future<void> _play({int index = 0, bool shuffle = false}) {
+    return playClientAudioPlaylist(
+      context,
+      _playlist,
+      clientId: widget.clientId,
+      rootFolderId: widget.rootFolderId,
+      index: index,
+      shuffle: shuffle,
+    );
   }
 
   bool get _isThisPlaylistPlaying {
@@ -456,7 +525,7 @@ class _ClientPlaylistDetailScreenState
                       icon: Icons.play_arrow_rounded,
                       label: 'Play',
                       filled: true,
-                      onTap: () => playClientAudioPlaylist(context, _playlist),
+                      onTap: () => _play(),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -465,11 +534,7 @@ class _ClientPlaylistDetailScreenState
                       icon: Icons.shuffle_rounded,
                       label: 'Shuffle',
                       filled: false,
-                      onTap: () => playClientAudioPlaylist(
-                        context,
-                        _playlist,
-                        shuffle: true,
-                      ),
+                      onTap: () => _play(shuffle: true),
                     ),
                   ),
                 ],
@@ -599,11 +664,7 @@ class _ClientPlaylistDetailScreenState
                       index: index,
                       track: track,
                       current: _isCurrentTrack(track),
-                      onPlay: () => playClientAudioPlaylist(
-                        context,
-                        _playlist,
-                        index: index,
-                      ),
+                      onPlay: () => _play(index: index),
                       onRemove: () => _removeTrack(index),
                     ),
                   );

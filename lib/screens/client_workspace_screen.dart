@@ -402,6 +402,9 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
                 onPlay: (playlist) => playClientAudioPlaylist(
                   context,
                   playlist,
+                  clientId: _client.id,
+                  rootFolderId: _client.driveFolderId,
+                  workspaceName: _client.name,
                 ),
               ),
               const SizedBox(height: 22),

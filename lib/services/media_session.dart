@@ -45,6 +45,22 @@ class MediaQueueItem {
   }
 }
 
+class PlaylistPlaybackOrigin {
+  const PlaylistPlaybackOrigin({
+    required this.playlistId,
+    required this.clientId,
+    required this.rootFolderId,
+    this.workspaceName = '',
+    this.playlistName = '',
+  });
+
+  final String playlistId;
+  final String clientId;
+  final String rootFolderId;
+  final String workspaceName;
+  final String playlistName;
+}
+
 /// Client-only playback session. Only the client files browser starts it.
 ///
 /// The controller lives here so a popped-out player can keep running while
@@ -65,6 +81,7 @@ class MediaSession extends ChangeNotifier {
   int index = 0;
   /// Set when a saved playlist starts playback; otherwise null.
   String? sourceId;
+  PlaylistPlaybackOrigin? playlistOrigin;
   VideoPlayerController? controller;
   Duration duration = Duration.zero;
   bool active = false;
@@ -142,12 +159,14 @@ class MediaSession extends ChangeNotifier {
     required List<MediaQueueItem> queue,
     required int index,
     String? sourceId,
+    PlaylistPlaybackOrigin? origin,
   }) async {
     if (queue.isEmpty) return;
     _cacheCancel?.cancel('replaced');
     this.queue = List<MediaQueueItem>.of(queue);
     this.index = index.clamp(0, this.queue.length - 1);
-    this.sourceId = sourceId;
+    this.sourceId = origin?.playlistId ?? sourceId;
+    playlistOrigin = origin;
     mode = PlaybackRepeatMode.none;
     poppedOut = false;
     active = true;
@@ -191,6 +210,7 @@ class MediaSession extends ChangeNotifier {
     queue = const [];
     index = 0;
     sourceId = null;
+    playlistOrigin = null;
     duration = Duration.zero;
     _history.clear();
     _shuffleBag = [];
@@ -238,7 +258,11 @@ class MediaSession extends ChangeNotifier {
   /// that runs in the same event after the first one already closed it.
   bool consumeSystemBack() {
     if (isExpanded) {
-      close();
+      if (playlistOrigin != null) {
+        popOut();
+      } else {
+        close();
+      }
       _backConsumed = true;
       scheduleMicrotask(() => _backConsumed = false);
       return true;

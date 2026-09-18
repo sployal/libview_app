@@ -7,6 +7,7 @@ import 'package:video_player/video_player.dart';
 
 import '../services/download_service.dart';
 import '../services/media_session.dart';
+import '../screens/client_playlists_screen.dart';
 import 'drive_thumbnail.dart';
 
 /// Full-screen and popped-out players. Shown only while [MediaSession] is
@@ -415,6 +416,13 @@ class _TopBar extends StatelessWidget {
             ),
             color: palette.ink,
           ),
+          if (MediaSession.instance.playlistOrigin != null)
+            IconButton(
+              onPressed: () => openPlayingClientPlaylist(context),
+              tooltip: 'Open playlist',
+              icon: const Icon(Icons.library_music_rounded),
+              color: palette.ink,
+            ),
           IconButton(
             onPressed: onPopOut,
             tooltip: 'Pop out',
@@ -1946,6 +1954,7 @@ class _AudioMini extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final origin = session.playlistOrigin;
     return DecoratedBox(
       decoration: BoxDecoration(
         color: palette.isDark ? const Color(0xFF161D2E) : Colors.white,
@@ -1994,13 +2003,16 @@ class _AudioMini extends StatelessWidget {
                                 ),
                               ),
                               Text(
-                                session.showUpNext && session.upcoming != null
-                                    ? 'Up next · ${session.upcoming!.title}'
-                                    : 'Audio',
+                                origin != null && origin.playlistName.isNotEmpty
+                                    ? origin.playlistName
+                                    : session.showUpNext &&
+                                            session.upcoming != null
+                                        ? 'Up next · ${session.upcoming!.title}'
+                                        : 'Audio',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
-                                  color: session.showUpNext
+                                  color: origin != null || session.showUpNext
                                       ? palette.accent
                                       : palette.muted,
                                   fontSize: 11,
@@ -2023,6 +2035,13 @@ class _AudioMini extends StatelessWidget {
                           onTap: session.canSkipNext ? session.skipNext : null,
                           color: palette.ink,
                         ),
+                        if (origin != null)
+                          _MiniIcon(
+                            icon: Icons.library_music_rounded,
+                            tooltip: 'Open playlist',
+                            onTap: () => openPlayingClientPlaylist(context),
+                            color: palette.accent,
+                          ),
                         _MiniIcon(
                           icon: Icons.close_rounded,
                           tooltip: 'Close',
