@@ -15,6 +15,7 @@ import '../ui/adaptive_layout.dart';
 import '../ui/file_details.dart';
 import '../ui/file_sort.dart';
 import '../ui/preview_overlay_icon.dart';
+import '../ui/drive_image_preview.dart';
 import 'no_internet_screen.dart';
 import 'phone_pdf.dart';
 import 'web_view_screen.dart';
@@ -455,6 +456,53 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     setState(() {
       openedMaterial = material;
     });
+  }
+
+  bool _isImageFile(StudyMaterial file) {
+    return !file.isFolder && file.type.toUpperCase() == 'IMG';
+  }
+
+  List<StudyMaterial> get _folderImageQueue {
+    return _visibleFiles.where(_isImageFile).toList();
+  }
+
+  void _openImageAt(int index, List<StudyMaterial> queue) {
+    if (index < 0 || index >= queue.length) return;
+    final next = queue[index];
+    if (next.downloadUrl == null || next.downloadUrl!.isEmpty) return;
+    setState(() {
+      openedMaterial = next;
+    });
+  }
+
+  Widget _buildOpenedFile() {
+    final material = openedMaterial!;
+    if (_isImageFile(material)) {
+      final queue = _folderImageQueue;
+      var index = queue.indexWhere((file) => file.id == material.id);
+      final gallery = index >= 0 ? queue : [material];
+      if (index < 0) index = 0;
+      return DriveImagePreview(
+        key: ValueKey(material.id),
+        fileId: material.id,
+        title: material.name,
+        subject: selectedSubject?.name ?? 'Unknown',
+        onBack: _closeWebView,
+        index: index,
+        total: gallery.length,
+        onPrevious: index > 0 ? () => _openImageAt(index - 1, gallery) : null,
+        onNext: index < gallery.length - 1
+            ? () => _openImageAt(index + 1, gallery)
+            : null,
+      );
+    }
+    return WebViewScreen(
+      key: ValueKey(material.id),
+      url: material.downloadUrl!,
+      title: material.name,
+      subject: selectedSubject?.name ?? 'Unknown',
+      onBack: _closeWebView,
+    );
   }
 
   void _closeWebView() {
@@ -1745,13 +1793,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
         _onSystemBack();
       },
       child: openedMaterial != null
-          ? WebViewScreen(
-              key: ValueKey(openedMaterial!.id),
-              url: openedMaterial!.downloadUrl!,
-              title: openedMaterial!.name,
-              subject: selectedSubject?.name ?? 'Unknown',
-              onBack: _closeWebView,
-            )
+          ? _buildOpenedFile()
           : selectedSubject != null
               ? _buildFilesView()
               : _buildSubjectsView(),
