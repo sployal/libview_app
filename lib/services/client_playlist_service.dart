@@ -7,16 +7,19 @@ class ClientAudioTrack {
     required this.fileId,
     required this.title,
     this.folderName = '',
+    this.fromVideo = false,
   });
 
   final String fileId;
   final String title;
   final String folderName;
+  final bool fromVideo;
 
   Map<String, dynamic> toJson() => {
         'fileId': fileId,
         'title': title,
         'folderName': folderName,
+        'fromVideo': fromVideo,
       };
 
   factory ClientAudioTrack.fromJson(Map<String, dynamic> json) {
@@ -24,6 +27,7 @@ class ClientAudioTrack {
       fileId: json['fileId']?.toString() ?? '',
       title: json['title']?.toString() ?? 'Audio',
       folderName: json['folderName']?.toString() ?? '',
+      fromVideo: json['fromVideo'] == true,
     );
   }
 }

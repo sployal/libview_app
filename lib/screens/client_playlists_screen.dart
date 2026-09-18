@@ -36,7 +36,7 @@ Future<bool> playClientAudioPlaylist(
 }) async {
   if (playlist.tracks.isEmpty) {
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Add audio to this playlist first')),
+      const SnackBar(content: Text('Add a track to this playlist first')),
     );
     return false;
   }
@@ -50,10 +50,12 @@ Future<bool> playClientAudioPlaylist(
           id: track.fileId,
           title: track.title,
           isAudio: true,
+          hasVideoTrack: track.fromVideo,
           subject: track.folderName.isEmpty ? playlist.name : track.folderName,
         ),
     ],
     index: index.clamp(0, playlist.tracks.length - 1),
+    sourceId: playlist.id,
   );
   if (shuffle) {
     MediaSession.instance.setMode(PlaybackRepeatMode.shuffle);
@@ -186,7 +188,7 @@ class _ClientPlaylistsScreenState extends State<ClientPlaylistsScreen> {
                           ),
                         ),
                         Text(
-                          'Audio from ${widget.workspaceName}',
+                          'Mixes from ${widget.workspaceName}',
                           style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
@@ -254,6 +256,52 @@ class _ClientPlaylistDetailScreenState
   void initState() {
     super.initState();
     _playlist = widget.playlist;
+    MediaSession.instance.addListener(_onSession);
+    MediaSession.instance.playing.addListener(_onSession);
+  }
+
+  @override
+  void dispose() {
+    MediaSession.instance.removeListener(_onSession);
+    MediaSession.instance.playing.removeListener(_onSession);
+    super.dispose();
+  }
+
+  void _onSession() {
+    if (mounted) setState(() {});
+  }
+
+  bool get _isThisPlaylistPlaying {
+    final session = MediaSession.instance;
+    return session.active && session.sourceId == _playlist.id;
+  }
+
+  bool _isCurrentTrack(ClientAudioTrack track) {
+    return _isThisPlaylistPlaying &&
+        MediaSession.instance.current?.id == track.fileId;
+  }
+
+  ClientAudioTrack? get _nowPlayingTrack {
+    if (!_isThisPlaylistPlaying) return null;
+    final id = MediaSession.instance.current?.id;
+    if (id == null) return null;
+    for (final track in _playlist.tracks) {
+      if (track.fileId == id) return track;
+    }
+    return null;
+  }
+
+  List<MediaQueueItem> _queueFor(ClientAudioPlaylist playlist) {
+    return [
+      for (final track in playlist.tracks)
+        MediaQueueItem(
+          id: track.fileId,
+          title: track.title,
+          isAudio: true,
+          hasVideoTrack: track.fromVideo,
+          subject: track.folderName.isEmpty ? playlist.name : track.folderName,
+        ),
+    ];
   }
 
   Future<void> _persist(ClientAudioPlaylist next) async {
@@ -332,7 +380,15 @@ class _ClientPlaylistDetailScreenState
 
   Future<void> _removeTrack(int index) async {
     final next = [..._playlist.tracks]..removeAt(index);
-    await _persist(_playlist.copyWith(tracks: next));
+    final updated = _playlist.copyWith(tracks: next);
+    await _persist(updated);
+    if (_isThisPlaylistPlaying) {
+      if (updated.tracks.isEmpty) {
+        MediaSession.instance.close();
+      } else {
+        MediaSession.instance.replaceQueue(_queueFor(updated));
+      }
+    }
   }
 
   Future<void> _reorder(int oldIndex, int newIndex) async {
@@ -341,7 +397,11 @@ class _ClientPlaylistDetailScreenState
     final next = [..._playlist.tracks];
     final item = next.removeAt(oldIndex);
     next.insert(insert, item);
-    await _persist(_playlist.copyWith(tracks: next));
+    final updated = _playlist.copyWith(tracks: next);
+    await _persist(updated);
+    if (_isThisPlaylistPlaying) {
+      MediaSession.instance.replaceQueue(_queueFor(updated));
+    }
   }
 
   @override
@@ -355,8 +415,8 @@ class _ClientPlaylistDetailScreenState
 
     return Scaffold(
       backgroundColor: bg,
-      body: CustomScrollView(
-        slivers: [
+      body: NestedScrollView(
+        headerSliverBuilder: (context, _) => [
           SliverAppBar(
             pinned: true,
             expandedHeight: 280,
@@ -379,7 +439,9 @@ class _ClientPlaylistDetailScreenState
             flexibleSpace: FlexibleSpaceBar(
               background: _PlaylistHero(
                 name: _playlist.name,
-                subtitle: _playlist.countLabel,
+                subtitle: _nowPlayingTrack == null
+                    ? _playlist.countLabel
+                    : 'Now playing · ${_nowPlayingTrack!.title}',
                 colors: colors,
               ),
             ),
@@ -414,6 +476,16 @@ class _ClientPlaylistDetailScreenState
               ),
             ),
           ),
+          if (_nowPlayingTrack != null)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 12),
+                child: _NowPlayingBanner(
+                  track: _nowPlayingTrack!,
+                  playing: MediaSession.instance.playing.value,
+                ),
+              ),
+            ),
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 12),
@@ -447,12 +519,25 @@ class _ClientPlaylistDetailScreenState
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: Text(
-                            'Add audio from files',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                              color: title,
-                            ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Add tracks from files',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  color: title,
+                                ),
+                              ),
+                              Text(
+                                'Audio or video · video plays as audio',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: muted,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                         Icon(Icons.chevron_right_rounded, color: muted),
@@ -463,9 +548,9 @@ class _ClientPlaylistDetailScreenState
               ),
             ),
           ),
-          if (_playlist.tracks.isEmpty)
-            SliverToBoxAdapter(
-              child: Padding(
+        ],
+        body: _playlist.tracks.isEmpty
+            ? Padding(
                 padding: const EdgeInsets.fromLTRB(20, 24, 20, 40),
                 child: Column(
                   children: [
@@ -478,18 +563,33 @@ class _ClientPlaylistDetailScreenState
                     Text(
                       'This playlist is waiting for a first track.',
                       textAlign: TextAlign.center,
-                      style: TextStyle(color: muted, fontWeight: FontWeight.w600),
+                      style: TextStyle(
+                        color: muted,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ],
                 ),
-              ),
-            )
-          else
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(12, 0, 12, 40),
-              sliver: SliverReorderableList(
-                itemCount: _playlist.tracks.length,
+              )
+            : ReorderableListView.builder(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 40),
+                buildDefaultDragHandles: false,
+                proxyDecorator: (child, index, animation) {
+                  return AnimatedBuilder(
+                    animation: animation,
+                    builder: (context, child) {
+                      return Material(
+                        elevation: 8 * animation.value,
+                        color: Colors.transparent,
+                        shadowColor: _rose.withValues(alpha: 0.35),
+                        child: child,
+                      );
+                    },
+                    child: child,
+                  );
+                },
                 onReorder: _reorder,
+                itemCount: _playlist.tracks.length,
                 itemBuilder: (context, index) {
                   final track = _playlist.tracks[index];
                   return ReorderableDelayedDragStartListener(
@@ -498,6 +598,7 @@ class _ClientPlaylistDetailScreenState
                     child: _TrackTile(
                       index: index,
                       track: track,
+                      current: _isCurrentTrack(track),
                       onPlay: () => playClientAudioPlaylist(
                         context,
                         _playlist,
@@ -508,8 +609,6 @@ class _ClientPlaylistDetailScreenState
                   );
                 },
               ),
-            ),
-        ],
       ),
     );
   }
@@ -572,7 +671,8 @@ class _ClientAudioTrackPickerScreenState
       _items = files
           .where(
             (item) =>
-                item.isFolder || item.type.toUpperCase() == 'AUD',
+                item.isFolder ||
+                UploadService.isPlayableMediaType(item.type),
           )
           .toList();
       _loading = false;
@@ -615,6 +715,7 @@ class _ClientAudioTrackPickerScreenState
           fileId: file.id,
           title: file.name,
           folderName: _folderName,
+          fromVideo: file.type.toUpperCase() == 'VID',
         );
       }
     });
@@ -646,7 +747,7 @@ class _ClientAudioTrackPickerScreenState
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Add audio',
+              'Add tracks',
               style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
             ),
             Text(
@@ -680,7 +781,7 @@ class _ClientAudioTrackPickerScreenState
           : _items.isEmpty
               ? Center(
                   child: Text(
-                    'No folders or audio here',
+                    'No folders, audio, or video here',
                     style: TextStyle(color: muted, fontWeight: FontWeight.w600),
                   ),
                 )
@@ -729,6 +830,7 @@ class _ClientAudioTrackPickerScreenState
                     }
                     final already = widget.excludeIds.contains(item.id);
                     final selected = _selected.containsKey(item.id);
+                    final video = item.type.toUpperCase() == 'VID';
                     return Material(
                       color: card,
                       elevation: 0,
@@ -743,12 +845,19 @@ class _ClientAudioTrackPickerScreenState
                           width: 42,
                           height: 42,
                           decoration: BoxDecoration(
-                            color: _rose.withValues(alpha: 0.14),
+                            color: (video
+                                    ? const Color(0xFF0EA5E9)
+                                    : _rose)
+                                .withValues(alpha: 0.14),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Icon(
-                            Icons.audiotrack_rounded,
-                            color: _rose,
+                          child: Icon(
+                            video
+                                ? Icons.videocam_rounded
+                                : Icons.audiotrack_rounded,
+                            color: video
+                                ? const Color(0xFF0EA5E9)
+                                : _rose,
                           ),
                         ),
                         title: Text(
@@ -761,7 +870,11 @@ class _ClientAudioTrackPickerScreenState
                           ),
                         ),
                         subtitle: Text(
-                          already ? 'Already in playlist' : item.size,
+                          already
+                              ? 'Already in playlist'
+                              : video
+                                  ? '${item.size} · plays as audio'
+                                  : item.size,
                           style: TextStyle(color: muted, fontSize: 12),
                         ),
                         trailing: already
@@ -905,7 +1018,7 @@ class _AddToPlaylistSheetState extends State<_AddToPlaylistSheet> {
                           Text(
                             count == 1
                                 ? widget.tracks.first.title
-                                : '$count audio files',
+                                : '$count files',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
@@ -1110,7 +1223,7 @@ class PlaylistHomeStrip extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.only(top: 8),
             child: Text(
-              'Collect audio into a set you can play later.',
+              'Collect audio and video into a set you can play later.',
               style: TextStyle(color: muted, fontSize: 13),
             ),
           ),
@@ -1200,7 +1313,7 @@ class _EmptyPlaylists extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Gather audio from any folder and play it as one elegant set.',
+              'Gather audio or video from any folder. Video plays as audio.',
               textAlign: TextAlign.center,
               style: TextStyle(color: muted, height: 1.4),
             ),
@@ -1609,25 +1722,99 @@ class _PlayAction extends StatelessWidget {
   }
 }
 
+class _NowPlayingBanner extends StatelessWidget {
+  const _NowPlayingBanner({
+    required this.track,
+    required this.playing,
+  });
+
+  final ClientAudioTrack track;
+  final bool playing;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        gradient: const LinearGradient(
+          colors: [Color(0xFFEC4899), Color(0xFF8B5CF6)],
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              playing ? Icons.graphic_eq_rounded : Icons.pause_rounded,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  playing ? 'Now playing' : 'Paused',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.85),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
+                  ),
+                ),
+                Text(
+                  track.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _TrackTile extends StatelessWidget {
   const _TrackTile({
     required this.index,
     required this.track,
     required this.onPlay,
     required this.onRemove,
+    this.current = false,
   });
 
   final int index;
   final ClientAudioTrack track;
   final VoidCallback onPlay;
   final VoidCallback onRemove;
+  final bool current;
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final card = isDark ? const Color(0xFF151B28) : Colors.white;
+    final card = current
+        ? (isDark ? const Color(0xFF3B1D36) : const Color(0xFFFCE7F3))
+        : (isDark ? const Color(0xFF151B28) : Colors.white);
     final title = isDark ? const Color(0xFFF8FAFC) : const Color(0xFF111827);
     final muted = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final subtitle = [
+      if (current) (MediaSession.instance.playing.value ? 'Now playing' : 'Paused'),
+      if (track.fromVideo) 'Video · audio only',
+      if (track.folderName.isNotEmpty) track.folderName,
+    ].join(' · ');
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -1641,26 +1828,42 @@ class _TrackTile extends StatelessWidget {
         child: ListTile(
           onTap: onPlay,
           leading: CircleAvatar(
-            backgroundColor: _rose.withValues(alpha: 0.14),
-            foregroundColor: _rose,
-            child: Text(
-              '${index + 1}',
-              style: const TextStyle(fontWeight: FontWeight.w800),
-            ),
+            backgroundColor: current
+                ? _rose
+                : _rose.withValues(alpha: 0.14),
+            foregroundColor: current ? Colors.white : _rose,
+            child: current
+                ? Icon(
+                    MediaSession.instance.playing.value
+                        ? Icons.graphic_eq_rounded
+                        : Icons.pause_rounded,
+                    size: 20,
+                  )
+                : Text(
+                    '${index + 1}',
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
           ),
           title: Text(
             track.title,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(fontWeight: FontWeight.w700, color: title),
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              color: current ? _rose : title,
+            ),
           ),
-          subtitle: track.folderName.isEmpty
+          subtitle: subtitle.isEmpty
               ? null
               : Text(
-                  track.folderName,
+                  subtitle,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: muted, fontSize: 12),
+                  style: TextStyle(
+                    color: current ? _rose.withValues(alpha: 0.85) : muted,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
@@ -1672,7 +1875,17 @@ class _TrackTile extends StatelessWidget {
               ),
               ReorderableDragStartListener(
                 index: index,
-                child: Icon(Icons.drag_handle_rounded, color: muted),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 8,
+                  ),
+                  child: Icon(
+                    Icons.drag_handle_rounded,
+                    color: muted,
+                    size: 26,
+                  ),
+                ),
               ),
             ],
           ),

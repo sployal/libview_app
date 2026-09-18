@@ -372,11 +372,13 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     final folderName = selectedSubject?.name ?? widget.workspaceName;
     return [
       for (final file in files)
-        if (!file.isFolder && file.type.toUpperCase() == 'AUD')
+        if (!file.isFolder &&
+            UploadService.isPlayableMediaType(file.type))
           ClientAudioTrack(
             fileId: file.id,
             title: file.name,
             folderName: folderName,
+            fromVideo: file.type.toUpperCase() == 'VID',
           ),
     ];
   }
@@ -389,7 +391,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
       return;
     }
     if (tracks.isEmpty) {
-      _showMessage('Select audio files to add', isError: true);
+      _showMessage('Select audio or video files to add', isError: true);
       return;
     }
     await showAddAudioToPlaylistSheet(
@@ -2965,13 +2967,15 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
         ),
       if (!file.isFolder &&
           !isDownloading &&
-          file.type.toUpperCase() == 'AUD' &&
+          UploadService.isPlayableMediaType(file.type) &&
           (widget.clientId ?? '').isNotEmpty)
-        const _ItemActionChoice(
+        _ItemActionChoice(
           value: 'playlist',
           icon: Icons.queue_music_rounded,
-          label: 'Add to playlist',
-          color: Color(0xFFEC4899),
+          label: file.type.toUpperCase() == 'VID'
+              ? 'Add to playlist (audio)'
+              : 'Add to playlist',
+          color: const Color(0xFFEC4899),
         ),
       if (_canManageFolders && !isDownloading) ...[
         _ItemActionChoice(

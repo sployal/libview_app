@@ -148,6 +148,18 @@ class _MediaPlaybackOverlayState extends State<MediaPlaybackOverlay>
       builder: (context, constraints) {
         return Stack(
           children: [
+            if (session.controller != null &&
+                session.current?.isAudio == true &&
+                session.current?.hasVideoTrack == true)
+              Positioned(
+                left: -640,
+                top: 0,
+                width: 320,
+                height: 180,
+                child: IgnorePointer(
+                  child: VideoPlayer(session.controller!),
+                ),
+              ),
             if (!session.poppedOut)
               Positioned.fill(
                 child: _FullPlayer(

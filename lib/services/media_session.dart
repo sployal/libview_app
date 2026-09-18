@@ -4,6 +4,7 @@ import 'dart:math';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:open_file/open_file.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:video_player/video_player.dart';
@@ -26,15 +27,22 @@ class MediaQueueItem {
     required this.isAudio,
     required this.subject,
     this.hasThumbnail = false,
-  });
+    bool? hasVideoTrack,
+  }) : hasVideoTrack = hasVideoTrack ?? !isAudio;
 
   final String id;
   final String title;
   final bool isAudio;
   final String subject;
   final bool hasThumbnail;
+  /// True when the file has a video stream. Playlist videos keep [isAudio]
+  /// so the chrome stays audio-only, but the decoder still needs a surface.
+  final bool hasVideoTrack;
 
-  String get kindLabel => isAudio ? 'Audio' : 'Video';
+  String get kindLabel {
+    if (hasVideoTrack && isAudio) return 'Video';
+    return isAudio ? 'Audio' : 'Video';
+  }
 }
 
 /// Client-only playback session. Only the client files browser starts it.
@@ -55,6 +63,8 @@ class MediaSession extends ChangeNotifier {
   PlaybackRepeatMode mode = PlaybackRepeatMode.none;
   List<MediaQueueItem> queue = const [];
   int index = 0;
+  /// Set when a saved playlist starts playback; otherwise null.
+  String? sourceId;
   VideoPlayerController? controller;
   Duration duration = Duration.zero;
   bool active = false;
@@ -131,11 +141,13 @@ class MediaSession extends ChangeNotifier {
   Future<void> open({
     required List<MediaQueueItem> queue,
     required int index,
+    String? sourceId,
   }) async {
     if (queue.isEmpty) return;
     _cacheCancel?.cancel('replaced');
     this.queue = List<MediaQueueItem>.of(queue);
     this.index = index.clamp(0, this.queue.length - 1);
+    this.sourceId = sourceId;
     mode = PlaybackRepeatMode.none;
     poppedOut = false;
     active = true;
@@ -146,6 +158,24 @@ class MediaSession extends ChangeNotifier {
     _syncExpanded();
     notifyListeners();
     await _loadCurrent();
+  }
+
+  /// Keep the current item playing while the saved playlist order changes.
+  void replaceQueue(List<MediaQueueItem> next) {
+    if (!active || next.isEmpty) return;
+    final currentId = current?.id;
+    queue = List<MediaQueueItem>.of(next);
+    final found =
+        currentId == null ? -1 : queue.indexWhere((item) => item.id == currentId);
+    final same = found >= 0;
+    index = (same ? found : 0).clamp(0, queue.length - 1);
+    if (mode == PlaybackRepeatMode.shuffle) {
+      _refillShuffle(exclude: index);
+    }
+    notifyListeners();
+    if (!same) {
+      unawaited(_loadCurrent());
+    }
   }
 
   void close() {
@@ -160,6 +190,7 @@ class MediaSession extends ChangeNotifier {
     status = null;
     queue = const [];
     index = 0;
+    sourceId = null;
     duration = Duration.zero;
     _history.clear();
     _shuffleBag = [];
@@ -378,7 +409,26 @@ class MediaSession extends ChangeNotifier {
         VideoPlayerController.networkUrl(
           Uri.parse(UploadService.mediaStreamUrl(item.id)),
           httpHeaders: headers,
-          viewType: _viewType(item.isAudio),
+          viewType: _viewType(item),
+          videoPlayerOptions: _playerOptions,
+        ),
+      );
+      return;
+    } catch (_) {
+      if (token != _token) return;
+    }
+
+    try {
+      if (token != _token) return;
+      status = 'Preparing a local copy...';
+      notifyListeners();
+      final path = await _cacheForPlayback(item, token);
+      if (token != _token) return;
+      await _startController(
+        token,
+        VideoPlayerController.file(
+          File(path),
+          viewType: _viewType(item),
           videoPlayerOptions: _playerOptions,
         ),
       );
@@ -393,25 +443,6 @@ class MediaSession extends ChangeNotifier {
       error = 'Could not play this audio file';
       notifyListeners();
       return;
-    }
-
-    try {
-      if (token != _token) return;
-      status = 'Preparing a local copy...';
-      notifyListeners();
-      final path = await _cacheForPlayback(item, token);
-      if (token != _token) return;
-      await _startController(
-        token,
-        VideoPlayerController.file(
-          File(path),
-          viewType: _viewType(false),
-          videoPlayerOptions: _playerOptions,
-        ),
-      );
-      return;
-    } catch (_) {
-      if (token != _token) return;
     }
 
     try {
@@ -431,8 +462,8 @@ class MediaSession extends ChangeNotifier {
     allowBackgroundPlayback: true,
   );
 
-  VideoViewType _viewType(bool isAudio) {
-    if (!isAudio &&
+  VideoViewType _viewType(MediaQueueItem item) {
+    if (item.hasVideoTrack &&
         !kIsWeb &&
         defaultTargetPlatform == TargetPlatform.android) {
       return VideoViewType.platformView;
@@ -440,28 +471,42 @@ class MediaSession extends ChangeNotifier {
     return VideoViewType.textureView;
   }
 
+  Future<void> _awaitVideoSurface(int token) async {
+    final item = current;
+    if (item == null || !item.hasVideoTrack) return;
+    await SchedulerBinding.instance.endOfFrame;
+    if (token != _token) return;
+    await SchedulerBinding.instance.endOfFrame;
+    if (token != _token) return;
+    await Future<void>.delayed(const Duration(milliseconds: 80));
+  }
+
   Future<void> _startController(
     int token,
     VideoPlayerController next,
   ) async {
     try {
-      await next.initialize();
+      await _disposeController();
       if (token != _token) {
         await next.dispose();
+        return;
+      }
+      controller = next;
+      next.addListener(_onTick);
+      notifyListeners();
+      await _awaitVideoSurface(token);
+      if (token != _token) return;
+      await next.initialize();
+      if (token != _token) {
         return;
       }
       if (next.value.hasError) {
         throw StateError(next.value.errorDescription ?? 'decode failed');
       }
-      next.addListener(_onTick);
       await next.play();
       if (token != _token) {
-        next.removeListener(_onTick);
-        await next.dispose();
         return;
       }
-      await _disposeController();
-      controller = next;
       duration = next.value.duration;
       position.value = next.value.position;
       playing.value = next.value.isPlaying;
@@ -471,6 +516,9 @@ class MediaSession extends ChangeNotifier {
       notifyListeners();
     } catch (_) {
       next.removeListener(_onTick);
+      if (identical(controller, next)) {
+        controller = null;
+      }
       await next.dispose();
       rethrow;
     }
