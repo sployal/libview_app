@@ -514,6 +514,7 @@ class _VideoTheater extends StatefulWidget {
 class _VideoTheaterState extends State<_VideoTheater> {
   bool _chrome = true;
   Timer? _hideTimer;
+  static final _overlayPalette = _Palette(true, false);
 
   MediaSession get session => widget.session;
 
@@ -573,69 +574,31 @@ class _VideoTheaterState extends State<_VideoTheater> {
     final controller = session.controller;
     final ready = controller != null && controller.value.isInitialized;
     final next = session.upcoming;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final palette = _Palette(isDark, false);
-    final chromePalette = isDark ? _Palette(true, false) : palette;
     final showChrome = _chrome || !session.playing.value || session.showUpNext;
-    final ratio = !ready || controller.value.aspectRatio == 0
-        ? 16 / 9
-        : controller.value.aspectRatio;
-    return Material(
-      color: palette.canvas,
+    return ColoredBox(
+      color: Colors.black,
       child: Stack(
         fit: StackFit.expand,
         children: [
-          DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: RadialGradient(
-                center: const Alignment(0, -0.12),
-                radius: 1.12,
-                colors: [
-                  palette.accent.withValues(alpha: isDark ? 0.28 : 0.22),
-                  palette.canvas,
-                ],
+          if (ready)
+            Center(
+              child: AspectRatio(
+                aspectRatio: controller.value.aspectRatio == 0
+                    ? 16 / 9
+                    : controller.value.aspectRatio,
+                child: IgnorePointer(child: VideoPlayer(controller)),
               ),
             ),
-          ),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final topPad = showChrome ? 84.0 : 28.0;
-              final bottomPad = showChrome
-                  ? 168.0 + widget.bottomInset
-                  : 28.0 + widget.bottomInset;
-              return Padding(
-                padding: EdgeInsets.fromLTRB(20, topPad, 20, bottomPad),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      maxWidth: constraints.maxWidth - 40,
-                      maxHeight: (constraints.maxHeight - topPad - bottomPad)
-                          .clamp(96.0, double.infinity),
-                    ),
-                    child: Align(
-                      child: _CinematicScreen(
-                        palette: palette,
-                        aspectRatio: ratio,
-                        child: ready
-                            ? IgnorePointer(child: VideoPlayer(controller))
-                            : const SizedBox.shrink(),
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
           Positioned.fill(
             child: GestureDetector(
-              behavior: HitTestBehavior.translucent,
+              behavior: HitTestBehavior.opaque,
               onTap: _onVideoTap,
             ),
           ),
           if (session.showUpNext && next != null)
             _UpNextCurtain(
               item: next,
-              palette: chromePalette,
+              palette: _overlayPalette,
               onPlay: () {
                 HapticFeedback.lightImpact();
                 session.playUpcoming();
@@ -661,8 +624,7 @@ class _VideoTheaterState extends State<_VideoTheater> {
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
                             colors: [
-                              (isDark ? Colors.black : palette.canvas)
-                                  .withValues(alpha: isDark ? 0.72 : 0.92),
+                              Colors.black.withValues(alpha: 0.72),
                               Colors.transparent,
                             ],
                           ),
@@ -670,7 +632,7 @@ class _VideoTheaterState extends State<_VideoTheater> {
                         child: SafeArea(
                           bottom: false,
                           child: _TopBar(
-                            palette: chromePalette,
+                            palette: _overlayPalette,
                             title: item?.title ?? 'Now playing',
                             subtitle: item == null
                                 ? null
@@ -690,7 +652,7 @@ class _VideoTheaterState extends State<_VideoTheater> {
                     if (!session.showUpNext)
                       Center(
                         child: _PlayOrb(
-                          palette: chromePalette,
+                          palette: _overlayPalette,
                           playing: session.playing.value,
                           onTap: () {
                             HapticFeedback.lightImpact();
@@ -703,15 +665,12 @@ class _VideoTheaterState extends State<_VideoTheater> {
                       left: 0,
                       right: 0,
                       bottom: widget.bottomInset + 12,
-                      child: Padding(
-                        padding: EdgeInsets.symmetric(horizontal: isDark ? 0 : 12),
-                        child: _ControlDock(
-                          session: session,
-                          palette: chromePalette,
-                          onMode: widget.onMode,
-                          onQueue: widget.onQueue,
-                          overlay: isDark,
-                        ),
+                      child: _ControlDock(
+                        session: session,
+                        palette: _overlayPalette,
+                        onMode: widget.onMode,
+                        onQueue: widget.onQueue,
+                        overlay: true,
                       ),
                     ),
                   ],
@@ -731,75 +690,12 @@ class _VideoTheaterState extends State<_VideoTheater> {
                       ? widget.downloadProgress
                       : null,
                   minHeight: 2,
-                  color: palette.accent,
-                  backgroundColor: palette.accent.withValues(alpha: 0.16),
+                  color: _overlayPalette.accent,
+                  backgroundColor: Colors.white24,
                 ),
               ),
             ),
         ],
-      ),
-    );
-  }
-}
-
-class _CinematicScreen extends StatelessWidget {
-  const _CinematicScreen({
-    required this.palette,
-    required this.aspectRatio,
-    required this.child,
-  });
-
-  final _Palette palette;
-  final double aspectRatio;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return AspectRatio(
-      aspectRatio: aspectRatio,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(26),
-          boxShadow: [
-            BoxShadow(
-              color: palette.accent.withValues(alpha: palette.isDark ? 0.32 : 0.22),
-              blurRadius: 36,
-              spreadRadius: 1,
-            ),
-            BoxShadow(
-              color: Colors.black.withValues(alpha: palette.isDark ? 0.45 : 0.14),
-              blurRadius: 28,
-              offset: const Offset(0, 18),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(26),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              const ColoredBox(color: Colors.black),
-              child,
-              IgnorePointer(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.black.withValues(alpha: 0.18),
-                        Colors.transparent,
-                        Colors.transparent,
-                        Colors.black.withValues(alpha: 0.28),
-                      ],
-                      stops: const [0, 0.18, 0.72, 1],
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
