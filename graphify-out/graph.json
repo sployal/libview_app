@@ -9515,57 +9515,79 @@
       "source_location": null
     },
     {
-      "id": "lib_login_auth_screen_authscreen",
-      "label": "AuthScreen",
+      "id": "package_flutter_material_dart",
+      "label": "package:flutter/material.dart",
       "_origin": "ast",
-      "community": 105,
-      "community_name": "_AuthScreenState",
+      "community": 104,
+      "community_name": "package:flutter/material.dart",
       "file_type": "code",
-      "norm_label": "authscreen",
-      "source_file": "lib/login/auth_screen.dart",
-      "source_location": "L12"
+      "norm_label": "package:flutter/material.dart",
+      "source_file": null,
+      "source_location": null
     },
     {
-      "id": "lib_login_auth_screen_authscreenstate",
-      "label": "_AuthScreenState",
+      "id": "package_flutter_test_flutter_test_dart",
+      "label": "package:flutter_test/flutter_test.dart",
       "_origin": "ast",
-      "community": 105,
-      "community_name": "_AuthScreenState",
+      "community": 104,
+      "community_name": "package:flutter/material.dart",
       "file_type": "code",
-      "norm_label": "_authscreenstate",
-      "source_file": "lib/login/auth_screen.dart",
-      "source_location": "L29"
+      "norm_label": "package:flutter_test/flutter_test.dart",
+      "source_file": null,
+      "source_location": null
     },
     {
-      "id": "lib_ui_folder_lock_dialog_folderlockdialog",
-      "label": "FolderLockDialog",
+      "id": "package_uni_study_app_main_dart",
+      "label": "package:uni_study_app/main.dart",
       "_origin": "ast",
-      "community": 105,
-      "community_name": "_AuthScreenState",
+      "community": 104,
+      "community_name": "package:flutter/material.dart",
       "file_type": "code",
-      "norm_label": "folderlockdialog",
-      "source_file": "lib/ui/folder_lock_dialog.dart",
-      "source_location": "L40"
+      "norm_label": "package:uni_study_app/main.dart",
+      "source_file": null,
+      "source_location": null
     },
     {
-      "id": "lib_ui_folder_lock_dialog_folderlockdialogstate",
-      "label": "_FolderLockDialogState",
+      "id": "test_widget_test",
+      "label": "widget_test.dart",
       "_origin": "ast",
-      "community": 105,
-      "community_name": "_AuthScreenState",
+      "community": 104,
+      "community_name": "package:flutter/material.dart",
       "file_type": "code",
-      "norm_label": "_folderlockdialogstate",
-      "source_file": "lib/ui/folder_lock_dialog.dart",
-      "source_location": "L54"
+      "norm_label": "widget_test.dart",
+      "source_file": "test/widget_test.dart",
+      "source_location": null
     },
     {
-      "id": "singletickerproviderstatemixin",
-      "label": "SingleTickerProviderStateMixin",
+      "id": "test_widget_test_main",
+      "label": "main",
+      "_origin": "ast",
+      "community": 104,
+      "community_name": "package:flutter/material.dart",
+      "file_type": "code",
+      "norm_label": "main",
+      "source_file": "test/widget_test.dart",
+      "source_location": "L13"
+    },
+    {
+      "id": "lib_main_nestednavigatorobserver",
+      "label": "_NestedNavigatorObserver",
       "_origin": "ast",
       "community": 105,
-      "community_name": "_AuthScreenState",
+      "community_name": "_NestedNavigatorObserver",
       "file_type": "code",
-      "norm_label": "singletickerproviderstatemixin",
+      "norm_label": "_nestednavigatorobserver",
+      "source_file": "lib/main.dart",
+      "source_location": "L274"
+    },
+    {
+      "id": "navigatorobserver",
+      "label": "NavigatorObserver",
+      "_origin": "ast",
+      "community": 105,
+      "community_name": "_NestedNavigatorObserver",
+      "file_type": "code",
+      "norm_label": "navigatorobserver",
       "source_file": null,
       "source_location": null
     },
@@ -11305,17 +11327,6 @@
       "source_location": "L24"
     },
     {
-      "id": "lib_screens_semesters_screen_admincourseselector",
-      "label": "_AdminCourseSelector",
-      "_origin": "ast",
-      "community": 12,
-      "community_name": "semesters_screen.dart",
-      "file_type": "code",
-      "norm_label": "_admincourseselector",
-      "source_file": "lib/screens/semesters_screen.dart",
-      "source_location": "L448"
-    },
-    {
       "id": "lib_screens_semesters_screen_allcourses",
       "label": "_allCourses",
       "_origin": "ast",
@@ -11347,17 +11358,6 @@
       "norm_label": "_closesemester",
       "source_file": "lib/screens/semesters_screen.dart",
       "source_location": "L270"
-    },
-    {
-      "id": "lib_screens_semesters_screen_continuecard",
-      "label": "_ContinueCard",
-      "_origin": "ast",
-      "community": 12,
-      "community_name": "semesters_screen.dart",
-      "file_type": "code",
-      "norm_label": "_continuecard",
-      "source_file": "lib/screens/semesters_screen.dart",
-      "source_location": "L655"
     },
     {
       "id": "lib_screens_semesters_screen_continuelastsemester",
@@ -11677,17 +11677,6 @@
       "norm_label": "_opensemester",
       "source_file": "lib/screens/semesters_screen.dart",
       "source_location": "L216"
-    },
-    {
-      "id": "lib_screens_semesters_screen_overviewstrip",
-      "label": "_OverviewStrip",
-      "_origin": "ast",
-      "community": 12,
-      "community_name": "semesters_screen.dart",
-      "file_type": "code",
-      "norm_label": "_overviewstrip",
-      "source_file": "lib/screens/semesters_screen.dart",
-      "source_location": "L568"
     },
     {
       "id": "lib_screens_semesters_screen_ready",
@@ -12042,6 +12031,28 @@
       "source_location": ""
     },
     {
+      "id": "lib_screens_ai_screen_aiscreen",
+      "label": "AiScreen",
+      "_origin": "ast",
+      "community": 122,
+      "community_name": "AiScreen",
+      "file_type": "code",
+      "norm_label": "aiscreen",
+      "source_file": "lib/screens/ai_screen.dart",
+      "source_location": "L17"
+    },
+    {
+      "id": "lib_screens_ai_screen_aiscreenstate",
+      "label": "_AiScreenState",
+      "_origin": "ast",
+      "community": 122,
+      "community_name": "AiScreen",
+      "file_type": "code",
+      "norm_label": "_aiscreenstate",
+      "source_file": "lib/screens/ai_screen.dart",
+      "source_location": "L24"
+    },
+    {
       "id": "ios_runner_assets_xcassets_launchimage_imageset_readme",
       "label": "LaunchImage.imageset/README.md",
       "_origin": "ast",
@@ -12066,26 +12077,48 @@
       "source_location": "L1"
     },
     {
-      "id": "lib_screens_client_files_browser_screen_clientfilesbrowserscreen",
-      "label": "ClientFilesBrowserScreen",
+      "id": "lib_screens_home_screen_studyfocuscard",
+      "label": "_StudyFocusCard",
       "_origin": "ast",
       "community": 124,
-      "community_name": "ClientFilesBrowserScreen",
+      "community_name": "_StudyFocusCard",
       "file_type": "code",
-      "norm_label": "clientfilesbrowserscreen",
-      "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L31"
+      "norm_label": "_studyfocuscard",
+      "source_file": "lib/screens/home_screen.dart",
+      "source_location": "L2309"
     },
     {
-      "id": "lib_screens_client_files_browser_screen_clientfilesbrowserscreenstate",
-      "label": "_ClientFilesBrowserScreenState",
+      "id": "lib_screens_home_screen_studyfocuscardstate",
+      "label": "_StudyFocusCardState",
       "_origin": "ast",
       "community": 124,
-      "community_name": "ClientFilesBrowserScreen",
+      "community_name": "_StudyFocusCard",
       "file_type": "code",
-      "norm_label": "_clientfilesbrowserscreenstate",
-      "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L54"
+      "norm_label": "_studyfocuscardstate",
+      "source_file": "lib/screens/home_screen.dart",
+      "source_location": "L2316"
+    },
+    {
+      "id": "lib_screens_home_screen_weatherlocationsheet",
+      "label": "_WeatherLocationSheet",
+      "_origin": "ast",
+      "community": 125,
+      "community_name": "_WeatherLocationSheet",
+      "file_type": "code",
+      "norm_label": "_weatherlocationsheet",
+      "source_file": "lib/screens/home_screen.dart",
+      "source_location": "L1902"
+    },
+    {
+      "id": "lib_screens_home_screen_weatherlocationsheetstate",
+      "label": "_WeatherLocationSheetState",
+      "_origin": "ast",
+      "community": 125,
+      "community_name": "_WeatherLocationSheet",
+      "file_type": "code",
+      "norm_label": "_weatherlocationsheetstate",
+      "source_file": "lib/screens/home_screen.dart",
+      "source_location": "L1909"
     },
     {
       "id": "lib_main_onboardinggate",
@@ -12847,88 +12880,33 @@
       "source_location": "L39"
     },
     {
-      "id": "lib_screens_semesters_screen_semestersscreen",
-      "label": "SemestersScreen",
+      "id": "lib_screens_notifications_screen_notificationsscreen",
+      "label": "NotificationsScreen",
       "_origin": "ast",
       "community": 131,
-      "community_name": "SemestersScreen",
+      "community_name": "NotificationsScreen",
       "file_type": "code",
-      "norm_label": "semestersscreen",
-      "source_file": "lib/screens/semesters_screen.dart",
-      "source_location": "L12"
+      "norm_label": "notificationsscreen",
+      "source_file": "lib/screens/notifications_screen.dart",
+      "source_location": "L16"
     },
     {
-      "id": "lib_screens_semesters_screen_semestersscreenstate",
-      "label": "_SemestersScreenState",
+      "id": "lib_screens_notifications_screen_notificationsscreenstate",
+      "label": "_NotificationsScreenState",
       "_origin": "ast",
       "community": 131,
-      "community_name": "SemestersScreen",
+      "community_name": "NotificationsScreen",
       "file_type": "code",
-      "norm_label": "_semestersscreenstate",
-      "source_file": "lib/screens/semesters_screen.dart",
-      "source_location": "L19"
-    },
-    {
-      "id": "foldernamedialog",
-      "label": "_FolderNameDialog",
-      "_origin": "ast",
-      "community": 133,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "_foldernamedialog",
-      "source_file": null,
-      "source_location": null
-    },
-    {
-      "id": "lib_screens_browse_documents_localdocpreviewstate",
-      "label": "_LocalDocPreviewState",
-      "_origin": "ast",
-      "community": 133,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "_localdocpreviewstate",
-      "source_file": "lib/screens/browse_documents.dart",
-      "source_location": "L999"
-    },
-    {
-      "id": "lib_screens_client_files_browser_screen_foldernamedialogstate",
-      "label": "_FolderNameDialogState",
-      "_origin": "ast",
-      "community": 133,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "_foldernamedialogstate",
-      "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5305"
-    },
-    {
-      "id": "lib_screens_home_screen_greetingskyicon",
-      "label": "_GreetingSkyIcon",
-      "_origin": "ast",
-      "community": 133,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "_greetingskyicon",
-      "source_file": "lib/screens/home_screen.dart",
-      "source_location": "L2089"
-    },
-    {
-      "id": "lib_screens_home_screen_greetingskyiconstate",
-      "label": "_GreetingSkyIconState",
-      "_origin": "ast",
-      "community": 133,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "_greetingskyiconstate",
-      "source_file": "lib/screens/home_screen.dart",
-      "source_location": "L2098"
+      "norm_label": "_notificationsscreenstate",
+      "source_file": "lib/screens/notifications_screen.dart",
+      "source_location": "L23"
     },
     {
       "id": "lib_screens_home_screen_homescreen",
       "label": "HomeScreen",
       "_origin": "ast",
       "community": 133,
-      "community_name": "State",
+      "community_name": "_HomeScreenState",
       "file_type": "code",
       "norm_label": "homescreen",
       "source_file": "lib/screens/home_screen.dart",
@@ -12939,99 +12917,11 @@
       "label": "_HomeScreenState",
       "_origin": "ast",
       "community": 133,
-      "community_name": "State",
+      "community_name": "_HomeScreenState",
       "file_type": "code",
       "norm_label": "_homescreenstate",
       "source_file": "lib/screens/home_screen.dart",
       "source_location": "L33"
-    },
-    {
-      "id": "lib_screens_home_screen_studyfocuscard",
-      "label": "_StudyFocusCard",
-      "_origin": "ast",
-      "community": 133,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "_studyfocuscard",
-      "source_file": "lib/screens/home_screen.dart",
-      "source_location": "L2309"
-    },
-    {
-      "id": "lib_screens_home_screen_studyfocuscardstate",
-      "label": "_StudyFocusCardState",
-      "_origin": "ast",
-      "community": 133,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "_studyfocuscardstate",
-      "source_file": "lib/screens/home_screen.dart",
-      "source_location": "L2316"
-    },
-    {
-      "id": "lib_screens_home_screen_weatherlocationsheet",
-      "label": "_WeatherLocationSheet",
-      "_origin": "ast",
-      "community": 133,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "_weatherlocationsheet",
-      "source_file": "lib/screens/home_screen.dart",
-      "source_location": "L1902"
-    },
-    {
-      "id": "lib_screens_home_screen_weatherlocationsheetstate",
-      "label": "_WeatherLocationSheetState",
-      "_origin": "ast",
-      "community": 133,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "_weatherlocationsheetstate",
-      "source_file": "lib/screens/home_screen.dart",
-      "source_location": "L1909"
-    },
-    {
-      "id": "lib_screens_phone_pdf_localdocpreviewstate",
-      "label": "_LocalDocPreviewState",
-      "_origin": "ast",
-      "community": 133,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "_localdocpreviewstate",
-      "source_file": "lib/screens/phone_pdf.dart",
-      "source_location": "L894"
-    },
-    {
-      "id": "lib_screens_semester_detail_screen_foldernamedialogstate",
-      "label": "_FolderNameDialogState",
-      "_origin": "ast",
-      "community": 133,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "_foldernamedialogstate",
-      "source_file": "lib/screens/semester_detail_screen.dart",
-      "source_location": "L3058"
-    },
-    {
-      "id": "localdocpreview",
-      "label": "_LocalDocPreview",
-      "_origin": "ast",
-      "community": 133,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "_localdocpreview",
-      "source_file": null,
-      "source_location": null
-    },
-    {
-      "id": "state",
-      "label": "State",
-      "_origin": "ast",
-      "community": 133,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "state",
-      "source_file": null,
-      "source_location": null
     },
     {
       "id": "lib_services_google_drive_service",
@@ -14090,17 +13980,6 @@
       "source_location": "L354"
     },
     {
-      "id": "lib_main_nestednavigatorobserver",
-      "label": "_NestedNavigatorObserver",
-      "_origin": "ast",
-      "community": 15,
-      "community_name": "main.dart",
-      "file_type": "code",
-      "norm_label": "_nestednavigatorobserver",
-      "source_file": "lib/main.dart",
-      "source_location": "L274"
-    },
-    {
       "id": "lib_main_notify",
       "label": "_notify",
       "_origin": "ast",
@@ -14284,17 +14163,6 @@
       "community_name": "main.dart",
       "file_type": "code",
       "norm_label": "login/onboarding_screen.dart",
-      "source_file": null,
-      "source_location": null
-    },
-    {
-      "id": "navigatorobserver",
-      "label": "NavigatorObserver",
-      "_origin": "ast",
-      "community": 15,
-      "community_name": "main.dart",
-      "file_type": "code",
-      "norm_label": "navigatorobserver",
       "source_file": null,
       "source_location": null
     },
@@ -16202,28 +16070,6 @@
       "source_location": "L28"
     },
     {
-      "id": "lib_screens_notifications_screen_notificationsscreen",
-      "label": "NotificationsScreen",
-      "_origin": "ast",
-      "community": 18,
-      "community_name": "notifications_screen.dart",
-      "file_type": "code",
-      "norm_label": "notificationsscreen",
-      "source_file": "lib/screens/notifications_screen.dart",
-      "source_location": "L16"
-    },
-    {
-      "id": "lib_screens_notifications_screen_notificationsscreenstate",
-      "label": "_NotificationsScreenState",
-      "_origin": "ast",
-      "community": 18,
-      "community_name": "notifications_screen.dart",
-      "file_type": "code",
-      "norm_label": "_notificationsscreenstate",
-      "source_file": "lib/screens/notifications_screen.dart",
-      "source_location": "L23"
-    },
-    {
       "id": "lib_screens_notifications_screen_onlinktap",
       "label": "onLinkTap",
       "_origin": "ast",
@@ -16376,28 +16222,6 @@
       "norm_label": "accent",
       "source_file": "lib/screens/ai_screen.dart",
       "source_location": "L567"
-    },
-    {
-      "id": "lib_screens_ai_screen_aiscreen",
-      "label": "AiScreen",
-      "_origin": "ast",
-      "community": 19,
-      "community_name": "ai_screen.dart",
-      "file_type": "code",
-      "norm_label": "aiscreen",
-      "source_file": "lib/screens/ai_screen.dart",
-      "source_location": "L17"
-    },
-    {
-      "id": "lib_screens_ai_screen_aiscreenstate",
-      "label": "_AiScreenState",
-      "_origin": "ast",
-      "community": 19,
-      "community_name": "ai_screen.dart",
-      "file_type": "code",
-      "norm_label": "_aiscreenstate",
-      "source_file": "lib/screens/ai_screen.dart",
-      "source_location": "L24"
     },
     {
       "id": "lib_screens_ai_screen_browsefiles",
@@ -25648,33 +25472,110 @@
       "source_location": null
     },
     {
+      "id": "foldernamedialog",
+      "label": "_FolderNameDialog",
+      "_origin": "ast",
+      "community": 31,
+      "community_name": "State",
+      "file_type": "code",
+      "norm_label": "_foldernamedialog",
+      "source_file": null,
+      "source_location": null
+    },
+    {
+      "id": "lib_login_auth_screen_authscreen",
+      "label": "AuthScreen",
+      "_origin": "ast",
+      "community": 31,
+      "community_name": "State",
+      "file_type": "code",
+      "norm_label": "authscreen",
+      "source_file": "lib/login/auth_screen.dart",
+      "source_location": "L12"
+    },
+    {
+      "id": "lib_login_auth_screen_authscreenstate",
+      "label": "_AuthScreenState",
+      "_origin": "ast",
+      "community": 31,
+      "community_name": "State",
+      "file_type": "code",
+      "norm_label": "_authscreenstate",
+      "source_file": "lib/login/auth_screen.dart",
+      "source_location": "L29"
+    },
+    {
       "id": "lib_screens_browse_documents_localdocpreview",
       "label": "_LocalDocPreview",
       "_origin": "ast",
       "community": 31,
-      "community_name": "StatefulWidget",
+      "community_name": "State",
       "file_type": "code",
       "norm_label": "_localdocpreview",
       "source_file": "lib/screens/browse_documents.dart",
       "source_location": "L983"
     },
     {
+      "id": "lib_screens_browse_documents_localdocpreviewstate",
+      "label": "_LocalDocPreviewState",
+      "_origin": "ast",
+      "community": 31,
+      "community_name": "State",
+      "file_type": "code",
+      "norm_label": "_localdocpreviewstate",
+      "source_file": "lib/screens/browse_documents.dart",
+      "source_location": "L999"
+    },
+    {
+      "id": "lib_screens_client_files_browser_screen_clientfilesbrowserscreen",
+      "label": "ClientFilesBrowserScreen",
+      "_origin": "ast",
+      "community": 31,
+      "community_name": "State",
+      "file_type": "code",
+      "norm_label": "clientfilesbrowserscreen",
+      "source_file": "lib/screens/client_files_browser_screen.dart",
+      "source_location": "L31"
+    },
+    {
+      "id": "lib_screens_client_files_browser_screen_clientfilesbrowserscreenstate",
+      "label": "_ClientFilesBrowserScreenState",
+      "_origin": "ast",
+      "community": 31,
+      "community_name": "State",
+      "file_type": "code",
+      "norm_label": "_clientfilesbrowserscreenstate",
+      "source_file": "lib/screens/client_files_browser_screen.dart",
+      "source_location": "L54"
+    },
+    {
       "id": "lib_screens_client_files_browser_screen_foldernamedialog",
       "label": "_FolderNameDialog",
       "_origin": "ast",
       "community": 31,
-      "community_name": "StatefulWidget",
+      "community_name": "State",
       "file_type": "code",
       "norm_label": "_foldernamedialog",
       "source_file": "lib/screens/client_files_browser_screen.dart",
       "source_location": "L5278"
     },
     {
+      "id": "lib_screens_client_files_browser_screen_foldernamedialogstate",
+      "label": "_FolderNameDialogState",
+      "_origin": "ast",
+      "community": 31,
+      "community_name": "State",
+      "file_type": "code",
+      "norm_label": "_foldernamedialogstate",
+      "source_file": "lib/screens/client_files_browser_screen.dart",
+      "source_location": "L5305"
+    },
+    {
       "id": "lib_screens_client_playlists_screen_addtoplaylistsheet",
       "label": "_AddToPlaylistSheet",
       "_origin": "ast",
       "community": 31,
-      "community_name": "StatefulWidget",
+      "community_name": "State",
       "file_type": "code",
       "norm_label": "_addtoplaylistsheet",
       "source_file": "lib/screens/client_playlists_screen.dart",
@@ -25685,7 +25586,7 @@
       "label": "_AddToPlaylistSheetState",
       "_origin": "ast",
       "community": 31,
-      "community_name": "StatefulWidget",
+      "community_name": "State",
       "file_type": "code",
       "norm_label": "_addtoplaylistsheetstate",
       "source_file": "lib/screens/client_playlists_screen.dart",
@@ -25696,7 +25597,7 @@
       "label": "ClientAudioTrackPickerScreen",
       "_origin": "ast",
       "community": 31,
-      "community_name": "StatefulWidget",
+      "community_name": "State",
       "file_type": "code",
       "norm_label": "clientaudiotrackpickerscreen",
       "source_file": "lib/screens/client_playlists_screen.dart",
@@ -25707,7 +25608,7 @@
       "label": "_ClientAudioTrackPickerScreenState",
       "_origin": "ast",
       "community": 31,
-      "community_name": "StatefulWidget",
+      "community_name": "State",
       "file_type": "code",
       "norm_label": "_clientaudiotrackpickerscreenstate",
       "source_file": "lib/screens/client_playlists_screen.dart",
@@ -25718,7 +25619,7 @@
       "label": "ClientPlaylistDetailScreen",
       "_origin": "ast",
       "community": 31,
-      "community_name": "StatefulWidget",
+      "community_name": "State",
       "file_type": "code",
       "norm_label": "clientplaylistdetailscreen",
       "source_file": "lib/screens/client_playlists_screen.dart",
@@ -25729,7 +25630,7 @@
       "label": "_ClientPlaylistDetailScreenState",
       "_origin": "ast",
       "community": 31,
-      "community_name": "StatefulWidget",
+      "community_name": "State",
       "file_type": "code",
       "norm_label": "_clientplaylistdetailscreenstate",
       "source_file": "lib/screens/client_playlists_screen.dart",
@@ -25740,7 +25641,7 @@
       "label": "ClientPlaylistsScreen",
       "_origin": "ast",
       "community": 31,
-      "community_name": "StatefulWidget",
+      "community_name": "State",
       "file_type": "code",
       "norm_label": "clientplaylistsscreen",
       "source_file": "lib/screens/client_playlists_screen.dart",
@@ -25751,40 +25652,128 @@
       "label": "_ClientPlaylistsScreenState",
       "_origin": "ast",
       "community": 31,
-      "community_name": "StatefulWidget",
+      "community_name": "State",
       "file_type": "code",
       "norm_label": "_clientplaylistsscreenstate",
       "source_file": "lib/screens/client_playlists_screen.dart",
       "source_location": "L147"
     },
     {
+      "id": "lib_screens_home_screen_greetingskyicon",
+      "label": "_GreetingSkyIcon",
+      "_origin": "ast",
+      "community": 31,
+      "community_name": "State",
+      "file_type": "code",
+      "norm_label": "_greetingskyicon",
+      "source_file": "lib/screens/home_screen.dart",
+      "source_location": "L2089"
+    },
+    {
+      "id": "lib_screens_home_screen_greetingskyiconstate",
+      "label": "_GreetingSkyIconState",
+      "_origin": "ast",
+      "community": 31,
+      "community_name": "State",
+      "file_type": "code",
+      "norm_label": "_greetingskyiconstate",
+      "source_file": "lib/screens/home_screen.dart",
+      "source_location": "L2098"
+    },
+    {
       "id": "lib_screens_phone_pdf_localdocpreview",
       "label": "_LocalDocPreview",
       "_origin": "ast",
       "community": 31,
-      "community_name": "StatefulWidget",
+      "community_name": "State",
       "file_type": "code",
       "norm_label": "_localdocpreview",
       "source_file": "lib/screens/phone_pdf.dart",
       "source_location": "L876"
     },
     {
+      "id": "lib_screens_phone_pdf_localdocpreviewstate",
+      "label": "_LocalDocPreviewState",
+      "_origin": "ast",
+      "community": 31,
+      "community_name": "State",
+      "file_type": "code",
+      "norm_label": "_localdocpreviewstate",
+      "source_file": "lib/screens/phone_pdf.dart",
+      "source_location": "L894"
+    },
+    {
       "id": "lib_screens_semester_detail_screen_foldernamedialog",
       "label": "_FolderNameDialog",
       "_origin": "ast",
       "community": 31,
-      "community_name": "StatefulWidget",
+      "community_name": "State",
       "file_type": "code",
       "norm_label": "_foldernamedialog",
       "source_file": "lib/screens/semester_detail_screen.dart",
       "source_location": "L3031"
     },
     {
+      "id": "lib_screens_semester_detail_screen_foldernamedialogstate",
+      "label": "_FolderNameDialogState",
+      "_origin": "ast",
+      "community": 31,
+      "community_name": "State",
+      "file_type": "code",
+      "norm_label": "_foldernamedialogstate",
+      "source_file": "lib/screens/semester_detail_screen.dart",
+      "source_location": "L3058"
+    },
+    {
+      "id": "lib_screens_semesters_screen_semestersscreen",
+      "label": "SemestersScreen",
+      "_origin": "ast",
+      "community": 31,
+      "community_name": "State",
+      "file_type": "code",
+      "norm_label": "semestersscreen",
+      "source_file": "lib/screens/semesters_screen.dart",
+      "source_location": "L12"
+    },
+    {
+      "id": "lib_screens_semesters_screen_semestersscreenstate",
+      "label": "_SemestersScreenState",
+      "_origin": "ast",
+      "community": 31,
+      "community_name": "State",
+      "file_type": "code",
+      "norm_label": "_semestersscreenstate",
+      "source_file": "lib/screens/semesters_screen.dart",
+      "source_location": "L19"
+    },
+    {
+      "id": "lib_ui_folder_lock_dialog_folderlockdialog",
+      "label": "FolderLockDialog",
+      "_origin": "ast",
+      "community": 31,
+      "community_name": "State",
+      "file_type": "code",
+      "norm_label": "folderlockdialog",
+      "source_file": "lib/ui/folder_lock_dialog.dart",
+      "source_location": "L40"
+    },
+    {
+      "id": "lib_ui_folder_lock_dialog_folderlockdialogstate",
+      "label": "_FolderLockDialogState",
+      "_origin": "ast",
+      "community": 31,
+      "community_name": "State",
+      "file_type": "code",
+      "norm_label": "_folderlockdialogstate",
+      "source_file": "lib/ui/folder_lock_dialog.dart",
+      "source_location": "L54"
+    },
+    {
       "id": "lib_ui_media_playback_overlay_mediaplaybackoverlay",
       "label": "MediaPlaybackOverlay",
       "_origin": "ast",
       "community": 31,
-      "community_name": "StatefulWidget",
+      "community_name": "State",
       "file_type": "code",
       "norm_label": "mediaplaybackoverlay",
       "source_file": "lib/ui/media_playback_overlay.dart",
@@ -25795,7 +25784,7 @@
       "label": "_MediaPlaybackOverlayState",
       "_origin": "ast",
       "community": 31,
-      "community_name": "StatefulWidget",
+      "community_name": "State",
       "file_type": "code",
       "norm_label": "_mediaplaybackoverlaystate",
       "source_file": "lib/ui/media_playback_overlay.dart",
@@ -25806,7 +25795,7 @@
       "label": "_SeekBar",
       "_origin": "ast",
       "community": 31,
-      "community_name": "StatefulWidget",
+      "community_name": "State",
       "file_type": "code",
       "norm_label": "_seekbar",
       "source_file": "lib/ui/media_playback_overlay.dart",
@@ -25817,7 +25806,7 @@
       "label": "_SeekBarState",
       "_origin": "ast",
       "community": 31,
-      "community_name": "StatefulWidget",
+      "community_name": "State",
       "file_type": "code",
       "norm_label": "_seekbarstate",
       "source_file": "lib/ui/media_playback_overlay.dart",
@@ -25828,7 +25817,7 @@
       "label": "_VideoTheater",
       "_origin": "ast",
       "community": 31,
-      "community_name": "StatefulWidget",
+      "community_name": "State",
       "file_type": "code",
       "norm_label": "_videotheater",
       "source_file": "lib/ui/media_playback_overlay.dart",
@@ -25839,18 +25828,51 @@
       "label": "_VideoTheaterState",
       "_origin": "ast",
       "community": 31,
-      "community_name": "StatefulWidget",
+      "community_name": "State",
       "file_type": "code",
       "norm_label": "_videotheaterstate",
       "source_file": "lib/ui/media_playback_overlay.dart",
       "source_location": "L543"
     },
     {
+      "id": "localdocpreview",
+      "label": "_LocalDocPreview",
+      "_origin": "ast",
+      "community": 31,
+      "community_name": "State",
+      "file_type": "code",
+      "norm_label": "_localdocpreview",
+      "source_file": null,
+      "source_location": null
+    },
+    {
+      "id": "singletickerproviderstatemixin",
+      "label": "SingleTickerProviderStateMixin",
+      "_origin": "ast",
+      "community": 31,
+      "community_name": "State",
+      "file_type": "code",
+      "norm_label": "singletickerproviderstatemixin",
+      "source_file": null,
+      "source_location": null
+    },
+    {
+      "id": "state",
+      "label": "State",
+      "_origin": "ast",
+      "community": 31,
+      "community_name": "State",
+      "file_type": "code",
+      "norm_label": "state",
+      "source_file": null,
+      "source_location": null
+    },
+    {
       "id": "statefulwidget",
       "label": "StatefulWidget",
       "_origin": "ast",
       "community": 31,
-      "community_name": "StatefulWidget",
+      "community_name": "State",
       "file_type": "code",
       "norm_label": "statefulwidget",
       "source_file": null,
@@ -25945,17 +25967,6 @@
       "source_location": "L1570"
     },
     {
-      "id": "lib_screens_client_playlists_screen_emptyplaylists",
-      "label": "_EmptyPlaylists",
-      "_origin": "ast",
-      "community": 32,
-      "community_name": "StatelessWidget",
-      "file_type": "code",
-      "norm_label": "_emptyplaylists",
-      "source_file": "lib/screens/client_playlists_screen.dart",
-      "source_location": "L1341"
-    },
-    {
       "id": "lib_screens_client_playlists_screen_minicover",
       "label": "_MiniCover",
       "_origin": "ast",
@@ -26020,17 +26031,6 @@
       "norm_label": "playlisthomestrip",
       "source_file": "lib/screens/client_playlists_screen.dart",
       "source_location": "L1210"
-    },
-    {
-      "id": "lib_screens_client_playlists_screen_playlistrow",
-      "label": "_PlaylistRow",
-      "_origin": "ast",
-      "community": 32,
-      "community_name": "StatelessWidget",
-      "file_type": "code",
-      "norm_label": "_playlistrow",
-      "source_file": "lib/screens/client_playlists_screen.dart",
-      "source_location": "L1405"
     },
     {
       "id": "lib_screens_client_playlists_screen_tracktile",
@@ -26141,6 +26141,39 @@
       "norm_label": "_uploadsourcesheet",
       "source_file": "lib/screens/semester_detail_screen.dart",
       "source_location": "L2858"
+    },
+    {
+      "id": "lib_screens_semesters_screen_admincourseselector",
+      "label": "_AdminCourseSelector",
+      "_origin": "ast",
+      "community": 32,
+      "community_name": "StatelessWidget",
+      "file_type": "code",
+      "norm_label": "_admincourseselector",
+      "source_file": "lib/screens/semesters_screen.dart",
+      "source_location": "L448"
+    },
+    {
+      "id": "lib_screens_semesters_screen_continuecard",
+      "label": "_ContinueCard",
+      "_origin": "ast",
+      "community": 32,
+      "community_name": "StatelessWidget",
+      "file_type": "code",
+      "norm_label": "_continuecard",
+      "source_file": "lib/screens/semesters_screen.dart",
+      "source_location": "L655"
+    },
+    {
+      "id": "lib_screens_semesters_screen_overviewstrip",
+      "label": "_OverviewStrip",
+      "_origin": "ast",
+      "community": 32,
+      "community_name": "StatelessWidget",
+      "file_type": "code",
+      "norm_label": "_overviewstrip",
+      "source_file": "lib/screens/semesters_screen.dart",
+      "source_location": "L568"
     },
     {
       "id": "lib_ui_media_playback_overlay_artthumb",
@@ -32182,6 +32215,39 @@
       "source_location": null
     },
     {
+      "id": "lib_app_version",
+      "label": "app_version.dart",
+      "_origin": "ast",
+      "community": 46,
+      "community_name": "file_sort.dart",
+      "file_type": "code",
+      "norm_label": "app_version.dart",
+      "source_file": "lib/app_version.dart",
+      "source_location": null
+    },
+    {
+      "id": "lib_app_version_appaboutmessage",
+      "label": "appAboutMessage",
+      "_origin": "ast",
+      "community": 46,
+      "community_name": "file_sort.dart",
+      "file_type": "code",
+      "norm_label": "appaboutmessage",
+      "source_file": "lib/app_version.dart",
+      "source_location": "L8"
+    },
+    {
+      "id": "lib_app_version_appapklabel",
+      "label": "appApkLabel",
+      "_origin": "ast",
+      "community": 46,
+      "community_name": "file_sort.dart",
+      "file_type": "code",
+      "norm_label": "appapklabel",
+      "source_file": "lib/app_version.dart",
+      "source_location": "L6"
+    },
+    {
       "id": "lib_ui_file_sort",
       "label": "file_sort.dart",
       "_origin": "ast",
@@ -32475,6 +32541,17 @@
       "community_name": "file_sort.dart",
       "file_type": "code",
       "norm_label": "required filesortmode selected,\n  filesortkind",
+      "source_file": null,
+      "source_location": null
+    },
+    {
+      "id": "string_get",
+      "label": "String get",
+      "_origin": "ast",
+      "community": 46,
+      "community_name": "file_sort.dart",
+      "file_type": "code",
+      "norm_label": "string get",
       "source_file": null,
       "source_location": null
     },
@@ -34470,17 +34547,6 @@
       "source_location": null
     },
     {
-      "id": "services_support_service_dart",
-      "label": "../services/support_service.dart",
-      "_origin": "ast",
-      "community": 50,
-      "community_name": "users_feedback.dart",
-      "file_type": "code",
-      "norm_label": "../services/support_service.dart",
-      "source_file": null,
-      "source_location": null
-    },
-    {
       "id": "system_admin_dashboard_dart",
       "label": "system_admin_dashboard.dart",
       "_origin": "ast",
@@ -34492,13 +34558,24 @@
       "source_location": null
     },
     {
-      "id": "firebasefirestore",
-      "label": "FirebaseFirestore",
+      "id": "dart_typed_data",
+      "label": "dart:typed_data",
       "_origin": "ast",
       "community": 51,
       "community_name": "support_service.dart",
       "file_type": "code",
-      "norm_label": "firebasefirestore",
+      "norm_label": "dart:typed_data",
+      "source_file": null,
+      "source_location": null
+    },
+    {
+      "id": "datetime",
+      "label": "DateTime?",
+      "_origin": "ast",
+      "community": 51,
+      "community_name": "support_service.dart",
+      "file_type": "code",
+      "norm_label": "datetime?",
       "source_file": null,
       "source_location": null
     },
@@ -35027,6 +35104,17 @@
       "community_name": "help_and_support.dart",
       "file_type": "code",
       "norm_label": "package:file_picker/file_picker.dart",
+      "source_file": null,
+      "source_location": null
+    },
+    {
+      "id": "services_support_service_dart",
+      "label": "../services/support_service.dart",
+      "_origin": "ast",
+      "community": 52,
+      "community_name": "help_and_support.dart",
+      "file_type": "code",
+      "norm_label": "../services/support_service.dart",
       "source_file": null,
       "source_location": null
     },
@@ -35841,6 +35929,17 @@
       "community_name": "streak_service.dart",
       "file_type": "code",
       "norm_label": "firebaseauth",
+      "source_file": null,
+      "source_location": null
+    },
+    {
+      "id": "firebasefirestore",
+      "label": "FirebaseFirestore",
+      "_origin": "ast",
+      "community": 56,
+      "community_name": "streak_service.dart",
+      "file_type": "code",
+      "norm_label": "firebasefirestore",
       "source_file": null,
       "source_location": null
     },
@@ -37565,7 +37664,7 @@
       "label": "adaptive_layout.dart",
       "_origin": "ast",
       "community": 60,
-      "community_name": "List",
+      "community_name": "adaptive_layout.dart",
       "file_type": "code",
       "norm_label": "adaptive_layout.dart",
       "source_file": "lib/ui/adaptive_layout.dart",
@@ -37576,7 +37675,7 @@
       "label": "actions",
       "_origin": "ast",
       "community": 60,
-      "community_name": "List",
+      "community_name": "adaptive_layout.dart",
       "file_type": "code",
       "norm_label": "actions",
       "source_file": "lib/ui/adaptive_layout.dart",
@@ -37587,7 +37686,7 @@
       "label": "AdaptiveLayout",
       "_origin": "ast",
       "community": 60,
-      "community_name": "List",
+      "community_name": "adaptive_layout.dart",
       "file_type": "code",
       "norm_label": "adaptivelayout",
       "source_file": "lib/ui/adaptive_layout.dart",
@@ -37598,7 +37697,7 @@
       "label": "automaticallyImplyLeading",
       "_origin": "ast",
       "community": 60,
-      "community_name": "List",
+      "community_name": "adaptive_layout.dart",
       "file_type": "code",
       "norm_label": "automaticallyimplyleading",
       "source_file": "lib/ui/adaptive_layout.dart",
@@ -37609,7 +37708,7 @@
       "label": "backgroundColor",
       "_origin": "ast",
       "community": 60,
-      "community_name": "List",
+      "community_name": "adaptive_layout.dart",
       "file_type": "code",
       "norm_label": "backgroundcolor",
       "source_file": "lib/ui/adaptive_layout.dart",
@@ -37620,7 +37719,7 @@
       "label": "bottomClearance",
       "_origin": "ast",
       "community": 60,
-      "community_name": "List",
+      "community_name": "adaptive_layout.dart",
       "file_type": "code",
       "norm_label": "bottomclearance",
       "source_file": "lib/ui/adaptive_layout.dart",
@@ -37631,7 +37730,7 @@
       "label": "compactSliverAppBar",
       "_origin": "ast",
       "community": 60,
-      "community_name": "List",
+      "community_name": "adaptive_layout.dart",
       "file_type": "code",
       "norm_label": "compactsliverappbar",
       "source_file": "lib/ui/adaptive_layout.dart",
@@ -37642,7 +37741,7 @@
       "label": "false",
       "_origin": "ast",
       "community": 60,
-      "community_name": "List",
+      "community_name": "adaptive_layout.dart",
       "file_type": "code",
       "norm_label": "false",
       "source_file": "lib/ui/adaptive_layout.dart",
@@ -37653,7 +37752,7 @@
       "label": "foregroundColor",
       "_origin": "ast",
       "community": 60,
-      "community_name": "List",
+      "community_name": "adaptive_layout.dart",
       "file_type": "code",
       "norm_label": "foregroundcolor",
       "source_file": "lib/ui/adaptive_layout.dart",
@@ -37664,7 +37763,7 @@
       "label": "gridCount",
       "_origin": "ast",
       "community": 60,
-      "community_name": "List",
+      "community_name": "adaptive_layout.dart",
       "file_type": "code",
       "norm_label": "gridcount",
       "source_file": "lib/ui/adaptive_layout.dart",
@@ -37675,7 +37774,7 @@
       "label": "isTablet",
       "_origin": "ast",
       "community": 60,
-      "community_name": "List",
+      "community_name": "adaptive_layout.dart",
       "file_type": "code",
       "norm_label": "istablet",
       "source_file": "lib/ui/adaptive_layout.dart",
@@ -37686,7 +37785,7 @@
       "label": "leading",
       "_origin": "ast",
       "community": 60,
-      "community_name": "List",
+      "community_name": "adaptive_layout.dart",
       "file_type": "code",
       "norm_label": "leading",
       "source_file": "lib/ui/adaptive_layout.dart",
@@ -37697,7 +37796,7 @@
       "label": "listColumns",
       "_origin": "ast",
       "community": 60,
-      "community_name": "List",
+      "community_name": "adaptive_layout.dart",
       "file_type": "code",
       "norm_label": "listcolumns",
       "source_file": "lib/ui/adaptive_layout.dart",
@@ -37708,7 +37807,7 @@
       "label": "pagePadding",
       "_origin": "ast",
       "community": 60,
-      "community_name": "List",
+      "community_name": "adaptive_layout.dart",
       "file_type": "code",
       "norm_label": "pagepadding",
       "source_file": "lib/ui/adaptive_layout.dart",
@@ -37719,7 +37818,7 @@
       "label": "title",
       "_origin": "ast",
       "community": 60,
-      "community_name": "List",
+      "community_name": "adaptive_layout.dart",
       "file_type": "code",
       "norm_label": "title",
       "source_file": "lib/ui/adaptive_layout.dart",
@@ -37730,7 +37829,7 @@
       "label": "toolbarHeight",
       "_origin": "ast",
       "community": 60,
-      "community_name": "List",
+      "community_name": "adaptive_layout.dart",
       "file_type": "code",
       "norm_label": "toolbarheight",
       "source_file": "lib/ui/adaptive_layout.dart",
@@ -37741,44 +37840,11 @@
       "label": "true",
       "_origin": "ast",
       "community": 60,
-      "community_name": "List",
+      "community_name": "adaptive_layout.dart",
       "file_type": "code",
       "norm_label": "true",
       "source_file": "lib/ui/adaptive_layout.dart",
       "source_location": "L49"
-    },
-    {
-      "id": "list",
-      "label": "List",
-      "_origin": "ast",
-      "community": 60,
-      "community_name": "List",
-      "file_type": "code",
-      "norm_label": "list",
-      "source_file": null,
-      "source_location": null
-    },
-    {
-      "id": "dart_convert",
-      "label": "dart:convert",
-      "_origin": "ast",
-      "community": 61,
-      "community_name": "media_service.dart",
-      "file_type": "code",
-      "norm_label": "dart:convert",
-      "source_file": null,
-      "source_location": null
-    },
-    {
-      "id": "dart_typed_data",
-      "label": "dart:typed_data",
-      "_origin": "ast",
-      "community": 61,
-      "community_name": "media_service.dart",
-      "file_type": "code",
-      "norm_label": "dart:typed_data",
-      "source_file": null,
-      "source_location": null
     },
     {
       "id": "dio",
@@ -37790,116 +37856,6 @@
       "norm_label": "dio",
       "source_file": null,
       "source_location": null
-    },
-    {
-      "id": "lib_services_ai_service",
-      "label": "ai_service.dart",
-      "_origin": "ast",
-      "community": 61,
-      "community_name": "media_service.dart",
-      "file_type": "code",
-      "norm_label": "ai_service.dart",
-      "source_file": "lib/services/ai_service.dart",
-      "source_location": null
-    },
-    {
-      "id": "lib_services_ai_service_aiservice",
-      "label": "AiService",
-      "_origin": "ast",
-      "community": 61,
-      "community_name": "media_service.dart",
-      "file_type": "code",
-      "norm_label": "aiservice",
-      "source_file": "lib/services/ai_service.dart",
-      "source_location": "L23"
-    },
-    {
-      "id": "lib_services_ai_service_chatmessage",
-      "label": "ChatMessage",
-      "_origin": "ast",
-      "community": 61,
-      "community_name": "media_service.dart",
-      "file_type": "code",
-      "norm_label": "chatmessage",
-      "source_file": "lib/services/ai_service.dart",
-      "source_location": "L9"
-    },
-    {
-      "id": "lib_services_ai_service_dio",
-      "label": "_dio",
-      "_origin": "ast",
-      "community": 61,
-      "community_name": "media_service.dart",
-      "file_type": "code",
-      "norm_label": "_dio",
-      "source_file": "lib/services/ai_service.dart",
-      "source_location": "L28"
-    },
-    {
-      "id": "lib_services_ai_service_imagebytes",
-      "label": "imageBytes",
-      "_origin": "ast",
-      "community": 61,
-      "community_name": "media_service.dart",
-      "file_type": "code",
-      "norm_label": "imagebytes",
-      "source_file": "lib/services/ai_service.dart",
-      "source_location": "L12"
-    },
-    {
-      "id": "lib_services_ai_service_imagemime",
-      "label": "imageMime",
-      "_origin": "ast",
-      "community": 61,
-      "community_name": "media_service.dart",
-      "file_type": "code",
-      "norm_label": "imagemime",
-      "source_file": "lib/services/ai_service.dart",
-      "source_location": "L13"
-    },
-    {
-      "id": "lib_services_ai_service_instance",
-      "label": "instance",
-      "_origin": "ast",
-      "community": 61,
-      "community_name": "media_service.dart",
-      "file_type": "code",
-      "norm_label": "instance",
-      "source_file": "lib/services/ai_service.dart",
-      "source_location": "L26"
-    },
-    {
-      "id": "lib_services_ai_service_role",
-      "label": "role",
-      "_origin": "ast",
-      "community": 61,
-      "community_name": "media_service.dart",
-      "file_type": "code",
-      "norm_label": "role",
-      "source_file": "lib/services/ai_service.dart",
-      "source_location": "L10"
-    },
-    {
-      "id": "lib_services_ai_service_sendmessage",
-      "label": "sendMessage",
-      "_origin": "ast",
-      "community": 61,
-      "community_name": "media_service.dart",
-      "file_type": "code",
-      "norm_label": "sendmessage",
-      "source_file": "lib/services/ai_service.dart",
-      "source_location": "L37"
-    },
-    {
-      "id": "lib_services_ai_service_text",
-      "label": "text",
-      "_origin": "ast",
-      "community": 61,
-      "community_name": "media_service.dart",
-      "file_type": "code",
-      "norm_label": "text",
-      "source_file": "lib/services/ai_service.dart",
-      "source_location": "L11"
     },
     {
       "id": "lib_services_media_service",
@@ -38045,17 +38001,6 @@
       "source_location": "L10"
     },
     {
-      "id": "package_dio_dio_dart",
-      "label": "package:dio/dio.dart",
-      "_origin": "ast",
-      "community": 61,
-      "community_name": "media_service.dart",
-      "file_type": "code",
-      "norm_label": "package:dio/dio.dart",
-      "source_file": null,
-      "source_location": null
-    },
-    {
       "id": "package_firebase_auth_firebase_auth_dart",
       "label": "package:firebase_auth/firebase_auth.dart",
       "_origin": "ast",
@@ -38078,17 +38023,6 @@
       "source_location": null
     },
     {
-      "id": "static_final_aiservice",
-      "label": "static final AiService",
-      "_origin": "ast",
-      "community": 61,
-      "community_name": "media_service.dart",
-      "file_type": "code",
-      "norm_label": "static final aiservice",
-      "source_file": null,
-      "source_location": null
-    },
-    {
       "id": "static_final_mediaservice",
       "label": "static final MediaService",
       "_origin": "ast",
@@ -38096,28 +38030,6 @@
       "community_name": "media_service.dart",
       "file_type": "code",
       "norm_label": "static final mediaservice",
-      "source_file": null,
-      "source_location": null
-    },
-    {
-      "id": "uint8list",
-      "label": "Uint8List?",
-      "_origin": "ast",
-      "community": 61,
-      "community_name": "media_service.dart",
-      "file_type": "code",
-      "norm_label": "uint8list?",
-      "source_file": null,
-      "source_location": null
-    },
-    {
-      "id": "upload_service_dart",
-      "label": "upload_service.dart",
-      "_origin": "ast",
-      "community": 61,
-      "community_name": "media_service.dart",
-      "file_type": "code",
-      "norm_label": "upload_service.dart",
       "source_file": null,
       "source_location": null
     },
@@ -38971,6 +38883,17 @@
       "source_location": "L315"
     },
     {
+      "id": "lib_screens_client_playlists_screen_emptyplaylists",
+      "label": "_EmptyPlaylists",
+      "_origin": "ast",
+      "community": 64,
+      "community_name": "client_playlists_screen.dart",
+      "file_type": "code",
+      "norm_label": "_emptyplaylists",
+      "source_file": "lib/screens/client_playlists_screen.dart",
+      "source_location": "L1341"
+    },
+    {
       "id": "lib_screens_client_playlists_screen_excludeids",
       "label": "excludeIds",
       "_origin": "ast",
@@ -39332,6 +39255,17 @@
       "norm_label": "playlistcovercolors",
       "source_file": "lib/screens/client_playlists_screen.dart",
       "source_location": "L23"
+    },
+    {
+      "id": "lib_screens_client_playlists_screen_playlistrow",
+      "label": "_PlaylistRow",
+      "_origin": "ast",
+      "community": 64,
+      "community_name": "client_playlists_screen.dart",
+      "file_type": "code",
+      "norm_label": "_playlistrow",
+      "source_file": "lib/screens/client_playlists_screen.dart",
+      "source_location": "L1405"
     },
     {
       "id": "lib_screens_client_playlists_screen_playlists",
@@ -40497,6 +40431,17 @@
       "source_location": "L40"
     },
     {
+      "id": "package_flutter_services_dart",
+      "label": "package:flutter/services.dart",
+      "_origin": "ast",
+      "community": 74,
+      "community_name": "static const",
+      "file_type": "code",
+      "norm_label": "package:flutter/services.dart",
+      "source_file": null,
+      "source_location": null
+    },
+    {
       "id": "services_connectivity_service_dart",
       "label": "../services/connectivity_service.dart",
       "_origin": "ast",
@@ -40897,7 +40842,7 @@
       "label": "suspend_account.dart",
       "_origin": "ast",
       "community": 78,
-      "community_name": "package:flutter/services.dart",
+      "community_name": "package:flutter/cupertino.dart",
       "file_type": "code",
       "norm_label": "suspend_account.dart",
       "source_file": "lib/screens/suspend_account.dart",
@@ -40908,7 +40853,7 @@
       "label": "build",
       "_origin": "ast",
       "community": 78,
-      "community_name": "package:flutter/services.dart",
+      "community_name": "package:flutter/cupertino.dart",
       "file_type": "code",
       "norm_label": "build",
       "source_file": "lib/screens/suspend_account.dart",
@@ -40919,7 +40864,7 @@
       "label": "createState",
       "_origin": "ast",
       "community": 78,
-      "community_name": "package:flutter/services.dart",
+      "community_name": "package:flutter/cupertino.dart",
       "file_type": "code",
       "norm_label": "createstate",
       "source_file": "lib/screens/suspend_account.dart",
@@ -40930,7 +40875,7 @@
       "label": "message",
       "_origin": "ast",
       "community": 78,
-      "community_name": "package:flutter/services.dart",
+      "community_name": "package:flutter/cupertino.dart",
       "file_type": "code",
       "norm_label": "message",
       "source_file": "lib/screens/suspend_account.dart",
@@ -40941,7 +40886,7 @@
       "label": "_signingOut",
       "_origin": "ast",
       "community": 78,
-      "community_name": "package:flutter/services.dart",
+      "community_name": "package:flutter/cupertino.dart",
       "file_type": "code",
       "norm_label": "_signingout",
       "source_file": "lib/screens/suspend_account.dart",
@@ -40952,7 +40897,7 @@
       "label": "_signOut",
       "_origin": "ast",
       "community": 78,
-      "community_name": "package:flutter/services.dart",
+      "community_name": "package:flutter/cupertino.dart",
       "file_type": "code",
       "norm_label": "_signout",
       "source_file": "lib/screens/suspend_account.dart",
@@ -40963,7 +40908,7 @@
       "label": "SuspendedAccountScreen",
       "_origin": "ast",
       "community": 78,
-      "community_name": "package:flutter/services.dart",
+      "community_name": "package:flutter/cupertino.dart",
       "file_type": "code",
       "norm_label": "suspendedaccountscreen",
       "source_file": "lib/screens/suspend_account.dart",
@@ -40974,7 +40919,7 @@
       "label": "_SuspendedAccountScreenState",
       "_origin": "ast",
       "community": 78,
-      "community_name": "package:flutter/services.dart",
+      "community_name": "package:flutter/cupertino.dart",
       "file_type": "code",
       "norm_label": "_suspendedaccountscreenstate",
       "source_file": "lib/screens/suspend_account.dart",
@@ -40985,7 +40930,7 @@
       "label": "title",
       "_origin": "ast",
       "community": 78,
-      "community_name": "package:flutter/services.dart",
+      "community_name": "package:flutter/cupertino.dart",
       "file_type": "code",
       "norm_label": "title",
       "source_file": "lib/screens/suspend_account.dart",
@@ -40996,20 +40941,9 @@
       "label": "package:flutter/cupertino.dart",
       "_origin": "ast",
       "community": 78,
-      "community_name": "package:flutter/services.dart",
+      "community_name": "package:flutter/cupertino.dart",
       "file_type": "code",
       "norm_label": "package:flutter/cupertino.dart",
-      "source_file": null,
-      "source_location": null
-    },
-    {
-      "id": "package_flutter_services_dart",
-      "label": "package:flutter/services.dart",
-      "_origin": "ast",
-      "community": 78,
-      "community_name": "package:flutter/services.dart",
-      "file_type": "code",
-      "norm_label": "package:flutter/services.dart",
       "source_file": null,
       "source_location": null
     },
@@ -42063,7 +41997,7 @@
       "label": "IconData",
       "_origin": "ast",
       "community": 85,
-      "community_name": "package:flutter/material.dart",
+      "community_name": "IconData",
       "file_type": "code",
       "norm_label": "icondata",
       "source_file": null,
@@ -42074,7 +42008,7 @@
       "label": "preview_overlay_icon.dart",
       "_origin": "ast",
       "community": 85,
-      "community_name": "package:flutter/material.dart",
+      "community_name": "IconData",
       "file_type": "code",
       "norm_label": "preview_overlay_icon.dart",
       "source_file": "lib/ui/preview_overlay_icon.dart",
@@ -42085,7 +42019,7 @@
       "label": "build",
       "_origin": "ast",
       "community": 85,
-      "community_name": "package:flutter/material.dart",
+      "community_name": "IconData",
       "file_type": "code",
       "norm_label": "build",
       "source_file": "lib/ui/preview_overlay_icon.dart",
@@ -42096,7 +42030,7 @@
       "label": "destructive",
       "_origin": "ast",
       "community": 85,
-      "community_name": "package:flutter/material.dart",
+      "community_name": "IconData",
       "file_type": "code",
       "norm_label": "destructive",
       "source_file": "lib/ui/preview_overlay_icon.dart",
@@ -42107,7 +42041,7 @@
       "label": "icon",
       "_origin": "ast",
       "community": 85,
-      "community_name": "package:flutter/material.dart",
+      "community_name": "IconData",
       "file_type": "code",
       "norm_label": "icon",
       "source_file": "lib/ui/preview_overlay_icon.dart",
@@ -42118,7 +42052,7 @@
       "label": "PreviewOverlayIcon",
       "_origin": "ast",
       "community": 85,
-      "community_name": "package:flutter/material.dart",
+      "community_name": "IconData",
       "file_type": "code",
       "norm_label": "previewoverlayicon",
       "source_file": "lib/ui/preview_overlay_icon.dart",
@@ -42129,66 +42063,11 @@
       "label": "size",
       "_origin": "ast",
       "community": 85,
-      "community_name": "package:flutter/material.dart",
+      "community_name": "IconData",
       "file_type": "code",
       "norm_label": "size",
       "source_file": "lib/ui/preview_overlay_icon.dart",
       "source_location": "L14"
-    },
-    {
-      "id": "package_flutter_material_dart",
-      "label": "package:flutter/material.dart",
-      "_origin": "ast",
-      "community": 85,
-      "community_name": "package:flutter/material.dart",
-      "file_type": "code",
-      "norm_label": "package:flutter/material.dart",
-      "source_file": null,
-      "source_location": null
-    },
-    {
-      "id": "package_flutter_test_flutter_test_dart",
-      "label": "package:flutter_test/flutter_test.dart",
-      "_origin": "ast",
-      "community": 85,
-      "community_name": "package:flutter/material.dart",
-      "file_type": "code",
-      "norm_label": "package:flutter_test/flutter_test.dart",
-      "source_file": null,
-      "source_location": null
-    },
-    {
-      "id": "package_uni_study_app_main_dart",
-      "label": "package:uni_study_app/main.dart",
-      "_origin": "ast",
-      "community": 85,
-      "community_name": "package:flutter/material.dart",
-      "file_type": "code",
-      "norm_label": "package:uni_study_app/main.dart",
-      "source_file": null,
-      "source_location": null
-    },
-    {
-      "id": "test_widget_test",
-      "label": "widget_test.dart",
-      "_origin": "ast",
-      "community": 85,
-      "community_name": "package:flutter/material.dart",
-      "file_type": "code",
-      "norm_label": "widget_test.dart",
-      "source_file": "test/widget_test.dart",
-      "source_location": null
-    },
-    {
-      "id": "test_widget_test_main",
-      "label": "main",
-      "_origin": "ast",
-      "community": 85,
-      "community_name": "package:flutter/material.dart",
-      "file_type": "code",
-      "norm_label": "main",
-      "source_file": "test/widget_test.dart",
-      "source_location": "L13"
     },
     {
       "id": "changenotifier",
@@ -43489,46 +43368,167 @@
       "source_location": "L7"
     },
     {
-      "id": "lib_app_version",
-      "label": "app_version.dart",
+      "id": "dart_convert",
+      "label": "dart:convert",
       "_origin": "ast",
       "community": 93,
-      "community_name": "String get",
+      "community_name": "ai_service.dart",
       "file_type": "code",
-      "norm_label": "app_version.dart",
-      "source_file": "lib/app_version.dart",
+      "norm_label": "dart:convert",
+      "source_file": null,
       "source_location": null
     },
     {
-      "id": "lib_app_version_appaboutmessage",
-      "label": "appAboutMessage",
+      "id": "lib_services_ai_service",
+      "label": "ai_service.dart",
       "_origin": "ast",
       "community": 93,
-      "community_name": "String get",
+      "community_name": "ai_service.dart",
       "file_type": "code",
-      "norm_label": "appaboutmessage",
-      "source_file": "lib/app_version.dart",
-      "source_location": "L8"
+      "norm_label": "ai_service.dart",
+      "source_file": "lib/services/ai_service.dart",
+      "source_location": null
     },
     {
-      "id": "lib_app_version_appapklabel",
-      "label": "appApkLabel",
+      "id": "lib_services_ai_service_aiservice",
+      "label": "AiService",
       "_origin": "ast",
       "community": 93,
-      "community_name": "String get",
+      "community_name": "ai_service.dart",
       "file_type": "code",
-      "norm_label": "appapklabel",
-      "source_file": "lib/app_version.dart",
-      "source_location": "L6"
+      "norm_label": "aiservice",
+      "source_file": "lib/services/ai_service.dart",
+      "source_location": "L23"
     },
     {
-      "id": "string_get",
-      "label": "String get",
+      "id": "lib_services_ai_service_chatmessage",
+      "label": "ChatMessage",
       "_origin": "ast",
       "community": 93,
-      "community_name": "String get",
+      "community_name": "ai_service.dart",
       "file_type": "code",
-      "norm_label": "string get",
+      "norm_label": "chatmessage",
+      "source_file": "lib/services/ai_service.dart",
+      "source_location": "L9"
+    },
+    {
+      "id": "lib_services_ai_service_dio",
+      "label": "_dio",
+      "_origin": "ast",
+      "community": 93,
+      "community_name": "ai_service.dart",
+      "file_type": "code",
+      "norm_label": "_dio",
+      "source_file": "lib/services/ai_service.dart",
+      "source_location": "L28"
+    },
+    {
+      "id": "lib_services_ai_service_imagebytes",
+      "label": "imageBytes",
+      "_origin": "ast",
+      "community": 93,
+      "community_name": "ai_service.dart",
+      "file_type": "code",
+      "norm_label": "imagebytes",
+      "source_file": "lib/services/ai_service.dart",
+      "source_location": "L12"
+    },
+    {
+      "id": "lib_services_ai_service_imagemime",
+      "label": "imageMime",
+      "_origin": "ast",
+      "community": 93,
+      "community_name": "ai_service.dart",
+      "file_type": "code",
+      "norm_label": "imagemime",
+      "source_file": "lib/services/ai_service.dart",
+      "source_location": "L13"
+    },
+    {
+      "id": "lib_services_ai_service_instance",
+      "label": "instance",
+      "_origin": "ast",
+      "community": 93,
+      "community_name": "ai_service.dart",
+      "file_type": "code",
+      "norm_label": "instance",
+      "source_file": "lib/services/ai_service.dart",
+      "source_location": "L26"
+    },
+    {
+      "id": "lib_services_ai_service_role",
+      "label": "role",
+      "_origin": "ast",
+      "community": 93,
+      "community_name": "ai_service.dart",
+      "file_type": "code",
+      "norm_label": "role",
+      "source_file": "lib/services/ai_service.dart",
+      "source_location": "L10"
+    },
+    {
+      "id": "lib_services_ai_service_sendmessage",
+      "label": "sendMessage",
+      "_origin": "ast",
+      "community": 93,
+      "community_name": "ai_service.dart",
+      "file_type": "code",
+      "norm_label": "sendmessage",
+      "source_file": "lib/services/ai_service.dart",
+      "source_location": "L37"
+    },
+    {
+      "id": "lib_services_ai_service_text",
+      "label": "text",
+      "_origin": "ast",
+      "community": 93,
+      "community_name": "ai_service.dart",
+      "file_type": "code",
+      "norm_label": "text",
+      "source_file": "lib/services/ai_service.dart",
+      "source_location": "L11"
+    },
+    {
+      "id": "package_dio_dio_dart",
+      "label": "package:dio/dio.dart",
+      "_origin": "ast",
+      "community": 93,
+      "community_name": "ai_service.dart",
+      "file_type": "code",
+      "norm_label": "package:dio/dio.dart",
+      "source_file": null,
+      "source_location": null
+    },
+    {
+      "id": "static_final_aiservice",
+      "label": "static final AiService",
+      "_origin": "ast",
+      "community": 93,
+      "community_name": "ai_service.dart",
+      "file_type": "code",
+      "norm_label": "static final aiservice",
+      "source_file": null,
+      "source_location": null
+    },
+    {
+      "id": "uint8list",
+      "label": "Uint8List?",
+      "_origin": "ast",
+      "community": 93,
+      "community_name": "ai_service.dart",
+      "file_type": "code",
+      "norm_label": "uint8list?",
+      "source_file": null,
+      "source_location": null
+    },
+    {
+      "id": "upload_service_dart",
+      "label": "upload_service.dart",
+      "_origin": "ast",
+      "community": 93,
+      "community_name": "ai_service.dart",
+      "file_type": "code",
+      "norm_label": "upload_service.dart",
       "source_file": null,
       "source_location": null
     },
@@ -43621,17 +43621,6 @@
       "source_location": "L1325"
     },
     {
-      "id": "datetime",
-      "label": "DateTime?",
-      "_origin": "ast",
-      "community": 97,
-      "community_name": "client_playlist_service.dart",
-      "file_type": "code",
-      "norm_label": "datetime?",
-      "source_file": null,
-      "source_location": null
-    },
-    {
       "id": "int_get",
       "label": "int get",
       "_origin": "ast",
@@ -43662,7 +43651,7 @@
       "file_type": "code",
       "norm_label": "addtracks",
       "source_file": "lib/services/client_playlist_service.dart",
-      "source_location": "L195"
+      "source_location": "L293"
     },
     {
       "id": "lib_services_client_playlist_service_clientaudioplaylist",
@@ -43673,7 +43662,7 @@
       "file_type": "code",
       "norm_label": "clientaudioplaylist",
       "source_file": "lib/services/client_playlist_service.dart",
-      "source_location": "L35"
+      "source_location": "L37"
     },
     {
       "id": "lib_services_client_playlist_service_clientaudioplaylists",
@@ -43684,7 +43673,7 @@
       "file_type": "code",
       "norm_label": "clientaudioplaylists",
       "source_file": "lib/services/client_playlist_service.dart",
-      "source_location": "L106"
+      "source_location": "L108"
     },
     {
       "id": "lib_services_client_playlist_service_clientaudiotrack",
@@ -43695,7 +43684,7 @@
       "file_type": "code",
       "norm_label": "clientaudiotrack",
       "source_file": "lib/services/client_playlist_service.dart",
-      "source_location": "L5"
+      "source_location": "L7"
     },
     {
       "id": "lib_services_client_playlist_service_copywith",
@@ -43706,7 +43695,7 @@
       "file_type": "code",
       "norm_label": "copywith",
       "source_file": "lib/services/client_playlist_service.dart",
-      "source_location": "L57"
+      "source_location": "L59"
     },
     {
       "id": "lib_services_client_playlist_service_create",
@@ -43717,7 +43706,7 @@
       "file_type": "code",
       "norm_label": "create",
       "source_file": "lib/services/client_playlist_service.dart",
-      "source_location": "L150"
+      "source_location": "L248"
     },
     {
       "id": "lib_services_client_playlist_service_createdat",
@@ -43728,7 +43717,7 @@
       "file_type": "code",
       "norm_label": "createdat",
       "source_file": "lib/services/client_playlist_service.dart",
-      "source_location": "L47"
+      "source_location": "L49"
     },
     {
       "id": "lib_services_client_playlist_service_delete",
@@ -43739,7 +43728,7 @@
       "file_type": "code",
       "norm_label": "delete",
       "source_file": "lib/services/client_playlist_service.dart",
-      "source_location": "L183"
+      "source_location": "L281"
     },
     {
       "id": "lib_services_client_playlist_service_fileid",
@@ -43750,7 +43739,7 @@
       "file_type": "code",
       "norm_label": "fileid",
       "source_file": "lib/services/client_playlist_service.dart",
-      "source_location": "L13"
+      "source_location": "L15"
     },
     {
       "id": "lib_services_client_playlist_service_foldername",
@@ -43761,7 +43750,7 @@
       "file_type": "code",
       "norm_label": "foldername",
       "source_file": "lib/services/client_playlist_service.dart",
-      "source_location": "L15"
+      "source_location": "L17"
     },
     {
       "id": "lib_services_client_playlist_service_fromjson",
@@ -43772,7 +43761,7 @@
       "file_type": "code",
       "norm_label": "fromjson",
       "source_file": "lib/services/client_playlist_service.dart",
-      "source_location": "L25"
+      "source_location": "L27"
     },
     {
       "id": "lib_services_client_playlist_service_fromvideo",
@@ -43783,7 +43772,7 @@
       "file_type": "code",
       "norm_label": "fromvideo",
       "source_file": "lib/services/client_playlist_service.dart",
-      "source_location": "L16"
+      "source_location": "L18"
     },
     {
       "id": "lib_services_client_playlist_service_id",
@@ -43794,7 +43783,7 @@
       "file_type": "code",
       "norm_label": "id",
       "source_file": "lib/services/client_playlist_service.dart",
-      "source_location": "L44"
+      "source_location": "L46"
     },
     {
       "id": "lib_services_client_playlist_service_key",
@@ -43805,7 +43794,7 @@
       "file_type": "code",
       "norm_label": "_key",
       "source_file": "lib/services/client_playlist_service.dart",
-      "source_location": "L109"
+      "source_location": "L111"
     },
     {
       "id": "lib_services_client_playlist_service_length",
@@ -43816,7 +43805,7 @@
       "file_type": "code",
       "norm_label": "length",
       "source_file": "lib/services/client_playlist_service.dart",
-      "source_location": "L50"
+      "source_location": "L52"
     },
     {
       "id": "lib_services_client_playlist_service_load",
@@ -43827,7 +43816,40 @@
       "file_type": "code",
       "norm_label": "load",
       "source_file": "lib/services/client_playlist_service.dart",
-      "source_location": "L114"
+      "source_location": "L122"
+    },
+    {
+      "id": "lib_services_client_playlist_service_loadlocal",
+      "label": "_loadLocal",
+      "_origin": "ast",
+      "community": 97,
+      "community_name": "client_playlist_service.dart",
+      "file_type": "code",
+      "norm_label": "_loadlocal",
+      "source_file": "lib/services/client_playlist_service.dart",
+      "source_location": "L159"
+    },
+    {
+      "id": "lib_services_client_playlist_service_loadremote",
+      "label": "_loadRemote",
+      "_origin": "ast",
+      "community": 97,
+      "community_name": "client_playlist_service.dart",
+      "file_type": "code",
+      "norm_label": "_loadremote",
+      "source_file": "lib/services/client_playlist_service.dart",
+      "source_location": "L175"
+    },
+    {
+      "id": "lib_services_client_playlist_service_merge",
+      "label": "_merge",
+      "_origin": "ast",
+      "community": 97,
+      "community_name": "client_playlist_service.dart",
+      "file_type": "code",
+      "norm_label": "_merge",
+      "source_file": "lib/services/client_playlist_service.dart",
+      "source_location": "L215"
     },
     {
       "id": "lib_services_client_playlist_service_name",
@@ -43838,7 +43860,7 @@
       "file_type": "code",
       "norm_label": "name",
       "source_file": "lib/services/client_playlist_service.dart",
-      "source_location": "L45"
+      "source_location": "L47"
     },
     {
       "id": "lib_services_client_playlist_service_newid",
@@ -43849,7 +43871,51 @@
       "file_type": "code",
       "norm_label": "newid",
       "source_file": "lib/services/client_playlist_service.dart",
-      "source_location": "L111"
+      "source_location": "L119"
+    },
+    {
+      "id": "lib_services_client_playlist_service_parsedecoded",
+      "label": "_parseDecoded",
+      "_origin": "ast",
+      "community": 97,
+      "community_name": "client_playlist_service.dart",
+      "file_type": "code",
+      "norm_label": "_parsedecoded",
+      "source_file": "lib/services/client_playlist_service.dart",
+      "source_location": "L200"
+    },
+    {
+      "id": "lib_services_client_playlist_service_parselist",
+      "label": "_parseList",
+      "_origin": "ast",
+      "community": 97,
+      "community_name": "client_playlist_service.dart",
+      "file_type": "code",
+      "norm_label": "_parselist",
+      "source_file": "lib/services/client_playlist_service.dart",
+      "source_location": "L191"
+    },
+    {
+      "id": "lib_services_client_playlist_service_remoteref",
+      "label": "_remoteRef",
+      "_origin": "ast",
+      "community": 97,
+      "community_name": "client_playlist_service.dart",
+      "file_type": "code",
+      "norm_label": "_remoteref",
+      "source_file": "lib/services/client_playlist_service.dart",
+      "source_location": "L113"
+    },
+    {
+      "id": "lib_services_client_playlist_service_sameidsandupdatedat",
+      "label": "_sameIdsAndUpdatedAt",
+      "_origin": "ast",
+      "community": 97,
+      "community_name": "client_playlist_service.dart",
+      "file_type": "code",
+      "norm_label": "_sameidsandupdatedat",
+      "source_file": "lib/services/client_playlist_service.dart",
+      "source_location": "L233"
     },
     {
       "id": "lib_services_client_playlist_service_save",
@@ -43860,7 +43926,7 @@
       "file_type": "code",
       "norm_label": "save",
       "source_file": "lib/services/client_playlist_service.dart",
-      "source_location": "L138"
+      "source_location": "L146"
     },
     {
       "id": "lib_services_client_playlist_service_title",
@@ -43871,7 +43937,7 @@
       "file_type": "code",
       "norm_label": "title",
       "source_file": "lib/services/client_playlist_service.dart",
-      "source_location": "L14"
+      "source_location": "L16"
     },
     {
       "id": "lib_services_client_playlist_service_tojson",
@@ -43882,7 +43948,7 @@
       "file_type": "code",
       "norm_label": "tojson",
       "source_file": "lib/services/client_playlist_service.dart",
-      "source_location": "L18"
+      "source_location": "L20"
     },
     {
       "id": "lib_services_client_playlist_service_tracks",
@@ -43893,7 +43959,7 @@
       "file_type": "code",
       "norm_label": "tracks",
       "source_file": "lib/services/client_playlist_service.dart",
-      "source_location": "L46"
+      "source_location": "L48"
     },
     {
       "id": "lib_services_client_playlist_service_updatedat",
@@ -43904,7 +43970,7 @@
       "file_type": "code",
       "norm_label": "updatedat",
       "source_file": "lib/services/client_playlist_service.dart",
-      "source_location": "L48"
+      "source_location": "L50"
     },
     {
       "id": "lib_services_client_playlist_service_upsert",
@@ -43915,7 +43981,29 @@
       "file_type": "code",
       "norm_label": "upsert",
       "source_file": "lib/services/client_playlist_service.dart",
-      "source_location": "L169"
+      "source_location": "L267"
+    },
+    {
+      "id": "lib_services_client_playlist_service_writelocal",
+      "label": "_writeLocal",
+      "_origin": "ast",
+      "community": 97,
+      "community_name": "client_playlist_service.dart",
+      "file_type": "code",
+      "norm_label": "_writelocal",
+      "source_file": "lib/services/client_playlist_service.dart",
+      "source_location": "L164"
+    },
+    {
+      "id": "lib_services_client_playlist_service_writeremote",
+      "label": "_writeRemote",
+      "_origin": "ast",
+      "community": 97,
+      "community_name": "client_playlist_service.dart",
+      "file_type": "code",
+      "norm_label": "_writeremote",
+      "source_file": "lib/services/client_playlist_service.dart",
+      "source_location": "L181"
     },
     {
       "id": "lib_main_mainscreen",
@@ -43988,7 +44076,7 @@
       "label": "visibility_controller.dart",
       "_origin": "ast",
       "community": 99,
-      "community_name": "visibility_controller.dart",
+      "community_name": "List",
       "file_type": "code",
       "norm_label": "visibility_controller.dart",
       "source_file": "lib/screens/visibility_controller.dart",
@@ -43999,7 +44087,7 @@
       "label": "allowedRoles",
       "_origin": "ast",
       "community": 99,
-      "community_name": "visibility_controller.dart",
+      "community_name": "List",
       "file_type": "code",
       "norm_label": "allowedroles",
       "source_file": "lib/screens/visibility_controller.dart",
@@ -44010,7 +44098,7 @@
       "label": "build",
       "_origin": "ast",
       "community": 99,
-      "community_name": "visibility_controller.dart",
+      "community_name": "List",
       "file_type": "code",
       "norm_label": "build",
       "source_file": "lib/screens/visibility_controller.dart",
@@ -44021,7 +44109,7 @@
       "label": "_checkVisibility",
       "_origin": "ast",
       "community": 99,
-      "community_name": "visibility_controller.dart",
+      "community_name": "List",
       "file_type": "code",
       "norm_label": "_checkvisibility",
       "source_file": "lib/screens/visibility_controller.dart",
@@ -44032,7 +44120,7 @@
       "label": "child",
       "_origin": "ast",
       "community": 99,
-      "community_name": "visibility_controller.dart",
+      "community_name": "List",
       "file_type": "code",
       "norm_label": "child",
       "source_file": "lib/screens/visibility_controller.dart",
@@ -44043,7 +44131,7 @@
       "label": "createState",
       "_origin": "ast",
       "community": 99,
-      "community_name": "visibility_controller.dart",
+      "community_name": "List",
       "file_type": "code",
       "norm_label": "createstate",
       "source_file": "lib/screens/visibility_controller.dart",
@@ -44054,7 +44142,7 @@
       "label": "fallback",
       "_origin": "ast",
       "community": 99,
-      "community_name": "visibility_controller.dart",
+      "community_name": "List",
       "file_type": "code",
       "norm_label": "fallback",
       "source_file": "lib/screens/visibility_controller.dart",
@@ -44065,7 +44153,7 @@
       "label": "getCurrentUserRole",
       "_origin": "ast",
       "community": 99,
-      "community_name": "visibility_controller.dart",
+      "community_name": "List",
       "file_type": "code",
       "norm_label": "getcurrentuserrole",
       "source_file": "lib/screens/visibility_controller.dart",
@@ -44076,7 +44164,7 @@
       "label": "hasAnyRole",
       "_origin": "ast",
       "community": 99,
-      "community_name": "visibility_controller.dart",
+      "community_name": "List",
       "file_type": "code",
       "norm_label": "hasanyrole",
       "source_file": "lib/screens/visibility_controller.dart",
@@ -44087,7 +44175,7 @@
       "label": "hasRole",
       "_origin": "ast",
       "community": 99,
-      "community_name": "visibility_controller.dart",
+      "community_name": "List",
       "file_type": "code",
       "norm_label": "hasrole",
       "source_file": "lib/screens/visibility_controller.dart",
@@ -44098,7 +44186,7 @@
       "label": "initState",
       "_origin": "ast",
       "community": 99,
-      "community_name": "visibility_controller.dart",
+      "community_name": "List",
       "file_type": "code",
       "norm_label": "initstate",
       "source_file": "lib/screens/visibility_controller.dart",
@@ -44109,7 +44197,7 @@
       "label": "isAdmin",
       "_origin": "ast",
       "community": 99,
-      "community_name": "visibility_controller.dart",
+      "community_name": "List",
       "file_type": "code",
       "norm_label": "isadmin",
       "source_file": "lib/screens/visibility_controller.dart",
@@ -44120,7 +44208,7 @@
       "label": "_isLoading",
       "_origin": "ast",
       "community": 99,
-      "community_name": "visibility_controller.dart",
+      "community_name": "List",
       "file_type": "code",
       "norm_label": "_isloading",
       "source_file": "lib/screens/visibility_controller.dart",
@@ -44131,7 +44219,7 @@
       "label": "_isVisible",
       "_origin": "ast",
       "community": 99,
-      "community_name": "visibility_controller.dart",
+      "community_name": "List",
       "file_type": "code",
       "norm_label": "_isvisible",
       "source_file": "lib/screens/visibility_controller.dart",
@@ -44142,7 +44230,7 @@
       "label": "RoleBasedWidget",
       "_origin": "ast",
       "community": 99,
-      "community_name": "visibility_controller.dart",
+      "community_name": "List",
       "file_type": "code",
       "norm_label": "rolebasedwidget",
       "source_file": "lib/screens/visibility_controller.dart",
@@ -44153,7 +44241,7 @@
       "label": "_RoleBasedWidgetState",
       "_origin": "ast",
       "community": 99,
-      "community_name": "visibility_controller.dart",
+      "community_name": "List",
       "file_type": "code",
       "norm_label": "_rolebasedwidgetstate",
       "source_file": "lib/screens/visibility_controller.dart",
@@ -44164,18 +44252,29 @@
       "label": "VisibilityController",
       "_origin": "ast",
       "community": 99,
-      "community_name": "visibility_controller.dart",
+      "community_name": "List",
       "file_type": "code",
       "norm_label": "visibilitycontroller",
       "source_file": "lib/screens/visibility_controller.dart",
       "source_location": "L4"
     },
     {
+      "id": "list",
+      "label": "List",
+      "_origin": "ast",
+      "community": 99,
+      "community_name": "List",
+      "file_type": "code",
+      "norm_label": "list",
+      "source_file": null,
+      "source_location": null
+    },
+    {
       "id": "widget",
       "label": "Widget",
       "_origin": "ast",
       "community": 99,
-      "community_name": "visibility_controller.dart",
+      "community_name": "List",
       "file_type": "code",
       "norm_label": "widget",
       "source_file": null,
@@ -56297,7 +56396,7 @@
       "confidence_score": 1.0,
       "context": "variable_type",
       "source_file": "lib/services/client_playlist_service.dart",
-      "source_location": "L46",
+      "source_location": "L48",
       "weight": 1.0
     },
     {
@@ -56309,7 +56408,7 @@
       "confidence_score": 1.0,
       "context": "variable_type",
       "source_file": "lib/services/client_playlist_service.dart",
-      "source_location": "L47",
+      "source_location": "L49",
       "weight": 1.0
     },
     {
@@ -56321,7 +56420,7 @@
       "confidence_score": 1.0,
       "context": "variable_type",
       "source_file": "lib/services/client_playlist_service.dart",
-      "source_location": "L50",
+      "source_location": "L52",
       "weight": 1.0
     },
     {
@@ -84345,7 +84444,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/services/client_playlist_service.dart",
-      "source_location": "L106",
+      "source_location": "L108",
       "weight": 1.0
     },
     {
@@ -84356,7 +84455,18 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/services/client_playlist_service.dart",
-      "source_location": "L109",
+      "source_location": "L111",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_services_client_playlist_service",
+      "target": "lib_services_client_playlist_service_remoteref",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/services/client_playlist_service.dart",
+      "source_location": "L113",
       "weight": 1.0
     },
     {
@@ -84367,7 +84477,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/services/client_playlist_service.dart",
-      "source_location": "L111",
+      "source_location": "L119",
       "weight": 1.0
     },
     {
@@ -84378,18 +84488,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/services/client_playlist_service.dart",
-      "source_location": "L114",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_services_client_playlist_service",
-      "target": "lib_services_client_playlist_service_fileid",
-      "relation": "defines",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/services/client_playlist_service.dart",
-      "source_location": "L13",
+      "source_location": "L122",
       "weight": 1.0
     },
     {
@@ -84400,23 +84499,12 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/services/client_playlist_service.dart",
-      "source_location": "L138",
+      "source_location": "L146",
       "weight": 1.0
     },
     {
       "source": "lib_services_client_playlist_service",
-      "target": "lib_services_client_playlist_service_title",
-      "relation": "defines",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/services/client_playlist_service.dart",
-      "source_location": "L14",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_services_client_playlist_service",
-      "target": "lib_services_client_playlist_service_foldername",
+      "target": "lib_services_client_playlist_service_fileid",
       "relation": "defines",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -84427,18 +84515,18 @@
     },
     {
       "source": "lib_services_client_playlist_service",
-      "target": "lib_services_client_playlist_service_create",
+      "target": "lib_services_client_playlist_service_loadlocal",
       "relation": "defines",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/services/client_playlist_service.dart",
-      "source_location": "L150",
+      "source_location": "L159",
       "weight": 1.0
     },
     {
       "source": "lib_services_client_playlist_service",
-      "target": "lib_services_client_playlist_service_fromvideo",
+      "target": "lib_services_client_playlist_service_title",
       "relation": "defines",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -84449,18 +84537,40 @@
     },
     {
       "source": "lib_services_client_playlist_service",
-      "target": "lib_services_client_playlist_service_upsert",
+      "target": "lib_services_client_playlist_service_writelocal",
       "relation": "defines",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/services/client_playlist_service.dart",
-      "source_location": "L169",
+      "source_location": "L164",
       "weight": 1.0
     },
     {
       "source": "lib_services_client_playlist_service",
-      "target": "lib_services_client_playlist_service_tojson",
+      "target": "lib_services_client_playlist_service_foldername",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/services/client_playlist_service.dart",
+      "source_location": "L17",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_services_client_playlist_service",
+      "target": "lib_services_client_playlist_service_loadremote",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/services/client_playlist_service.dart",
+      "source_location": "L175",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_services_client_playlist_service",
+      "target": "lib_services_client_playlist_service_fromvideo",
       "relation": "defines",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -84471,24 +84581,90 @@
     },
     {
       "source": "lib_services_client_playlist_service",
-      "target": "lib_services_client_playlist_service_delete",
+      "target": "lib_services_client_playlist_service_writeremote",
       "relation": "defines",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/services/client_playlist_service.dart",
-      "source_location": "L183",
+      "source_location": "L181",
       "weight": 1.0
     },
     {
       "source": "lib_services_client_playlist_service",
-      "target": "lib_services_client_playlist_service_addtracks",
+      "target": "lib_services_client_playlist_service_parselist",
       "relation": "defines",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/services/client_playlist_service.dart",
-      "source_location": "L195",
+      "source_location": "L191",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_services_client_playlist_service",
+      "target": "lib_services_client_playlist_service_tojson",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/services/client_playlist_service.dart",
+      "source_location": "L20",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_services_client_playlist_service",
+      "target": "lib_services_client_playlist_service_parsedecoded",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/services/client_playlist_service.dart",
+      "source_location": "L200",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_services_client_playlist_service",
+      "target": "lib_services_client_playlist_service_merge",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/services/client_playlist_service.dart",
+      "source_location": "L215",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_services_client_playlist_service",
+      "target": "lib_services_client_playlist_service_sameidsandupdatedat",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/services/client_playlist_service.dart",
+      "source_location": "L233",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_services_client_playlist_service",
+      "target": "lib_services_client_playlist_service_create",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/services/client_playlist_service.dart",
+      "source_location": "L248",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_services_client_playlist_service",
+      "target": "lib_services_client_playlist_service_upsert",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/services/client_playlist_service.dart",
+      "source_location": "L267",
       "weight": 1.0
     },
     {
@@ -84499,7 +84675,29 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/services/client_playlist_service.dart",
-      "source_location": "L25",
+      "source_location": "L27",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_services_client_playlist_service",
+      "target": "lib_services_client_playlist_service_delete",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/services/client_playlist_service.dart",
+      "source_location": "L281",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_services_client_playlist_service",
+      "target": "lib_services_client_playlist_service_addtracks",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/services/client_playlist_service.dart",
+      "source_location": "L293",
       "weight": 1.0
     },
     {
@@ -84510,7 +84708,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/services/client_playlist_service.dart",
-      "source_location": "L35",
+      "source_location": "L37",
       "weight": 1.0
     },
     {
@@ -84521,7 +84719,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/services/client_playlist_service.dart",
-      "source_location": "L44",
+      "source_location": "L46",
       "weight": 1.0
     },
     {
@@ -84532,7 +84730,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/services/client_playlist_service.dart",
-      "source_location": "L45",
+      "source_location": "L47",
       "weight": 1.0
     },
     {
@@ -84543,7 +84741,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/services/client_playlist_service.dart",
-      "source_location": "L46",
+      "source_location": "L48",
       "weight": 1.0
     },
     {
@@ -84554,7 +84752,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/services/client_playlist_service.dart",
-      "source_location": "L47",
+      "source_location": "L49",
       "weight": 1.0
     },
     {
@@ -84565,18 +84763,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/services/client_playlist_service.dart",
-      "source_location": "L48",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_services_client_playlist_service",
-      "target": "lib_services_client_playlist_service_clientaudiotrack",
-      "relation": "defines",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/services/client_playlist_service.dart",
-      "source_location": "L5",
+      "source_location": "L50",
       "weight": 1.0
     },
     {
@@ -84587,7 +84774,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/services/client_playlist_service.dart",
-      "source_location": "L50",
+      "source_location": "L52",
       "weight": 1.0
     },
     {
@@ -84598,7 +84785,18 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/services/client_playlist_service.dart",
-      "source_location": "L57",
+      "source_location": "L59",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_services_client_playlist_service",
+      "target": "lib_services_client_playlist_service_clientaudiotrack",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/services/client_playlist_service.dart",
+      "source_location": "L7",
       "weight": 1.0
     },
     {
@@ -99079,13 +99277,35 @@
     },
     {
       "source": "lib_services_client_playlist_service",
-      "target": "package_shared_preferences_shared_preferences_dart",
+      "target": "package_cloud_firestore_cloud_firestore_dart",
       "relation": "imports",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/services/client_playlist_service.dart",
       "source_location": "L3",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_services_client_playlist_service",
+      "target": "package_flutter_foundation_dart",
+      "relation": "imports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/services/client_playlist_service.dart",
+      "source_location": "L4",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_services_client_playlist_service",
+      "target": "package_shared_preferences_shared_preferences_dart",
+      "relation": "imports",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/services/client_playlist_service.dart",
+      "source_location": "L5",
       "weight": 1.0
     },
     {
@@ -105263,5 +105483,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "5222b4c6a34f64bd181e111f02932d66fc7a8e0d"
+  "built_at_commit": "b43ea321ca6c0918fae9fe28d932912e6e9e5f94"
 }

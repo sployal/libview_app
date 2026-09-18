@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ClientAudioTrack {
@@ -108,30 +110,36 @@ class ClientAudioPlaylists {
 
   static String _key(String clientId) => 'client_audio_playlists_$clientId';
 
+  static DocumentReference<Map<String, dynamic>> _remoteRef(String clientId) {
+    return FirebaseFirestore.instance
+        .collection('client_audio_playlists')
+        .doc(clientId);
+  }
+
   static String newId() =>
       DateTime.now().microsecondsSinceEpoch.toRadixString(36);
 
   static Future<List<ClientAudioPlaylist>> load(String clientId) async {
     if (clientId.isEmpty) return const [];
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_key(clientId));
-    if (raw == null || raw.isEmpty) return const [];
+    final local = await _loadLocal(clientId);
     try {
-      final decoded = jsonDecode(raw);
-      if (decoded is! List) return const [];
-      final playlists = decoded
-          .whereType<Map>()
-          .map(
-            (item) => ClientAudioPlaylist.fromJson(
-              Map<String, dynamic>.from(item),
-            ),
-          )
-          .where((playlist) => playlist.id.isNotEmpty)
-          .toList();
-      playlists.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
-      return playlists;
-    } catch (_) {
-      return const [];
+      final remote = await _loadRemote(clientId);
+      if (remote != null) {
+        final merged = _merge(remote, local);
+        final changed = !_sameIdsAndUpdatedAt(remote, merged);
+        if (changed) {
+          await _writeRemote(clientId, merged);
+        }
+        await _writeLocal(clientId, merged);
+        return merged;
+      }
+      if (local.isNotEmpty) {
+        await _writeRemote(clientId, local);
+      }
+      return local;
+    } catch (e) {
+      debugPrint('Error loading playlists: $e');
+      return local;
     }
   }
 
@@ -140,11 +148,101 @@ class ClientAudioPlaylists {
     List<ClientAudioPlaylist> playlists,
   ) async {
     if (clientId.isEmpty) return;
+    await _writeLocal(clientId, playlists);
+    try {
+      await _writeRemote(clientId, playlists);
+    } catch (e) {
+      debugPrint('Error saving playlists: $e');
+    }
+  }
+
+  static Future<List<ClientAudioPlaylist>> _loadLocal(String clientId) async {
+    final prefs = await SharedPreferences.getInstance();
+    return _parseList(prefs.getString(_key(clientId)));
+  }
+
+  static Future<void> _writeLocal(
+    String clientId,
+    List<ClientAudioPlaylist> playlists,
+  ) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
       _key(clientId),
       jsonEncode(playlists.map((playlist) => playlist.toJson()).toList()),
     );
+  }
+
+  static Future<List<ClientAudioPlaylist>?> _loadRemote(String clientId) async {
+    final doc = await _remoteRef(clientId).get();
+    if (!doc.exists) return null;
+    return _parseDecoded(doc.data()?['playlists']);
+  }
+
+  static Future<void> _writeRemote(
+    String clientId,
+    List<ClientAudioPlaylist> playlists,
+  ) async {
+    await _remoteRef(clientId).set({
+      'playlists': playlists.map((playlist) => playlist.toJson()).toList(),
+      'updated_at': FieldValue.serverTimestamp(),
+    });
+  }
+
+  static List<ClientAudioPlaylist> _parseList(String? raw) {
+    if (raw == null || raw.isEmpty) return const [];
+    try {
+      return _parseDecoded(jsonDecode(raw));
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  static List<ClientAudioPlaylist> _parseDecoded(dynamic decoded) {
+    if (decoded is! List) return const [];
+    final playlists = decoded
+        .whereType<Map>()
+        .map(
+          (item) => ClientAudioPlaylist.fromJson(
+            Map<String, dynamic>.from(item),
+          ),
+        )
+        .where((playlist) => playlist.id.isNotEmpty)
+        .toList();
+    playlists.sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    return playlists;
+  }
+
+  static List<ClientAudioPlaylist> _merge(
+    List<ClientAudioPlaylist> remote,
+    List<ClientAudioPlaylist> local,
+  ) {
+    final byId = <String, ClientAudioPlaylist>{
+      for (final playlist in remote) playlist.id: playlist,
+    };
+    for (final playlist in local) {
+      final existing = byId[playlist.id];
+      if (existing == null || playlist.updatedAt.isAfter(existing.updatedAt)) {
+        byId[playlist.id] = playlist;
+      }
+    }
+    final playlists = byId.values.toList()
+      ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
+    return playlists;
+  }
+
+  static bool _sameIdsAndUpdatedAt(
+    List<ClientAudioPlaylist> a,
+    List<ClientAudioPlaylist> b,
+  ) {
+    if (a.length != b.length) return false;
+    final bById = {for (final playlist in b) playlist.id: playlist};
+    for (final playlist in a) {
+      final other = bById[playlist.id];
+      if (other == null || other.updatedAt != playlist.updatedAt) {
+        return false;
+      }
+    }
+    return true;
   }
 
   static Future<ClientAudioPlaylist> create({
