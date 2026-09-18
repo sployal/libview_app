@@ -1,7 +1,7 @@
 # Graph Report - libview  (2026-09-18)
 
 ## Corpus Check
-- 109 files · ~520,133 words
+- 109 files · ~520,130 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 66 file(s) not represented in the graph (top: .xml 20, .xcconfig 8, (none) 7)
 

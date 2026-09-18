@@ -19400,7 +19400,7 @@
       "file_type": "code",
       "norm_label": "_actionchip",
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L568"
+      "source_location": "L565"
     },
     {
       "id": "lib_screens_client_workspace_screen_actionsrow",
@@ -19411,7 +19411,7 @@
       "file_type": "code",
       "norm_label": "_actionsrow",
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L535"
+      "source_location": "L532"
     },
     {
       "id": "lib_screens_client_workspace_screen_amber",
@@ -19444,7 +19444,7 @@
       "file_type": "code",
       "norm_label": "_clearrecents",
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L662"
+      "source_location": "L659"
     },
     {
       "id": "lib_screens_client_workspace_screen_client",
@@ -19466,7 +19466,7 @@
       "file_type": "code",
       "norm_label": "_clientunassignedstate",
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L979"
+      "source_location": "L976"
     },
     {
       "id": "lib_screens_client_workspace_screen_clientworkspacescreen",
@@ -19543,7 +19543,7 @@
       "file_type": "code",
       "norm_label": "_emptycard",
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L953"
+      "source_location": "L950"
     },
     {
       "id": "lib_screens_client_workspace_screen_folderislocked",
@@ -19576,7 +19576,7 @@
       "file_type": "code",
       "norm_label": "_foldersheader",
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L616"
+      "source_location": "L613"
     },
     {
       "id": "lib_screens_client_workspace_screen_foldersort",
@@ -19609,7 +19609,7 @@
       "file_type": "code",
       "norm_label": "_folderspreview",
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L814"
+      "source_location": "L811"
     },
     {
       "id": "lib_screens_client_workspace_screen_header",
@@ -19686,7 +19686,7 @@
       "file_type": "code",
       "norm_label": "_metric",
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L506"
+      "source_location": "L503"
     },
     {
       "id": "lib_screens_client_workspace_screen_mint",
@@ -19774,7 +19774,7 @@
       "file_type": "code",
       "norm_label": "_recentheader",
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L642"
+      "source_location": "L639"
     },
     {
       "id": "lib_screens_client_workspace_screen_recents",
@@ -19796,7 +19796,7 @@
       "file_type": "code",
       "norm_label": "_recentsection",
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L679"
+      "source_location": "L676"
     },
     {
       "id": "lib_screens_client_workspace_screen_refresh",
@@ -19818,7 +19818,7 @@
       "file_type": "code",
       "norm_label": "_relativetime",
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L969"
+      "source_location": "L966"
     },
     {
       "id": "lib_screens_client_workspace_screen_removerecent",
@@ -19829,7 +19829,7 @@
       "file_type": "code",
       "norm_label": "_removerecent",
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L668"
+      "source_location": "L665"
     },
     {
       "id": "lib_screens_client_workspace_screen_sectionlabel",
@@ -19840,7 +19840,7 @@
       "file_type": "code",
       "norm_label": "_sectionlabel",
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L605"
+      "source_location": "L602"
     },
     {
       "id": "lib_screens_client_workspace_screen_showbrowser",
@@ -19884,7 +19884,7 @@
       "file_type": "code",
       "norm_label": "_viewallbutton",
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L912"
+      "source_location": "L909"
     },
     {
       "id": "lib_screens_client_workspace_screen_workspace",
@@ -51271,7 +51271,7 @@
       "confidence_score": 1.0,
       "context": "type_lookup",
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L472",
+      "source_location": "L483",
       "weight": 1.0
     },
     {
@@ -65505,7 +65505,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L506",
+      "source_location": "L503",
       "weight": 1.0
     },
     {
@@ -65516,7 +65516,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L535",
+      "source_location": "L532",
       "weight": 1.0
     },
     {
@@ -65538,7 +65538,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L568",
+      "source_location": "L565",
       "weight": 1.0
     },
     {
@@ -65560,7 +65560,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L605",
+      "source_location": "L602",
       "weight": 1.0
     },
     {
@@ -65582,7 +65582,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L616",
+      "source_location": "L613",
       "weight": 1.0
     },
     {
@@ -65609,6 +65609,17 @@
     },
     {
       "source": "lib_screens_client_workspace_screen",
+      "target": "lib_screens_client_workspace_screen_recentheader",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/screens/client_workspace_screen.dart",
+      "source_location": "L639",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_screens_client_workspace_screen",
       "target": "lib_screens_client_workspace_screen_amber",
       "relation": "defines",
       "_origin": "ast",
@@ -65616,17 +65627,6 @@
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_workspace_screen.dart",
       "source_location": "L64",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_screens_client_workspace_screen",
-      "target": "lib_screens_client_workspace_screen_recentheader",
-      "relation": "defines",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L642",
       "weight": 1.0
     },
     {
@@ -65642,6 +65642,17 @@
     },
     {
       "source": "lib_screens_client_workspace_screen",
+      "target": "lib_screens_client_workspace_screen_clearrecents",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/screens/client_workspace_screen.dart",
+      "source_location": "L659",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_screens_client_workspace_screen",
       "target": "lib_screens_client_workspace_screen_maxpreviewfolders",
       "relation": "defines",
       "_origin": "ast",
@@ -65653,24 +65664,13 @@
     },
     {
       "source": "lib_screens_client_workspace_screen",
-      "target": "lib_screens_client_workspace_screen_clearrecents",
-      "relation": "defines",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L662",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_screens_client_workspace_screen",
       "target": "lib_screens_client_workspace_screen_removerecent",
       "relation": "defines",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L668",
+      "source_location": "L665",
       "weight": 1.0
     },
     {
@@ -65681,7 +65681,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L679",
+      "source_location": "L676",
       "weight": 1.0
     },
     {
@@ -65802,7 +65802,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L814",
+      "source_location": "L811",
       "weight": 1.0
     },
     {
@@ -65835,7 +65835,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L912",
+      "source_location": "L909",
       "weight": 1.0
     },
     {
@@ -65846,7 +65846,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L953",
+      "source_location": "L950",
       "weight": 1.0
     },
     {
@@ -65857,7 +65857,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L969",
+      "source_location": "L966",
       "weight": 1.0
     },
     {
@@ -65879,7 +65879,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L979",
+      "source_location": "L976",
       "weight": 1.0
     },
     {
@@ -97581,7 +97581,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/screens/client_workspace_screen.dart",
-      "source_location": "L979",
+      "source_location": "L976",
       "weight": 1.0
     },
     {

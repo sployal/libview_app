@@ -6,8 +6,10 @@ import '../services/auth_service.dart';
 import '../services/client_service.dart';
 import '../services/google_drive_service.dart';
 import '../services/upload_service.dart';
+import '../services/client_playlist_service.dart';
 import '../ui/file_sort.dart';
 import 'client_files_browser_screen.dart';
+import 'client_playlists_screen.dart';
 
 class ClientWorkspaceScreen extends StatelessWidget {
   const ClientWorkspaceScreen({
@@ -68,6 +70,7 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
   DriveFolderSummary _summary = const DriveFolderSummary();
   List<Subject> _folders = [];
   List<ClientRecentFolder> _recents = [];
+  List<ClientAudioPlaylist> _playlists = [];
   bool _loading = true;
   bool _creating = false;
   bool _showBrowser = false;
@@ -148,6 +151,7 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
           nestedCounts: true,
         ),
         ClientRecentFolders.load(_client.id),
+        ClientAudioPlaylists.load(_client.id),
         () async {
           try {
             return await UploadService.instance.fetchLockedFolderIds(folderId);
@@ -157,7 +161,7 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
         }(),
       ]);
       if (!mounted) return;
-      final lockedIds = results[3] as Set<String>;
+      final lockedIds = results[4] as Set<String>;
       final folders = (results[1] as List<Subject>)
           .map(
             (folder) => folder.copyWith(isLocked: lockedIds.contains(folder.folderId)),
@@ -167,6 +171,7 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
         _summary = results[0] as DriveFolderSummary;
         _folders = folders;
         _recents = results[2] as List<ClientRecentFolder>;
+        _playlists = results[3] as List<ClientAudioPlaylist>;
         _loading = false;
       });
     } catch (_) {
@@ -182,6 +187,51 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
       _openFolderId = folderId;
       _openFolderName = folderName;
     });
+  }
+
+  Future<void> _openPlaylists() async {
+    HapticFeedback.lightImpact();
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => ClientPlaylistsScreen(
+          clientId: _client.id,
+          rootFolderId: _client.driveFolderId,
+          workspaceName: _client.name,
+        ),
+      ),
+    );
+    await _reloadPlaylists();
+  }
+
+  Future<void> _openPlaylist(ClientAudioPlaylist playlist) async {
+    HapticFeedback.lightImpact();
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => ClientPlaylistDetailScreen(
+          clientId: _client.id,
+          rootFolderId: _client.driveFolderId,
+          playlist: playlist,
+        ),
+      ),
+    );
+    await _reloadPlaylists();
+  }
+
+  Future<void> _createPlaylist() async {
+    final name = await promptPlaylistName(context);
+    if (name == null || name.isEmpty || !mounted) return;
+    final playlist = await ClientAudioPlaylists.create(
+      clientId: _client.id,
+      name: name,
+    );
+    if (!mounted) return;
+    await _openPlaylist(playlist);
+  }
+
+  Future<void> _reloadPlaylists() async {
+    final playlists = await ClientAudioPlaylists.load(_client.id);
+    if (!mounted) return;
+    setState(() => _playlists = playlists);
   }
 
   void _closeBrowser() {
@@ -343,6 +393,17 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
               _storageCard(isDark),
               const SizedBox(height: 18),
               _actionsRow(),
+              const SizedBox(height: 22),
+              PlaylistHomeStrip(
+                playlists: _playlists,
+                onSeeAll: _openPlaylists,
+                onCreate: _createPlaylist,
+                onOpen: _openPlaylist,
+                onPlay: (playlist) => playClientAudioPlaylist(
+                  context,
+                  playlist,
+                ),
+              ),
               const SizedBox(height: 22),
               _recentHeader(title),
               const SizedBox(height: 10),

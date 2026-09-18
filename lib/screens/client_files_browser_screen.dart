@@ -25,6 +25,8 @@ import 'phone_audio.dart';
 import 'phone_pdf.dart';
 import 'web_view_screen.dart';
 import '../services/media_session.dart';
+import '../services/client_playlist_service.dart';
+import 'client_playlists_screen.dart';
 
 class ClientFilesBrowserScreen extends StatefulWidget {
   final String workspaceName;
@@ -363,6 +365,43 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
   }
 
   List<StudyMaterial> get _selectedFileList => _selectedItems.values.toList();
+
+  String get _playlistClientId => widget.clientId?.trim() ?? '';
+
+  List<ClientAudioTrack> _audioTracksFrom(Iterable<StudyMaterial> files) {
+    final folderName = selectedSubject?.name ?? widget.workspaceName;
+    return [
+      for (final file in files)
+        if (!file.isFolder && file.type.toUpperCase() == 'AUD')
+          ClientAudioTrack(
+            fileId: file.id,
+            title: file.name,
+            folderName: folderName,
+          ),
+    ];
+  }
+
+  Future<void> _addFilesToPlaylist(List<StudyMaterial> files) async {
+    final clientId = _playlistClientId;
+    final tracks = _audioTracksFrom(files);
+    if (clientId.isEmpty) {
+      _showMessage('Playlists are not available here', isError: true);
+      return;
+    }
+    if (tracks.isEmpty) {
+      _showMessage('Select audio files to add', isError: true);
+      return;
+    }
+    await showAddAudioToPlaylistSheet(
+      context: context,
+      clientId: clientId,
+      tracks: tracks,
+    );
+  }
+
+  Future<void> _addSelectedAudioToPlaylist() {
+    return _addFilesToPlaylist(_selectedFileList);
+  }
 
   List<Subject> get _selectedUnitList => _selectedUnits.values.toList();
 
@@ -2457,6 +2496,8 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
       } else {
         _moveMaterial(file);
       }
+    } else if (value == 'playlist') {
+      _addFilesToPlaylist([file]);
     } else if (value == 'download') {
       _downloadFile(file);
     } else if (value == 'cancel') {
@@ -2921,6 +2962,16 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
           icon: Icons.download_rounded,
           label: 'Download',
           color: fileColor,
+        ),
+      if (!file.isFolder &&
+          !isDownloading &&
+          file.type.toUpperCase() == 'AUD' &&
+          (widget.clientId ?? '').isNotEmpty)
+        const _ItemActionChoice(
+          value: 'playlist',
+          icon: Icons.queue_music_rounded,
+          label: 'Add to playlist',
+          color: Color(0xFFEC4899),
         ),
       if (_canManageFolders && !isDownloading) ...[
         _ItemActionChoice(
@@ -3610,6 +3661,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     VoidCallback? onMove,
     VoidCallback? onDelete,
     VoidCallback? onMore,
+    VoidCallback? onPlaylist,
   }) {
     final card = isDark ? const Color(0xFF1F2937) : Colors.white;
     final actions = <Widget>[
@@ -3619,6 +3671,13 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
           label: 'Download',
           color: const Color(0xFF6366F1),
           onTap: onDownload,
+        ),
+      if (onPlaylist != null)
+        _selectionBarAction(
+          icon: Icons.queue_music_rounded,
+          label: 'Playlist',
+          color: const Color(0xFFEC4899),
+          onTap: onPlaylist,
         ),
       if (onMove != null)
         _selectionBarAction(
@@ -3746,6 +3805,10 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
                   ? _moveSelectedFiles
                   : null,
               onDelete: _canManageFolders ? _deleteSelectedFiles : null,
+              onPlaylist: _playlistClientId.isNotEmpty &&
+                      _audioTracksFrom(_selectedFileList).isNotEmpty
+                  ? _addSelectedAudioToPlaylist
+                  : null,
               onMore: _selectedItems.length == 1
                   ? () {
                       final file = _selectedFileList.first;
