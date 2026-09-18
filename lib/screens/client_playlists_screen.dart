@@ -752,7 +752,6 @@ class _ClientAudioTrackPickerScreenState
       GoogleDriveService.subjectFromFolder(
         id: folder.id,
         name: folder.name,
-        colorIndex: _trail.length,
       ),
     );
     await _load();

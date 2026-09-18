@@ -156,15 +156,15 @@
     "semantic_hash": "1b9057ebad5bdab814f46e02b2b8c2a8"
   },
   "lib/screens/client_files_browser_screen.dart": {
-    "mtime": 1789771064.733715,
-    "seen": 1789771144.7650752,
-    "ast_hash": "20657575491eb328d54a445cd76444bd",
+    "mtime": 1789763934.3141098,
+    "seen": 1789764066.1673164,
+    "ast_hash": "cb56aba14d959ae6bbf377455927ceb2",
     "semantic_hash": ""
   },
   "lib/screens/client_workspace_screen.dart": {
-    "mtime": 1789771057.6533263,
-    "seen": 1789771144.7650821,
-    "ast_hash": "8fe2ce8a444d42b045d6d869eec50fc9",
+    "mtime": 1789763959.6039326,
+    "seen": 1789764066.1673274,
+    "ast_hash": "b4e526737a7449839fc2cd84c2af7e2c",
     "semantic_hash": ""
   },
   "lib/screens/course_addition.dart": {
@@ -258,9 +258,9 @@
     "semantic_hash": "f402af0e5a47397255a748ec089c2611"
   },
   "lib/screens/semester_detail_screen.dart": {
-    "mtime": 1789771064.9777348,
-    "seen": 1789771144.765134,
-    "ast_hash": "aa02af31c22978ff3425918317ad91f9",
+    "mtime": 1789763947.5610847,
+    "seen": 1789764066.1673996,
+    "ast_hash": "fc3ba1a78de32148c610e6d4f972e2df",
     "semantic_hash": ""
   },
   "lib/screens/semesters_screen.dart": {
@@ -366,10 +366,10 @@
     "semantic_hash": ""
   },
   "lib/services/google_drive_service.dart": {
-    "mtime": 1789771056.201161,
-    "seen": 1789771144.7652037,
-    "ast_hash": "d174de4e8e8e3ef17e678a2eac554de2",
-    "semantic_hash": ""
+    "mtime": 1788596926.2715764,
+    "seen": 1789529207.0752413,
+    "ast_hash": "f317710ea3989ae33fbbe1431726575d",
+    "semantic_hash": "f317710ea3989ae33fbbe1431726575d"
   },
   "lib/services/media_service.dart": {
     "mtime": 1788069279.1984496,
@@ -1248,9 +1248,9 @@
     "semantic_hash": ""
   },
   "lib/screens/client_playlists_screen.dart": {
-    "mtime": 1789771065.1077476,
-    "seen": 1789771144.7650793,
-    "ast_hash": "d376a1e19d3f74bb959963562aceaeee",
+    "mtime": 1789763952.2693324,
+    "seen": 1789764066.1673229,
+    "ast_hash": "ad7596253cb00650f7d3ecf354500dad",
     "semantic_hash": ""
   },
   "lib/services/client_playlist_service.dart": {

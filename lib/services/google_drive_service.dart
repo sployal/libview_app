@@ -246,7 +246,6 @@ class GoogleDriveService {
           subjectFromFolder(
             id: folders[i].id,
             name: folders[i].name,
-            colorIndex: i,
             fileCount: counts[i].fileCount,
             folderCount: counts[i].folderCount,
             modifiedAt: DateTime.tryParse(folders[i].modifiedTime ?? ''),
@@ -376,10 +375,22 @@ class GoogleDriveService {
     Color(0xFF84CC16),
   ];
 
+  static int colorIndexForKey(String key) {
+    var hash = 5381;
+    for (final code in key.codeUnits) {
+      hash = ((hash << 5) + hash + code) & 0x7fffffff;
+    }
+    return hash % folderColors.length;
+  }
+
+  static Color colorForFolder(String id) {
+    return folderColors[colorIndexForKey(id)];
+  }
+
   static Subject subjectFromFolder({
     required String id,
     required String name,
-    required int colorIndex,
+    int? colorIndex,
     int fileCount = 0,
     int folderCount = 0,
     DateTime? modifiedAt,
@@ -391,7 +402,7 @@ class GoogleDriveService {
       name: name,
       code: subjectCodeFromName(name),
       folderId: id,
-      color: folderColors[colorIndex % folderColors.length],
+      color: folderColors[(colorIndex ?? colorIndexForKey(id)) % folderColors.length],
       fileCount: fileCount,
       folderCount: folderCount,
       modifiedAt: modifiedAt,

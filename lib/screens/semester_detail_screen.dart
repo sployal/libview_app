@@ -270,7 +270,6 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
         GoogleDriveService.subjectFromFolder(
           id: id,
           name: name,
-          colorIndex: subjects.length,
           modifiedAt: DateTime.now(),
           createdAt: DateTime.now(),
         ),

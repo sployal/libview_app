@@ -550,7 +550,6 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
         GoogleDriveService.subjectFromFolder(
           id: id,
           name: name,
-          colorIndex: subjects.length,
           modifiedAt: DateTime.now(),
           createdAt: DateTime.now(),
           isLocked: _lockedFolderIds.contains(id),
@@ -825,7 +824,6 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     return GoogleDriveService.subjectFromFolder(
       id: folder.id,
       name: folder.name,
-      colorIndex: _folderTrail.length + 1,
       fileCount: folder.fileCount,
       folderCount: folder.folderCount,
       modifiedAt: folder.modifiedAt,

@@ -272,7 +272,6 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
             GoogleDriveService.subjectFromFolder(
               id: result.id,
               name: savedName,
-              colorIndex: _folders.length,
               modifiedAt: DateTime.now(),
               createdAt: DateTime.now(),
             ),
