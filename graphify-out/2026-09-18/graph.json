@@ -9383,6 +9383,61 @@
       "source_location": "L23"
     },
     {
+      "id": "lib_login_auth_screen_authscreen",
+      "label": "AuthScreen",
+      "_origin": "ast",
+      "community": 105,
+      "community_name": "_AuthScreenState",
+      "file_type": "code",
+      "norm_label": "authscreen",
+      "source_file": "lib/login/auth_screen.dart",
+      "source_location": "L12"
+    },
+    {
+      "id": "lib_login_auth_screen_authscreenstate",
+      "label": "_AuthScreenState",
+      "_origin": "ast",
+      "community": 105,
+      "community_name": "_AuthScreenState",
+      "file_type": "code",
+      "norm_label": "_authscreenstate",
+      "source_file": "lib/login/auth_screen.dart",
+      "source_location": "L29"
+    },
+    {
+      "id": "lib_ui_folder_lock_dialog_folderlockdialog",
+      "label": "FolderLockDialog",
+      "_origin": "ast",
+      "community": 105,
+      "community_name": "_AuthScreenState",
+      "file_type": "code",
+      "norm_label": "folderlockdialog",
+      "source_file": "lib/ui/folder_lock_dialog.dart",
+      "source_location": "L40"
+    },
+    {
+      "id": "lib_ui_folder_lock_dialog_folderlockdialogstate",
+      "label": "_FolderLockDialogState",
+      "_origin": "ast",
+      "community": 105,
+      "community_name": "_AuthScreenState",
+      "file_type": "code",
+      "norm_label": "_folderlockdialogstate",
+      "source_file": "lib/ui/folder_lock_dialog.dart",
+      "source_location": "L54"
+    },
+    {
+      "id": "singletickerproviderstatemixin",
+      "label": "SingleTickerProviderStateMixin",
+      "_origin": "ast",
+      "community": 105,
+      "community_name": "_AuthScreenState",
+      "file_type": "code",
+      "norm_label": "singletickerproviderstatemixin",
+      "source_file": null,
+      "source_location": null
+    },
+    {
       "id": "lib_screens_semester_detail_screen_semesterdetailscreen",
       "label": "SemesterDetailScreen",
       "_origin": "ast",
@@ -11813,6 +11868,116 @@
       "source_location": "L19"
     },
     {
+      "id": "lib_screens_browse_documents_browsedocumentsscreen",
+      "label": "BrowseDocumentsScreen",
+      "_origin": "ast",
+      "community": 125,
+      "community_name": "_BrowseDocumentsScreenState",
+      "file_type": "code",
+      "norm_label": "browsedocumentsscreen",
+      "source_file": "lib/screens/browse_documents.dart",
+      "source_location": "L14"
+    },
+    {
+      "id": "lib_screens_browse_documents_browsedocumentsscreenstate",
+      "label": "_BrowseDocumentsScreenState",
+      "_origin": "ast",
+      "community": 125,
+      "community_name": "_BrowseDocumentsScreenState",
+      "file_type": "code",
+      "norm_label": "_browsedocumentsscreenstate",
+      "source_file": "lib/screens/browse_documents.dart",
+      "source_location": "L21"
+    },
+    {
+      "id": "lib_screens_client_files_browser_screen_clientfilesbrowserscreen",
+      "label": "ClientFilesBrowserScreen",
+      "_origin": "ast",
+      "community": 126,
+      "community_name": "ClientFilesBrowserScreen",
+      "file_type": "code",
+      "norm_label": "clientfilesbrowserscreen",
+      "source_file": "lib/screens/client_files_browser_screen.dart",
+      "source_location": "L29"
+    },
+    {
+      "id": "lib_screens_client_files_browser_screen_clientfilesbrowserscreenstate",
+      "label": "_ClientFilesBrowserScreenState",
+      "_origin": "ast",
+      "community": 126,
+      "community_name": "ClientFilesBrowserScreen",
+      "file_type": "code",
+      "norm_label": "_clientfilesbrowserscreenstate",
+      "source_file": "lib/screens/client_files_browser_screen.dart",
+      "source_location": "L52"
+    },
+    {
+      "id": "lib_screens_document_reader_documentreaderscreen",
+      "label": "DocumentReaderScreen",
+      "_origin": "ast",
+      "community": 127,
+      "community_name": "DocumentReaderScreen",
+      "file_type": "code",
+      "norm_label": "documentreaderscreen",
+      "source_file": "lib/screens/document_reader.dart",
+      "source_location": "L9"
+    },
+    {
+      "id": "lib_screens_document_reader_documentreaderscreenstate",
+      "label": "_DocumentReaderScreenState",
+      "_origin": "ast",
+      "community": 127,
+      "community_name": "DocumentReaderScreen",
+      "file_type": "code",
+      "norm_label": "_documentreaderscreenstate",
+      "source_file": "lib/screens/document_reader.dart",
+      "source_location": "L80"
+    },
+    {
+      "id": "lib_screens_home_screen_greetingskyicon",
+      "label": "_GreetingSkyIcon",
+      "_origin": "ast",
+      "community": 128,
+      "community_name": "_GreetingSkyIconState",
+      "file_type": "code",
+      "norm_label": "_greetingskyicon",
+      "source_file": "lib/screens/home_screen.dart",
+      "source_location": "L2089"
+    },
+    {
+      "id": "lib_screens_home_screen_greetingskyiconstate",
+      "label": "_GreetingSkyIconState",
+      "_origin": "ast",
+      "community": 128,
+      "community_name": "_GreetingSkyIconState",
+      "file_type": "code",
+      "norm_label": "_greetingskyiconstate",
+      "source_file": "lib/screens/home_screen.dart",
+      "source_location": "L2098"
+    },
+    {
+      "id": "lib_screens_home_screen_homescreen",
+      "label": "HomeScreen",
+      "_origin": "ast",
+      "community": 129,
+      "community_name": "_HomeScreenState",
+      "file_type": "code",
+      "norm_label": "homescreen",
+      "source_file": "lib/screens/home_screen.dart",
+      "source_location": "L26"
+    },
+    {
+      "id": "lib_screens_home_screen_homescreenstate",
+      "label": "_HomeScreenState",
+      "_origin": "ast",
+      "community": 129,
+      "community_name": "_HomeScreenState",
+      "file_type": "code",
+      "norm_label": "_homescreenstate",
+      "source_file": "lib/screens/home_screen.dart",
+      "source_location": "L33"
+    },
+    {
       "id": "analytics_service_dart",
       "label": "analytics_service.dart",
       "_origin": "ast",
@@ -12460,6 +12625,116 @@
       "norm_label": "static final valuenotifier",
       "source_file": null,
       "source_location": null
+    },
+    {
+      "id": "lib_screens_home_screen_studyfocuscard",
+      "label": "_StudyFocusCard",
+      "_origin": "ast",
+      "community": 130,
+      "community_name": "_StudyFocusCard",
+      "file_type": "code",
+      "norm_label": "_studyfocuscard",
+      "source_file": "lib/screens/home_screen.dart",
+      "source_location": "L2309"
+    },
+    {
+      "id": "lib_screens_home_screen_studyfocuscardstate",
+      "label": "_StudyFocusCardState",
+      "_origin": "ast",
+      "community": 130,
+      "community_name": "_StudyFocusCard",
+      "file_type": "code",
+      "norm_label": "_studyfocuscardstate",
+      "source_file": "lib/screens/home_screen.dart",
+      "source_location": "L2316"
+    },
+    {
+      "id": "lib_screens_home_screen_weatherlocationsheet",
+      "label": "_WeatherLocationSheet",
+      "_origin": "ast",
+      "community": 131,
+      "community_name": "_WeatherLocationSheet",
+      "file_type": "code",
+      "norm_label": "_weatherlocationsheet",
+      "source_file": "lib/screens/home_screen.dart",
+      "source_location": "L1902"
+    },
+    {
+      "id": "lib_screens_home_screen_weatherlocationsheetstate",
+      "label": "_WeatherLocationSheetState",
+      "_origin": "ast",
+      "community": 131,
+      "community_name": "_WeatherLocationSheet",
+      "file_type": "code",
+      "norm_label": "_weatherlocationsheetstate",
+      "source_file": "lib/screens/home_screen.dart",
+      "source_location": "L1909"
+    },
+    {
+      "id": "lib_screens_phone_audio_phoneaudioscreen",
+      "label": "PhoneAudioScreen",
+      "_origin": "ast",
+      "community": 132,
+      "community_name": "_PhoneAudioScreenState",
+      "file_type": "code",
+      "norm_label": "phoneaudioscreen",
+      "source_file": "lib/screens/phone_audio.dart",
+      "source_location": "L15"
+    },
+    {
+      "id": "lib_screens_phone_audio_phoneaudioscreenstate",
+      "label": "_PhoneAudioScreenState",
+      "_origin": "ast",
+      "community": 132,
+      "community_name": "_PhoneAudioScreenState",
+      "file_type": "code",
+      "norm_label": "_phoneaudioscreenstate",
+      "source_file": "lib/screens/phone_audio.dart",
+      "source_location": "L22"
+    },
+    {
+      "id": "lib_screens_phone_pdf_phonepdfscreen",
+      "label": "PhonePdfScreen",
+      "_origin": "ast",
+      "community": 133,
+      "community_name": "_PhonePdfScreenState",
+      "file_type": "code",
+      "norm_label": "phonepdfscreen",
+      "source_file": "lib/screens/phone_pdf.dart",
+      "source_location": "L13"
+    },
+    {
+      "id": "lib_screens_phone_pdf_phonepdfscreenstate",
+      "label": "_PhonePdfScreenState",
+      "_origin": "ast",
+      "community": 133,
+      "community_name": "_PhonePdfScreenState",
+      "file_type": "code",
+      "norm_label": "_phonepdfscreenstate",
+      "source_file": "lib/screens/phone_pdf.dart",
+      "source_location": "L20"
+    },
+    {
+      "id": "lib_screens_system_admin_dashboard_systemadmindashboard",
+      "label": "SystemAdminDashboard",
+      "_origin": "ast",
+      "community": 134,
+      "community_name": "_SystemAdminDashboardState",
+      "file_type": "code",
+      "norm_label": "systemadmindashboard",
+      "source_file": "lib/screens/system_admin_dashboard.dart",
+      "source_location": "L17"
+    },
+    {
+      "id": "lib_screens_system_admin_dashboard_systemadmindashboardstate",
+      "label": "_SystemAdminDashboardState",
+      "_origin": "ast",
+      "community": 134,
+      "community_name": "_SystemAdminDashboardState",
+      "file_type": "code",
+      "norm_label": "_systemadmindashboardstate",
+      "source_file": "lib/screens/system_admin_dashboard.dart",
+      "source_location": "L37"
     },
     {
       "id": "lib_ui_drive_image_preview_driveimagepreview",
@@ -24999,83 +25274,6 @@
       "source_location": null
     },
     {
-      "id": "lib_login_auth_screen_authscreen",
-      "label": "AuthScreen",
-      "_origin": "ast",
-      "community": 31,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "authscreen",
-      "source_file": "lib/login/auth_screen.dart",
-      "source_location": "L12"
-    },
-    {
-      "id": "lib_login_auth_screen_authscreenstate",
-      "label": "_AuthScreenState",
-      "_origin": "ast",
-      "community": 31,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "_authscreenstate",
-      "source_file": "lib/login/auth_screen.dart",
-      "source_location": "L29"
-    },
-    {
-      "id": "lib_main_mainscreen",
-      "label": "MainScreen",
-      "_origin": "ast",
-      "community": 31,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "mainscreen",
-      "source_file": "lib/main.dart",
-      "source_location": "L267"
-    },
-    {
-      "id": "lib_main_mainscreenstate",
-      "label": "_MainScreenState",
-      "_origin": "ast",
-      "community": 31,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "_mainscreenstate",
-      "source_file": "lib/main.dart",
-      "source_location": "L296"
-    },
-    {
-      "id": "lib_screens_browse_documents_browsedocumentsscreen",
-      "label": "BrowseDocumentsScreen",
-      "_origin": "ast",
-      "community": 31,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "browsedocumentsscreen",
-      "source_file": "lib/screens/browse_documents.dart",
-      "source_location": "L14"
-    },
-    {
-      "id": "lib_screens_browse_documents_browsedocumentsscreenstate",
-      "label": "_BrowseDocumentsScreenState",
-      "_origin": "ast",
-      "community": 31,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "_browsedocumentsscreenstate",
-      "source_file": "lib/screens/browse_documents.dart",
-      "source_location": "L21"
-    },
-    {
-      "id": "lib_screens_browse_documents_localdocpreview",
-      "label": "_LocalDocPreview",
-      "_origin": "ast",
-      "community": 31,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "_localdocpreview",
-      "source_file": "lib/screens/browse_documents.dart",
-      "source_location": "L983"
-    },
-    {
       "id": "lib_screens_browse_documents_localdocpreviewstate",
       "label": "_LocalDocPreviewState",
       "_origin": "ast",
@@ -25085,39 +25283,6 @@
       "norm_label": "_localdocpreviewstate",
       "source_file": "lib/screens/browse_documents.dart",
       "source_location": "L999"
-    },
-    {
-      "id": "lib_screens_client_files_browser_screen_clientfilesbrowserscreen",
-      "label": "ClientFilesBrowserScreen",
-      "_origin": "ast",
-      "community": 31,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "clientfilesbrowserscreen",
-      "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L29"
-    },
-    {
-      "id": "lib_screens_client_files_browser_screen_clientfilesbrowserscreenstate",
-      "label": "_ClientFilesBrowserScreenState",
-      "_origin": "ast",
-      "community": 31,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "_clientfilesbrowserscreenstate",
-      "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L52"
-    },
-    {
-      "id": "lib_screens_client_files_browser_screen_foldernamedialog",
-      "label": "_FolderNameDialog",
-      "_origin": "ast",
-      "community": 31,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "_foldernamedialog",
-      "source_file": "lib/screens/client_files_browser_screen.dart",
-      "source_location": "L5069"
     },
     {
       "id": "lib_screens_client_files_browser_screen_foldernamedialogstate",
@@ -25131,127 +25296,6 @@
       "source_location": "L5096"
     },
     {
-      "id": "lib_screens_home_screen_greetingskyicon",
-      "label": "_GreetingSkyIcon",
-      "_origin": "ast",
-      "community": 31,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "_greetingskyicon",
-      "source_file": "lib/screens/home_screen.dart",
-      "source_location": "L2089"
-    },
-    {
-      "id": "lib_screens_home_screen_greetingskyiconstate",
-      "label": "_GreetingSkyIconState",
-      "_origin": "ast",
-      "community": 31,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "_greetingskyiconstate",
-      "source_file": "lib/screens/home_screen.dart",
-      "source_location": "L2098"
-    },
-    {
-      "id": "lib_screens_home_screen_homescreen",
-      "label": "HomeScreen",
-      "_origin": "ast",
-      "community": 31,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "homescreen",
-      "source_file": "lib/screens/home_screen.dart",
-      "source_location": "L26"
-    },
-    {
-      "id": "lib_screens_home_screen_homescreenstate",
-      "label": "_HomeScreenState",
-      "_origin": "ast",
-      "community": 31,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "_homescreenstate",
-      "source_file": "lib/screens/home_screen.dart",
-      "source_location": "L33"
-    },
-    {
-      "id": "lib_screens_home_screen_studyfocuscard",
-      "label": "_StudyFocusCard",
-      "_origin": "ast",
-      "community": 31,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "_studyfocuscard",
-      "source_file": "lib/screens/home_screen.dart",
-      "source_location": "L2309"
-    },
-    {
-      "id": "lib_screens_home_screen_studyfocuscardstate",
-      "label": "_StudyFocusCardState",
-      "_origin": "ast",
-      "community": 31,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "_studyfocuscardstate",
-      "source_file": "lib/screens/home_screen.dart",
-      "source_location": "L2316"
-    },
-    {
-      "id": "lib_screens_home_screen_weatherlocationsheet",
-      "label": "_WeatherLocationSheet",
-      "_origin": "ast",
-      "community": 31,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "_weatherlocationsheet",
-      "source_file": "lib/screens/home_screen.dart",
-      "source_location": "L1902"
-    },
-    {
-      "id": "lib_screens_home_screen_weatherlocationsheetstate",
-      "label": "_WeatherLocationSheetState",
-      "_origin": "ast",
-      "community": 31,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "_weatherlocationsheetstate",
-      "source_file": "lib/screens/home_screen.dart",
-      "source_location": "L1909"
-    },
-    {
-      "id": "lib_screens_phone_audio_phoneaudioscreen",
-      "label": "PhoneAudioScreen",
-      "_origin": "ast",
-      "community": 31,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "phoneaudioscreen",
-      "source_file": "lib/screens/phone_audio.dart",
-      "source_location": "L15"
-    },
-    {
-      "id": "lib_screens_phone_audio_phoneaudioscreenstate",
-      "label": "_PhoneAudioScreenState",
-      "_origin": "ast",
-      "community": 31,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "_phoneaudioscreenstate",
-      "source_file": "lib/screens/phone_audio.dart",
-      "source_location": "L22"
-    },
-    {
-      "id": "lib_screens_phone_pdf_localdocpreview",
-      "label": "_LocalDocPreview",
-      "_origin": "ast",
-      "community": 31,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "_localdocpreview",
-      "source_file": "lib/screens/phone_pdf.dart",
-      "source_location": "L876"
-    },
-    {
       "id": "lib_screens_phone_pdf_localdocpreviewstate",
       "label": "_LocalDocPreviewState",
       "_origin": "ast",
@@ -25261,39 +25305,6 @@
       "norm_label": "_localdocpreviewstate",
       "source_file": "lib/screens/phone_pdf.dart",
       "source_location": "L894"
-    },
-    {
-      "id": "lib_screens_phone_pdf_phonepdfscreen",
-      "label": "PhonePdfScreen",
-      "_origin": "ast",
-      "community": 31,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "phonepdfscreen",
-      "source_file": "lib/screens/phone_pdf.dart",
-      "source_location": "L13"
-    },
-    {
-      "id": "lib_screens_phone_pdf_phonepdfscreenstate",
-      "label": "_PhonePdfScreenState",
-      "_origin": "ast",
-      "community": 31,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "_phonepdfscreenstate",
-      "source_file": "lib/screens/phone_pdf.dart",
-      "source_location": "L20"
-    },
-    {
-      "id": "lib_screens_semester_detail_screen_foldernamedialog",
-      "label": "_FolderNameDialog",
-      "_origin": "ast",
-      "community": 31,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "_foldernamedialog",
-      "source_file": "lib/screens/semester_detail_screen.dart",
-      "source_location": "L3031"
     },
     {
       "id": "lib_screens_semester_detail_screen_foldernamedialogstate",
@@ -25307,116 +25318,6 @@
       "source_location": "L3058"
     },
     {
-      "id": "lib_screens_system_admin_dashboard_systemadmindashboard",
-      "label": "SystemAdminDashboard",
-      "_origin": "ast",
-      "community": 31,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "systemadmindashboard",
-      "source_file": "lib/screens/system_admin_dashboard.dart",
-      "source_location": "L17"
-    },
-    {
-      "id": "lib_screens_system_admin_dashboard_systemadmindashboardstate",
-      "label": "_SystemAdminDashboardState",
-      "_origin": "ast",
-      "community": 31,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "_systemadmindashboardstate",
-      "source_file": "lib/screens/system_admin_dashboard.dart",
-      "source_location": "L37"
-    },
-    {
-      "id": "lib_ui_folder_lock_dialog_folderlockdialog",
-      "label": "FolderLockDialog",
-      "_origin": "ast",
-      "community": 31,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "folderlockdialog",
-      "source_file": "lib/ui/folder_lock_dialog.dart",
-      "source_location": "L40"
-    },
-    {
-      "id": "lib_ui_folder_lock_dialog_folderlockdialogstate",
-      "label": "_FolderLockDialogState",
-      "_origin": "ast",
-      "community": 31,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "_folderlockdialogstate",
-      "source_file": "lib/ui/folder_lock_dialog.dart",
-      "source_location": "L54"
-    },
-    {
-      "id": "lib_ui_media_playback_overlay_mediaplaybackoverlay",
-      "label": "MediaPlaybackOverlay",
-      "_origin": "ast",
-      "community": 31,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "mediaplaybackoverlay",
-      "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L14"
-    },
-    {
-      "id": "lib_ui_media_playback_overlay_mediaplaybackoverlaystate",
-      "label": "_MediaPlaybackOverlayState",
-      "_origin": "ast",
-      "community": 31,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "_mediaplaybackoverlaystate",
-      "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L21"
-    },
-    {
-      "id": "lib_ui_media_playback_overlay_seekbar",
-      "label": "_SeekBar",
-      "_origin": "ast",
-      "community": 31,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "_seekbar",
-      "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1231"
-    },
-    {
-      "id": "lib_ui_media_playback_overlay_seekbarstate",
-      "label": "_SeekBarState",
-      "_origin": "ast",
-      "community": 31,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "_seekbarstate",
-      "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1240"
-    },
-    {
-      "id": "lib_ui_media_playback_overlay_videotheater",
-      "label": "_VideoTheater",
-      "_origin": "ast",
-      "community": 31,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "_videotheater",
-      "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L491"
-    },
-    {
-      "id": "lib_ui_media_playback_overlay_videotheaterstate",
-      "label": "_VideoTheaterState",
-      "_origin": "ast",
-      "community": 31,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "_videotheaterstate",
-      "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L514"
-    },
-    {
       "id": "localdocpreview",
       "label": "_LocalDocPreview",
       "_origin": "ast",
@@ -25428,17 +25329,6 @@
       "source_location": null
     },
     {
-      "id": "singletickerproviderstatemixin",
-      "label": "SingleTickerProviderStateMixin",
-      "_origin": "ast",
-      "community": 31,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "singletickerproviderstatemixin",
-      "source_file": null,
-      "source_location": null
-    },
-    {
       "id": "state",
       "label": "State",
       "_origin": "ast",
@@ -25446,39 +25336,6 @@
       "community_name": "State",
       "file_type": "code",
       "norm_label": "state",
-      "source_file": null,
-      "source_location": null
-    },
-    {
-      "id": "statefulwidget",
-      "label": "StatefulWidget",
-      "_origin": "ast",
-      "community": 31,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "statefulwidget",
-      "source_file": null,
-      "source_location": null
-    },
-    {
-      "id": "tickerproviderstatemixin",
-      "label": "TickerProviderStateMixin",
-      "_origin": "ast",
-      "community": 31,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "tickerproviderstatemixin",
-      "source_file": null,
-      "source_location": null
-    },
-    {
-      "id": "widgetsbindingobserver",
-      "label": "WidgetsBindingObserver",
-      "_origin": "ast",
-      "community": 31,
-      "community_name": "State",
-      "file_type": "code",
-      "norm_label": "widgetsbindingobserver",
       "source_file": null,
       "source_location": null
     },
@@ -25711,7 +25568,7 @@
       "file_type": "code",
       "norm_label": "_artthumb",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1612"
+      "source_location": "L1473"
     },
     {
       "id": "lib_ui_media_playback_overlay_audiomini",
@@ -25722,7 +25579,7 @@
       "file_type": "code",
       "norm_label": "_audiomini",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1867"
+      "source_location": "L1728"
     },
     {
       "id": "lib_ui_media_playback_overlay_audiostage",
@@ -25733,18 +25590,7 @@
       "file_type": "code",
       "norm_label": "_audiostage",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L901"
-    },
-    {
-      "id": "lib_ui_media_playback_overlay_audiotheater",
-      "label": "_AudioTheater",
-      "_origin": "ast",
-      "community": 32,
-      "community_name": "StatelessWidget",
-      "file_type": "code",
-      "norm_label": "_audiotheater",
-      "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L778"
+      "source_location": "L769"
     },
     {
       "id": "lib_ui_media_playback_overlay_controldock",
@@ -25755,7 +25601,7 @@
       "file_type": "code",
       "norm_label": "_controldock",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1095"
+      "source_location": "L959"
     },
     {
       "id": "lib_ui_media_playback_overlay_equalizerbars",
@@ -25766,7 +25612,7 @@
       "file_type": "code",
       "norm_label": "_equalizerbars",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1051"
+      "source_location": "L915"
     },
     {
       "id": "lib_ui_media_playback_overlay_fullplayer",
@@ -25788,7 +25634,7 @@
       "file_type": "code",
       "norm_label": "_mediamark",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1645"
+      "source_location": "L1506"
     },
     {
       "id": "lib_ui_media_playback_overlay_miniicon",
@@ -25799,7 +25645,7 @@
       "file_type": "code",
       "norm_label": "_miniicon",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L2003"
+      "source_location": "L1864"
     },
     {
       "id": "lib_ui_media_playback_overlay_miniplayer",
@@ -25810,7 +25656,7 @@
       "file_type": "code",
       "norm_label": "_miniplayer",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1677"
+      "source_location": "L1538"
     },
     {
       "id": "lib_ui_media_playback_overlay_modepill",
@@ -25821,7 +25667,7 @@
       "file_type": "code",
       "norm_label": "_modepill",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1423"
+      "source_location": "L1284"
     },
     {
       "id": "lib_ui_media_playback_overlay_modesheet",
@@ -25832,7 +25678,7 @@
       "file_type": "code",
       "norm_label": "_modesheet",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L2157"
+      "source_location": "L2018"
     },
     {
       "id": "lib_ui_media_playback_overlay_playorb",
@@ -25843,7 +25689,7 @@
       "file_type": "code",
       "norm_label": "_playorb",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1360"
+      "source_location": "L1221"
     },
     {
       "id": "lib_ui_media_playback_overlay_queuebutton",
@@ -25854,7 +25700,7 @@
       "file_type": "code",
       "norm_label": "_queuebutton",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1464"
+      "source_location": "L1325"
     },
     {
       "id": "lib_ui_media_playback_overlay_queuesheet",
@@ -25865,7 +25711,7 @@
       "file_type": "code",
       "norm_label": "_queuesheet",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L2041"
+      "source_location": "L1902"
     },
     {
       "id": "lib_ui_media_playback_overlay_roundbutton",
@@ -25876,7 +25722,7 @@
       "file_type": "code",
       "norm_label": "_roundbutton",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1395"
+      "source_location": "L1256"
     },
     {
       "id": "lib_ui_media_playback_overlay_statuspane",
@@ -25887,7 +25733,7 @@
       "file_type": "code",
       "norm_label": "_statuspane",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L426"
+      "source_location": "L417"
     },
     {
       "id": "lib_ui_media_playback_overlay_thinprogress",
@@ -25898,7 +25744,7 @@
       "file_type": "code",
       "norm_label": "_thinprogress",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1978"
+      "source_location": "L1839"
     },
     {
       "id": "lib_ui_media_playback_overlay_topbar",
@@ -25909,7 +25755,7 @@
       "file_type": "code",
       "norm_label": "_topbar",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L339"
+      "source_location": "L330"
     },
     {
       "id": "lib_ui_media_playback_overlay_transportrow",
@@ -25920,7 +25766,7 @@
       "file_type": "code",
       "norm_label": "_transportrow",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1300"
+      "source_location": "L1161"
     },
     {
       "id": "lib_ui_media_playback_overlay_upnextcurtain",
@@ -25931,7 +25777,7 @@
       "file_type": "code",
       "norm_label": "_upnextcurtain",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1496"
+      "source_location": "L1357"
     },
     {
       "id": "lib_ui_media_playback_overlay_videomini",
@@ -25942,7 +25788,7 @@
       "file_type": "code",
       "norm_label": "_videomini",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1735"
+      "source_location": "L1596"
     },
     {
       "id": "lib_ui_media_playback_overlay_videopreview",
@@ -25953,7 +25799,7 @@
       "file_type": "code",
       "norm_label": "_videopreview",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1578"
+      "source_location": "L1439"
     },
     {
       "id": "lib_ui_media_playback_overlay_videostage",
@@ -25964,7 +25810,7 @@
       "file_type": "code",
       "norm_label": "_videostage",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L704"
+      "source_location": "L695"
     },
     {
       "id": "statelesswidget",
@@ -29674,28 +29520,6 @@
       "source_location": "L103"
     },
     {
-      "id": "lib_screens_app_update_screen_appupdategate",
-      "label": "AppUpdateGate",
-      "_origin": "ast",
-      "community": 40,
-      "community_name": "app_update_screen.dart",
-      "file_type": "code",
-      "norm_label": "appupdategate",
-      "source_file": "lib/screens/app_update_screen.dart",
-      "source_location": "L12"
-    },
-    {
-      "id": "lib_screens_app_update_screen_appupdategatestate",
-      "label": "_AppUpdateGateState",
-      "_origin": "ast",
-      "community": 40,
-      "community_name": "app_update_screen.dart",
-      "file_type": "code",
-      "norm_label": "_appupdategatestate",
-      "source_file": "lib/screens/app_update_screen.dart",
-      "source_location": "L21"
-    },
-    {
       "id": "lib_screens_app_update_screen_appupdatescreen",
       "label": "AppUpdateScreen",
       "_origin": "ast",
@@ -30783,28 +30607,6 @@
       "norm_label": "createstate",
       "source_file": "lib/screens/document_reader.dart",
       "source_location": "L77"
-    },
-    {
-      "id": "lib_screens_document_reader_documentreaderscreen",
-      "label": "DocumentReaderScreen",
-      "_origin": "ast",
-      "community": 43,
-      "community_name": "document_reader.dart",
-      "file_type": "code",
-      "norm_label": "documentreaderscreen",
-      "source_file": "lib/screens/document_reader.dart",
-      "source_location": "L9"
-    },
-    {
-      "id": "lib_screens_document_reader_documentreaderscreenstate",
-      "label": "_DocumentReaderScreenState",
-      "_origin": "ast",
-      "community": 43,
-      "community_name": "document_reader.dart",
-      "file_type": "code",
-      "norm_label": "_documentreaderscreenstate",
-      "source_file": "lib/screens/document_reader.dart",
-      "source_location": "L80"
     },
     {
       "id": "lib_screens_document_reader_error",
@@ -32312,6 +32114,17 @@
       "norm_label": "subjectname",
       "source_file": "lib/screens/subject_detail_screen.dart",
       "source_location": "L9"
+    },
+    {
+      "id": "no_internet_screen_dart",
+      "label": "no_internet_screen.dart",
+      "_origin": "ast",
+      "community": 47,
+      "community_name": "subject_detail_screen.dart",
+      "file_type": "code",
+      "norm_label": "no_internet_screen.dart",
+      "source_file": null,
+      "source_location": null
     },
     {
       "id": "package_url_launcher_url_launcher_dart",
@@ -34030,17 +33843,6 @@
       "source_location": null
     },
     {
-      "id": "services_support_service_dart",
-      "label": "../services/support_service.dart",
-      "_origin": "ast",
-      "community": 50,
-      "community_name": "users_feedback.dart",
-      "file_type": "code",
-      "norm_label": "../services/support_service.dart",
-      "source_file": null,
-      "source_location": null
-    },
-    {
       "id": "system_admin_dashboard_dart",
       "label": "system_admin_dashboard.dart",
       "_origin": "ast",
@@ -34558,17 +34360,6 @@
       "source_location": "L384"
     },
     {
-      "id": "no_internet_screen_dart",
-      "label": "no_internet_screen.dart",
-      "_origin": "ast",
-      "community": 52,
-      "community_name": "help_and_support.dart",
-      "file_type": "code",
-      "norm_label": "no_internet_screen.dart",
-      "source_file": null,
-      "source_location": null
-    },
-    {
       "id": "package_file_picker_file_picker_dart",
       "label": "package:file_picker/file_picker.dart",
       "_origin": "ast",
@@ -34576,6 +34367,17 @@
       "community_name": "help_and_support.dart",
       "file_type": "code",
       "norm_label": "package:file_picker/file_picker.dart",
+      "source_file": null,
+      "source_location": null
+    },
+    {
+      "id": "services_support_service_dart",
+      "label": "../services/support_service.dart",
+      "_origin": "ast",
+      "community": 52,
+      "community_name": "help_and_support.dart",
+      "file_type": "code",
+      "norm_label": "../services/support_service.dart",
       "source_file": null,
       "source_location": null
     },
@@ -37147,7 +36949,7 @@
       "label": "visibility_controller.dart",
       "_origin": "ast",
       "community": 60,
-      "community_name": "visibility_controller.dart",
+      "community_name": "List",
       "file_type": "code",
       "norm_label": "visibility_controller.dart",
       "source_file": "lib/screens/visibility_controller.dart",
@@ -37158,7 +36960,7 @@
       "label": "allowedRoles",
       "_origin": "ast",
       "community": 60,
-      "community_name": "visibility_controller.dart",
+      "community_name": "List",
       "file_type": "code",
       "norm_label": "allowedroles",
       "source_file": "lib/screens/visibility_controller.dart",
@@ -37169,7 +36971,7 @@
       "label": "build",
       "_origin": "ast",
       "community": 60,
-      "community_name": "visibility_controller.dart",
+      "community_name": "List",
       "file_type": "code",
       "norm_label": "build",
       "source_file": "lib/screens/visibility_controller.dart",
@@ -37180,7 +36982,7 @@
       "label": "_checkVisibility",
       "_origin": "ast",
       "community": 60,
-      "community_name": "visibility_controller.dart",
+      "community_name": "List",
       "file_type": "code",
       "norm_label": "_checkvisibility",
       "source_file": "lib/screens/visibility_controller.dart",
@@ -37191,7 +36993,7 @@
       "label": "child",
       "_origin": "ast",
       "community": 60,
-      "community_name": "visibility_controller.dart",
+      "community_name": "List",
       "file_type": "code",
       "norm_label": "child",
       "source_file": "lib/screens/visibility_controller.dart",
@@ -37202,7 +37004,7 @@
       "label": "createState",
       "_origin": "ast",
       "community": 60,
-      "community_name": "visibility_controller.dart",
+      "community_name": "List",
       "file_type": "code",
       "norm_label": "createstate",
       "source_file": "lib/screens/visibility_controller.dart",
@@ -37213,7 +37015,7 @@
       "label": "fallback",
       "_origin": "ast",
       "community": 60,
-      "community_name": "visibility_controller.dart",
+      "community_name": "List",
       "file_type": "code",
       "norm_label": "fallback",
       "source_file": "lib/screens/visibility_controller.dart",
@@ -37224,7 +37026,7 @@
       "label": "getCurrentUserRole",
       "_origin": "ast",
       "community": 60,
-      "community_name": "visibility_controller.dart",
+      "community_name": "List",
       "file_type": "code",
       "norm_label": "getcurrentuserrole",
       "source_file": "lib/screens/visibility_controller.dart",
@@ -37235,7 +37037,7 @@
       "label": "hasAnyRole",
       "_origin": "ast",
       "community": 60,
-      "community_name": "visibility_controller.dart",
+      "community_name": "List",
       "file_type": "code",
       "norm_label": "hasanyrole",
       "source_file": "lib/screens/visibility_controller.dart",
@@ -37246,7 +37048,7 @@
       "label": "hasRole",
       "_origin": "ast",
       "community": 60,
-      "community_name": "visibility_controller.dart",
+      "community_name": "List",
       "file_type": "code",
       "norm_label": "hasrole",
       "source_file": "lib/screens/visibility_controller.dart",
@@ -37257,7 +37059,7 @@
       "label": "initState",
       "_origin": "ast",
       "community": 60,
-      "community_name": "visibility_controller.dart",
+      "community_name": "List",
       "file_type": "code",
       "norm_label": "initstate",
       "source_file": "lib/screens/visibility_controller.dart",
@@ -37268,7 +37070,7 @@
       "label": "isAdmin",
       "_origin": "ast",
       "community": 60,
-      "community_name": "visibility_controller.dart",
+      "community_name": "List",
       "file_type": "code",
       "norm_label": "isadmin",
       "source_file": "lib/screens/visibility_controller.dart",
@@ -37279,7 +37081,7 @@
       "label": "_isLoading",
       "_origin": "ast",
       "community": 60,
-      "community_name": "visibility_controller.dart",
+      "community_name": "List",
       "file_type": "code",
       "norm_label": "_isloading",
       "source_file": "lib/screens/visibility_controller.dart",
@@ -37290,7 +37092,7 @@
       "label": "_isVisible",
       "_origin": "ast",
       "community": 60,
-      "community_name": "visibility_controller.dart",
+      "community_name": "List",
       "file_type": "code",
       "norm_label": "_isvisible",
       "source_file": "lib/screens/visibility_controller.dart",
@@ -37301,7 +37103,7 @@
       "label": "RoleBasedWidget",
       "_origin": "ast",
       "community": 60,
-      "community_name": "visibility_controller.dart",
+      "community_name": "List",
       "file_type": "code",
       "norm_label": "rolebasedwidget",
       "source_file": "lib/screens/visibility_controller.dart",
@@ -37312,7 +37114,7 @@
       "label": "_RoleBasedWidgetState",
       "_origin": "ast",
       "community": 60,
-      "community_name": "visibility_controller.dart",
+      "community_name": "List",
       "file_type": "code",
       "norm_label": "_rolebasedwidgetstate",
       "source_file": "lib/screens/visibility_controller.dart",
@@ -37323,18 +37125,216 @@
       "label": "VisibilityController",
       "_origin": "ast",
       "community": 60,
-      "community_name": "visibility_controller.dart",
+      "community_name": "List",
       "file_type": "code",
       "norm_label": "visibilitycontroller",
       "source_file": "lib/screens/visibility_controller.dart",
       "source_location": "L4"
     },
     {
+      "id": "lib_ui_adaptive_layout",
+      "label": "adaptive_layout.dart",
+      "_origin": "ast",
+      "community": 60,
+      "community_name": "List",
+      "file_type": "code",
+      "norm_label": "adaptive_layout.dart",
+      "source_file": "lib/ui/adaptive_layout.dart",
+      "source_location": null
+    },
+    {
+      "id": "lib_ui_adaptive_layout_actions",
+      "label": "actions",
+      "_origin": "ast",
+      "community": 60,
+      "community_name": "List",
+      "file_type": "code",
+      "norm_label": "actions",
+      "source_file": "lib/ui/adaptive_layout.dart",
+      "source_location": "L49"
+    },
+    {
+      "id": "lib_ui_adaptive_layout_adaptivelayout",
+      "label": "AdaptiveLayout",
+      "_origin": "ast",
+      "community": 60,
+      "community_name": "List",
+      "file_type": "code",
+      "norm_label": "adaptivelayout",
+      "source_file": "lib/ui/adaptive_layout.dart",
+      "source_location": "L3"
+    },
+    {
+      "id": "lib_ui_adaptive_layout_automaticallyimplyleading",
+      "label": "automaticallyImplyLeading",
+      "_origin": "ast",
+      "community": 60,
+      "community_name": "List",
+      "file_type": "code",
+      "norm_label": "automaticallyimplyleading",
+      "source_file": "lib/ui/adaptive_layout.dart",
+      "source_location": "L46"
+    },
+    {
+      "id": "lib_ui_adaptive_layout_backgroundcolor",
+      "label": "backgroundColor",
+      "_origin": "ast",
+      "community": 60,
+      "community_name": "List",
+      "file_type": "code",
+      "norm_label": "backgroundcolor",
+      "source_file": "lib/ui/adaptive_layout.dart",
+      "source_location": "L49"
+    },
+    {
+      "id": "lib_ui_adaptive_layout_bottomclearance",
+      "label": "bottomClearance",
+      "_origin": "ast",
+      "community": 60,
+      "community_name": "List",
+      "file_type": "code",
+      "norm_label": "bottomclearance",
+      "source_file": "lib/ui/adaptive_layout.dart",
+      "source_location": "L23"
+    },
+    {
+      "id": "lib_ui_adaptive_layout_compactsliverappbar",
+      "label": "compactSliverAppBar",
+      "_origin": "ast",
+      "community": 60,
+      "community_name": "List",
+      "file_type": "code",
+      "norm_label": "compactsliverappbar",
+      "source_file": "lib/ui/adaptive_layout.dart",
+      "source_location": "L40"
+    },
+    {
+      "id": "lib_ui_adaptive_layout_false",
+      "label": "false",
+      "_origin": "ast",
+      "community": 60,
+      "community_name": "List",
+      "file_type": "code",
+      "norm_label": "false",
+      "source_file": "lib/ui/adaptive_layout.dart",
+      "source_location": "L49"
+    },
+    {
+      "id": "lib_ui_adaptive_layout_foregroundcolor",
+      "label": "foregroundColor",
+      "_origin": "ast",
+      "community": 60,
+      "community_name": "List",
+      "file_type": "code",
+      "norm_label": "foregroundcolor",
+      "source_file": "lib/ui/adaptive_layout.dart",
+      "source_location": "L49"
+    },
+    {
+      "id": "lib_ui_adaptive_layout_gridcount",
+      "label": "gridCount",
+      "_origin": "ast",
+      "community": 60,
+      "community_name": "List",
+      "file_type": "code",
+      "norm_label": "gridcount",
+      "source_file": "lib/ui/adaptive_layout.dart",
+      "source_location": "L29"
+    },
+    {
+      "id": "lib_ui_adaptive_layout_istablet",
+      "label": "isTablet",
+      "_origin": "ast",
+      "community": 60,
+      "community_name": "List",
+      "file_type": "code",
+      "norm_label": "istablet",
+      "source_file": "lib/ui/adaptive_layout.dart",
+      "source_location": "L6"
+    },
+    {
+      "id": "lib_ui_adaptive_layout_leading",
+      "label": "leading",
+      "_origin": "ast",
+      "community": 60,
+      "community_name": "List",
+      "file_type": "code",
+      "norm_label": "leading",
+      "source_file": "lib/ui/adaptive_layout.dart",
+      "source_location": "L49"
+    },
+    {
+      "id": "lib_ui_adaptive_layout_listcolumns",
+      "label": "listColumns",
+      "_origin": "ast",
+      "community": 60,
+      "community_name": "List",
+      "file_type": "code",
+      "norm_label": "listcolumns",
+      "source_file": "lib/ui/adaptive_layout.dart",
+      "source_location": "L35"
+    },
+    {
+      "id": "lib_ui_adaptive_layout_pagepadding",
+      "label": "pagePadding",
+      "_origin": "ast",
+      "community": 60,
+      "community_name": "List",
+      "file_type": "code",
+      "norm_label": "pagepadding",
+      "source_file": "lib/ui/adaptive_layout.dart",
+      "source_location": "L9"
+    },
+    {
+      "id": "lib_ui_adaptive_layout_title",
+      "label": "title",
+      "_origin": "ast",
+      "community": 60,
+      "community_name": "List",
+      "file_type": "code",
+      "norm_label": "title",
+      "source_file": "lib/ui/adaptive_layout.dart",
+      "source_location": "L49"
+    },
+    {
+      "id": "lib_ui_adaptive_layout_toolbarheight",
+      "label": "toolbarHeight",
+      "_origin": "ast",
+      "community": 60,
+      "community_name": "List",
+      "file_type": "code",
+      "norm_label": "toolbarheight",
+      "source_file": "lib/ui/adaptive_layout.dart",
+      "source_location": "L47"
+    },
+    {
+      "id": "lib_ui_adaptive_layout_true",
+      "label": "true",
+      "_origin": "ast",
+      "community": 60,
+      "community_name": "List",
+      "file_type": "code",
+      "norm_label": "true",
+      "source_file": "lib/ui/adaptive_layout.dart",
+      "source_location": "L49"
+    },
+    {
+      "id": "list",
+      "label": "List",
+      "_origin": "ast",
+      "community": 60,
+      "community_name": "List",
+      "file_type": "code",
+      "norm_label": "list",
+      "source_file": null,
+      "source_location": null
+    },
+    {
       "id": "widget",
       "label": "Widget",
       "_origin": "ast",
       "community": 60,
-      "community_name": "visibility_controller.dart",
+      "community_name": "List",
       "file_type": "code",
       "norm_label": "widget",
       "source_file": null,
@@ -39100,11 +39100,33 @@
       "source_location": "L10"
     },
     {
+      "id": "lib_screens_browse_documents_localdocpreview",
+      "label": "_LocalDocPreview",
+      "_origin": "ast",
+      "community": 74,
+      "community_name": "StatefulWidget",
+      "file_type": "code",
+      "norm_label": "_localdocpreview",
+      "source_file": "lib/screens/browse_documents.dart",
+      "source_location": "L983"
+    },
+    {
+      "id": "lib_screens_client_files_browser_screen_foldernamedialog",
+      "label": "_FolderNameDialog",
+      "_origin": "ast",
+      "community": 74,
+      "community_name": "StatefulWidget",
+      "file_type": "code",
+      "norm_label": "_foldernamedialog",
+      "source_file": "lib/screens/client_files_browser_screen.dart",
+      "source_location": "L5069"
+    },
+    {
       "id": "lib_screens_no_internet_screen",
       "label": "no_internet_screen.dart",
       "_origin": "ast",
       "community": 74,
-      "community_name": "package:flutter/material.dart",
+      "community_name": "StatefulWidget",
       "file_type": "code",
       "norm_label": "no_internet_screen.dart",
       "source_file": "lib/screens/no_internet_screen.dart",
@@ -39115,7 +39137,7 @@
       "label": "build",
       "_origin": "ast",
       "community": 74,
-      "community_name": "package:flutter/material.dart",
+      "community_name": "StatefulWidget",
       "file_type": "code",
       "norm_label": "build",
       "source_file": "lib/screens/no_internet_screen.dart",
@@ -39126,7 +39148,7 @@
       "label": "_checking",
       "_origin": "ast",
       "community": 74,
-      "community_name": "package:flutter/material.dart",
+      "community_name": "StatefulWidget",
       "file_type": "code",
       "norm_label": "_checking",
       "source_file": "lib/screens/no_internet_screen.dart",
@@ -39137,7 +39159,7 @@
       "label": "createState",
       "_origin": "ast",
       "community": 74,
-      "community_name": "package:flutter/material.dart",
+      "community_name": "StatefulWidget",
       "file_type": "code",
       "norm_label": "createstate",
       "source_file": "lib/screens/no_internet_screen.dart",
@@ -39148,7 +39170,7 @@
       "label": "ensureOnline",
       "_origin": "ast",
       "community": 74,
-      "community_name": "package:flutter/material.dart",
+      "community_name": "StatefulWidget",
       "file_type": "code",
       "norm_label": "ensureonline",
       "source_file": "lib/screens/no_internet_screen.dart",
@@ -39159,7 +39181,7 @@
       "label": "NoInternetScreen",
       "_origin": "ast",
       "community": 74,
-      "community_name": "package:flutter/material.dart",
+      "community_name": "StatefulWidget",
       "file_type": "code",
       "norm_label": "nointernetscreen",
       "source_file": "lib/screens/no_internet_screen.dart",
@@ -39170,7 +39192,7 @@
       "label": "_NoInternetScreenState",
       "_origin": "ast",
       "community": 74,
-      "community_name": "package:flutter/material.dart",
+      "community_name": "StatefulWidget",
       "file_type": "code",
       "norm_label": "_nointernetscreenstate",
       "source_file": "lib/screens/no_internet_screen.dart",
@@ -39181,7 +39203,7 @@
       "label": "routeName",
       "_origin": "ast",
       "community": 74,
-      "community_name": "package:flutter/material.dart",
+      "community_name": "StatefulWidget",
       "file_type": "code",
       "norm_label": "routename",
       "source_file": "lib/screens/no_internet_screen.dart",
@@ -39192,53 +39214,53 @@
       "label": "_tryAgain",
       "_origin": "ast",
       "community": 74,
-      "community_name": "package:flutter/material.dart",
+      "community_name": "StatefulWidget",
       "file_type": "code",
       "norm_label": "_tryagain",
       "source_file": "lib/screens/no_internet_screen.dart",
       "source_location": "L40"
     },
     {
-      "id": "package_flutter_material_dart",
-      "label": "package:flutter/material.dart",
+      "id": "lib_screens_phone_pdf_localdocpreview",
+      "label": "_LocalDocPreview",
       "_origin": "ast",
       "community": 74,
-      "community_name": "package:flutter/material.dart",
+      "community_name": "StatefulWidget",
       "file_type": "code",
-      "norm_label": "package:flutter/material.dart",
-      "source_file": null,
-      "source_location": null
+      "norm_label": "_localdocpreview",
+      "source_file": "lib/screens/phone_pdf.dart",
+      "source_location": "L876"
     },
     {
-      "id": "package_flutter_test_flutter_test_dart",
-      "label": "package:flutter_test/flutter_test.dart",
+      "id": "lib_screens_semester_detail_screen_foldernamedialog",
+      "label": "_FolderNameDialog",
       "_origin": "ast",
       "community": 74,
-      "community_name": "package:flutter/material.dart",
+      "community_name": "StatefulWidget",
       "file_type": "code",
-      "norm_label": "package:flutter_test/flutter_test.dart",
-      "source_file": null,
-      "source_location": null
-    },
-    {
-      "id": "package_uni_study_app_main_dart",
-      "label": "package:uni_study_app/main.dart",
-      "_origin": "ast",
-      "community": 74,
-      "community_name": "package:flutter/material.dart",
-      "file_type": "code",
-      "norm_label": "package:uni_study_app/main.dart",
-      "source_file": null,
-      "source_location": null
+      "norm_label": "_foldernamedialog",
+      "source_file": "lib/screens/semester_detail_screen.dart",
+      "source_location": "L3031"
     },
     {
       "id": "services_connectivity_service_dart",
       "label": "../services/connectivity_service.dart",
       "_origin": "ast",
       "community": 74,
-      "community_name": "package:flutter/material.dart",
+      "community_name": "StatefulWidget",
       "file_type": "code",
       "norm_label": "../services/connectivity_service.dart",
+      "source_file": null,
+      "source_location": null
+    },
+    {
+      "id": "statefulwidget",
+      "label": "StatefulWidget",
+      "_origin": "ast",
+      "community": 74,
+      "community_name": "StatefulWidget",
+      "file_type": "code",
+      "norm_label": "statefulwidget",
       "source_file": null,
       "source_location": null
     },
@@ -39247,33 +39269,11 @@
       "label": "static const",
       "_origin": "ast",
       "community": 74,
-      "community_name": "package:flutter/material.dart",
+      "community_name": "StatefulWidget",
       "file_type": "code",
       "norm_label": "static const",
       "source_file": null,
       "source_location": null
-    },
-    {
-      "id": "test_widget_test",
-      "label": "widget_test.dart",
-      "_origin": "ast",
-      "community": 74,
-      "community_name": "package:flutter/material.dart",
-      "file_type": "code",
-      "norm_label": "widget_test.dart",
-      "source_file": "test/widget_test.dart",
-      "source_location": null
-    },
-    {
-      "id": "test_widget_test_main",
-      "label": "main",
-      "_origin": "ast",
-      "community": 74,
-      "community_name": "package:flutter/material.dart",
-      "file_type": "code",
-      "norm_label": "main",
-      "source_file": "test/widget_test.dart",
-      "source_location": "L13"
     },
     {
       "id": "web_manifest",
@@ -40589,7 +40589,7 @@
       "label": "client_workspace_screen.dart",
       "_origin": "ast",
       "community": 81,
-      "community_name": "package:cloud_firestore/cloud_firestore.dart",
+      "community_name": "package:flutter/material.dart",
       "file_type": "code",
       "norm_label": "client_workspace_screen.dart",
       "source_file": null,
@@ -40600,7 +40600,7 @@
       "label": "DocumentSnapshot",
       "_origin": "ast",
       "community": 81,
-      "community_name": "package:cloud_firestore/cloud_firestore.dart",
+      "community_name": "package:flutter/material.dart",
       "file_type": "code",
       "norm_label": "documentsnapshot",
       "source_file": null,
@@ -40611,7 +40611,7 @@
       "label": "materials_tab_screen.dart",
       "_origin": "ast",
       "community": 81,
-      "community_name": "package:cloud_firestore/cloud_firestore.dart",
+      "community_name": "package:flutter/material.dart",
       "file_type": "code",
       "norm_label": "materials_tab_screen.dart",
       "source_file": "lib/screens/materials_tab_screen.dart",
@@ -40622,7 +40622,7 @@
       "label": "build",
       "_origin": "ast",
       "community": 81,
-      "community_name": "package:cloud_firestore/cloud_firestore.dart",
+      "community_name": "package:flutter/material.dart",
       "file_type": "code",
       "norm_label": "build",
       "source_file": "lib/screens/materials_tab_screen.dart",
@@ -40633,7 +40633,7 @@
       "label": "MaterialsTabScreen",
       "_origin": "ast",
       "community": 81,
-      "community_name": "package:cloud_firestore/cloud_firestore.dart",
+      "community_name": "package:flutter/material.dart",
       "file_type": "code",
       "norm_label": "materialstabscreen",
       "source_file": "lib/screens/materials_tab_screen.dart",
@@ -40644,9 +40644,42 @@
       "label": "package:cloud_firestore/cloud_firestore.dart",
       "_origin": "ast",
       "community": 81,
-      "community_name": "package:cloud_firestore/cloud_firestore.dart",
+      "community_name": "package:flutter/material.dart",
       "file_type": "code",
       "norm_label": "package:cloud_firestore/cloud_firestore.dart",
+      "source_file": null,
+      "source_location": null
+    },
+    {
+      "id": "package_flutter_material_dart",
+      "label": "package:flutter/material.dart",
+      "_origin": "ast",
+      "community": 81,
+      "community_name": "package:flutter/material.dart",
+      "file_type": "code",
+      "norm_label": "package:flutter/material.dart",
+      "source_file": null,
+      "source_location": null
+    },
+    {
+      "id": "package_flutter_test_flutter_test_dart",
+      "label": "package:flutter_test/flutter_test.dart",
+      "_origin": "ast",
+      "community": 81,
+      "community_name": "package:flutter/material.dart",
+      "file_type": "code",
+      "norm_label": "package:flutter_test/flutter_test.dart",
+      "source_file": null,
+      "source_location": null
+    },
+    {
+      "id": "package_uni_study_app_main_dart",
+      "label": "package:uni_study_app/main.dart",
+      "_origin": "ast",
+      "community": 81,
+      "community_name": "package:flutter/material.dart",
+      "file_type": "code",
+      "norm_label": "package:uni_study_app/main.dart",
       "source_file": null,
       "source_location": null
     },
@@ -40655,7 +40688,7 @@
       "label": "semesters_screen.dart",
       "_origin": "ast",
       "community": 81,
-      "community_name": "package:cloud_firestore/cloud_firestore.dart",
+      "community_name": "package:flutter/material.dart",
       "file_type": "code",
       "norm_label": "semesters_screen.dart",
       "source_file": null,
@@ -40666,11 +40699,33 @@
       "label": "../services/auth_service.dart",
       "_origin": "ast",
       "community": 81,
-      "community_name": "package:cloud_firestore/cloud_firestore.dart",
+      "community_name": "package:flutter/material.dart",
       "file_type": "code",
       "norm_label": "../services/auth_service.dart",
       "source_file": null,
       "source_location": null
+    },
+    {
+      "id": "test_widget_test",
+      "label": "widget_test.dart",
+      "_origin": "ast",
+      "community": 81,
+      "community_name": "package:flutter/material.dart",
+      "file_type": "code",
+      "norm_label": "widget_test.dart",
+      "source_file": "test/widget_test.dart",
+      "source_location": null
+    },
+    {
+      "id": "test_widget_test_main",
+      "label": "main",
+      "_origin": "ast",
+      "community": 81,
+      "community_name": "package:flutter/material.dart",
+      "file_type": "code",
+      "norm_label": "main",
+      "source_file": "test/widget_test.dart",
+      "source_location": "L13"
     },
     {
       "id": "media_server",
@@ -40956,7 +41011,7 @@
       "file_type": "code",
       "norm_label": "active",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1060"
+      "source_location": "L924"
     },
     {
       "id": "lib_ui_media_playback_overlay_animation",
@@ -40967,7 +41022,7 @@
       "file_type": "code",
       "norm_label": "animation",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1058"
+      "source_location": "L922"
     },
     {
       "id": "lib_ui_media_playback_overlay_bottomclearance",
@@ -41011,7 +41066,7 @@
       "file_type": "code",
       "norm_label": "busy",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L439"
+      "source_location": "L430"
     },
     {
       "id": "lib_ui_media_playback_overlay_canvas",
@@ -41033,7 +41088,7 @@
       "file_type": "code",
       "norm_label": "_chrome",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L515"
+      "source_location": "L506"
     },
     {
       "id": "lib_ui_media_playback_overlay_color",
@@ -41044,7 +41099,7 @@
       "file_type": "code",
       "norm_label": "color",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1015"
+      "source_location": "L879"
     },
     {
       "id": "lib_ui_media_playback_overlay_constraints",
@@ -41055,7 +41110,7 @@
       "file_type": "code",
       "norm_label": "constraints",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1688"
+      "source_location": "L1549"
     },
     {
       "id": "lib_ui_media_playback_overlay_createstate",
@@ -41077,7 +41132,7 @@
       "file_type": "code",
       "norm_label": "dark",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1017"
+      "source_location": "L881"
     },
     {
       "id": "lib_ui_media_playback_overlay_dispose",
@@ -41132,7 +41187,7 @@
       "file_type": "code",
       "norm_label": "_drag",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1241"
+      "source_location": "L1102"
     },
     {
       "id": "lib_ui_media_playback_overlay_enabled",
@@ -41143,7 +41198,7 @@
       "file_type": "code",
       "norm_label": "enabled",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1408"
+      "source_location": "L1269"
     },
     {
       "id": "lib_ui_media_playback_overlay_equalizer",
@@ -41165,7 +41220,7 @@
       "file_type": "code",
       "norm_label": "_formatduration",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L2268"
+      "source_location": "L2129"
     },
     {
       "id": "lib_ui_media_playback_overlay_height",
@@ -41176,7 +41231,7 @@
       "file_type": "code",
       "norm_label": "height",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1622"
+      "source_location": "L1483"
     },
     {
       "id": "lib_ui_media_playback_overlay_hidetimer",
@@ -41187,7 +41242,7 @@
       "file_type": "code",
       "norm_label": "_hidetimer",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L516"
+      "source_location": "L507"
     },
     {
       "id": "lib_ui_media_playback_overlay_hours",
@@ -41198,7 +41253,7 @@
       "file_type": "code",
       "norm_label": "hours",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L2270"
+      "source_location": "L2131"
     },
     {
       "id": "lib_ui_media_playback_overlay_icon",
@@ -41209,7 +41264,7 @@
       "file_type": "code",
       "norm_label": "icon",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L437"
+      "source_location": "L428"
     },
     {
       "id": "lib_ui_media_playback_overlay_initstate",
@@ -41264,7 +41319,7 @@
       "file_type": "code",
       "norm_label": "item",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L910"
+      "source_location": "L777"
     },
     {
       "id": "lib_ui_media_playback_overlay_label",
@@ -41275,7 +41330,7 @@
       "file_type": "code",
       "norm_label": "label",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1431"
+      "source_location": "L1292"
     },
     {
       "id": "lib_ui_media_playback_overlay_line",
@@ -41289,6 +41344,28 @@
       "source_location": "L198"
     },
     {
+      "id": "lib_ui_media_playback_overlay_mediaplaybackoverlay",
+      "label": "MediaPlaybackOverlay",
+      "_origin": "ast",
+      "community": 88,
+      "community_name": "media_playback_overlay.dart",
+      "file_type": "code",
+      "norm_label": "mediaplaybackoverlay",
+      "source_file": "lib/ui/media_playback_overlay.dart",
+      "source_location": "L14"
+    },
+    {
+      "id": "lib_ui_media_playback_overlay_mediaplaybackoverlaystate",
+      "label": "_MediaPlaybackOverlayState",
+      "_origin": "ast",
+      "community": 88,
+      "community_name": "media_playback_overlay.dart",
+      "file_type": "code",
+      "norm_label": "_mediaplaybackoverlaystate",
+      "source_file": "lib/ui/media_playback_overlay.dart",
+      "source_location": "L21"
+    },
+    {
       "id": "lib_ui_media_playback_overlay_message",
       "label": "message",
       "_origin": "ast",
@@ -41297,7 +41374,7 @@
       "file_type": "code",
       "norm_label": "message",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L438"
+      "source_location": "L429"
     },
     {
       "id": "lib_ui_media_playback_overlay_minioffset",
@@ -41330,7 +41407,7 @@
       "file_type": "code",
       "norm_label": "minutes",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L2271"
+      "source_location": "L2132"
     },
     {
       "id": "lib_ui_media_playback_overlay_modecaption",
@@ -41341,7 +41418,7 @@
       "file_type": "code",
       "norm_label": "_modecaption",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1213"
+      "source_location": "L1074"
     },
     {
       "id": "lib_ui_media_playback_overlay_muted",
@@ -41363,7 +41440,7 @@
       "file_type": "code",
       "norm_label": "offset",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1689"
+      "source_location": "L1550"
     },
     {
       "id": "lib_ui_media_playback_overlay_onback",
@@ -41374,7 +41451,7 @@
       "file_type": "code",
       "norm_label": "onback",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L355"
+      "source_location": "L346"
     },
     {
       "id": "lib_ui_media_playback_overlay_ondismiss",
@@ -41385,7 +41462,7 @@
       "file_type": "code",
       "norm_label": "ondismiss",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1509"
+      "source_location": "L1370"
     },
     {
       "id": "lib_ui_media_playback_overlay_ondownload",
@@ -41407,7 +41484,7 @@
       "file_type": "code",
       "norm_label": "ondrag",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1692"
+      "source_location": "L1553"
     },
     {
       "id": "lib_ui_media_playback_overlay_onexternal",
@@ -41418,7 +41495,7 @@
       "file_type": "code",
       "norm_label": "onexternal",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L441"
+      "source_location": "L432"
     },
     {
       "id": "lib_ui_media_playback_overlay_onmode",
@@ -41440,7 +41517,7 @@
       "file_type": "code",
       "norm_label": "onplay",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1507"
+      "source_location": "L1368"
     },
     {
       "id": "lib_ui_media_playback_overlay_onplaying",
@@ -41462,7 +41539,7 @@
       "file_type": "code",
       "norm_label": "onpopout",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L356"
+      "source_location": "L347"
     },
     {
       "id": "lib_ui_media_playback_overlay_onqueue",
@@ -41484,7 +41561,7 @@
       "file_type": "code",
       "norm_label": "onreplay",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1508"
+      "source_location": "L1369"
     },
     {
       "id": "lib_ui_media_playback_overlay_onretry",
@@ -41495,7 +41572,7 @@
       "file_type": "code",
       "norm_label": "onretry",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L440"
+      "source_location": "L431"
     },
     {
       "id": "lib_ui_media_playback_overlay_onsession",
@@ -41517,7 +41594,7 @@
       "file_type": "code",
       "norm_label": "ontap",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1368"
+      "source_location": "L1229"
     },
     {
       "id": "lib_ui_media_playback_overlay_onvideotap",
@@ -41528,7 +41605,7 @@
       "file_type": "code",
       "norm_label": "_onvideotap",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L564"
+      "source_location": "L555"
     },
     {
       "id": "lib_ui_media_playback_overlay_overlay",
@@ -41539,7 +41616,7 @@
       "file_type": "code",
       "norm_label": "overlay",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1108"
+      "source_location": "L972"
     },
     {
       "id": "lib_ui_media_playback_overlay_overlaypalette",
@@ -41550,7 +41627,7 @@
       "file_type": "code",
       "norm_label": "_overlaypalette",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L517"
+      "source_location": "L508"
     },
     {
       "id": "lib_ui_media_playback_overlay_paint",
@@ -41561,7 +41638,7 @@
       "file_type": "code",
       "norm_label": "paint",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1020"
+      "source_location": "L884"
     },
     {
       "id": "lib_ui_media_playback_overlay_palette",
@@ -41594,7 +41671,7 @@
       "file_type": "code",
       "norm_label": "playing",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1369"
+      "source_location": "L1230"
     },
     {
       "id": "lib_ui_media_playback_overlay_playinglistenable",
@@ -41605,7 +41682,7 @@
       "file_type": "code",
       "norm_label": "playinglistenable",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L913"
+      "source_location": "L780"
     },
     {
       "id": "lib_ui_media_playback_overlay_radius",
@@ -41616,7 +41693,7 @@
       "file_type": "code",
       "norm_label": "radius",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1623"
+      "source_location": "L1484"
     },
     {
       "id": "lib_ui_media_playback_overlay_schedulehide",
@@ -41627,7 +41704,7 @@
       "file_type": "code",
       "norm_label": "_schedulehide",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L555"
+      "source_location": "L546"
     },
     {
       "id": "lib_ui_media_playback_overlay_scrim",
@@ -41638,7 +41715,7 @@
       "file_type": "code",
       "norm_label": "scrim",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L2016"
+      "source_location": "L1877"
     },
     {
       "id": "lib_ui_media_playback_overlay_seconds",
@@ -41649,7 +41726,29 @@
       "file_type": "code",
       "norm_label": "seconds",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L2272"
+      "source_location": "L2133"
+    },
+    {
+      "id": "lib_ui_media_playback_overlay_seekbar",
+      "label": "_SeekBar",
+      "_origin": "ast",
+      "community": 88,
+      "community_name": "media_playback_overlay.dart",
+      "file_type": "code",
+      "norm_label": "_seekbar",
+      "source_file": "lib/ui/media_playback_overlay.dart",
+      "source_location": "L1092"
+    },
+    {
+      "id": "lib_ui_media_playback_overlay_seekbarstate",
+      "label": "_SeekBarState",
+      "_origin": "ast",
+      "community": 88,
+      "community_name": "media_playback_overlay.dart",
+      "file_type": "code",
+      "norm_label": "_seekbarstate",
+      "source_file": "lib/ui/media_playback_overlay.dart",
+      "source_location": "L1101"
     },
     {
       "id": "lib_ui_media_playback_overlay_selected",
@@ -41660,7 +41759,7 @@
       "file_type": "code",
       "norm_label": "selected",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L2160"
+      "source_location": "L2021"
     },
     {
       "id": "lib_ui_media_playback_overlay_session",
@@ -41693,7 +41792,7 @@
       "file_type": "code",
       "norm_label": "shouldrepaint",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1046"
+      "source_location": "L910"
     },
     {
       "id": "lib_ui_media_playback_overlay_showqueue",
@@ -41707,17 +41806,6 @@
       "source_location": "L117"
     },
     {
-      "id": "lib_ui_media_playback_overlay_showtitle",
-      "label": "showTitle",
-      "_origin": "ast",
-      "community": 88,
-      "community_name": "media_playback_overlay.dart",
-      "file_type": "code",
-      "norm_label": "showtitle",
-      "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L914"
-    },
-    {
       "id": "lib_ui_media_playback_overlay_subtitle",
       "label": "subtitle",
       "_origin": "ast",
@@ -41726,7 +41814,7 @@
       "file_type": "code",
       "norm_label": "subtitle",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L353"
+      "source_location": "L344"
     },
     {
       "id": "lib_ui_media_playback_overlay_title",
@@ -41737,7 +41825,7 @@
       "file_type": "code",
       "norm_label": "title",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L352"
+      "source_location": "L343"
     },
     {
       "id": "lib_ui_media_playback_overlay_tooltip",
@@ -41748,7 +41836,7 @@
       "file_type": "code",
       "norm_label": "tooltip",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1405"
+      "source_location": "L1266"
     },
     {
       "id": "lib_ui_media_playback_overlay_turns",
@@ -41759,7 +41847,7 @@
       "file_type": "code",
       "norm_label": "turns",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1016"
+      "source_location": "L880"
     },
     {
       "id": "lib_ui_media_playback_overlay_two",
@@ -41770,7 +41858,29 @@
       "file_type": "code",
       "norm_label": "two",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L2269"
+      "source_location": "L2130"
+    },
+    {
+      "id": "lib_ui_media_playback_overlay_videotheater",
+      "label": "_VideoTheater",
+      "_origin": "ast",
+      "community": 88,
+      "community_name": "media_playback_overlay.dart",
+      "file_type": "code",
+      "norm_label": "_videotheater",
+      "source_file": "lib/ui/media_playback_overlay.dart",
+      "source_location": "L482"
+    },
+    {
+      "id": "lib_ui_media_playback_overlay_videotheaterstate",
+      "label": "_VideoTheaterState",
+      "_origin": "ast",
+      "community": 88,
+      "community_name": "media_playback_overlay.dart",
+      "file_type": "code",
+      "norm_label": "_videotheaterstate",
+      "source_file": "lib/ui/media_playback_overlay.dart",
+      "source_location": "L505"
     },
     {
       "id": "lib_ui_media_playback_overlay_width",
@@ -41781,7 +41891,7 @@
       "file_type": "code",
       "norm_label": "width",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1621"
+      "source_location": "L1482"
     },
     {
       "id": "mediasession_get",
@@ -41979,7 +42089,7 @@
       "file_type": "code",
       "norm_label": "_glowringpainter",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1008"
+      "source_location": "L872"
     },
     {
       "id": "dart_io",
@@ -42070,200 +42180,68 @@
       "source_location": "L7"
     },
     {
-      "id": "lib_ui_adaptive_layout",
-      "label": "adaptive_layout.dart",
+      "id": "lib_main_mainscreen",
+      "label": "MainScreen",
       "_origin": "ast",
       "community": 93,
-      "community_name": "List",
+      "community_name": "WidgetsBindingObserver",
       "file_type": "code",
-      "norm_label": "adaptive_layout.dart",
-      "source_file": "lib/ui/adaptive_layout.dart",
+      "norm_label": "mainscreen",
+      "source_file": "lib/main.dart",
+      "source_location": "L267"
+    },
+    {
+      "id": "lib_main_mainscreenstate",
+      "label": "_MainScreenState",
+      "_origin": "ast",
+      "community": 93,
+      "community_name": "WidgetsBindingObserver",
+      "file_type": "code",
+      "norm_label": "_mainscreenstate",
+      "source_file": "lib/main.dart",
+      "source_location": "L296"
+    },
+    {
+      "id": "lib_screens_app_update_screen_appupdategate",
+      "label": "AppUpdateGate",
+      "_origin": "ast",
+      "community": 93,
+      "community_name": "WidgetsBindingObserver",
+      "file_type": "code",
+      "norm_label": "appupdategate",
+      "source_file": "lib/screens/app_update_screen.dart",
+      "source_location": "L12"
+    },
+    {
+      "id": "lib_screens_app_update_screen_appupdategatestate",
+      "label": "_AppUpdateGateState",
+      "_origin": "ast",
+      "community": 93,
+      "community_name": "WidgetsBindingObserver",
+      "file_type": "code",
+      "norm_label": "_appupdategatestate",
+      "source_file": "lib/screens/app_update_screen.dart",
+      "source_location": "L21"
+    },
+    {
+      "id": "tickerproviderstatemixin",
+      "label": "TickerProviderStateMixin",
+      "_origin": "ast",
+      "community": 93,
+      "community_name": "WidgetsBindingObserver",
+      "file_type": "code",
+      "norm_label": "tickerproviderstatemixin",
+      "source_file": null,
       "source_location": null
     },
     {
-      "id": "lib_ui_adaptive_layout_actions",
-      "label": "actions",
+      "id": "widgetsbindingobserver",
+      "label": "WidgetsBindingObserver",
       "_origin": "ast",
       "community": 93,
-      "community_name": "List",
+      "community_name": "WidgetsBindingObserver",
       "file_type": "code",
-      "norm_label": "actions",
-      "source_file": "lib/ui/adaptive_layout.dart",
-      "source_location": "L49"
-    },
-    {
-      "id": "lib_ui_adaptive_layout_adaptivelayout",
-      "label": "AdaptiveLayout",
-      "_origin": "ast",
-      "community": 93,
-      "community_name": "List",
-      "file_type": "code",
-      "norm_label": "adaptivelayout",
-      "source_file": "lib/ui/adaptive_layout.dart",
-      "source_location": "L3"
-    },
-    {
-      "id": "lib_ui_adaptive_layout_automaticallyimplyleading",
-      "label": "automaticallyImplyLeading",
-      "_origin": "ast",
-      "community": 93,
-      "community_name": "List",
-      "file_type": "code",
-      "norm_label": "automaticallyimplyleading",
-      "source_file": "lib/ui/adaptive_layout.dart",
-      "source_location": "L46"
-    },
-    {
-      "id": "lib_ui_adaptive_layout_backgroundcolor",
-      "label": "backgroundColor",
-      "_origin": "ast",
-      "community": 93,
-      "community_name": "List",
-      "file_type": "code",
-      "norm_label": "backgroundcolor",
-      "source_file": "lib/ui/adaptive_layout.dart",
-      "source_location": "L49"
-    },
-    {
-      "id": "lib_ui_adaptive_layout_bottomclearance",
-      "label": "bottomClearance",
-      "_origin": "ast",
-      "community": 93,
-      "community_name": "List",
-      "file_type": "code",
-      "norm_label": "bottomclearance",
-      "source_file": "lib/ui/adaptive_layout.dart",
-      "source_location": "L23"
-    },
-    {
-      "id": "lib_ui_adaptive_layout_compactsliverappbar",
-      "label": "compactSliverAppBar",
-      "_origin": "ast",
-      "community": 93,
-      "community_name": "List",
-      "file_type": "code",
-      "norm_label": "compactsliverappbar",
-      "source_file": "lib/ui/adaptive_layout.dart",
-      "source_location": "L40"
-    },
-    {
-      "id": "lib_ui_adaptive_layout_false",
-      "label": "false",
-      "_origin": "ast",
-      "community": 93,
-      "community_name": "List",
-      "file_type": "code",
-      "norm_label": "false",
-      "source_file": "lib/ui/adaptive_layout.dart",
-      "source_location": "L49"
-    },
-    {
-      "id": "lib_ui_adaptive_layout_foregroundcolor",
-      "label": "foregroundColor",
-      "_origin": "ast",
-      "community": 93,
-      "community_name": "List",
-      "file_type": "code",
-      "norm_label": "foregroundcolor",
-      "source_file": "lib/ui/adaptive_layout.dart",
-      "source_location": "L49"
-    },
-    {
-      "id": "lib_ui_adaptive_layout_gridcount",
-      "label": "gridCount",
-      "_origin": "ast",
-      "community": 93,
-      "community_name": "List",
-      "file_type": "code",
-      "norm_label": "gridcount",
-      "source_file": "lib/ui/adaptive_layout.dart",
-      "source_location": "L29"
-    },
-    {
-      "id": "lib_ui_adaptive_layout_istablet",
-      "label": "isTablet",
-      "_origin": "ast",
-      "community": 93,
-      "community_name": "List",
-      "file_type": "code",
-      "norm_label": "istablet",
-      "source_file": "lib/ui/adaptive_layout.dart",
-      "source_location": "L6"
-    },
-    {
-      "id": "lib_ui_adaptive_layout_leading",
-      "label": "leading",
-      "_origin": "ast",
-      "community": 93,
-      "community_name": "List",
-      "file_type": "code",
-      "norm_label": "leading",
-      "source_file": "lib/ui/adaptive_layout.dart",
-      "source_location": "L49"
-    },
-    {
-      "id": "lib_ui_adaptive_layout_listcolumns",
-      "label": "listColumns",
-      "_origin": "ast",
-      "community": 93,
-      "community_name": "List",
-      "file_type": "code",
-      "norm_label": "listcolumns",
-      "source_file": "lib/ui/adaptive_layout.dart",
-      "source_location": "L35"
-    },
-    {
-      "id": "lib_ui_adaptive_layout_pagepadding",
-      "label": "pagePadding",
-      "_origin": "ast",
-      "community": 93,
-      "community_name": "List",
-      "file_type": "code",
-      "norm_label": "pagepadding",
-      "source_file": "lib/ui/adaptive_layout.dart",
-      "source_location": "L9"
-    },
-    {
-      "id": "lib_ui_adaptive_layout_title",
-      "label": "title",
-      "_origin": "ast",
-      "community": 93,
-      "community_name": "List",
-      "file_type": "code",
-      "norm_label": "title",
-      "source_file": "lib/ui/adaptive_layout.dart",
-      "source_location": "L49"
-    },
-    {
-      "id": "lib_ui_adaptive_layout_toolbarheight",
-      "label": "toolbarHeight",
-      "_origin": "ast",
-      "community": 93,
-      "community_name": "List",
-      "file_type": "code",
-      "norm_label": "toolbarheight",
-      "source_file": "lib/ui/adaptive_layout.dart",
-      "source_location": "L47"
-    },
-    {
-      "id": "lib_ui_adaptive_layout_true",
-      "label": "true",
-      "_origin": "ast",
-      "community": 93,
-      "community_name": "List",
-      "file_type": "code",
-      "norm_label": "true",
-      "source_file": "lib/ui/adaptive_layout.dart",
-      "source_location": "L49"
-    },
-    {
-      "id": "list",
-      "label": "List",
-      "_origin": "ast",
-      "community": 93,
-      "community_name": "List",
-      "file_type": "code",
-      "norm_label": "list",
+      "norm_label": "widgetsbindingobserver",
       "source_file": null,
       "source_location": null
     },
@@ -51477,7 +51455,7 @@
       "confidence_score": 1.0,
       "context": "type_lookup",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1246",
+      "source_location": "L1107",
       "weight": 1.0
     },
     {
@@ -55718,30 +55696,6 @@
     },
     {
       "source": "lib_ui_media_playback_overlay",
-      "target": "color",
-      "relation": "references",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "variable_type",
-      "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1015",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_ui_media_playback_overlay",
-      "target": "animation",
-      "relation": "references",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "context": "variable_type",
-      "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1058",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_ui_media_playback_overlay",
       "target": "double",
       "relation": "references",
       "_origin": "ast",
@@ -55749,7 +55703,7 @@
       "confidence_score": 1.0,
       "context": "variable_type",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1241",
+      "source_location": "L1102",
       "weight": 1.0
     },
     {
@@ -55761,7 +55715,7 @@
       "confidence_score": 1.0,
       "context": "variable_type",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1688",
+      "source_location": "L1549",
       "weight": 1.0
     },
     {
@@ -55773,7 +55727,7 @@
       "confidence_score": 1.0,
       "context": "variable_type",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1692",
+      "source_location": "L1553",
       "weight": 1.0
     },
     {
@@ -55869,7 +55823,7 @@
       "confidence_score": 1.0,
       "context": "variable_type",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L437",
+      "source_location": "L428",
       "weight": 1.0
     },
     {
@@ -55881,7 +55835,7 @@
       "confidence_score": 1.0,
       "context": "variable_type",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L516",
+      "source_location": "L507",
       "weight": 1.0
     },
     {
@@ -55893,7 +55847,7 @@
       "confidence_score": 1.0,
       "context": "variable_type",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L517",
+      "source_location": "L508",
       "weight": 1.0
     },
     {
@@ -55905,7 +55859,7 @@
       "confidence_score": 1.0,
       "context": "variable_type",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L519",
+      "source_location": "L510",
       "weight": 1.0
     },
     {
@@ -55917,7 +55871,7 @@
       "confidence_score": 1.0,
       "context": "variable_type",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L910",
+      "source_location": "L777",
       "weight": 1.0
     },
     {
@@ -55929,7 +55883,31 @@
       "confidence_score": 1.0,
       "context": "variable_type",
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L913",
+      "source_location": "L780",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_ui_media_playback_overlay",
+      "target": "color",
+      "relation": "references",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "variable_type",
+      "source_file": "lib/ui/media_playback_overlay.dart",
+      "source_location": "L879",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_ui_media_playback_overlay",
+      "target": "animation",
+      "relation": "references",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "context": "variable_type",
+      "source_file": "lib/ui/media_playback_overlay.dart",
+      "source_location": "L922",
       "weight": 1.0
     },
     {
@@ -89797,123 +89775,57 @@
     },
     {
       "source": "lib_ui_media_playback_overlay",
-      "target": "lib_ui_media_playback_overlay_glowringpainter",
+      "target": "lib_ui_media_playback_overlay_modecaption",
       "relation": "defines",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1008",
+      "source_location": "L1074",
       "weight": 1.0
     },
     {
       "source": "lib_ui_media_playback_overlay",
-      "target": "lib_ui_media_playback_overlay_color",
+      "target": "lib_ui_media_playback_overlay_seekbar",
       "relation": "defines",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1015",
+      "source_location": "L1092",
       "weight": 1.0
     },
     {
       "source": "lib_ui_media_playback_overlay",
-      "target": "lib_ui_media_playback_overlay_turns",
+      "target": "lib_ui_media_playback_overlay_seekbarstate",
       "relation": "defines",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1016",
+      "source_location": "L1101",
       "weight": 1.0
     },
     {
       "source": "lib_ui_media_playback_overlay",
-      "target": "lib_ui_media_playback_overlay_dark",
+      "target": "lib_ui_media_playback_overlay_drag",
       "relation": "defines",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1017",
+      "source_location": "L1102",
       "weight": 1.0
     },
     {
       "source": "lib_ui_media_playback_overlay",
-      "target": "lib_ui_media_playback_overlay_paint",
+      "target": "lib_ui_media_playback_overlay_transportrow",
       "relation": "defines",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1020",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_ui_media_playback_overlay",
-      "target": "lib_ui_media_playback_overlay_shouldrepaint",
-      "relation": "defines",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1046",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_ui_media_playback_overlay",
-      "target": "lib_ui_media_playback_overlay_equalizerbars",
-      "relation": "defines",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1051",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_ui_media_playback_overlay",
-      "target": "lib_ui_media_playback_overlay_animation",
-      "relation": "defines",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1058",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_ui_media_playback_overlay",
-      "target": "lib_ui_media_playback_overlay_active",
-      "relation": "defines",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1060",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_ui_media_playback_overlay",
-      "target": "lib_ui_media_playback_overlay_controldock",
-      "relation": "defines",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1095",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_ui_media_playback_overlay",
-      "target": "lib_ui_media_playback_overlay_overlay",
-      "relation": "defines",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1108",
+      "source_location": "L1161",
       "weight": 1.0
     },
     {
@@ -89929,57 +89841,90 @@
     },
     {
       "source": "lib_ui_media_playback_overlay",
-      "target": "lib_ui_media_playback_overlay_modecaption",
+      "target": "lib_ui_media_playback_overlay_playorb",
       "relation": "defines",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1213",
+      "source_location": "L1221",
       "weight": 1.0
     },
     {
       "source": "lib_ui_media_playback_overlay",
-      "target": "lib_ui_media_playback_overlay_seekbar",
+      "target": "lib_ui_media_playback_overlay_ontap",
       "relation": "defines",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1231",
+      "source_location": "L1229",
       "weight": 1.0
     },
     {
       "source": "lib_ui_media_playback_overlay",
-      "target": "lib_ui_media_playback_overlay_seekbarstate",
+      "target": "lib_ui_media_playback_overlay_playing",
       "relation": "defines",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1240",
+      "source_location": "L1230",
       "weight": 1.0
     },
     {
       "source": "lib_ui_media_playback_overlay",
-      "target": "lib_ui_media_playback_overlay_drag",
+      "target": "lib_ui_media_playback_overlay_roundbutton",
       "relation": "defines",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1241",
+      "source_location": "L1256",
       "weight": 1.0
     },
     {
       "source": "lib_ui_media_playback_overlay",
-      "target": "lib_ui_media_playback_overlay_transportrow",
+      "target": "lib_ui_media_playback_overlay_tooltip",
       "relation": "defines",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1300",
+      "source_location": "L1266",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_ui_media_playback_overlay",
+      "target": "lib_ui_media_playback_overlay_enabled",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/ui/media_playback_overlay.dart",
+      "source_location": "L1269",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_ui_media_playback_overlay",
+      "target": "lib_ui_media_playback_overlay_modepill",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/ui/media_playback_overlay.dart",
+      "source_location": "L1284",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_ui_media_playback_overlay",
+      "target": "lib_ui_media_playback_overlay_label",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/ui/media_playback_overlay.dart",
+      "source_location": "L1292",
       "weight": 1.0
     },
     {
@@ -89995,18 +89940,29 @@
     },
     {
       "source": "lib_ui_media_playback_overlay",
-      "target": "lib_ui_media_playback_overlay_playorb",
+      "target": "lib_ui_media_playback_overlay_queuebutton",
       "relation": "defines",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1360",
+      "source_location": "L1325",
       "weight": 1.0
     },
     {
       "source": "lib_ui_media_playback_overlay",
-      "target": "lib_ui_media_playback_overlay_ontap",
+      "target": "lib_ui_media_playback_overlay_upnextcurtain",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/ui/media_playback_overlay.dart",
+      "source_location": "L1357",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_ui_media_playback_overlay",
+      "target": "lib_ui_media_playback_overlay_onplay",
       "relation": "defines",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -90017,7 +89973,7 @@
     },
     {
       "source": "lib_ui_media_playback_overlay",
-      "target": "lib_ui_media_playback_overlay_playing",
+      "target": "lib_ui_media_playback_overlay_onreplay",
       "relation": "defines",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -90028,13 +89984,13 @@
     },
     {
       "source": "lib_ui_media_playback_overlay",
-      "target": "lib_ui_media_playback_overlay_roundbutton",
+      "target": "lib_ui_media_playback_overlay_ondismiss",
       "relation": "defines",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1395",
+      "source_location": "L1370",
       "weight": 1.0
     },
     {
@@ -90050,46 +90006,13 @@
     },
     {
       "source": "lib_ui_media_playback_overlay",
-      "target": "lib_ui_media_playback_overlay_tooltip",
+      "target": "lib_ui_media_playback_overlay_videopreview",
       "relation": "defines",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1405",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_ui_media_playback_overlay",
-      "target": "lib_ui_media_playback_overlay_enabled",
-      "relation": "defines",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1408",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_ui_media_playback_overlay",
-      "target": "lib_ui_media_playback_overlay_modepill",
-      "relation": "defines",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1423",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_ui_media_playback_overlay",
-      "target": "lib_ui_media_playback_overlay_label",
-      "relation": "defines",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1431",
+      "source_location": "L1439",
       "weight": 1.0
     },
     {
@@ -90105,79 +90028,13 @@
     },
     {
       "source": "lib_ui_media_playback_overlay",
-      "target": "lib_ui_media_playback_overlay_queuebutton",
-      "relation": "defines",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1464",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_ui_media_playback_overlay",
-      "target": "lib_ui_media_playback_overlay_upnextcurtain",
-      "relation": "defines",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1496",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_ui_media_playback_overlay",
-      "target": "lib_ui_media_playback_overlay_onplay",
-      "relation": "defines",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1507",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_ui_media_playback_overlay",
-      "target": "lib_ui_media_playback_overlay_onreplay",
-      "relation": "defines",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1508",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_ui_media_playback_overlay",
-      "target": "lib_ui_media_playback_overlay_ondismiss",
-      "relation": "defines",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1509",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_ui_media_playback_overlay",
-      "target": "lib_ui_media_playback_overlay_videopreview",
-      "relation": "defines",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1578",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_ui_media_playback_overlay",
       "target": "lib_ui_media_playback_overlay_artthumb",
       "relation": "defines",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1612",
+      "source_location": "L1473",
       "weight": 1.0
     },
     {
@@ -90188,7 +90045,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1621",
+      "source_location": "L1482",
       "weight": 1.0
     },
     {
@@ -90199,7 +90056,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1622",
+      "source_location": "L1483",
       "weight": 1.0
     },
     {
@@ -90210,7 +90067,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1623",
+      "source_location": "L1484",
       "weight": 1.0
     },
     {
@@ -90221,7 +90078,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1645",
+      "source_location": "L1506",
       "weight": 1.0
     },
     {
@@ -90232,7 +90089,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1677",
+      "source_location": "L1538",
       "weight": 1.0
     },
     {
@@ -90243,7 +90100,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1688",
+      "source_location": "L1549",
       "weight": 1.0
     },
     {
@@ -90254,7 +90111,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1689",
+      "source_location": "L1550",
       "weight": 1.0
     },
     {
@@ -90265,7 +90122,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1692",
+      "source_location": "L1553",
       "weight": 1.0
     },
     {
@@ -90276,7 +90133,18 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1735",
+      "source_location": "L1596",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_ui_media_playback_overlay",
+      "target": "lib_ui_media_playback_overlay_audiomini",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/ui/media_playback_overlay.dart",
+      "source_location": "L1728",
       "weight": 1.0
     },
     {
@@ -90303,6 +90171,17 @@
     },
     {
       "source": "lib_ui_media_playback_overlay",
+      "target": "lib_ui_media_playback_overlay_thinprogress",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/ui/media_playback_overlay.dart",
+      "source_location": "L1839",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_ui_media_playback_overlay",
       "target": "lib_ui_media_playback_overlay_isdark",
       "relation": "defines",
       "_origin": "ast",
@@ -90325,13 +90204,24 @@
     },
     {
       "source": "lib_ui_media_playback_overlay",
-      "target": "lib_ui_media_playback_overlay_audiomini",
+      "target": "lib_ui_media_playback_overlay_miniicon",
       "relation": "defines",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1867",
+      "source_location": "L1864",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_ui_media_playback_overlay",
+      "target": "lib_ui_media_playback_overlay_scrim",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/ui/media_playback_overlay.dart",
+      "source_location": "L1877",
       "weight": 1.0
     },
     {
@@ -90354,6 +90244,17 @@
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
       "source_location": "L190",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_ui_media_playback_overlay",
+      "target": "lib_ui_media_playback_overlay_queuesheet",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/ui/media_playback_overlay.dart",
+      "source_location": "L1902",
       "weight": 1.0
     },
     {
@@ -90391,17 +90292,6 @@
     },
     {
       "source": "lib_ui_media_playback_overlay",
-      "target": "lib_ui_media_playback_overlay_thinprogress",
-      "relation": "defines",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1978",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_ui_media_playback_overlay",
       "target": "lib_ui_media_playback_overlay_line",
       "relation": "defines",
       "_origin": "ast",
@@ -90409,17 +90299,6 @@
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
       "source_location": "L198",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_ui_media_playback_overlay",
-      "target": "lib_ui_media_playback_overlay_miniicon",
-      "relation": "defines",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L2003",
       "weight": 1.0
     },
     {
@@ -90435,24 +90314,24 @@
     },
     {
       "source": "lib_ui_media_playback_overlay",
-      "target": "lib_ui_media_playback_overlay_scrim",
+      "target": "lib_ui_media_playback_overlay_modesheet",
       "relation": "defines",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L2016",
+      "source_location": "L2018",
       "weight": 1.0
     },
     {
       "source": "lib_ui_media_playback_overlay",
-      "target": "lib_ui_media_playback_overlay_queuesheet",
+      "target": "lib_ui_media_playback_overlay_selected",
       "relation": "defines",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L2041",
+      "source_location": "L2021",
       "weight": 1.0
     },
     {
@@ -90468,6 +90347,17 @@
     },
     {
       "source": "lib_ui_media_playback_overlay",
+      "target": "lib_ui_media_playback_overlay_formatduration",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/ui/media_playback_overlay.dart",
+      "source_location": "L2129",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_ui_media_playback_overlay",
       "target": "lib_ui_media_playback_overlay_session",
       "relation": "defines",
       "_origin": "ast",
@@ -90479,6 +90369,50 @@
     },
     {
       "source": "lib_ui_media_playback_overlay",
+      "target": "lib_ui_media_playback_overlay_two",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/ui/media_playback_overlay.dart",
+      "source_location": "L2130",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_ui_media_playback_overlay",
+      "target": "lib_ui_media_playback_overlay_hours",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/ui/media_playback_overlay.dart",
+      "source_location": "L2131",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_ui_media_playback_overlay",
+      "target": "lib_ui_media_playback_overlay_minutes",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/ui/media_playback_overlay.dart",
+      "source_location": "L2132",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_ui_media_playback_overlay",
+      "target": "lib_ui_media_playback_overlay_seconds",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/ui/media_playback_overlay.dart",
+      "source_location": "L2133",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_ui_media_playback_overlay",
       "target": "lib_ui_media_playback_overlay_bottominset",
       "relation": "defines",
       "_origin": "ast",
@@ -90486,28 +90420,6 @@
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
       "source_location": "L214",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_ui_media_playback_overlay",
-      "target": "lib_ui_media_playback_overlay_modesheet",
-      "relation": "defines",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L2157",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_ui_media_playback_overlay",
-      "target": "lib_ui_media_playback_overlay_selected",
-      "relation": "defines",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L2160",
       "weight": 1.0
     },
     {
@@ -90541,61 +90453,6 @@
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
       "source_location": "L220",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_ui_media_playback_overlay",
-      "target": "lib_ui_media_playback_overlay_formatduration",
-      "relation": "defines",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L2268",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_ui_media_playback_overlay",
-      "target": "lib_ui_media_playback_overlay_two",
-      "relation": "defines",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L2269",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_ui_media_playback_overlay",
-      "target": "lib_ui_media_playback_overlay_hours",
-      "relation": "defines",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L2270",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_ui_media_playback_overlay",
-      "target": "lib_ui_media_playback_overlay_minutes",
-      "relation": "defines",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L2271",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_ui_media_playback_overlay",
-      "target": "lib_ui_media_playback_overlay_seconds",
-      "relation": "defines",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L2272",
       "weight": 1.0
     },
     {
@@ -90672,7 +90529,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L339",
+      "source_location": "L330",
       "weight": 1.0
     },
     {
@@ -90683,7 +90540,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L352",
+      "source_location": "L343",
       "weight": 1.0
     },
     {
@@ -90694,7 +90551,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L353",
+      "source_location": "L344",
       "weight": 1.0
     },
     {
@@ -90705,7 +90562,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L355",
+      "source_location": "L346",
       "weight": 1.0
     },
     {
@@ -90716,7 +90573,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L356",
+      "source_location": "L347",
       "weight": 1.0
     },
     {
@@ -90738,7 +90595,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L426",
+      "source_location": "L417",
       "weight": 1.0
     },
     {
@@ -90749,7 +90606,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L437",
+      "source_location": "L428",
       "weight": 1.0
     },
     {
@@ -90760,7 +90617,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L438",
+      "source_location": "L429",
       "weight": 1.0
     },
     {
@@ -90771,7 +90628,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L439",
+      "source_location": "L430",
       "weight": 1.0
     },
     {
@@ -90782,7 +90639,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L440",
+      "source_location": "L431",
       "weight": 1.0
     },
     {
@@ -90793,7 +90650,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L441",
+      "source_location": "L432",
       "weight": 1.0
     },
     {
@@ -90815,7 +90672,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L491",
+      "source_location": "L482",
       "weight": 1.0
     },
     {
@@ -90826,7 +90683,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L514",
+      "source_location": "L505",
       "weight": 1.0
     },
     {
@@ -90837,7 +90694,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L515",
+      "source_location": "L506",
       "weight": 1.0
     },
     {
@@ -90848,7 +90705,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L516",
+      "source_location": "L507",
       "weight": 1.0
     },
     {
@@ -90859,7 +90716,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L517",
+      "source_location": "L508",
       "weight": 1.0
     },
     {
@@ -90870,7 +90727,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L555",
+      "source_location": "L546",
       "weight": 1.0
     },
     {
@@ -90881,7 +90738,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L564",
+      "source_location": "L555",
       "weight": 1.0
     },
     {
@@ -90903,7 +90760,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L704",
+      "source_location": "L695",
       "weight": 1.0
     },
     {
@@ -90919,13 +90776,35 @@
     },
     {
       "source": "lib_ui_media_playback_overlay",
-      "target": "lib_ui_media_playback_overlay_audiotheater",
+      "target": "lib_ui_media_playback_overlay_audiostage",
       "relation": "defines",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L778",
+      "source_location": "L769",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_ui_media_playback_overlay",
+      "target": "lib_ui_media_playback_overlay_item",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/ui/media_playback_overlay.dart",
+      "source_location": "L777",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_ui_media_playback_overlay",
+      "target": "lib_ui_media_playback_overlay_playinglistenable",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/ui/media_playback_overlay.dart",
+      "source_location": "L780",
       "weight": 1.0
     },
     {
@@ -90941,18 +90820,62 @@
     },
     {
       "source": "lib_ui_media_playback_overlay",
-      "target": "lib_ui_media_playback_overlay_audiostage",
+      "target": "lib_ui_media_playback_overlay_glowringpainter",
       "relation": "defines",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L901",
+      "source_location": "L872",
       "weight": 1.0
     },
     {
       "source": "lib_ui_media_playback_overlay",
-      "target": "lib_ui_media_playback_overlay_item",
+      "target": "lib_ui_media_playback_overlay_color",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/ui/media_playback_overlay.dart",
+      "source_location": "L879",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_ui_media_playback_overlay",
+      "target": "lib_ui_media_playback_overlay_turns",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/ui/media_playback_overlay.dart",
+      "source_location": "L880",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_ui_media_playback_overlay",
+      "target": "lib_ui_media_playback_overlay_dark",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/ui/media_playback_overlay.dart",
+      "source_location": "L881",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_ui_media_playback_overlay",
+      "target": "lib_ui_media_playback_overlay_paint",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/ui/media_playback_overlay.dart",
+      "source_location": "L884",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_ui_media_playback_overlay",
+      "target": "lib_ui_media_playback_overlay_shouldrepaint",
       "relation": "defines",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -90963,24 +90886,57 @@
     },
     {
       "source": "lib_ui_media_playback_overlay",
-      "target": "lib_ui_media_playback_overlay_playinglistenable",
+      "target": "lib_ui_media_playback_overlay_equalizerbars",
       "relation": "defines",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L913",
+      "source_location": "L915",
       "weight": 1.0
     },
     {
       "source": "lib_ui_media_playback_overlay",
-      "target": "lib_ui_media_playback_overlay_showtitle",
+      "target": "lib_ui_media_playback_overlay_animation",
       "relation": "defines",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L914",
+      "source_location": "L922",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_ui_media_playback_overlay",
+      "target": "lib_ui_media_playback_overlay_active",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/ui/media_playback_overlay.dart",
+      "source_location": "L924",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_ui_media_playback_overlay",
+      "target": "lib_ui_media_playback_overlay_controldock",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/ui/media_playback_overlay.dart",
+      "source_location": "L959",
+      "weight": 1.0
+    },
+    {
+      "source": "lib_ui_media_playback_overlay",
+      "target": "lib_ui_media_playback_overlay_overlay",
+      "relation": "defines",
+      "_origin": "ast",
+      "confidence": "EXTRACTED",
+      "confidence_score": 1.0,
+      "source_file": "lib/ui/media_playback_overlay.dart",
+      "source_location": "L972",
       "weight": 1.0
     },
     {
@@ -98515,7 +98471,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1612",
+      "source_location": "L1473",
       "weight": 1.0
     },
     {
@@ -98526,7 +98482,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1867",
+      "source_location": "L1728",
       "weight": 1.0
     },
     {
@@ -98537,18 +98493,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L901",
-      "weight": 1.0
-    },
-    {
-      "source": "lib_ui_media_playback_overlay_audiotheater",
-      "target": "statelesswidget",
-      "relation": "inherits",
-      "_origin": "ast",
-      "confidence": "EXTRACTED",
-      "confidence_score": 1.0,
-      "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L778",
+      "source_location": "L769",
       "weight": 1.0
     },
     {
@@ -98559,7 +98504,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1095",
+      "source_location": "L959",
       "weight": 1.0
     },
     {
@@ -98570,7 +98515,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1051",
+      "source_location": "L915",
       "weight": 1.0
     },
     {
@@ -98592,7 +98537,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1008",
+      "source_location": "L872",
       "weight": 1.0
     },
     {
@@ -98603,7 +98548,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1645",
+      "source_location": "L1506",
       "weight": 1.0
     },
     {
@@ -98636,7 +98581,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L2003",
+      "source_location": "L1864",
       "weight": 1.0
     },
     {
@@ -98647,7 +98592,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1677",
+      "source_location": "L1538",
       "weight": 1.0
     },
     {
@@ -98658,7 +98603,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1423",
+      "source_location": "L1284",
       "weight": 1.0
     },
     {
@@ -98669,7 +98614,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L2157",
+      "source_location": "L2018",
       "weight": 1.0
     },
     {
@@ -98680,7 +98625,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1360",
+      "source_location": "L1221",
       "weight": 1.0
     },
     {
@@ -98691,7 +98636,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1464",
+      "source_location": "L1325",
       "weight": 1.0
     },
     {
@@ -98702,7 +98647,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L2041",
+      "source_location": "L1902",
       "weight": 1.0
     },
     {
@@ -98713,7 +98658,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1395",
+      "source_location": "L1256",
       "weight": 1.0
     },
     {
@@ -98724,7 +98669,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1231",
+      "source_location": "L1092",
       "weight": 1.0
     },
     {
@@ -98735,7 +98680,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1240",
+      "source_location": "L1101",
       "weight": 1.0
     },
     {
@@ -98746,7 +98691,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L426",
+      "source_location": "L417",
       "weight": 1.0
     },
     {
@@ -98757,7 +98702,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1978",
+      "source_location": "L1839",
       "weight": 1.0
     },
     {
@@ -98768,7 +98713,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L339",
+      "source_location": "L330",
       "weight": 1.0
     },
     {
@@ -98779,7 +98724,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1300",
+      "source_location": "L1161",
       "weight": 1.0
     },
     {
@@ -98790,7 +98735,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1496",
+      "source_location": "L1357",
       "weight": 1.0
     },
     {
@@ -98801,7 +98746,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1735",
+      "source_location": "L1596",
       "weight": 1.0
     },
     {
@@ -98812,7 +98757,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1578",
+      "source_location": "L1439",
       "weight": 1.0
     },
     {
@@ -98823,7 +98768,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L704",
+      "source_location": "L695",
       "weight": 1.0
     },
     {
@@ -98834,7 +98779,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L491",
+      "source_location": "L482",
       "weight": 1.0
     },
     {
@@ -98845,7 +98790,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L514",
+      "source_location": "L505",
       "weight": 1.0
     },
     {
@@ -100715,7 +100660,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L1240",
+      "source_location": "L1101",
       "weight": 1.0
     },
     {
@@ -100726,7 +100671,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "lib/ui/media_playback_overlay.dart",
-      "source_location": "L514",
+      "source_location": "L505",
       "weight": 1.0
     },
     {
@@ -101151,5 +101096,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "cdedc2c48630781777399b7cce5fd49d9c0dbabc"
+  "built_at_commit": "448ab0ec7ef29f5d4788881cd0009cb800a3f196"
 }

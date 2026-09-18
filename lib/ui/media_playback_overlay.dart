@@ -224,14 +224,23 @@ class _FullPlayer extends StatelessWidget {
     final item = session.current;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final palette = _Palette(isDark, item?.isAudio ?? false);
-    final readyVideo = item != null &&
-        !item.isAudio &&
-        !session.loading &&
-        session.error == null;
-    if (readyVideo) {
+    final ready = item != null && !session.loading && session.error == null;
+    if (ready && !item.isAudio) {
       return _VideoTheater(
         session: session,
         bottomInset: bottomInset,
+        downloading: downloading,
+        downloadProgress: downloadProgress,
+        onDownload: onDownload,
+        onMode: onMode,
+        onQueue: onQueue,
+      );
+    }
+    if (ready && item.isAudio) {
+      return _AudioTheater(
+        session: session,
+        bottomInset: bottomInset,
+        equalizer: equalizer,
         downloading: downloading,
         downloadProgress: downloadProgress,
         onDownload: onDownload,
@@ -766,24 +775,149 @@ class _VideoStage extends StatelessWidget {
   }
 }
 
+class _AudioTheater extends StatelessWidget {
+  const _AudioTheater({
+    required this.session,
+    required this.bottomInset,
+    required this.equalizer,
+    required this.downloading,
+    required this.downloadProgress,
+    required this.onDownload,
+    required this.onMode,
+    required this.onQueue,
+  });
+
+  final MediaSession session;
+  final double bottomInset;
+  final AnimationController equalizer;
+  final bool downloading;
+  final double downloadProgress;
+  final VoidCallback onDownload;
+  final VoidCallback onMode;
+  final VoidCallback onQueue;
+
+  static final _overlayPalette = _Palette(true, true);
+
+  @override
+  Widget build(BuildContext context) {
+    final item = session.current;
+    final palette = _overlayPalette;
+    return ColoredBox(
+      color: const Color(0xFF0A0710),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: RadialGradient(
+                center: const Alignment(0, -0.18),
+                radius: 1.05,
+                colors: [
+                  palette.accent.withValues(alpha: 0.34),
+                  const Color(0xFF0A0710),
+                ],
+              ),
+            ),
+          ),
+          if (item != null)
+            Padding(
+              padding: EdgeInsets.fromLTRB(24, 88, 24, 168 + bottomInset),
+              child: _AudioStage(
+                item: item,
+                palette: palette,
+                equalizer: equalizer,
+                playingListenable: session.playing,
+                showTitle: true,
+              ),
+            ),
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withValues(alpha: 0.72),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+              child: SafeArea(
+                bottom: false,
+                child: _TopBar(
+                  palette: palette,
+                  title: item?.title ?? 'Now playing',
+                  subtitle: item == null
+                      ? null
+                      : '${item.kindLabel} · ${session.index + 1} of ${session.queue.length}',
+                  downloading: downloading,
+                  onBack: session.close,
+                  onPopOut: () {
+                    HapticFeedback.lightImpact();
+                    session.popOut();
+                  },
+                  onDownload: onDownload,
+                  onQueue: onQueue,
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: bottomInset + 12,
+            child: _ControlDock(
+              session: session,
+              palette: palette,
+              onMode: onMode,
+              onQueue: onQueue,
+              overlay: true,
+            ),
+          ),
+          if (downloading)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: SafeArea(
+                bottom: false,
+                child: LinearProgressIndicator(
+                  value: downloadProgress > 0 ? downloadProgress : null,
+                  minHeight: 2,
+                  color: palette.accent,
+                  backgroundColor: Colors.white24,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 class _AudioStage extends StatelessWidget {
   const _AudioStage({
     required this.item,
     required this.palette,
     required this.equalizer,
     required this.playingListenable,
+    this.showTitle = true,
   });
 
   final MediaQueueItem item;
   final _Palette palette;
   final AnimationController equalizer;
   final ValueNotifier<bool> playingListenable;
+  final bool showTitle;
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final disc = (constraints.maxHeight * 0.46).clamp(148.0, 240.0);
+        final disc = (constraints.maxHeight * 0.58).clamp(168.0, 280.0);
         return Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -835,22 +969,24 @@ class _AudioStage extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 22),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 28),
-              child: Text(
-                item.title,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: palette.ink,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  height: 1.25,
+            if (showTitle) ...[
+              const SizedBox(height: 22),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 28),
+                child: Text(
+                  item.title,
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: palette.ink,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    height: 1.25,
+                  ),
                 ),
               ),
-            ),
+            ],
             const SizedBox(height: 14),
             ValueListenableBuilder<bool>(
               valueListenable: playingListenable,
@@ -1012,7 +1148,10 @@ class _ControlDock extends StatelessWidget {
             end: Alignment.bottomCenter,
             colors: [
               Colors.transparent,
-              Colors.black.withValues(alpha: 0.82),
+              (palette.isAudio
+                      ? const Color(0xFF120814)
+                      : Colors.black)
+                  .withValues(alpha: 0.86),
             ],
           ),
         ),

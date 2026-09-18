@@ -156,8 +156,8 @@
     "semantic_hash": "1b9057ebad5bdab814f46e02b2b8c2a8"
   },
   "lib/screens/client_files_browser_screen.dart": {
-    "mtime": 1789742286.2871912,
-    "seen": 1789743888.4047866,
+    "mtime": 1789542809.3166535,
+    "seen": 1789542965.5427022,
     "ast_hash": "ee16a1112c9b6a8de4e61967ad4ff163",
     "semantic_hash": ""
   },
@@ -258,8 +258,8 @@
     "semantic_hash": "f402af0e5a47397255a748ec089c2611"
   },
   "lib/screens/semester_detail_screen.dart": {
-    "mtime": 1789742286.279186,
-    "seen": 1789743888.4049053,
+    "mtime": 1789542818.4933627,
+    "seen": 1789542965.5428917,
     "ast_hash": "f1dd5818e1e200efc27a614e0ad02345",
     "semantic_hash": ""
   },
@@ -630,9 +630,9 @@
     "semantic_hash": ""
   },
   "lib/ui/media_playback_overlay.dart": {
-    "mtime": 1789743836.4541166,
-    "seen": 1789743888.4052775,
-    "ast_hash": "f1ba4ad2ad090b664587a58951b8fb1e",
+    "mtime": 1789536775.72247,
+    "seen": 1789538296.9664288,
+    "ast_hash": "aab8d693a33001e5abfc900f9580fc3e",
     "semantic_hash": ""
   },
   "README.md": {
@@ -1242,8 +1242,8 @@
     "semantic_hash": ""
   },
   "lib/ui/drive_image_preview.dart": {
-    "mtime": 1789742286.2821906,
-    "seen": 1789743888.4052389,
+    "mtime": 1789542786.3241558,
+    "seen": 1789542965.5431218,
     "ast_hash": "9161f4a6799bb4657a97f375f0b451c3",
     "semantic_hash": ""
   }
