@@ -60,6 +60,10 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
   StudyMaterial? openedMaterial;
   List<StudyMaterial> currentFiles = [];
   bool isLoadingFiles = false;
+  final ScrollController _filesScroll = ScrollController();
+  final Map<String, GlobalKey> _fileItemKeys = {};
+  String? _openedFromFileId;
+  int _filesGridCrossAxisCount = 2;
   
   // NEW: Track downloading state for each file
   Map<String, bool> downloadingFiles = {};
@@ -157,6 +161,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     _unitSearchFocus.dispose();
     _fileSearchController.dispose();
     _fileSearchFocus.dispose();
+    _filesScroll.dispose();
     super.dispose();
   }
 
@@ -768,6 +773,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     if (!await NoInternetScreen.ensureOnline(context)) return;
     if (!mounted) return;
 
+    final folderChanged = selectedSubject?.folderId != subject.folderId;
     setState(() {
       selectedSubject = subject;
       isLoadingFiles = true;
@@ -777,6 +783,12 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
       _selectedItems.clear();
       _resetFileSearch();
     });
+    if (folderChanged) {
+      _fileItemKeys.clear();
+      if (_filesScroll.hasClients) {
+        _filesScroll.jumpTo(0);
+      }
+    }
 
     try {
       final files = await GoogleDriveService.getSubjectFiles(
@@ -879,8 +891,49 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
       return;
     }
 
+    _openedFromFileId = material.id;
     setState(() {
       openedMaterial = material;
+    });
+  }
+
+  GlobalKey _keyForFile(String id) {
+    return _fileItemKeys.putIfAbsent(id, GlobalKey.new);
+  }
+
+  double _estimateFilesOffset(int index) {
+    if (_useLargeIcons) {
+      final cols = _filesGridCrossAxisCount.clamp(1, 12);
+      final row = index ~/ cols;
+      final padding = AdaptiveLayout.pagePadding(context);
+      final width = MediaQuery.sizeOf(context).width;
+      final cellWidth =
+          (width - padding.left - padding.right - 12 * (cols - 1)) / cols;
+      return row * (cellWidth / 0.72 + 12);
+    }
+    return index * 102.0;
+  }
+
+  void _revealFileInList(String fileId) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final index = _visibleFiles.indexWhere((file) => file.id == fileId);
+      if (index < 0) return;
+      if (_filesScroll.hasClients) {
+        final max = _filesScroll.position.maxScrollExtent;
+        _filesScroll.jumpTo(_estimateFilesOffset(index).clamp(0.0, max));
+      }
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        final ctx = _fileItemKeys[fileId]?.currentContext;
+        if (ctx == null) return;
+        Scrollable.ensureVisible(
+          ctx,
+          alignment: 0.2,
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+        );
+      });
     });
   }
 
@@ -960,9 +1013,15 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
   }
 
   void _closeWebView() {
+    final revealId = openedMaterial?.id;
+    final fromId = _openedFromFileId;
+    _openedFromFileId = null;
     setState(() {
       openedMaterial = null;
     });
+    if (revealId != null && revealId != fromId) {
+      _revealFileInList(revealId);
+    }
   }
 
   // NEW: Extract file ID from Google Drive URL
@@ -2312,6 +2371,8 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
       downloadProgress.clear();
       _selectedItems.clear();
       _resetFileSearch();
+      _openedFromFileId = null;
+      _fileItemKeys.clear();
     });
   }
 
@@ -3302,6 +3363,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     final muted = isDark ? const Color(0xFF9CA3AF) : const Color(0xFF6B7280);
 
     return ListView.builder(
+      controller: _filesScroll,
       padding: AdaptiveLayout.pagePadding(context).copyWith(
         top: 12,
         bottom: AdaptiveLayout.bottomClearance(context) +
@@ -3316,7 +3378,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
         final selected = _selectedItems.containsKey(file.id);
 
         return Container(
-          key: ValueKey(file.id),
+          key: _keyForFile(file.id),
           margin: const EdgeInsets.only(bottom: 12),
           decoration: _fileCardDecoration(isDark: isDark, selected: selected),
           child: Material(
@@ -3456,7 +3518,9 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final crossAxisCount = AdaptiveLayout.gridCount(constraints.maxWidth);
+        _filesGridCrossAxisCount = crossAxisCount;
         return GridView.builder(
+          controller: _filesScroll,
           padding: AdaptiveLayout.pagePadding(context).copyWith(
         top: 12,
         bottom: AdaptiveLayout.bottomClearance(context) +
@@ -3476,7 +3540,7 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
             final selected = _selectedItems.containsKey(file.id);
 
             return Container(
-              key: ValueKey(file.id),
+              key: _keyForFile(file.id),
               decoration: _fileCardDecoration(isDark: isDark, selected: selected),
               child: Material(
                 type: MaterialType.transparency,
@@ -3634,11 +3698,21 @@ class _ClientFilesBrowserScreenState extends State<ClientFilesBrowserScreen> {
         if (didPop) return;
         _onSystemBack();
       },
-      child: openedMaterial != null
-          ? _buildOpenedFile()
-          : selectedSubject != null
-              ? _buildFilesView()
-              : _buildSubjectsView(),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Offstage(
+            offstage: openedMaterial != null,
+            child: TickerMode(
+              enabled: openedMaterial == null,
+              child: selectedSubject != null
+                  ? _buildFilesView()
+                  : _buildSubjectsView(),
+            ),
+          ),
+          if (openedMaterial != null) _buildOpenedFile(),
+        ],
+      ),
     );
   }
 
