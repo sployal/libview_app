@@ -12,6 +12,7 @@ import '../services/download_service.dart';
 import '../services/phone_document_service.dart';
 import '../services/upload_service.dart';
 import '../ui/adaptive_layout.dart';
+import '../ui/create_name_dialog.dart';
 import '../ui/file_details.dart';
 import '../ui/file_sort.dart';
 import '../ui/preview_overlay_icon.dart';
@@ -900,23 +901,18 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     bool clashAsFile = false,
     String? extensionFrom,
   }) async {
-    final result = await showDialog<String>(
+    final result = await showCreateNameDialog(
       context: context,
-      barrierDismissible: true,
-      useRootNavigator: true,
-      builder: (dialogContext) {
-        return _FolderNameDialog(
-          title: title,
-          confirmLabel: confirmLabel,
-          initial: initial,
-          fieldLabel: fieldLabel,
-          helperText: helperText,
-          takenNames: takenNames,
-          takenError: takenError,
-          clashAsFile: clashAsFile,
-          extensionFrom: extensionFrom,
-        );
-      },
+      kind: clashAsFile ? CreateNameKind.file : CreateNameKind.folder,
+      title: title,
+      confirmLabel: confirmLabel,
+      initial: initial,
+      fieldLabel: fieldLabel,
+      helperText: helperText,
+      takenNames: takenNames,
+      takenError: takenError,
+      clashAsFile: clashAsFile,
+      extensionFrom: extensionFrom,
     );
     if (result == null || result.isEmpty) return null;
     return result;
@@ -3098,114 +3094,6 @@ class _UploadSourceOption extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _FolderNameDialog extends StatefulWidget {
-  final String title;
-  final String confirmLabel;
-  final String initial;
-  final String fieldLabel;
-  final String? helperText;
-  final List<String> takenNames;
-  final String takenError;
-  final bool clashAsFile;
-  final String? extensionFrom;
-
-  const _FolderNameDialog({
-    required this.title,
-    required this.confirmLabel,
-    this.initial = '',
-    this.fieldLabel = 'Folder name',
-    this.helperText,
-    this.takenNames = const [],
-    this.takenError = 'A folder with that name already exists',
-    this.clashAsFile = false,
-    this.extensionFrom,
-  });
-
-  @override
-  State<_FolderNameDialog> createState() => _FolderNameDialogState();
-}
-
-class _FolderNameDialogState extends State<_FolderNameDialog> {
-  late final TextEditingController _controller;
-  String? _error;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController(text: widget.initial);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  bool _isTaken(String typed) {
-    final name = widget.extensionFrom == null
-        ? typed.trim()
-        : GoogleDriveService.fileNameWithExtension(typed, widget.extensionFrom!);
-    final clash = widget.clashAsFile
-        ? GoogleDriveService.fileNamesClash
-        : GoogleDriveService.folderNamesClash;
-    return widget.takenNames.any((taken) => clash(taken, name));
-  }
-
-  void _submit() {
-    final name = _controller.text.trim();
-    if (name.isEmpty) return;
-    if (_isTaken(name)) {
-      setState(() {
-        _error = widget.takenError;
-      });
-      return;
-    }
-    Navigator.of(context).pop(name);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
-      title: Text(
-        widget.title,
-        style: const TextStyle(fontWeight: FontWeight.bold),
-      ),
-      content: TextField(
-        controller: _controller,
-        autofocus: true,
-        textCapitalization: TextCapitalization.sentences,
-        decoration: InputDecoration(
-          hintText: 'e.g. CS101 Data Structures',
-          labelText: widget.fieldLabel,
-          helperText: widget.helperText,
-          errorText: _error,
-        ),
-        onChanged: (_) {
-          if (_error != null) {
-            setState(() {
-              _error = null;
-            });
-          }
-        },
-        onSubmitted: (_) => _submit(),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-        TextButton(
-          onPressed: _submit,
-          child: Text(widget.confirmLabel),
-        ),
-      ],
     );
   }
 }

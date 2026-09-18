@@ -156,15 +156,15 @@
     "semantic_hash": "1b9057ebad5bdab814f46e02b2b8c2a8"
   },
   "lib/screens/client_files_browser_screen.dart": {
-    "mtime": 1789762934.9175832,
-    "seen": 1789763059.651839,
-    "ast_hash": "fd9f713c58033dbb85b1a9af8d3a4c13",
+    "mtime": 1789763934.3141098,
+    "seen": 1789764066.1673164,
+    "ast_hash": "cb56aba14d959ae6bbf377455927ceb2",
     "semantic_hash": ""
   },
   "lib/screens/client_workspace_screen.dart": {
-    "mtime": 1789757305.7104542,
-    "seen": 1789757541.9521432,
-    "ast_hash": "d73785b76e33bb60fc9dff089c9f000f",
+    "mtime": 1789763959.6039326,
+    "seen": 1789764066.1673274,
+    "ast_hash": "b4e526737a7449839fc2cd84c2af7e2c",
     "semantic_hash": ""
   },
   "lib/screens/course_addition.dart": {
@@ -258,9 +258,9 @@
     "semantic_hash": "f402af0e5a47397255a748ec089c2611"
   },
   "lib/screens/semester_detail_screen.dart": {
-    "mtime": 1789762958.4057682,
-    "seen": 1789763059.6519184,
-    "ast_hash": "998049aa7f1cbc5684dc9891d00c4f63",
+    "mtime": 1789763947.5610847,
+    "seen": 1789764066.1673996,
+    "ast_hash": "fc3ba1a78de32148c610e6d4f972e2df",
     "semantic_hash": ""
   },
   "lib/screens/semesters_screen.dart": {
@@ -1248,15 +1248,21 @@
     "semantic_hash": ""
   },
   "lib/screens/client_playlists_screen.dart": {
-    "mtime": 1789759929.6225486,
-    "seen": 1789759989.5565646,
-    "ast_hash": "f4cbdd4379d01461dfa864af11f35707",
+    "mtime": 1789763952.2693324,
+    "seen": 1789764066.1673229,
+    "ast_hash": "ad7596253cb00650f7d3ecf354500dad",
     "semantic_hash": ""
   },
   "lib/services/client_playlist_service.dart": {
     "mtime": 1789758855.2594976,
     "seen": 1789758932.0564277,
     "ast_hash": "fd3d34263f5debb953cfd13417e25156",
+    "semantic_hash": ""
+  },
+  "lib/ui/create_name_dialog.dart": {
+    "mtime": 1789763919.1630323,
+    "seen": 1789764066.167551,
+    "ast_hash": "e2049c3121fc5687f5882148185ff60c",
     "semantic_hash": ""
   }
 }

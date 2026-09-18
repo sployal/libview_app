@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../services/client_playlist_service.dart';
+import '../ui/create_name_dialog.dart';
 import '../services/google_drive_service.dart';
 import '../services/media_session.dart';
 import '../services/upload_service.dart';
@@ -1299,42 +1300,13 @@ Future<String?> promptPlaylistName(
   String title = 'New playlist',
   String confirmLabel = 'Create',
 }) {
-  final controller = TextEditingController(text: initial);
-  return showDialog<String>(
+  return showCreateNameDialog(
     context: context,
-    builder: (context) {
-      final isDark = Theme.of(context).brightness == Brightness.dark;
-      return AlertDialog(
-        backgroundColor: isDark ? const Color(0xFF1F2937) : Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          textCapitalization: TextCapitalization.sentences,
-          decoration: const InputDecoration(
-            hintText: 'Evening mix',
-          ),
-          onSubmitted: (value) {
-            final name = value.trim();
-            if (name.isNotEmpty) Navigator.pop(context, name);
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () {
-              final name = controller.text.trim();
-              if (name.isNotEmpty) Navigator.pop(context, name);
-            },
-            child: Text(confirmLabel),
-          ),
-        ],
-      );
-    },
+    kind: CreateNameKind.playlist,
+    title: title,
+    confirmLabel: confirmLabel,
+    initial: initial,
+    fieldHint: 'Evening mix',
   );
 }
 

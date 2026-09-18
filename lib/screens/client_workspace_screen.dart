@@ -7,6 +7,7 @@ import '../services/client_service.dart';
 import '../services/google_drive_service.dart';
 import '../services/upload_service.dart';
 import '../services/client_playlist_service.dart';
+import '../ui/create_name_dialog.dart';
 import '../ui/file_sort.dart';
 import 'client_files_browser_screen.dart';
 import 'client_playlists_screen.dart';
@@ -297,66 +298,15 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
     required String title,
     required String hint,
   }) {
-    final controller = TextEditingController();
-    final takenNames = _folders.map((folder) => folder.name).toList();
-    return showDialog<String>(
+    return showCreateNameDialog(
       context: context,
-      builder: (context) {
-        final isDark = Theme.of(context).brightness == Brightness.dark;
-        String? error;
-        return StatefulBuilder(
-          builder: (context, setDialogState) {
-            void submit() {
-              final name = controller.text.trim();
-              if (name.isEmpty) return;
-              if (takenNames.any(
-                (taken) => GoogleDriveService.folderNamesClash(taken, name),
-              )) {
-                setDialogState(() {
-                  error = 'A folder with that name already exists';
-                });
-                return;
-              }
-              Navigator.pop(context, name);
-            }
-
-            return AlertDialog(
-              backgroundColor: isDark ? const Color(0xFF1F2937) : Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(18),
-              ),
-              title: Text(title),
-              content: TextField(
-                controller: controller,
-                autofocus: true,
-                textCapitalization: TextCapitalization.words,
-                decoration: InputDecoration(
-                  hintText: hint,
-                  errorText: error,
-                ),
-                onChanged: (_) {
-                  if (error != null) {
-                    setDialogState(() {
-                      error = null;
-                    });
-                  }
-                },
-                onSubmitted: (_) => submit(),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel'),
-                ),
-                TextButton(
-                  onPressed: submit,
-                  child: const Text('Create'),
-                ),
-              ],
-            );
-          },
-        );
-      },
+      kind: CreateNameKind.folder,
+      title: title,
+      confirmLabel: 'Create',
+      fieldHint: hint.isEmpty ? 'Folder name' : hint,
+      takenNames: _folders.map((folder) => folder.name).toList(),
+      takenError: 'A folder with that name already exists',
+      textCapitalization: TextCapitalization.words,
     );
   }
 
