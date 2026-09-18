@@ -209,6 +209,15 @@ class _Palette {
       ? (isDark ? const Color(0xF22A1528) : const Color(0xF2FFFFFF))
       : (isDark ? const Color(0xF20C121C) : const Color(0xF2FFFFFF));
   Color get line => accent.withValues(alpha: isDark ? 0.28 : 0.18);
+  Color get stage => isAudio
+      ? (isDark ? const Color(0xFF0A0710) : canvas)
+      : (isDark ? Colors.black : canvas);
+  Color get chromeScrim =>
+      (isDark ? Colors.black : canvas).withValues(alpha: isDark ? 0.72 : 0.92);
+  Color get dockFade => (isAudio
+          ? (isDark ? const Color(0xFF120814) : canvas)
+          : (isDark ? Colors.black : canvas))
+      .withValues(alpha: isDark ? 0.86 : 0.94);
 }
 
 class _FullPlayer extends StatelessWidget {
@@ -534,7 +543,6 @@ class _VideoTheater extends StatefulWidget {
 class _VideoTheaterState extends State<_VideoTheater> {
   bool _chrome = true;
   Timer? _hideTimer;
-  static final _overlayPalette = _Palette(true, false);
 
   MediaSession get session => widget.session;
 
@@ -595,8 +603,12 @@ class _VideoTheaterState extends State<_VideoTheater> {
     final ready = controller != null && controller.value.isInitialized;
     final next = session.upcoming;
     final showChrome = _chrome || !session.playing.value || session.showUpNext;
+    final palette = _Palette(
+      Theme.of(context).brightness == Brightness.dark,
+      false,
+    );
     return ColoredBox(
-      color: Colors.black,
+      color: palette.stage,
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -618,7 +630,7 @@ class _VideoTheaterState extends State<_VideoTheater> {
           if (session.showUpNext && next != null)
             _UpNextCurtain(
               item: next,
-              palette: _overlayPalette,
+              palette: palette,
               onPlay: () {
                 HapticFeedback.lightImpact();
                 session.playUpcoming();
@@ -644,7 +656,7 @@ class _VideoTheaterState extends State<_VideoTheater> {
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
                             colors: [
-                              Colors.black.withValues(alpha: 0.72),
+                              palette.chromeScrim,
                               Colors.transparent,
                             ],
                           ),
@@ -652,7 +664,7 @@ class _VideoTheaterState extends State<_VideoTheater> {
                         child: SafeArea(
                           bottom: false,
                           child: _TopBar(
-                            palette: _overlayPalette,
+                            palette: palette,
                             title: item?.title ?? 'Now playing',
                             subtitle: item == null
                                 ? null
@@ -672,7 +684,7 @@ class _VideoTheaterState extends State<_VideoTheater> {
                     if (!session.showUpNext)
                       Center(
                         child: _PlayOrb(
-                          palette: _overlayPalette,
+                          palette: palette,
                           playing: session.playing.value,
                           onTap: () {
                             HapticFeedback.lightImpact();
@@ -687,7 +699,7 @@ class _VideoTheaterState extends State<_VideoTheater> {
                       bottom: widget.bottomInset + 12,
                       child: _ControlDock(
                         session: session,
-                        palette: _overlayPalette,
+                        palette: palette,
                         onMode: widget.onMode,
                         onQueue: widget.onQueue,
                         overlay: true,
@@ -710,8 +722,10 @@ class _VideoTheaterState extends State<_VideoTheater> {
                       ? widget.downloadProgress
                       : null,
                   minHeight: 2,
-                  color: _overlayPalette.accent,
-                  backgroundColor: Colors.white24,
+                  color: palette.accent,
+                  backgroundColor: palette.isDark
+                      ? Colors.white24
+                      : palette.accent.withValues(alpha: 0.12),
                 ),
               ),
             ),
@@ -816,14 +830,15 @@ class _AudioTheater extends StatelessWidget {
   final VoidCallback onMode;
   final VoidCallback onQueue;
 
-  static final _overlayPalette = _Palette(true, true);
-
   @override
   Widget build(BuildContext context) {
     final item = session.current;
-    final palette = _overlayPalette;
+    final palette = _Palette(
+      Theme.of(context).brightness == Brightness.dark,
+      true,
+    );
     return ColoredBox(
-      color: const Color(0xFF0A0710),
+      color: palette.stage,
       child: Stack(
         fit: StackFit.expand,
         children: [
@@ -833,8 +848,10 @@ class _AudioTheater extends StatelessWidget {
                 center: const Alignment(0, -0.18),
                 radius: 1.05,
                 colors: [
-                  palette.accent.withValues(alpha: 0.34),
-                  const Color(0xFF0A0710),
+                  palette.accent.withValues(
+                    alpha: palette.isDark ? 0.34 : 0.18,
+                  ),
+                  palette.stage,
                 ],
               ),
             ),
@@ -860,7 +877,7 @@ class _AudioTheater extends StatelessWidget {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Colors.black.withValues(alpha: 0.72),
+                    palette.chromeScrim,
                     Colors.transparent,
                   ],
                 ),
@@ -908,7 +925,9 @@ class _AudioTheater extends StatelessWidget {
                   value: downloadProgress > 0 ? downloadProgress : null,
                   minHeight: 2,
                   color: palette.accent,
-                  backgroundColor: Colors.white24,
+                  backgroundColor: palette.isDark
+                      ? Colors.white24
+                      : palette.accent.withValues(alpha: 0.12),
                 ),
               ),
             ),
@@ -1168,10 +1187,7 @@ class _ControlDock extends StatelessWidget {
             end: Alignment.bottomCenter,
             colors: [
               Colors.transparent,
-              (palette.isAudio
-                      ? const Color(0xFF120814)
-                      : Colors.black)
-                  .withValues(alpha: 0.86),
+              palette.dockFade,
             ],
           ),
         ),
@@ -1551,7 +1567,9 @@ class _UpNextCurtain extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
-      color: Colors.black.withValues(alpha: 0.72),
+      color: palette.isDark
+          ? Colors.black.withValues(alpha: 0.72)
+          : palette.canvas.withValues(alpha: 0.94),
       child: Padding(
         padding: const EdgeInsets.all(18),
         child: Column(
@@ -1561,14 +1579,14 @@ class _UpNextCurtain extends StatelessWidget {
               child: IconButton(
                 onPressed: onDismiss,
                 tooltip: 'Dismiss',
-                icon: const Icon(Icons.close_rounded, color: Colors.white),
+                icon: Icon(Icons.close_rounded, color: palette.ink),
               ),
             ),
             const Spacer(),
-            const Text(
+            Text(
               'Up next',
               style: TextStyle(
-                color: Colors.white70,
+                color: palette.muted,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 0.4,
               ),
@@ -1581,8 +1599,8 @@ class _UpNextCurtain extends StatelessWidget {
               textAlign: TextAlign.center,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: palette.ink,
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
               ),
@@ -1590,14 +1608,17 @@ class _UpNextCurtain extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               item.kindLabel,
-              style: const TextStyle(color: Colors.white60, fontSize: 12),
+              style: TextStyle(color: palette.muted, fontSize: 12),
             ),
             const SizedBox(height: 16),
             FilledButton.icon(
               onPressed: onPlay,
               style: FilledButton.styleFrom(
-                backgroundColor: Colors.white,
-                foregroundColor: const Color(0xFF111827),
+                backgroundColor:
+                    palette.isDark ? Colors.white : palette.accent,
+                foregroundColor: palette.isDark
+                    ? const Color(0xFF111827)
+                    : Colors.white,
                 padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
               ),
               icon: const Icon(Icons.play_arrow_rounded),
@@ -1605,7 +1626,10 @@ class _UpNextCurtain extends StatelessWidget {
             ),
             TextButton(
               onPressed: onReplay,
-              child: const Text('Replay', style: TextStyle(color: Colors.white70)),
+              child: Text(
+                'Replay',
+                style: TextStyle(color: palette.muted),
+              ),
             ),
             const Spacer(),
           ],

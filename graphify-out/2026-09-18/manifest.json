@@ -162,9 +162,9 @@
     "semantic_hash": ""
   },
   "lib/screens/client_workspace_screen.dart": {
-    "mtime": 1789754152.4082031,
-    "seen": 1789754197.5217128,
-    "ast_hash": "7bab5ff3ae828fd7eb9b25ac5e79f1d9",
+    "mtime": 1789757305.7104542,
+    "seen": 1789757541.9521432,
+    "ast_hash": "d73785b76e33bb60fc9dff089c9f000f",
     "semantic_hash": ""
   },
   "lib/screens/course_addition.dart": {
@@ -624,15 +624,15 @@
     "semantic_hash": ""
   },
   "lib/services/media_session.dart": {
-    "mtime": 1789756087.1552293,
-    "seen": 1789756153.3275762,
-    "ast_hash": "80e11000a706569359d8811ff65faef1",
+    "mtime": 1789756746.5415926,
+    "seen": 1789757541.9524314,
+    "ast_hash": "5b98fb0f9862095377e1f21821e9acce",
     "semantic_hash": ""
   },
   "lib/ui/media_playback_overlay.dart": {
-    "mtime": 1789756099.717275,
-    "seen": 1789756153.3276794,
-    "ast_hash": "267837c8ae6dc139158e687dc32375ee",
+    "mtime": 1789757359.9222333,
+    "seen": 1789757541.9525166,
+    "ast_hash": "a3409ca306eeef907e6a9d15072d0439",
     "semantic_hash": ""
   },
   "README.md": {
@@ -1248,9 +1248,9 @@
     "semantic_hash": ""
   },
   "lib/screens/client_playlists_screen.dart": {
-    "mtime": 1789756099.296214,
-    "seen": 1789756153.3273032,
-    "ast_hash": "236e6173c3922a3634e169272774f0f5",
+    "mtime": 1789757454.5743878,
+    "seen": 1789757541.9521363,
+    "ast_hash": "f4cbdd4379d01461dfa864af11f35707",
     "semantic_hash": ""
   },
   "lib/services/client_playlist_service.dart": {
