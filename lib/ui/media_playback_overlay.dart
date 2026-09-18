@@ -514,7 +514,6 @@ class _VideoTheater extends StatefulWidget {
 class _VideoTheaterState extends State<_VideoTheater> {
   bool _chrome = true;
   Timer? _hideTimer;
-  static final _overlayPalette = _Palette(true, false);
 
   MediaSession get session => widget.session;
 
@@ -574,31 +573,69 @@ class _VideoTheaterState extends State<_VideoTheater> {
     final controller = session.controller;
     final ready = controller != null && controller.value.isInitialized;
     final next = session.upcoming;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final palette = _Palette(isDark, false);
+    final chromePalette = isDark ? _Palette(true, false) : palette;
     final showChrome = _chrome || !session.playing.value || session.showUpNext;
-    return ColoredBox(
-      color: Colors.black,
+    final ratio = !ready || controller.value.aspectRatio == 0
+        ? 16 / 9
+        : controller.value.aspectRatio;
+    return Material(
+      color: palette.canvas,
       child: Stack(
         fit: StackFit.expand,
         children: [
-          if (ready)
-            Center(
-              child: AspectRatio(
-                aspectRatio: controller.value.aspectRatio == 0
-                    ? 16 / 9
-                    : controller.value.aspectRatio,
-                child: IgnorePointer(child: VideoPlayer(controller)),
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: RadialGradient(
+                center: const Alignment(0, -0.12),
+                radius: 1.12,
+                colors: [
+                  palette.accent.withValues(alpha: isDark ? 0.28 : 0.22),
+                  palette.canvas,
+                ],
               ),
             ),
+          ),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final topPad = showChrome ? 84.0 : 28.0;
+              final bottomPad = showChrome
+                  ? 168.0 + widget.bottomInset
+                  : 28.0 + widget.bottomInset;
+              return Padding(
+                padding: EdgeInsets.fromLTRB(20, topPad, 20, bottomPad),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: constraints.maxWidth - 40,
+                      maxHeight: (constraints.maxHeight - topPad - bottomPad)
+                          .clamp(96.0, double.infinity),
+                    ),
+                    child: Align(
+                      child: _CinematicScreen(
+                        palette: palette,
+                        aspectRatio: ratio,
+                        child: ready
+                            ? IgnorePointer(child: VideoPlayer(controller))
+                            : const SizedBox.shrink(),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
           Positioned.fill(
             child: GestureDetector(
-              behavior: HitTestBehavior.opaque,
+              behavior: HitTestBehavior.translucent,
               onTap: _onVideoTap,
             ),
           ),
           if (session.showUpNext && next != null)
             _UpNextCurtain(
               item: next,
-              palette: _overlayPalette,
+              palette: chromePalette,
               onPlay: () {
                 HapticFeedback.lightImpact();
                 session.playUpcoming();
@@ -619,64 +656,68 @@ class _VideoTheaterState extends State<_VideoTheater> {
                       left: 0,
                       right: 0,
                       child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.black.withValues(alpha: 0.72),
-                            Colors.transparent,
-                          ],
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              (isDark ? Colors.black : palette.canvas)
+                                  .withValues(alpha: isDark ? 0.72 : 0.92),
+                              Colors.transparent,
+                            ],
+                          ),
+                        ),
+                        child: SafeArea(
+                          bottom: false,
+                          child: _TopBar(
+                            palette: chromePalette,
+                            title: item?.title ?? 'Now playing',
+                            subtitle: item == null
+                                ? null
+                                : '${item.kindLabel} · ${session.index + 1} of ${session.queue.length}',
+                            downloading: widget.downloading,
+                            onBack: session.close,
+                            onPopOut: () {
+                              HapticFeedback.lightImpact();
+                              session.popOut();
+                            },
+                            onDownload: widget.onDownload,
+                            onQueue: widget.onQueue,
+                          ),
                         ),
                       ),
-                      child: SafeArea(
-                        bottom: false,
-                        child: _TopBar(
-                          palette: _overlayPalette,
-                          title: item?.title ?? 'Now playing',
-                          subtitle: item == null
-                              ? null
-                              : '${item.kindLabel} · ${session.index + 1} of ${session.queue.length}',
-                          downloading: widget.downloading,
-                          onBack: session.close,
-                          onPopOut: () {
+                    ),
+                    if (!session.showUpNext)
+                      Center(
+                        child: _PlayOrb(
+                          palette: chromePalette,
+                          playing: session.playing.value,
+                          onTap: () {
                             HapticFeedback.lightImpact();
-                            session.popOut();
+                            session.togglePlay();
+                            _scheduleHide();
                           },
-                          onDownload: widget.onDownload,
+                        ),
+                      ),
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: widget.bottomInset + 12,
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: isDark ? 0 : 12),
+                        child: _ControlDock(
+                          session: session,
+                          palette: chromePalette,
+                          onMode: widget.onMode,
                           onQueue: widget.onQueue,
+                          overlay: isDark,
                         ),
                       ),
                     ),
-                  ),
-                  if (!session.showUpNext)
-                    Center(
-                      child: _PlayOrb(
-                        palette: _overlayPalette,
-                        playing: session.playing.value,
-                        onTap: () {
-                          HapticFeedback.lightImpact();
-                          session.togglePlay();
-                          _scheduleHide();
-                        },
-                      ),
-                    ),
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: widget.bottomInset + 12,
-                    child: _ControlDock(
-                      session: session,
-                      palette: _overlayPalette,
-                      onMode: widget.onMode,
-                      onQueue: widget.onQueue,
-                      overlay: true,
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
           ),
           if (widget.downloading)
             Positioned(
@@ -690,12 +731,75 @@ class _VideoTheaterState extends State<_VideoTheater> {
                       ? widget.downloadProgress
                       : null,
                   minHeight: 2,
-                  color: _overlayPalette.accent,
-                  backgroundColor: Colors.white24,
+                  color: palette.accent,
+                  backgroundColor: palette.accent.withValues(alpha: 0.16),
                 ),
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+class _CinematicScreen extends StatelessWidget {
+  const _CinematicScreen({
+    required this.palette,
+    required this.aspectRatio,
+    required this.child,
+  });
+
+  final _Palette palette;
+  final double aspectRatio;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return AspectRatio(
+      aspectRatio: aspectRatio,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(26),
+          boxShadow: [
+            BoxShadow(
+              color: palette.accent.withValues(alpha: palette.isDark ? 0.32 : 0.22),
+              blurRadius: 36,
+              spreadRadius: 1,
+            ),
+            BoxShadow(
+              color: Colors.black.withValues(alpha: palette.isDark ? 0.45 : 0.14),
+              blurRadius: 28,
+              offset: const Offset(0, 18),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(26),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              const ColoredBox(color: Colors.black),
+              child,
+              IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.black.withValues(alpha: 0.18),
+                        Colors.transparent,
+                        Colors.transparent,
+                        Colors.black.withValues(alpha: 0.28),
+                      ],
+                      stops: const [0, 0.18, 0.72, 1],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -1158,14 +1262,10 @@ class _ControlDock extends StatelessWidget {
         child: controls,
       );
     }
-    final audio = palette.isAudio;
     return Padding(
-      padding: EdgeInsets.fromLTRB(audio ? 16 : 0, 0, audio ? 16 : 0, audio ? 4 : 0),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
       child: ClipRRect(
-        borderRadius: BorderRadius.vertical(
-          top: const Radius.circular(28),
-          bottom: Radius.circular(audio ? 28 : 0),
-        ),
+        borderRadius: BorderRadius.circular(28),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
           child: DecoratedBox(
@@ -1174,7 +1274,7 @@ class _ControlDock extends StatelessWidget {
               border: Border.all(color: palette.line),
             ),
             child: Padding(
-              padding: EdgeInsets.fromLTRB(18, 12, 18, audio ? 8 : 0),
+              padding: const EdgeInsets.fromLTRB(18, 12, 18, 8),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -1370,21 +1470,33 @@ class _PlayOrb extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const size = 62.0;
-    return Material(
-      color: palette.accent,
-      shape: const CircleBorder(),
-      elevation: 0,
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: onTap,
-        child: SizedBox(
-          width: size,
-          height: size,
-          child: Icon(
-            playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
-            color: Colors.white,
-            size: size * 0.56,
+    const size = 64.0;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: palette.accent.withValues(alpha: 0.38),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Material(
+        color: palette.accent,
+        shape: const CircleBorder(),
+        elevation: 0,
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: onTap,
+          child: SizedBox(
+            width: size,
+            height: size,
+            child: Icon(
+              playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
+              color: Colors.white,
+              size: size * 0.52,
+            ),
           ),
         ),
       ),
@@ -1409,13 +1521,25 @@ class _RoundButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return IconButton(
-      tooltip: tooltip,
-      onPressed: enabled ? onTap : null,
-      icon: Icon(icon),
-      color: color,
-      disabledColor: color.withValues(alpha: 0.28),
-      iconSize: 28,
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: color.withValues(alpha: enabled ? 0.12 : 0.05),
+        shape: const CircleBorder(),
+        child: InkWell(
+          customBorder: const CircleBorder(),
+          onTap: enabled ? onTap : null,
+          child: SizedBox(
+            width: 46,
+            height: 46,
+            child: Icon(
+              icon,
+              size: 24,
+              color: enabled ? color : color.withValues(alpha: 0.28),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -1582,26 +1706,57 @@ class _VideoPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fallback = _MediaMark(item: item, radius: 16);
+    final fallback = _MediaMark(item: item, radius: 22);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 8),
       child: AspectRatio(
         aspectRatio: 16 / 9,
         child: DecoratedBox(
           decoration: BoxDecoration(
-            color: Colors.black,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white24),
+            borderRadius: BorderRadius.circular(22),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF0EA5E9).withValues(alpha: 0.28),
+                blurRadius: 24,
+                offset: const Offset(0, 10),
+              ),
+            ],
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: item.hasThumbnail
-                ? DriveThumbnail(
-                    fileId: item.id,
-                    fit: BoxFit.cover,
-                    fallback: fallback,
-                  )
-                : fallback,
+            borderRadius: BorderRadius.circular(22),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                const ColoredBox(color: Colors.black),
+                item.hasThumbnail
+                    ? DriveThumbnail(
+                        fileId: item.id,
+                        fit: BoxFit.cover,
+                        fallback: fallback,
+                      )
+                    : fallback,
+                const DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Color(0x33000000),
+                        Color(0x00000000),
+                        Color(0x66000000),
+                      ],
+                    ),
+                  ),
+                ),
+                const Center(
+                  child: Icon(
+                    Icons.play_arrow_rounded,
+                    color: Colors.white,
+                    size: 42,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -1699,7 +1854,7 @@ class _MiniPlayer extends StatelessWidget {
     final palette = _Palette(isDark, item.isAudio);
     final size = item.isAudio
         ? Size((constraints.maxWidth - 24).clamp(240, 460), 78)
-        : const Size(236, 168);
+        : const Size(248, 148);
     final fallback = Offset(
       item.isAudio
           ? (constraints.maxWidth - size.width) / 2
@@ -1749,113 +1904,117 @@ class _VideoMini extends StatelessWidget {
     final ready = controller != null && controller.value.isInitialized;
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: palette.isDark ? const Color(0xFF161D2E) : Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: palette.line),
+        borderRadius: BorderRadius.circular(22),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: palette.isDark ? 0.4 : 0.16),
-            blurRadius: 22,
+            color: palette.accent.withValues(alpha: 0.22),
+            blurRadius: 24,
             offset: const Offset(0, 10),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(18),
-        child: Column(
+        borderRadius: BorderRadius.circular(22),
+        child: Stack(
+          fit: StackFit.expand,
           children: [
-            Expanded(
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  const ColoredBox(color: Colors.black),
-                  if (ready) VideoPlayer(controller),
-                  if (session.showUpNext && session.upcoming != null)
-                    GestureDetector(
-                      onTap: session.playUpcoming,
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          _ArtThumb(
-                            item: session.upcoming!,
-                            width: 236,
-                            height: 132,
-                            radius: 0,
-                          ),
-                          const ColoredBox(color: Colors.black38),
-                          const Center(
-                            child: Text(
-                              'Play next',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ],
+            const ColoredBox(color: Colors.black),
+            if (ready) VideoPlayer(controller),
+            if (session.showUpNext && session.upcoming != null)
+              GestureDetector(
+                onTap: session.playUpcoming,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    _ArtThumb(
+                      item: session.upcoming!,
+                      width: 248,
+                      height: 148,
+                      radius: 0,
+                    ),
+                    const ColoredBox(color: Colors.black45),
+                    Center(
+                      child: _PlayOrb(
+                        palette: palette,
+                        onTap: session.playUpcoming,
                       ),
                     ),
-                  Positioned(
-                    left: 4,
-                    top: 4,
-                    child: _MiniIcon(
-                      icon: Icons.close_rounded,
-                      tooltip: 'Close',
-                      onTap: session.close,
-                      scrim: true,
-                    ),
+                  ],
+                ),
+              ),
+            IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.black.withValues(alpha: 0.38),
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.72),
+                    ],
+                    stops: const [0, 0.42, 1],
                   ),
-                  Positioned(
-                    right: 4,
-                    top: 4,
-                    child: _MiniIcon(
-                      icon: Icons.open_in_full_rounded,
-                      tooltip: 'Full screen',
+                ),
+              ),
+            ),
+            Positioned(
+              left: 6,
+              top: 6,
+              child: _MiniIcon(
+                icon: Icons.close_rounded,
+                tooltip: 'Close',
+                onTap: session.close,
+                scrim: true,
+              ),
+            ),
+            Positioned(
+              right: 6,
+              top: 6,
+              child: _MiniIcon(
+                icon: Icons.open_in_full_rounded,
+                tooltip: 'Full screen',
+                onTap: session.expand,
+                scrim: true,
+              ),
+            ),
+            Positioned(
+              left: 10,
+              right: 4,
+              bottom: 8,
+              child: Row(
+                children: [
+                  Expanded(
+                    child: GestureDetector(
                       onTap: session.expand,
-                      scrim: true,
+                      child: Text(
+                        item.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                        ),
+                      ),
                     ),
                   ),
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    child: _ThinProgress(color: palette.accent),
+                  _MiniIcon(
+                    icon: session.playing.value
+                        ? Icons.pause_rounded
+                        : Icons.play_arrow_rounded,
+                    tooltip: session.playing.value ? 'Pause' : 'Play',
+                    onTap: session.togglePlay,
+                    scrim: true,
                   ),
                 ],
               ),
             ),
-            Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: session.expand,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(8, 4, 2, 4),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          item.title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: palette.ink,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                      _MiniIcon(
-                        icon: session.playing.value
-                            ? Icons.pause_rounded
-                            : Icons.play_arrow_rounded,
-                        tooltip: session.playing.value ? 'Pause' : 'Play',
-                        onTap: session.togglePlay,
-                        color: palette.ink,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: _ThinProgress(color: palette.accent),
             ),
           ],
         ),
@@ -2025,13 +2184,16 @@ class _MiniIcon extends StatelessWidget {
       onPressed: onTap,
       icon: DecoratedBox(
         decoration: BoxDecoration(
-          color: scrim ? Colors.black.withValues(alpha: 0.45) : Colors.transparent,
+          color: scrim ? Colors.black.withValues(alpha: 0.42) : Colors.transparent,
           shape: BoxShape.circle,
         ),
-        child: Icon(
-          icon,
-          size: 20,
-          color: onTap == null ? color.withValues(alpha: 0.35) : color,
+        child: Padding(
+          padding: const EdgeInsets.all(4),
+          child: Icon(
+            icon,
+            size: 18,
+            color: onTap == null ? color.withValues(alpha: 0.35) : color,
+          ),
         ),
       ),
     );

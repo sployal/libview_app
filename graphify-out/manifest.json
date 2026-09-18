@@ -618,9 +618,9 @@
     "semantic_hash": "7569387d58711ab975940f4df3b4bcda"
   },
   "lib/services/media_notification.dart": {
-    "mtime": 1789541218.0415423,
-    "seen": 1789542965.5430293,
-    "ast_hash": "c0c6cf78960001f565fd71b04aa3db4b",
+    "mtime": 1789746955.9968493,
+    "seen": 1789747093.2718365,
+    "ast_hash": "8ad29375a2761b35c7703b43bb4e13d1",
     "semantic_hash": ""
   },
   "lib/services/media_session.dart": {
@@ -630,9 +630,9 @@
     "semantic_hash": ""
   },
   "lib/ui/media_playback_overlay.dart": {
-    "mtime": 1789743836.4541166,
-    "seen": 1789743888.4052775,
-    "ast_hash": "f1ba4ad2ad090b664587a58951b8fb1e",
+    "mtime": 1789746984.439833,
+    "seen": 1789747093.2718909,
+    "ast_hash": "8015f7dcba7a18774332fa0eb46295ac",
     "semantic_hash": ""
   },
   "README.md": {
