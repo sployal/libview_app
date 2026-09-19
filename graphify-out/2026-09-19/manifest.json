@@ -48,8 +48,8 @@
     "semantic_hash": "38cc73b546b15395bdef6ea4f533ebd3"
   },
   "contact.js": {
-    "mtime": 1789772735.2128484,
-    "seen": 1789772862.6693377,
+    "mtime": 1789797791.0398877,
+    "seen": 1789815563.868706,
     "ast_hash": "2f54c9350c26b2a8eaa050e9207f2027",
     "semantic_hash": ""
   },
@@ -156,15 +156,15 @@
     "semantic_hash": "1b9057ebad5bdab814f46e02b2b8c2a8"
   },
   "lib/screens/client_files_browser_screen.dart": {
-    "mtime": 1789771064.733715,
-    "seen": 1789771144.7650752,
-    "ast_hash": "20657575491eb328d54a445cd76444bd",
+    "mtime": 1789815477.0006392,
+    "seen": 1789815563.8688579,
+    "ast_hash": "9cbb821fe6100737ab9fc25d924753f6",
     "semantic_hash": ""
   },
   "lib/screens/client_workspace_screen.dart": {
-    "mtime": 1789771057.6533263,
-    "seen": 1789771144.7650821,
-    "ast_hash": "8fe2ce8a444d42b045d6d869eec50fc9",
+    "mtime": 1789816385.8940587,
+    "seen": 1789816506.6281283,
+    "ast_hash": "f1c77c6e594aaee6133d4413751d8d91",
     "semantic_hash": ""
   },
   "lib/screens/course_addition.dart": {
@@ -258,9 +258,9 @@
     "semantic_hash": "f402af0e5a47397255a748ec089c2611"
   },
   "lib/screens/semester_detail_screen.dart": {
-    "mtime": 1789771064.9777348,
-    "seen": 1789771144.765134,
-    "ast_hash": "aa02af31c22978ff3425918317ad91f9",
+    "mtime": 1789815505.4686673,
+    "seen": 1789815563.86901,
+    "ast_hash": "0b6b2b0d0c0adbf3d81bb65ecd570a39",
     "semantic_hash": ""
   },
   "lib/screens/semesters_screen.dart": {
@@ -288,8 +288,8 @@
     "semantic_hash": "719757aea56c248855cf50ae264c8e3f"
   },
   "lib/screens/system_admin_dashboard.dart": {
-    "mtime": 1789772784.2988956,
-    "seen": 1789772862.669448,
+    "mtime": 1789797791.0578887,
+    "seen": 1789815563.8691263,
     "ast_hash": "ae9f3dce4ff0f4f0d868934714f5d01e",
     "semantic_hash": ""
   },
@@ -414,8 +414,8 @@
     "semantic_hash": "14a3bbd6685052ced613c43beb07e1d8"
   },
   "lib/services/upload_service.dart": {
-    "mtime": 1789772757.0757146,
-    "seen": 1789772862.66951,
+    "mtime": 1789797791.049891,
+    "seen": 1789815563.8694205,
     "ast_hash": "b2513124c9149e1500cc2568c0c9fa20",
     "semantic_hash": ""
   },
@@ -540,8 +540,8 @@
     "semantic_hash": "9de7f238a1672202a3cff4f1b53806bd"
   },
   "server.js": {
-    "mtime": 1789772727.3628008,
-    "seen": 1789772862.6695728,
+    "mtime": 1789797791.0448878,
+    "seen": 1789815563.8695626,
     "ast_hash": "78489fe8172351f5e8a0f3674f451ef8",
     "semantic_hash": ""
   },

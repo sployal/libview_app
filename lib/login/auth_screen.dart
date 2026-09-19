@@ -974,8 +974,8 @@ class _AuthScreenState extends State<AuthScreen> with SingleTickerProviderStateM
               _buildTextField(
                 controller: _admissionNumberController,
                 label: 'Admission Number',
-                hint: '',
-                icon: CupertinoIcons.number,
+                hint: 'your admission number',
+                icon: Icons.school,
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
                     return 'Please enter your admission number';

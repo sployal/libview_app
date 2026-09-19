@@ -108,10 +108,10 @@
     "semantic_hash": "0f1a179d0dfd1ec0bfb6f2ebd289b1dd"
   },
   "lib/login/auth_screen.dart": {
-    "mtime": 1789024041.235918,
-    "seen": 1789529207.075082,
-    "ast_hash": "2be1898ac9a13d2fa169f32c035f6176",
-    "semantic_hash": "2be1898ac9a13d2fa169f32c035f6176"
+    "mtime": 1789822448.4022856,
+    "seen": 1789822500.7639163,
+    "ast_hash": "57f72e59f9a52f0536dc736aad9c067f",
+    "semantic_hash": ""
   },
   "lib/login/onboarding_screen.dart": {
     "mtime": 1788800540.7463062,
@@ -1263,6 +1263,12 @@
     "mtime": 1789763919.1630323,
     "seen": 1789764066.167551,
     "ast_hash": "e2049c3121fc5687f5882148185ff60c",
+    "semantic_hash": ""
+  },
+  "landing_chat.js": {
+    "mtime": 1789817371.8194337,
+    "seen": 1789822076.4158576,
+    "ast_hash": "c89df5b4d98e53b86fbf2eb42668e2a4",
     "semantic_hash": ""
   }
 }

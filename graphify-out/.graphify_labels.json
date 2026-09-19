@@ -105,7 +105,7 @@
   "103": "SwitchMainTabNotification",
   "104": "String get",
   "105": "create_name_dialog.dart",
-  "106": "ai_service.dart",
+  "106": "landing_chat.js",
   "107": "SystemAdminAnalyticsScreen",
   "108": "app/build.gradle.kts",
   "109": "android/build.gradle.kts",
@@ -132,7 +132,7 @@
   "130": "_StudyFocusCard",
   "131": "_WeatherLocationSheet",
   "132": "NotificationsScreen",
-  "133": "SemestersScreen",
+  "133": "SingleTickerProviderStateMixin",
   "134": "oauthStatusFromData",
-  "135": "PlaybackAudioHandler"
+  "135": "AiScreen"
 }
