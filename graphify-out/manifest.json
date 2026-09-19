@@ -96,10 +96,10 @@
     "semantic_hash": "7ad7b5cea096132de13ba526b2b9efbe"
   },
   "lib/app_version.dart": {
-    "mtime": 1789005200.0595849,
-    "seen": 1789529207.075075,
-    "ast_hash": "19a20350f13635b95f701f793d9707d9",
-    "semantic_hash": "19a20350f13635b95f701f793d9707d9"
+    "mtime": 1789823319.7549107,
+    "seen": 1789823381.0703895,
+    "ast_hash": "aace6e844d7f3c1f1e705eb62e5430c3",
+    "semantic_hash": ""
   },
   "lib/firebase_options.dart": {
     "mtime": 1787129431.8932638,
