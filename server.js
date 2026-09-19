@@ -13,6 +13,7 @@ const admin = require('firebase-admin');
 const { registerAiRoutes } = require('./ai_chat');
 const { registerMediaRoutes, deleteProfileAvatar } = require('./media server.js');
 const { registerContactRoutes } = require('./contact');
+const { registerLandingChatRoutes } = require('./landing_chat');
 const { createAnalytics } = require('./analytics');
 
 // =========================================================================
@@ -1581,8 +1582,15 @@ app.use(
       }
       callback(null, false);
     },
-    // Let the web app read the download filename from Content-Disposition.
-    exposedHeaders: ['Content-Disposition', 'Content-Type'],
+    // Filename plus length so the web app can render real download progress.
+    exposedHeaders: [
+      'Content-Disposition',
+      'Content-Type',
+      'Content-Length',
+      'Content-Range',
+      'Accept-Ranges',
+      'X-File-Size',
+    ],
   })
 );
 
@@ -2526,6 +2534,15 @@ function driveExportUrl(fileId, mimeType, apiKey) {
   return `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}/export?${params}`;
 }
 
+function pickHeader(headers, name) {
+  if (!headers) return '';
+  const lower = String(name).toLowerCase();
+  if (typeof headers.get === 'function') {
+    return headers.get(name) || headers.get(lower) || '';
+  }
+  return headers[name] || headers[lower] || '';
+}
+
 function downloadUrlFromMeta(meta, apiKey, exportMime) {
   const mime = meta.mimeType || '';
   if (mime.includes('google-apps')) {
@@ -2614,13 +2631,18 @@ app.get('/files/:fileId/download', requireAuth, async (req, res) => {
         res.setHeader('Accept-Ranges', 'bytes');
         res.setHeader('Cache-Control', 'private, no-store');
         const headers = driveRes.headers || {};
-        if (headers['content-range']) {
-          res.setHeader('Content-Range', headers['content-range']);
+        const contentRange = pickHeader(headers, 'content-range');
+        const contentLength =
+          pickHeader(headers, 'content-length') ||
+          (!range && meta.size ? String(meta.size) : '');
+        if (contentRange) {
+          res.setHeader('Content-Range', contentRange);
         }
-        if (headers['content-length']) {
-          res.setHeader('Content-Length', headers['content-length']);
-        } else if (!range && meta.size) {
-          res.setHeader('Content-Length', String(meta.size));
+        if (contentLength) {
+          res.setHeader('Content-Length', contentLength);
+        }
+        if (meta.size) {
+          res.setHeader('X-File-Size', String(meta.size));
         }
         driveRes.data.on('error', (error) => {
           console.error('Download stream failed:', error);
@@ -2670,6 +2692,9 @@ app.get('/files/:fileId/download', requireAuth, async (req, res) => {
     const length = fileRes.headers.get('content-length') || (!isGoogleApp && meta.size ? String(meta.size) : '');
     if (length) {
       res.setHeader('Content-Length', length);
+    }
+    if (meta.size) {
+      res.setHeader('X-File-Size', String(meta.size));
     }
     res.setHeader('Cache-Control', 'private, no-store');
 
@@ -2969,6 +2994,7 @@ registerAiRoutes(app, {
 });
 registerMediaRoutes(app, { requireAuth, requireSystemAdmin, upload });
 registerContactRoutes(app, { oauth2Client: contactOauth2Client });
+registerLandingChatRoutes(app);
 analytics.registerAnalyticsRoutes(app, { requireAuth, requireSystemAdmin });
 
 // --- Fallback error handler --------------------------------------------

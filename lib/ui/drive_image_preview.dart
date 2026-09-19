@@ -42,6 +42,8 @@ class _DriveImagePreviewState extends State<DriveImagePreview> {
   String? _activeDownloadFileId;
   bool _tabTickersEnabled = true;
   TapDownDetails? _doubleTapDetails;
+  int _gesturePointerCount = 0;
+  double _gestureStartScale = 1;
 
   bool get _hasGallery => widget.total > 1;
   bool get _canPrevious => widget.onPrevious != null;
@@ -166,6 +168,35 @@ class _DriveImagePreviewState extends State<DriveImagePreview> {
     widget.onNext!();
   }
 
+  void _onInteractionStart(ScaleStartDetails details) {
+    _gesturePointerCount = details.pointerCount;
+    _gestureStartScale = _transform.value.getMaxScaleOnAxis();
+  }
+
+  void _onInteractionUpdate(ScaleUpdateDetails details) {
+    if (details.pointerCount > _gesturePointerCount) {
+      _gesturePointerCount = details.pointerCount;
+    }
+  }
+
+  void _onInteractionEnd(ScaleEndDetails details) {
+    final wasPinch = _gesturePointerCount > 1;
+    final startScale = _gestureStartScale;
+    _gesturePointerCount = 0;
+    _gestureStartScale = 1;
+
+    if (!_hasGallery || wasPinch) return;
+    if (startScale > 1.05) return;
+    if (_transform.value.getMaxScaleOnAxis() > 1.05) return;
+
+    final velocity = details.velocity.pixelsPerSecond.dx;
+    if (velocity < -420) {
+      _goNext();
+    } else if (velocity > 420) {
+      _goPrevious();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -238,26 +269,19 @@ class _DriveImagePreviewState extends State<DriveImagePreview> {
                     Icons.broken_image_outlined,
                   );
                 }
-                return GestureDetector(
-                  onDoubleTapDown: (details) => _doubleTapDetails = details,
-                  onDoubleTap: _onDoubleTap,
-                  onHorizontalDragEnd: _hasGallery
-                      ? (details) {
-                          if (_transform.value.getMaxScaleOnAxis() > 1.05) {
-                            return;
-                          }
-                          final velocity = details.primaryVelocity ?? 0;
-                          if (velocity < -420) {
-                            _goNext();
-                          } else if (velocity > 420) {
-                            _goPrevious();
-                          }
-                        }
-                      : null,
-                  child: InteractiveViewer(
-                    transformationController: _transform,
-                    minScale: 1,
-                    maxScale: 5,
+                return InteractiveViewer(
+                  transformationController: _transform,
+                  minScale: 1,
+                  maxScale: 5,
+                  panEnabled: true,
+                  scaleEnabled: true,
+                  onInteractionStart: _onInteractionStart,
+                  onInteractionUpdate: _onInteractionUpdate,
+                  onInteractionEnd: _onInteractionEnd,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onDoubleTapDown: (details) => _doubleTapDetails = details,
+                    onDoubleTap: _onDoubleTap,
                     child: Center(
                       child: Image.network(
                         UploadService.mediaStreamUrl(widget.fileId),
