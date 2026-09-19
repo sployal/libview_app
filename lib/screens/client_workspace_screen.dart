@@ -477,7 +477,7 @@ class _ClientFilesHomeState extends State<_ClientFilesHome> {
                 ),
               ),
               Text(
-                '${(_storageProgress * 100).round()}%',
+                '${(_storageProgress * 100).toStringAsFixed(1)}%',
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w800,

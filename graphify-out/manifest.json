@@ -162,9 +162,9 @@
     "semantic_hash": ""
   },
   "lib/screens/client_workspace_screen.dart": {
-    "mtime": 1789771057.6533263,
-    "seen": 1789771144.7650821,
-    "ast_hash": "8fe2ce8a444d42b045d6d869eec50fc9",
+    "mtime": 1789816385.8940587,
+    "seen": 1789816506.6281283,
+    "ast_hash": "f1c77c6e594aaee6133d4413751d8d91",
     "semantic_hash": ""
   },
   "lib/screens/course_addition.dart": {
