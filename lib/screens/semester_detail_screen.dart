@@ -49,6 +49,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
   final ScrollController _filesScroll = ScrollController();
   final Map<String, GlobalKey> _fileItemKeys = {};
   String? _openedFromFileId;
+  double? _savedFilesScroll;
   int _filesGridCrossAxisCount = 2;
   
   // NEW: Track downloading state for each file
@@ -465,6 +466,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     if (!await NoInternetScreen.ensureOnline(context)) return;
     if (!mounted) return;
 
+    _captureFilesScroll();
     _openedFromFileId = material.id;
     setState(() {
       openedMaterial = material;
@@ -488,27 +490,18 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     return index * 102.0;
   }
 
+  void _captureFilesScroll() {
+    if (_filesScroll.hasClients) {
+      _savedFilesScroll = _filesScroll.offset;
+    }
+  }
+
+  /// Positions the (possibly offstage) file list without a visible animation.
   void _revealFileInList(String fileId) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      final index = _visibleFiles.indexWhere((file) => file.id == fileId);
-      if (index < 0) return;
-      if (_filesScroll.hasClients) {
-        final max = _filesScroll.position.maxScrollExtent;
-        _filesScroll.jumpTo(_estimateFilesOffset(index).clamp(0.0, max));
-      }
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        final ctx = _fileItemKeys[fileId]?.currentContext;
-        if (ctx == null) return;
-        Scrollable.ensureVisible(
-          ctx,
-          alignment: 0.2,
-          duration: const Duration(milliseconds: 220),
-          curve: Curves.easeOutCubic,
-        );
-      });
-    });
+    final index = _visibleFiles.indexWhere((file) => file.id == fileId);
+    if (index < 0 || !_filesScroll.hasClients) return;
+    final max = _filesScroll.position.maxScrollExtent;
+    _filesScroll.jumpTo(_estimateFilesOffset(index).clamp(0.0, max));
   }
 
   bool _isImageFile(StudyMaterial file) {
@@ -526,6 +519,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     setState(() {
       openedMaterial = next;
     });
+    _revealFileInList(next.id);
   }
 
   Widget _buildOpenedFile() {
@@ -562,12 +556,17 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
     final revealId = openedMaterial?.id;
     final fromId = _openedFromFileId;
     _openedFromFileId = null;
+    if (revealId != null && revealId != fromId) {
+      _revealFileInList(revealId);
+    } else if (_savedFilesScroll != null && _filesScroll.hasClients) {
+      _filesScroll.jumpTo(
+        _savedFilesScroll!.clamp(0.0, _filesScroll.position.maxScrollExtent),
+      );
+    }
+    _savedFilesScroll = null;
     setState(() {
       openedMaterial = null;
     });
-    if (revealId != null && revealId != fromId) {
-      _revealFileInList(revealId);
-    }
   }
 
   // NEW: Extract file ID from Google Drive URL
@@ -1366,6 +1365,7 @@ class _SemesterDetailScreenState extends State<SemesterDetailScreen> {
       downloadProgress.clear();
       _resetFileSearch();
       _openedFromFileId = null;
+      _savedFilesScroll = null;
       _fileItemKeys.clear();
     });
   }

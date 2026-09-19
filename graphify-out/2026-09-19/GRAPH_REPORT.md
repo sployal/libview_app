@@ -1,17 +1,17 @@
 # Graph Report - libview  (2026-09-19)
 
 ## Corpus Check
-- 112 files · ~527,132 words
+- 112 files · ~528,085 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 66 file(s) not represented in the graph (top: .xml 20, .xcconfig 8, (none) 7)
 
 ## Summary
-- 4004 nodes · 5488 edges · 134 communities (106 shown, 28 thin omitted)
+- 4024 nodes · 5512 edges · 136 communities (110 shown, 26 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 35 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `551ef1bc`
+- Built from commit: `709638da`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -101,7 +101,7 @@
 - media server.js
 - sanitizeFileName
 - Point
-- package:flutter/material.dart
+- IconData
 - ChangeNotifier
 - ensureEnvSystemAdminRole
 - media_playback_overlay.dart
@@ -122,7 +122,7 @@
 - SwitchMainTabNotification
 - String get
 - create_name_dialog.dart
-- _BrowseDocumentsScreenState
+- ai_service.dart
 - SystemAdminAnalyticsScreen
 - @example
 - bool?
@@ -136,7 +136,7 @@
 - AppDelegate
 - OnboardingGate
 - LaunchImage.imageset/README.md
-- AiScreen
+- package:flutter/material.dart
 - _PhonePdfScreenState
 - _HomeScreenState
 - _PhoneAudioScreenState
@@ -146,6 +146,8 @@
 - _WeatherLocationSheet
 - NotificationsScreen
 - SemestersScreen
+- oauthStatusFromData
+- PlaybackAudioHandler
 
 ## God Nodes (most connected - your core abstractions)
 1. `createAnalytics()` - 66 edges
@@ -174,7 +176,7 @@
 ## Import Cycles
 - None detected.
 
-## Communities (134 total, 28 thin omitted)
+## Communities (136 total, 26 thin omitted)
 
 ### Community 0 - "client_files_browser_screen.dart"
 Cohesion: 0.01
@@ -186,7 +188,7 @@ Nodes (168): BuildContext?, _applyFolderRename, awaitingServer, _backToSubjects,
 
 ### Community 2 - "system_admin_dashboard.dart"
 Cohesion: 0.01
-Nodes (148): client_editor_dialog.dart, course_addition.dart, _allowNewAccounts, _allRoles, _applyLocalRoleChange, _associatedProfiles, _bg, build (+140 more)
+Nodes (157): client_editor_dialog.dart, course_addition.dart, _allowNewAccounts, _allRoles, _applyLocalRoleChange, _associatedProfiles, _bg, build (+149 more)
 
 ### Community 3 - "system_admin_analytics.dart"
 Cohesion: 0.02
@@ -202,7 +204,7 @@ Nodes (85): activeUsers, activeUsersByCourse, activeUsersByRole, ai, AnalyticsAi
 
 ### Community 6 - "upload_service.dart"
 Cohesion: 0.02
-Nodes (81): DateTime? get, accountEmail, accountName, authHeaders, baseUrl, _buildMultipart, bytes, cached (+73 more)
+Nodes (82): DateTime? get, accountEmail, accountName, authHeaders, baseUrl, _buildMultipart, bytes, cached (+74 more)
 
 ### Community 7 - "createAnalytics"
 Cohesion: 0.07
@@ -222,7 +224,7 @@ Nodes (67): _accent, _accentDeep, _admissionNumberController, _blockIncompleteNe
 
 ### Community 11 - "server.js"
 Cohesion: 0.03
-Nodes (45): admin, ADMIN_UIDS, analytics, app, clientResolveCache, clientWorkspaceIds, CONFIG, cors (+37 more)
+Nodes (52): admin, ADMIN_UIDS, analytics, app, clientResolveCache, clientWorkspaceIds, CONFIG, CONTACT_EMAIL (+44 more)
 
 ### Community 12 - "semesters_screen.dart"
 Cohesion: 0.03
@@ -245,8 +247,8 @@ Cohesion: 0.03
 Nodes (59): actionLabel, _AudioEmptyState, _browseWithPicker, build, _buildGrid, _buildList, _cardDecoration, _clearSelection (+51 more)
 
 ### Community 17 - "browse_documents.dart"
-Cohesion: 0.04
-Nodes (56): document_reader.dart, actionLabel, _browseWithPicker, build, _buildDetailsList, _buildLargeIconsGrid, _clearSelection, color (+48 more)
+Cohesion: 0.03
+Nodes (58): document_reader.dart, actionLabel, BrowseDocumentsScreen, _BrowseDocumentsScreenState, _browseWithPicker, build, _buildDetailsList, _buildLargeIconsGrid (+50 more)
 
 ### Community 18 - "notifications_screen.dart"
 Cohesion: 0.04
@@ -254,7 +256,7 @@ Nodes (54): create_notification_screen.dart, _accent, _audienceLabel, build, _bu
 
 ### Community 19 - "ai_screen.dart"
 Cohesion: 0.04
-Nodes (55): accent, _browseFiles, build, _buildChatPane, _buildSidebar, _ChatBubble, _Composer, _confirmDelete (+47 more)
+Nodes (57): accent, AiScreen, _AiScreenState, _browseFiles, build, _buildChatPane, _buildSidebar, _ChatBubble (+49 more)
 
 ### Community 20 - "weather_service.dart"
 Cohesion: 0.04
@@ -302,7 +304,7 @@ Nodes (42): _accent, _admissionNumber, _avatarPreview, _avatarPublicId, _avatarU
 
 ### Community 31 - "State"
 Cohesion: 0.09
-Nodes (32): AuthScreen, _AuthScreenState, _LocalDocPreview, _LocalDocPreviewState, ClientFilesBrowserScreen, _ClientFilesBrowserScreenState, _AddToPlaylistSheet, _AddToPlaylistSheetState (+24 more)
+Nodes (34): AuthScreen, _AuthScreenState, _LocalDocPreview, _LocalDocPreviewState, ClientFilesBrowserScreen, _ClientFilesBrowserScreenState, _AddToPlaylistSheet, _AddToPlaylistSheetState (+26 more)
 
 ### Community 32 - "StatelessWidget"
 Cohesion: 0.04
@@ -325,8 +327,8 @@ Cohesion: 0.21
 Nodes (8): Bitmap, OfficeThumbnailRenderer, Xfrm, Canvas, RectF, TextPaint, XmlPullParser, ZipFile
 
 ### Community 37 - "media_notification.dart"
-Cohesion: 0.05
-Nodes (37): BaseAudioHandler, dart:ui, _artworkFor, _askedPermission, _bufferedPosition, _configureAudioSession, _ensureAndroidNotificationPermission, ensureInitialized (+29 more)
+Cohesion: 0.06
+Nodes (34): dart:ui, _artworkFor, _askedPermission, _bufferedPosition, _configureAudioSession, _ensureAndroidNotificationPermission, ensureInitialized, _fallbackArt (+26 more)
 
 ### Community 38 - "todo_service.dart"
 Cohesion: 0.06
@@ -334,7 +336,7 @@ Nodes (35): add, all, copyWith, createdAtMs, dateKey, _decodeTodos, done, forDat
 
 ### Community 39 - "folder_lock_dialog.dart"
 Cohesion: 0.06
-Nodes (32): AnimationController, FocusNode?, accent, build, _confirm, controller, createState, dispose (+24 more)
+Nodes (31): FocusNode?, accent, build, _confirm, controller, createState, dispose, _enterAccent (+23 more)
 
 ### Community 40 - "app_update_screen.dart"
 Cohesion: 0.06
@@ -362,7 +364,7 @@ Nodes (28): double?, double get, AppSplashScreen, _awaitingHome, build, child, c
 
 ### Community 46 - "file_sort.dart"
 Cohesion: 0.07
-Nodes (27): build, card, FileSort, FileSortKind, FileSortMode, FileSortModeX, FileSortSheet, fromStorage (+19 more)
+Nodes (28): build, card, FileSort, FileSortKind, FileSortMode, FileSortModeX, FileSortSheet, fromStorage (+20 more)
 
 ### Community 47 - "subject_detail_screen.dart"
 Cohesion: 0.07
@@ -378,7 +380,7 @@ Nodes (25): ai_service.dart, AiConversation, AiConversationStore, AiConversation
 
 ### Community 50 - "users_feedback.dart"
 Cohesion: 0.08
-Nodes (26): build, card, _checkingAccess, createState, _danger, _deleteMessage, divider, _FeedbackCard (+18 more)
+Nodes (25): build, card, _checkingAccess, createState, _danger, _deleteMessage, divider, _FeedbackCard (+17 more)
 
 ### Community 51 - "support_service.dart"
 Cohesion: 0.08
@@ -386,7 +388,7 @@ Nodes (24): DateTime?, _collection, createdAt, deleteMessage, description, _fire
 
 ### Community 52 - "help_and_support.dart"
 Cohesion: 0.09
-Nodes (23): FormState, _accent, build, createState, _danger, _descriptionController, dispose, _formKey (+15 more)
+Nodes (23): _accent, build, createState, _danger, _descriptionController, dispose, _formKey, _headingController (+15 more)
 
 ### Community 53 - "client_editor_dialog.dart"
 Cohesion: 0.08
@@ -398,11 +400,11 @@ Nodes (23): accent, _accentDeep, build, createState, dispose, _goNext, icon, _in
 
 ### Community 55 - "course_addition.dart"
 Cohesion: 0.09
-Nodes (23): _accent, _admissionController, build, _buildTextField, course, CourseAdditionScreen, _CourseAdditionScreenState, createState (+15 more)
+Nodes (23): FormState, _accent, _admissionController, build, _buildTextField, course, CourseAdditionScreen, _CourseAdditionScreenState (+15 more)
 
 ### Community 56 - "streak_service.dart"
-Cohesion: 0.10
-Nodes (20): FirebaseAuth, FirebaseFirestore, _auth, _cache, _cached, cachedStreak, currentStreak, dateKey (+12 more)
+Cohesion: 0.09
+Nodes (21): FirebaseAuth, FirebaseFirestore, _auth, _cache, _cached, cachedStreak, currentStreak, dateKey (+13 more)
 
 ### Community 57 - "move_file_dialog.dart"
 Cohesion: 0.10
@@ -421,8 +423,8 @@ Cohesion: 0.12
 Nodes (16): actions, AdaptiveLayout, automaticallyImplyLeading, backgroundColor, bottomClearance, compactSliverAppBar, false, foregroundColor (+8 more)
 
 ### Community 61 - "media_service.dart"
-Cohesion: 0.07
-Nodes (31): dart:convert, dart:typed_data, Dio, AiService, ChatMessage, _dio, imageBytes, imageMime (+23 more)
+Cohesion: 0.12
+Nodes (16): Dio, deleteImage, _dio, folderNotifications, folderProfiles, folderSupport, instance, MediaService (+8 more)
 
 ### Community 62 - "FlutterWindow"
 Cohesion: 0.12
@@ -430,7 +432,7 @@ Nodes (14): FlutterViewController, unique_ptr, DartProject, HWND, LPARAM, LRESUL
 
 ### Community 63 - "drive_image_preview.dart"
 Cohesion: 0.05
-Nodes (42): _activeDownloadFileId, _bottomNavInset, build, _cancelDownload, _canNext, _canPrevious, createState, _darkBg (+34 more)
+Nodes (40): _activeDownloadFileId, _bottomNavInset, build, _cancelDownload, _canNext, _canPrevious, createState, _darkBg (+32 more)
 
 ### Community 64 - "client_playlists_screen.dart"
 Cohesion: 0.03
@@ -445,8 +447,8 @@ Cohesion: 0.20
 Nodes (14): RECT, OnCreate, OnDestroy, HWND, Win32Window, child_content_, GetClientArea, OnCreate (+6 more)
 
 ### Community 67 - "applyDriveOAuthTokens"
-Cohesion: 0.19
-Nodes (13): applyDriveOAuthTokens(), fetchAuthorizedDriveEmail(), firestoreTimeToIso(), firestoreTimeToMs(), initDriveAuth(), loadClientWorkspaceIdsFromFirestore(), loadOAuthStatus(), loadRefreshToken() (+5 more)
+Cohesion: 0.21
+Nodes (12): applyContactOAuthTokens(), applyDriveOAuthTokens(), fetchAuthorizedContactEmail(), fetchAuthorizedDriveEmail(), initContactAuth(), initDriveAuth(), loadClientWorkspaceIdsFromFirestore(), loadRefreshToken() (+4 more)
 
 ### Community 68 - "resolveClientWorkspaceId"
 Cohesion: 0.26
@@ -465,8 +467,8 @@ Cohesion: 0.24
 Nodes (9): _In_, _In_opt_, vector, wWinMain(), string, wchar_t, CreateAndAttachConsole(), GetCommandLineArguments() (+1 more)
 
 ### Community 72 - "ensureCourseStructure"
-Cohesion: 0.27
-Nodes (12): createClientWorkspaceFolder(), createCourseStructure(), driveIsConfigured(), ensureClientsRootFolder(), ensureCourseStructure(), ensureUpdatesFolder(), findOrCreateNamedFolder(), listChildFolders() (+4 more)
+Cohesion: 0.24
+Nodes (13): createClientWorkspaceFolder(), createCourseStructure(), driveIsConfigured(), ensureClientsRootFolder(), ensureCourseStructure(), ensureUpdatesFolder(), findOrCreateNamedFolder(), listChildFolders() (+5 more)
 
 ### Community 73 - "contact.js"
 Cohesion: 0.31
@@ -493,8 +495,8 @@ Cohesion: 0.20
 Nodes (10): build, createState, message, _signingOut, _signOut, SuspendedAccountScreen, _SuspendedAccountScreenState, title (+2 more)
 
 ### Community 79 - "fileNamesClash"
-Cohesion: 0.24
-Nodes (10): androidNameKey(), childNamesClash(), fileNamesClash(), folderNamesClash(), isFolderInside(), keysMatch(), listChildItems(), moveItem() (+2 more)
+Cohesion: 0.28
+Nodes (9): androidNameKey(), childNamesClash(), fileNamesClash(), folderNamesClash(), isFolderInside(), keysMatch(), listChildItems(), moveItem() (+1 more)
 
 ### Community 80 - "ai_chat.js"
 Cohesion: 0.43
@@ -516,9 +518,9 @@ Nodes (8): contentDispositionAttachment(), createFolder(), mimeFromFileName(), p
 Cohesion: 0.21
 Nodes (6): Point, x, y, Size, height, width
 
-### Community 85 - "package:flutter/material.dart"
-Cohesion: 0.17
-Nodes (10): IconData, build, destructive, icon, PreviewOverlayIcon, size, package:flutter/material.dart, package:flutter_test/flutter_test.dart (+2 more)
+### Community 85 - "IconData"
+Cohesion: 0.29
+Nodes (6): IconData, build, destructive, icon, PreviewOverlayIcon, size
 
 ### Community 86 - "ChangeNotifier"
 Cohesion: 0.29
@@ -570,7 +572,11 @@ Nodes (3): appAboutMessage, appApkLabel, String get
 
 ### Community 105 - "create_name_dialog.dart"
 Cohesion: 0.05
-Nodes (36): build, clashAsFile, confirmLabel, _controller, _coverColors, CreateNameKind, createState, dispose (+28 more)
+Nodes (37): AnimationController, build, clashAsFile, confirmLabel, _controller, _coverColors, CreateNameKind, createState (+29 more)
+
+### Community 106 - "ai_service.dart"
+Cohesion: 0.13
+Nodes (14): dart:convert, dart:typed_data, AiService, ChatMessage, _dio, imageBytes, imageMime, instance (+6 more)
 
 ### Community 115 - "media_session.dart"
 Cohesion: 0.03
@@ -600,25 +606,37 @@ Nodes (4): FlutterPluginRegistry, RegisterGeneratedPlugins(), MainFlutterWindow,
 Cohesion: 0.60
 Nodes (3): AppDelegate, Bool, NSApplication
 
+### Community 124 - "package:flutter/material.dart"
+Cohesion: 0.40
+Nodes (4): package:flutter/material.dart, package:flutter_test/flutter_test.dart, package:uni_study_app/main.dart, main
+
+### Community 134 - "oauthStatusFromData"
+Cohesion: 0.67
+Nodes (4): firestoreTimeToIso(), firestoreTimeToMs(), loadOAuthStatus(), oauthStatusFromData()
+
+### Community 135 - "PlaybackAudioHandler"
+Cohesion: 0.67
+Nodes (3): BaseAudioHandler, PlaybackAudioHandler, SeekHandler
+
 ## Knowledge Gaps
-- **2985 isolated node(s):** `axios`, `path`, `MONTH_NAMES`, `{ google }`, `recentByIp` (+2980 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 3163 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
-- **28 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **3000 isolated node(s):** `axios`, `path`, `MONTH_NAMES`, `{ google }`, `recentByIp` (+2995 more)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 3178 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **26 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `FileSortMode` connect `file_sort.dart` to `client_files_browser_screen.dart`, `semester_detail_screen.dart`, `downloads_screen.dart`, `phone_audio.dart`, `browse_documents.dart`, `phone_pdf.dart`, `client_workspace_screen.dart`?**
-  _High betweenness centrality (0.002) - this node is a cross-community bridge._
+  _High betweenness centrality (0.001) - this node is a cross-community bridge._
 - **Are the 7 inferred relationships involving `createAnalytics()` (e.g. with `analytics.js` and `clientPlatform()`) actually correct?**
   _`createAnalytics()` has 7 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `axios`, `path`, `MONTH_NAMES` to the rest of the system?**
-  _2985 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _3000 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `client_files_browser_screen.dart` be split into smaller, more focused modules?**
   _Cohesion score 0.008 - nodes in this community are weakly interconnected._
 - **Should `semester_detail_screen.dart` be split into smaller, more focused modules?**
   _Cohesion score 0.011834319526627219 - nodes in this community are weakly interconnected._
 - **Should `system_admin_dashboard.dart` be split into smaller, more focused modules?**
-  _Cohesion score 0.013422818791946308 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.012658227848101266 - nodes in this community are weakly interconnected._
 - **Should `system_admin_analytics.dart` be split into smaller, more focused modules?**
   _Cohesion score 0.016666666666666666 - nodes in this community are weakly interconnected._
