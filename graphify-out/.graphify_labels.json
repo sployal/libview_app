@@ -84,7 +84,7 @@
   "82": "media server.js",
   "83": "sanitizeFileName",
   "84": "Point",
-  "85": "package:flutter/material.dart",
+  "85": "IconData",
   "86": "ChangeNotifier",
   "87": "ensureEnvSystemAdminRole",
   "88": "media_playback_overlay.dart",
@@ -105,7 +105,7 @@
   "103": "SwitchMainTabNotification",
   "104": "String get",
   "105": "create_name_dialog.dart",
-  "106": "_BrowseDocumentsScreenState",
+  "106": "ai_service.dart",
   "107": "SystemAdminAnalyticsScreen",
   "108": "app/build.gradle.kts",
   "109": "android/build.gradle.kts",
@@ -123,7 +123,7 @@
   "121": "AppDelegate",
   "122": "OnboardingGate",
   "123": "LaunchImage.imageset/README.md",
-  "124": "AiScreen",
+  "124": "package:flutter/material.dart",
   "125": "_PhonePdfScreenState",
   "126": "_HomeScreenState",
   "127": "_PhoneAudioScreenState",
@@ -132,5 +132,7 @@
   "130": "_StudyFocusCard",
   "131": "_WeatherLocationSheet",
   "132": "NotificationsScreen",
-  "133": "SemestersScreen"
+  "133": "SemestersScreen",
+  "134": "oauthStatusFromData",
+  "135": "PlaybackAudioHandler"
 }

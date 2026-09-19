@@ -68,6 +68,9 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard>
   DriveOAuthStatus? _oauthStatus;
   bool _isLoadingOAuthStatus = true;
   String? _oauthStatusError;
+  DriveOAuthStatus? _contactOAuthStatus;
+  bool _isLoadingContactOAuthStatus = true;
+  String? _contactOAuthStatusError;
 
   static const _userRoles = [
     'student',
@@ -152,6 +155,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _loadOAuthStatus();
+      _loadContactOAuthStatus();
     }
   }
 
@@ -176,6 +180,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard>
     await _loadStorage();
     await _loadAccountCreationSettings();
     await _loadOAuthStatus();
+    await _loadContactOAuthStatus();
   }
 
   Future<void> _refreshDashboard() async {
@@ -190,6 +195,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard>
         _loadStorage(refresh: true),
         _loadAccountCreationSettings(),
         _loadOAuthStatus(),
+        _loadContactOAuthStatus(),
       ]);
     } finally {
       if (mounted) setState(() => _isRefreshing = false);
@@ -1992,25 +1998,32 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard>
     ]);
   }
 
-  static const _googleAuthUrl = 'https://edupal-backend.onrender.com/auth/google';
+  static const _googleAuthHost = 'edupal-backend.onrender.com';
+  static const _driveAuthPath = '/auth/google';
+  static const _contactAuthPath = '/auth/google/contact';
 
-  Future<void> _openRefreshTokenInChrome() async {
+  Future<void> _openRefreshTokenInChrome() =>
+      _openAuthInChrome(_driveAuthPath);
+
+  Future<void> _openContactRefreshTokenInChrome() =>
+      _openAuthInChrome(_contactAuthPath);
+
+  Future<void> _openAuthInChrome(String path) async {
+    final httpsUrl = 'https://$_googleAuthHost$path';
     try {
       var launched = false;
 
       if (Platform.isAndroid) {
         try {
           launched = await launchUrl(
-            Uri.parse('googlechrome://navigate?url=$_googleAuthUrl'),
+            Uri.parse('googlechrome://navigate?url=$httpsUrl'),
             mode: LaunchMode.externalApplication,
           );
         } catch (_) {
           launched = false;
         }
       } else if (Platform.isIOS) {
-        final chromeUri = Uri.parse(
-          'googlechromes://edupal-backend.onrender.com/auth/google',
-        );
+        final chromeUri = Uri.parse('googlechromes://$_googleAuthHost$path');
         if (await canLaunchUrl(chromeUri)) {
           launched = await launchUrl(
             chromeUri,
@@ -2021,7 +2034,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard>
 
       if (!launched) {
         launched = await launchUrl(
-          Uri.parse(_googleAuthUrl),
+          Uri.parse(httpsUrl),
           mode: LaunchMode.externalApplication,
         );
       }
@@ -2538,14 +2551,41 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard>
     }
   }
 
-  String _oauthStatusSubtitle() {
-    if (_isLoadingOAuthStatus && _oauthStatus == null) {
+  Future<void> _loadContactOAuthStatus() async {
+    if (mounted) {
+      setState(() {
+        _isLoadingContactOAuthStatus = true;
+        _contactOAuthStatusError = null;
+      });
+    }
+    try {
+      final status = await UploadService.instance.fetchContactOAuthStatus();
+      if (!mounted) return;
+      setState(() {
+        _contactOAuthStatus = status;
+        _isLoadingContactOAuthStatus = false;
+        _contactOAuthStatusError = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoadingContactOAuthStatus = false;
+        _contactOAuthStatusError = e.toString();
+      });
+    }
+  }
+
+  String _oauthStatusSubtitleFor({
+    required DriveOAuthStatus? status,
+    required bool isLoading,
+    required String? error,
+  }) {
+    if (isLoading && status == null) {
       return 'Checking days left...';
     }
-    if (_oauthStatusError != null && _oauthStatus == null) {
+    if (error != null && status == null) {
       return 'Could not load days left';
     }
-    final status = _oauthStatus;
     if (status == null || !status.stored) {
       return 'No token stored · tap to sign in';
     }
@@ -2567,11 +2607,34 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard>
     return _settingsRow(
       icon: CupertinoIcons.refresh,
       iconColor: expired ? const Color(0xFFEF4444) : const Color(0xFF6366F1),
-      title: 'Refresh Token',
-      subtitle: _oauthStatusSubtitle(),
+      title: 'Drive Refresh Token',
+      subtitle: _oauthStatusSubtitleFor(
+        status: _oauthStatus,
+        isLoading: _isLoadingOAuthStatus,
+        error: _oauthStatusError,
+      ),
       showChevron: true,
       showDivider: true,
       onTap: _openRefreshTokenInChrome,
+    );
+  }
+
+  Widget _buildContactTokenRefreshSection() {
+    final expired = _contactOAuthStatus?.expired == true ||
+        (_contactOAuthStatus?.daysLeft != null &&
+            _contactOAuthStatus!.daysLeft! <= 0);
+    return _settingsRow(
+      icon: CupertinoIcons.mail,
+      iconColor: expired ? const Color(0xFFEF4444) : const Color(0xFF0EA5E9),
+      title: 'Contact Refresh Token',
+      subtitle: _oauthStatusSubtitleFor(
+        status: _contactOAuthStatus,
+        isLoading: _isLoadingContactOAuthStatus,
+        error: _contactOAuthStatusError,
+      ),
+      showChevron: true,
+      showDivider: true,
+      onTap: _openContactRefreshTokenInChrome,
     );
   }
 
@@ -2637,6 +2700,7 @@ class _SystemAdminDashboardState extends State<SystemAdminDashboard>
             _buildAddCourseButton(),
             _buildAddClientButton(),
             _buildTokenRefreshSection(),
+            _buildContactTokenRefreshSection(),
             _buildAnalyticsRow(),
           ]),
           const SizedBox(height: 18),

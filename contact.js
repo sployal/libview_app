@@ -10,7 +10,7 @@ const RATE_MAX = 5;
 const recentByIp = new Map();
 
 function contactToEmail() {
-  return (
+  return String(
     process.env.CONTACT_EMAIL ||
     process.env.SYSTEM_ADMIN_EMAIL ||
     ''
@@ -83,7 +83,9 @@ async function sendViaGmailApi(oauth2Client, mail) {
 function registerContactRoutes(app, { oauth2Client } = {}) {
   console.log('[contact] mail config', {
     contactEmail: Boolean(contactToEmail()),
-    gmailOauth: Boolean(oauth2Client),
+    gmailOauth: Boolean(
+      oauth2Client?.credentials?.refresh_token || oauth2Client?.credentials?.access_token
+    ),
   });
 
   app.post('/contact', async (req, res) => {
@@ -144,14 +146,14 @@ function registerContactRoutes(app, { oauth2Client } = {}) {
       }
 
       console.error(
-        '[contact] Gmail OAuth is not ready. Visit /auth/google so the backend token includes gmail.send.'
+        '[contact] Gmail OAuth is not ready. Visit /auth/google/contact so the contact email token includes gmail.send.'
       );
       return res.status(503).json({ error: 'Could not send your message. Please try again later.' });
     } catch (err) {
       console.error('[contact] Gmail API send failed:', err.message || err);
       if (String(err.message || '').includes('insufficient') || err.code === 403) {
         console.error(
-          '[contact] Re-authorize Google with gmail.send: visit /auth/google on this backend.'
+          '[contact] Re-authorize the contact Google account with gmail.send: visit /auth/google/contact on this backend.'
         );
       }
       return res.status(500).json({ error: 'Could not send your message. Please try again later.' });

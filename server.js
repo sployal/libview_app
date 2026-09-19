@@ -32,6 +32,20 @@ const SYSTEM_ADMIN_EMAIL = String(process.env.SYSTEM_ADMIN_EMAIL || '')
 const GOOGLE_DRIVE_EMAIL = String(process.env.GOOGLE_DRIVE_EMAIL || '')
   .trim()
   .toLowerCase();
+const CONTACT_EMAIL = String(process.env.CONTACT_EMAIL || '')
+  .trim()
+  .toLowerCase();
+const GOOGLE_OAUTH_REDIRECT_URI = String(
+  process.env.GOOGLE_OAUTH_REDIRECT_URI || ''
+).trim();
+const GOOGLE_OAUTH_CONTACT_REDIRECT_URI = (() => {
+  const explicit = String(process.env.GOOGLE_OAUTH_CONTACT_REDIRECT_URI || '').trim();
+  if (explicit) return explicit;
+  if (GOOGLE_OAUTH_REDIRECT_URI.endsWith('/auth/google/callback')) {
+    return `${GOOGLE_OAUTH_REDIRECT_URI.slice(0, -'/auth/google/callback'.length)}/auth/google/contact/callback`;
+  }
+  return '';
+})();
 
 const ADMIN_UIDS = new Set(
   (process.env.ADMIN_UIDS || '')
@@ -53,9 +67,12 @@ const CONFIG = {
   // anymore — it's stored in and loaded from Firestore. See loadRefreshToken().
   GOOGLE_OAUTH_CLIENT_ID: process.env.GOOGLE_OAUTH_CLIENT_ID,
   GOOGLE_OAUTH_CLIENT_SECRET: process.env.GOOGLE_OAUTH_CLIENT_SECRET,
-  GOOGLE_OAUTH_REDIRECT_URI: process.env.GOOGLE_OAUTH_REDIRECT_URI, // e.g. https://edupal-backend.onrender.com/auth/google/callback
+  GOOGLE_OAUTH_REDIRECT_URI, // e.g. https://edupal-backend.onrender.com/auth/google/callback
+  GOOGLE_OAUTH_CONTACT_REDIRECT_URI,
   // Only this Google account's OAuth token is accepted for Drive.
   GOOGLE_DRIVE_EMAIL,
+  // Separate Gmail OAuth account for landing-page inquiries.
+  CONTACT_EMAIL,
 
   // Optional shared secret to protect the /auth/google entry point so
   // random visitors can't kick off the consent flow against your app.
@@ -441,9 +458,9 @@ async function assertClientStorageAllows(folderId, incomingBytes) {
   return { ok: true, used, limit };
 }
 
-// Where the refresh token lives in Firestore, instead of an env var.
-// A single document under a "config" collection.
+// Where the refresh tokens live in Firestore, instead of env vars.
 const OAUTH_DOC_REF = firestore.collection('config').doc('googleDriveOAuth');
+const CONTACT_OAUTH_DOC_REF = firestore.collection('config').doc('googleContactOAuth');
 const REFRESH_TOKEN_TTL_DAYS = 7;
 const REFRESH_TOKEN_TTL_MS = REFRESH_TOKEN_TTL_DAYS * 24 * 60 * 60 * 1000;
 
@@ -466,12 +483,12 @@ function firestoreTimeToIso(value) {
   return ms == null ? null : new Date(ms).toISOString();
 }
 
-async function saveRefreshToken(refreshToken) {
+async function saveRefreshToken(refreshToken, docRef = OAUTH_DOC_REF) {
   const now = admin.firestore.Timestamp.now();
   const expiresAt = admin.firestore.Timestamp.fromMillis(
     now.toMillis() + REFRESH_TOKEN_TTL_MS
   );
-  await OAUTH_DOC_REF.set(
+  await docRef.set(
     {
       refreshToken,
       updatedAt: now,
@@ -482,9 +499,9 @@ async function saveRefreshToken(refreshToken) {
   );
 }
 
-async function loadRefreshToken() {
+async function loadRefreshToken(docRef = OAUTH_DOC_REF) {
   try {
-    const snap = await OAUTH_DOC_REF.get();
+    const snap = await docRef.get();
     if (!snap.exists) return null;
     return snap.data().refreshToken || null;
   } catch (err) {
@@ -529,14 +546,14 @@ function oauthStatusFromData(data) {
   };
 }
 
-async function loadOAuthStatus() {
-  const snap = await OAUTH_DOC_REF.get();
+async function loadOAuthStatus(docRef = OAUTH_DOC_REF) {
+  const snap = await docRef.get();
   if (!snap.exists) return oauthStatusFromData(null);
   const data = snap.data() || {};
   const status = oauthStatusFromData(data);
   if (status.stored && !data.expiresAt && status.expiresAt) {
     try {
-      await OAUTH_DOC_REF.set(
+      await docRef.set(
         {
           expiresAt: admin.firestore.Timestamp.fromDate(new Date(status.expiresAt)),
           ttlDays: REFRESH_TOKEN_TTL_DAYS,
@@ -556,14 +573,21 @@ async function loadOAuthStatus() {
 
 const DRIVE_SCOPES = [
   'https://www.googleapis.com/auth/drive',
-  // HTTPS send for /contact. Render free instances block SMTP 25/465/587.
+];
+const CONTACT_SCOPES = [
   'https://www.googleapis.com/auth/gmail.send',
+  'https://www.googleapis.com/auth/userinfo.email',
 ];
 
 const oauth2Client = new google.auth.OAuth2(
   CONFIG.GOOGLE_OAUTH_CLIENT_ID,
   CONFIG.GOOGLE_OAUTH_CLIENT_SECRET,
   CONFIG.GOOGLE_OAUTH_REDIRECT_URI
+);
+const contactOauth2Client = new google.auth.OAuth2(
+  CONFIG.GOOGLE_OAUTH_CLIENT_ID,
+  CONFIG.GOOGLE_OAUTH_CLIENT_SECRET,
+  CONFIG.GOOGLE_OAUTH_CONTACT_REDIRECT_URI
 );
 
 const drive = google.drive({ version: 'v3', auth: oauth2Client });
@@ -702,6 +726,94 @@ async function initDriveAuth() {
   }
 
   driveReady = true;
+}
+
+let contactReady = false;
+
+async function fetchAuthorizedContactEmail() {
+  const oauth2 = google.oauth2({ version: 'v2', auth: contactOauth2Client });
+  const { data } = await oauth2.userinfo.get();
+  return String(data.email || '').trim().toLowerCase();
+}
+
+async function initContactAuth() {
+  const refreshToken = await loadRefreshToken(CONTACT_OAUTH_DOC_REF);
+  if (!refreshToken) {
+    contactReady = false;
+    contactOauth2Client.setCredentials({});
+    return;
+  }
+
+  contactOauth2Client.setCredentials({ refresh_token: refreshToken });
+
+  if (CONFIG.CONTACT_EMAIL) {
+    try {
+      const accountEmail = await fetchAuthorizedContactEmail();
+      if (accountEmail && accountEmail !== CONFIG.CONTACT_EMAIL) {
+        console.error(
+          `Stored contact token belongs to ${accountEmail}, expected ${CONFIG.CONTACT_EMAIL}. ` +
+            'Contact mail is disabled until /auth/google/contact is completed with the correct account.'
+        );
+        contactOauth2Client.setCredentials({});
+        contactReady = false;
+        return;
+      }
+    } catch (err) {
+      console.warn('Could not verify stored contact account email:', err.message);
+    }
+  } else {
+    console.warn('CONTACT_EMAIL is not set — /auth/google/contact will not save a new token.');
+  }
+
+  contactReady = true;
+}
+
+async function restorePreviousContactAuth() {
+  contactOauth2Client.setCredentials({});
+  contactReady = false;
+  await initContactAuth();
+}
+
+async function applyContactOAuthTokens(tokens) {
+  if (!tokens?.refresh_token) {
+    return { ok: false, reason: 'missing_token' };
+  }
+
+  if (!CONFIG.CONTACT_EMAIL) {
+    console.error('CONTACT_EMAIL is not set — refusing to save a contact OAuth token.');
+    return { ok: false, reason: 'email_not_configured' };
+  }
+
+  contactOauth2Client.setCredentials(tokens);
+
+  let accountEmail = '';
+  try {
+    accountEmail = await fetchAuthorizedContactEmail();
+  } catch (err) {
+    console.error('Could not read contact account email from OAuth token:', err.message);
+    await restorePreviousContactAuth();
+    return { ok: false, reason: 'email_check_failed' };
+  }
+
+  if (accountEmail !== CONFIG.CONTACT_EMAIL) {
+    console.warn(
+      `Rejected contact OAuth for ${accountEmail || '(unknown)'} — expected ${CONFIG.CONTACT_EMAIL}.`
+    );
+    await restorePreviousContactAuth();
+    return {
+      ok: false,
+      reason: 'wrong_account',
+      email: accountEmail,
+      expected: CONFIG.CONTACT_EMAIL,
+    };
+  }
+
+  await saveRefreshToken(tokens.refresh_token, CONTACT_OAUTH_DOC_REF);
+  contactReady = true;
+  console.log(
+    `Contact Gmail OAuth refresh token saved for ${accountEmail} (config/googleContactOAuth).`
+  );
+  return { ok: true, email: accountEmail };
 }
 
 const CACHE_TTL_MS = 10 * 60 * 1000;
@@ -1454,7 +1566,9 @@ function isOriginExemptPath(path) {
   return (
     path === '/health' ||
     path === '/auth/google' ||
-    path === '/auth/google/callback'
+    path === '/auth/google/callback' ||
+    path === '/auth/google/contact' ||
+    path === '/auth/google/contact/callback'
   );
 }
 
@@ -1493,6 +1607,7 @@ app.get('/health', (req, res) =>
   res.json({
     ok: true,
     driveConfigured: driveIsConfigured(),
+    contactConfigured: contactReady,
     driveReadKeyConfigured: driveReadIsConfigured(),
     driveDownloadKeyConfigured: driveDownloadIsConfigured(),
   })
@@ -1716,6 +1831,16 @@ app.get('/drive-oauth-status', requireAuth, requireSystemAdmin, async (req, res)
   }
 });
 
+app.get('/contact-oauth-status', requireAuth, requireSystemAdmin, async (req, res) => {
+  try {
+    const status = await loadOAuthStatus(CONTACT_OAUTH_DOC_REF);
+    res.json(status);
+  } catch (e) {
+    console.error('Contact OAuth status query failed:', e);
+    res.status(500).json({ error: 'Could not load token status' });
+  }
+});
+
 // --- One-time OAuth2 setup routes ---------------------------------------
 //
 // These exist ONLY to generate a refresh token once. After you've
@@ -1846,6 +1971,93 @@ app.get('/auth/google/callback', async (req, res) => {
     }));
   } catch (e) {
     console.error('Token exchange failed:', e);
+    res.status(500).send(oauthResultPage({
+      status: 'failed',
+      title: 'Token exchange failed',
+      message: 'Check server logs, then try again.',
+    }));
+  }
+});
+
+app.get('/auth/google/contact', (req, res) => {
+  if (CONFIG.AUTH_SETUP_SECRET && req.query.secret !== CONFIG.AUTH_SETUP_SECRET) {
+    return res.status(403).send('Forbidden');
+  }
+  if (!CONFIG.GOOGLE_OAUTH_CLIENT_ID || !CONFIG.GOOGLE_OAUTH_CLIENT_SECRET || !CONFIG.GOOGLE_OAUTH_CONTACT_REDIRECT_URI) {
+    return res.status(500).send('Contact OAuth client is not configured (missing env vars)');
+  }
+
+  const url = contactOauth2Client.generateAuthUrl({
+    access_type: 'offline',
+    prompt: 'consent',
+    scope: CONTACT_SCOPES,
+    ...(CONFIG.CONTACT_EMAIL ? { login_hint: CONFIG.CONTACT_EMAIL } : {}),
+  });
+
+  res.redirect(url);
+});
+
+app.get('/auth/google/contact/callback', async (req, res) => {
+  const { code, error } = req.query;
+
+  if (error) {
+    return res.status(400).send(oauthResultPage({
+      status: 'failed',
+      title: 'Authorization failed',
+      message: String(error),
+    }));
+  }
+  if (!code) {
+    return res.status(400).send(oauthResultPage({
+      status: 'failed',
+      title: 'Authorization failed',
+      message: 'Missing authorization code. Close this screen and try again.',
+    }));
+  }
+
+  try {
+    const { tokens } = await contactOauth2Client.getToken(code);
+    const applied = await applyContactOAuthTokens(tokens);
+    if (!applied.ok) {
+      if (applied.reason === 'wrong_account') {
+        return res.status(403).send(oauthResultPage({
+          status: 'wrong_account',
+          title: 'Wrong Google account',
+          message:
+            `This server only accepts contact email access from ${applied.expected}. ` +
+            `You signed in as ${applied.email || 'a different account'}. ` +
+            'Close this screen and authorize with the configured contact email.',
+        }));
+      }
+      if (applied.reason === 'email_not_configured') {
+        return res.status(500).send(oauthResultPage({
+          status: 'email_not_configured',
+          title: 'Contact email not configured',
+          message: 'Set CONTACT_EMAIL in the server .env, then try again.',
+        }));
+      }
+      if (applied.reason === 'email_check_failed') {
+        return res.status(500).send(oauthResultPage({
+          status: 'failed',
+          title: 'Could not verify account',
+          message: 'The token was received but the contact account email could not be read. Try again.',
+        }));
+      }
+      return res.status(200).send(oauthResultPage({
+        status: 'missing_token',
+        title: 'No refresh token',
+        message:
+          'Google did not return a refresh token. Remove this app at myaccount.google.com/permissions, then try again.',
+      }));
+    }
+
+    res.send(oauthResultPage({
+      status: 'success',
+      title: 'Contact email connected',
+      message: `Access has been saved for ${applied.email || CONFIG.CONTACT_EMAIL}. You can return to Edupal.`,
+    }));
+  } catch (e) {
+    console.error('Contact token exchange failed:', e);
     res.status(500).send(oauthResultPage({
       status: 'failed',
       title: 'Token exchange failed',
@@ -2756,7 +2968,7 @@ registerAiRoutes(app, {
   recordAiUsage: analytics.recordAiUsage,
 });
 registerMediaRoutes(app, { requireAuth, requireSystemAdmin, upload });
-registerContactRoutes(app, { oauth2Client });
+registerContactRoutes(app, { oauth2Client: contactOauth2Client });
 analytics.registerAnalyticsRoutes(app, { requireAuth, requireSystemAdmin });
 
 // --- Fallback error handler --------------------------------------------
@@ -2766,7 +2978,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Something went wrong.' });
 });
 
-initDriveAuth().then(async () => {
+Promise.all([initDriveAuth(), initContactAuth()]).then(async () => {
   try {
     await syncEngineeringCourseToFirestore();
   } catch (err) {
@@ -2789,6 +3001,14 @@ initDriveAuth().then(async () => {
       );
     } else {
       console.log('Drive OAuth refresh token loaded from Firestore.');
+    }
+    if (!contactReady) {
+      console.log(
+        `Contact Gmail is not configured yet. Visit /auth/google/contact${CONFIG.AUTH_SETUP_SECRET ? '?secret=YOUR_SECRET' : ''} ` +
+        `once to authorize — the refresh token will be saved to Firestore automatically.`
+      );
+    } else {
+      console.log('Contact Gmail OAuth refresh token loaded from Firestore.');
     }
     if (!driveReadIsConfigured()) {
       console.warn('GOOGLE_DRIVE_API_KEY is missing — folder listing and thumbnails will fail.');
